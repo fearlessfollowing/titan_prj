@@ -1,0 +1,31 @@
+Import('com_env')
+#######################################################
+# Compile for bootanimation
+# Copyright Insta360 @ 2016 - 2025
+#######################################################
+
+import config
+
+src = Glob('*.cpp')
+
+
+src += [config.PRO2_SERVICE + '/util/arlog.c']
+src += [config.PRO2_SERVICE + '/util/stlog.cpp']
+
+src += [config.LIBLOG + '/logd_write.c']
+src += [config.LIBLOG + '/log_event_write.c']
+src += [config.LIBLOG + '/logprint.c']
+src += [config.LIBLOG + '/event_tag_map.c']
+src += [config.LIBLOG + '/log_time.cpp']
+
+src += [config.LIBCUTILS + '/system_properties.c']
+
+
+
+com_env['CXXFLAGS'] += ' -I' + config.PRO2_SERVICE + '/include'
+#com_env['LIBS'] += ['rt']
+#com_env['LIBS'] += ['pthread']
+time_tz_obj = com_env.Object(src)
+
+Return('time_tz_obj')
+

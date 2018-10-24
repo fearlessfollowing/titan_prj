@@ -1,0 +1,170 @@
+{
+    "captureMode":"image",
+    "captureModeSupport":["image", "video", "interval"],
+    
+    "captureStatus":"idle",
+    "captureStatusSupport":["idle", "shooting", "processing", "downloading"],
+
+    "exposureProgram":4,
+    "exposureProgramSupport":[1, 2, 4, 9],
+
+    "iso":0,
+    "isoSupport":[0, 100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000,
+                  1250, 1600, 2000, 2500, 3200, 4000, 5000, 6400],
+    
+    "shutterSpeed":0,
+    "shutterSpeedSupport":[0, 0.5, 0.333, 0.25, 0.2, 0.125, 0.1, 0.067, 0.05,
+                           0.04, 0.033, 0.025, 0.02, 0.0167, 0.0125, 0.01,
+                           0.0083, 0.00625, 0.005, 0.004167, 0.003125, 0.0025,
+                           0.002, 0.0015625, 0.00125, 0.001, 0.0008, 0.000625,
+                           0.0005, 0.0004, 0.0003125, 0.00025, 0.0002,
+                           0.00015625, 0.000125],
+    "aperture":2.4,
+    "apertureSupport":[2.4],
+
+    "whiteBalance":"auto",
+    "whiteBalanceSupport":["auto", "incandescent", "daylight", "cloudy-daylight"],
+    
+    "exposureCompensation":0,
+    "exposureCompensationSupport":[-3, -2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5,
+                                    2, 2.5, 3],
+    "fileFormat": {
+        "type":"jpeg",
+        "width": 4000,
+        "height": 3000
+    },
+
+    "fileFormatSupport": [
+        {
+            "type":"jpeg",
+            "width": 4000,
+            "height": 3000
+        },
+        {
+            "type":"mp4",
+            "width": 7680,
+            "height": 3840,
+            "framerate": 30
+        },
+        {
+            "type":"mp4",
+            "width": 5120,
+            "height": 2560,
+            "framerate": 30
+        },
+        {
+            "type":"mp4",
+            "width": 6400,
+            "height": 3200,
+            "framerate": 30
+        },
+        {
+            "type":"mp4",
+            "width": 4320,
+            "height": 2160,
+            "framerate": 30
+        },
+        {
+            "type":"mp4",
+            "width": 3840,
+            "height": 1920,
+            "framerate": 30
+        },
+        {
+            "type":"mp4",
+            "width": 3840,
+            "height": 1920,
+            "framerate": 120
+        }
+    ],
+
+    "exposureDelay":0,
+    "exposureDelaySupport":[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 60],
+
+    "sleepDelay":65536,
+    "sleepDelaySupport":[65536],
+    
+    "offDelay":65536,
+    "offDelaySupport":[65536],
+    
+    "totalSpace":0,
+    "remainingSpace":0,
+    "remainingPictures":0,
+
+    "gpsInfo":{
+        "lat": 0,
+        "lng": 0
+    },
+
+    "dateTimeZone": "2018:10:17 16:04:29+8:00",
+    
+    "hdr":"off",
+    "hdrSupport":["off", "hdr"],
+
+    "exposureBracket":{
+        "shots": 3,
+        "increment": 1
+    },
+
+    "exposureBracketSupport":{
+        "autoMode": false,
+        "shotsSupport": [3],
+        "incrementSupport": [1, 2]
+    },
+
+    "gyro":true,
+    "gyroSupport":true,
+    
+    "gps":false,
+    "gpsSupport":false,
+    
+    "imageStabilization":"on",
+    "imageStabilizationSupport":["off", "on"],
+    
+    "wifiPassword":88888888,
+    
+    "previewFormat": {
+        "width": 1920,
+        "height": 960,
+        "framerate": 30
+    },
+
+    "previewFormatSupport":[
+        {
+            "width": 1920,
+            "height": 960,
+            "framerate": 30
+        }
+    ],
+    
+
+    "captureInterval":2,
+    "captureIntervalSupport": {
+        "minInterval": 2,
+        "maxInterval": 60
+    },
+
+    "captureNumber":0,
+    "captureNumberSupport": {
+        "minNumber": 0,
+        "maxNumber": 10
+    },
+
+    "remainingVideoSeconds":1200,
+    
+    "pollingDelay":5,
+    
+    "delayProcessing":false,
+    "delayProcessingSupport":[false],
+    
+    "clientVersion":2,
+
+    "photoStitching":"ondevice",
+    "photoStitchingSupport":["ondevice"],
+ 
+    "videoStitching":"ondevice",
+    "videoStitchingSupport":["none", "ondevice"],
+
+    "videoGPS":"none",    
+    "videoGPSSupport":["none"]
+}

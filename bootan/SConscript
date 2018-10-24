@@ -1,0 +1,31 @@
+Import('com_env')
+#######################################################
+# Compile for bootanimation
+# Copyright Insta360 @ 2016 - 2025
+#######################################################
+
+import config
+
+src = Glob('*.cpp')
+src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
+src += [config.UI_SERVICE + '/hw/ins_i2c.cpp']
+src += [config.UI_SERVICE + '/hw/oled_light.cpp']
+src += [config.UI_SERVICE + '/hw/oled_module.cpp']
+
+src += [config.UI_SERVICE + '/util/arlog.c']
+src += [config.UI_SERVICE + '/util/stlog.cpp']
+
+src += [config.LIBLOG + '/logd_write.c']
+src += [config.LIBLOG + '/log_event_write.c']
+src += [config.LIBLOG + '/logprint.c']
+src += [config.LIBLOG + '/event_tag_map.c']
+src += [config.LIBLOG + '/log_time.cpp']
+
+src += [config.LIBCUTILS + '/system_properties.c']
+
+
+com_env['CXXFLAGS'] += ' -I' + config.UI_SERVICE + '/include'
+bootan_obj = com_env.Object(src)
+
+Return('bootan_obj')
+

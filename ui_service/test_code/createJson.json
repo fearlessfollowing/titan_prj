@@ -1,0 +1,1 @@
+{"Result":1,"ResultMessage":"200","ResultValue":[{"TS":"1504665880572","conNum":"1","cpuRatio":"4.04","mqttPort":"8883","serverIp":"42.159.116.104","websocketPort":"0"},{"TS":"1504665896981","conNum":"2","cpuRatio":"2.04","mqttPort":"8883","serverIp":"42.159.122.251","websocketPort":"0"}]}

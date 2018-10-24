@@ -1,0 +1,140 @@
+#init.rc for titan
+
+on init
+    mkdir /dev/socket
+    mkdir /home/nvidia/insta360/etc/property
+	mkdir /usr/local/lib/firmware
+	export PATH /sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin
+#   swapon /swap/sfile
+
+
+on early-boot
+    class_start base
+
+
+on boot
+#   class_start base
+
+
+# wifi/4G service must startup as soon as possible
+service wifi /sbin/wpa_supplicant -Dnl80211 -iwlan0 -B -c /mnt/data/wpa_supplicant.conf
+    class other
+    critical
+    disabled
+		
+
+service hostapd /usr/sbin/hostapd home/nvidia/insta360/etc/.wifi_ap.conf
+    class wifi
+    critical
+		
+
+# bootanimation service
+service bootan /usr/local/bin/bootanimation
+	class base
+	oneshot
+
+service dnsmasq /usr/sbin/dnsmasq.bin -d
+	class base
+	critical
+
+# logd need startup first for other service
+# level: core
+service logd  /usr/local/bin/logd
+    class base
+    critical
+
+
+service file_list /usr/local/bin/mongoose
+    class base
+    critical
+    disabled
+
+
+service pwr_ctl /usr/local/bin/pwr_ctl
+    class base 
+    critical
+
+# update_check servicer need start after logd is running
+# once startup is over need check update is inneed
+# level: base
+service update_check /usr/local/bin/update_check
+    class update_check
+    critical
+    oneshot
+
+service adbd /usr/local/bin/adbd
+	class base
+	critical
+
+service klogd /usr/local/bin/kern_log
+	class base
+	critical
+    disabled
+
+
+service vm_clean /usr/local/bin/vm_clean
+	class base
+	critical
+    disabled
+
+
+service update_app /usr/local/bin/update_app
+    class update
+    critical
+    oneshot
+
+
+service camerad /usr/local/bin/camerad
+    class core
+    critical
+
+
+service crtmpserver /usr/local/bin/crtmpserver  /home/nvidia/insta360/etc/crtmpserver.lua
+    class core
+    critical
+
+
+service ui_service /usr/local/bin/ui_service
+    class third
+    critical
+
+
+# web_osc service for http request
+# lelvel: main
+service web_server /usr/local/bin/python3.6 /usr/local/bin/web_server
+    class main
+    critical
+	onrestart restart ui_service web_osc
+
+
+service time_tz /usr/local/bin/time_tz
+	class other
+	oneshot
+
+
+service web_osc /usr/local/bin/python3.6 /usr/local/bin/Pro2_OSC/pro2_osc/
+    class osc 
+    critical
+    disabled
+
+
+# logd is base class service
+# once logd startup then startup update_check servcie now...
+on property:sys.logd.startup=true
+    class_start update_check
+
+
+on property:sys.uc_update_app=true
+    class_start update
+
+
+# Ensure system first startup update_check,and then start other core services
+on property:sys.uc_start_app=true
+    class_start core
+    class_start main
+
+on property:sys.tz_changed=true
+	start time_tz
+
+on property:sys.web_status=true
+	restart ui_service

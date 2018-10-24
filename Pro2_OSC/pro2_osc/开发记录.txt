@@ -1,0 +1,191 @@
+Commands:
+/osc/info
+/osc/state
+/osc/commands/execute
+- camera.takePicture (可设置GPS信息)
+- 
+
+/osc/commands/status
+{
+    "id":""
+}
+
+1.拍照
+可通过camera.setOptions 设置GPS的开关
+拍照成功会返回一个
+
+
+
+2.获取设置选项值
+注：有些模组相关的参数，需要在获取的时候先从camerad中获取
+camera.getOptions
+{
+    "name":"camera.getOptions",
+    "parameters": {
+        "optionNames":["iso", "isoSupport"]
+    }
+}
+
+{
+    "name":"camera.getOptions",
+    "results": {
+        "options":{
+            "iso":200
+            "isoSupport":[100, 200, 400, 800]
+        }
+    }
+}
+
+{
+    "name":"camera.getOptions",
+    "error": {
+        "code":"invalidParameterName"
+        "message": "Parameters optionNames contains unsupport"
+    }
+}
+
+
+Options:
+
+# 采集模式      ------------------------- OK
+captureMode: "image"
+captureModeSupport: ["image", "interval", "video"]
+
+
+# 采集的状态
+captureStatus: "idle"
+# 当前可用的状态
+captureStatusSupport: ["idle", "shooting"]
+
+
+# 曝光程序
+exposureProgram: 1
+# 1.手动曝光; 2.自动曝光; 4.快门优先; 9.ISO优先
+exposureProgramSupport:[1,2,4,9]
+
+# ISO
+iso:200
+isoSupport:[200,400,800,1600]
+
+# 快门速度
+shutterSpeed:0.067
+shutterSpeedSupport:[0.067, 0.033, 0.017, 0.008]
+
+
+# 光圈          ------------------------- OK
+aperture: 2.4
+apertureSupport:[2.4]
+
+
+# 白平衡
+whiteBalance:
+whiteBalanceSupport:["auto", ""]
+
+# EV
+exposureCompensation: 0.3
+exposureCompensationSupport:[-3,..., 3]
+
+# 文件格式
+# 
+fileFormat:
+fileFormatSupport:
+
+
+# 曝光延时
+exposureDelay
+exposureDelaySupport:[1,2,5,10,30,60]
+
+
+# 睡眠延时      ------------------------- OK
+sleepDelay: 65536
+sleepDelaySupport:[65536]
+
+
+# 关机延时      ------------------------- OK
+offDealy:65536
+offDealySupport:[65536]
+
+# 存储空间的总容量
+totalSpace: 122333333Bytes
+
+
+# 存储空间的剩余容量
+remainingSpace: xxxxxBytes
+
+
+# 当前采集模式可拍照的剩余张数
+remainingPictures:int
+
+# gps信息
+gpsInfo
+
+# 时区信息  ------------------------- OK
+dateTimeZone
+
+# hdr
+hdr: "hdr"
+hdrSupport:["off", "hdr"]
+
+exposureBracket:
+
+# 陀螺仪
+gyro:true
+gyroSupport:[true]
+
+# gps
+gps: true
+gpsSupport:[true, false]
+
+# 
+imageStabilizaton: "off"
+imageStabilizatonSupport: ["true", "false"]
+
+# WIFI密码
+wifiPassword:"88888888"
+
+# 预览格式
+previewFormat: {"width":int, "height":int, "framerate":int}
+previewFormatSupport:[{}, {}]
+
+# 采集间隔
+captureInterval: int 
+captureIntervalSupport: {"minInterval": 2, "maxInterval": 60}
+
+
+# 采集张数
+captureNumber: Number
+captureNumberSupport:
+
+# 录像的剩余秒
+remainingVideoSeconds: Number
+
+# 两次连续的状态查询的时间间隔
+pollingDelay: Number
+
+# 延时处理
+delayProcessing: false
+delayProcessingSupport: [false]
+
+# 客户端版本        ------------------------- OK
+clientVersion: 2
+
+# 照片拼接支持      ------------------------- OK
+photoStitching:["ondevice"]
+photoStitchingSupport:["ondevice"]
+
+
+# 视频拼接
+videoStitching:["none"]
+videoStitchingSupport:["none", "ondevice"]
+
+
+# 录像时是否使用GPS
+videoGPS:"continue"
+videoGPSSupport:["none", "continue"]
+
+
+待实现:
+1.使用连接上的手机的GPS信息?
+2.列出文件的时候，只列出大卡的文件，小卡的怎么办?
+3.拍照是否需要支持raw及raw+jpeg?
+

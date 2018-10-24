@@ -1,0 +1,27 @@
+{
+  "name":"camera._startRecording",
+  "parameters":
+  {
+    "origin":
+    {
+      "mime": "h264",
+      "width": 2560,
+      "height": 1440,
+      "framerate": 30,
+      "bitrate": 40000,
+      "saveOrigin": false
+    },
+    "stiching":
+    {
+      "mode":"pano",
+      "mime": "h264",
+      "width": 3840,
+      "height": 1920,
+      "framerate": 30,
+      "bitrate": 40000,
+      "map": "flat"
+    },
+    "duration":0,
+    "stabilization":false
+  }
+}

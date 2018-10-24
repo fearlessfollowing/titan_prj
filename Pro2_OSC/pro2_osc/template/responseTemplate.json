@@ -1,0 +1,11 @@
+{
+    "name": "name",
+    "state": "state",
+    "id": "id",
+    "error": {
+      "code": "errorcode"
+    },
+    "progress": {
+        "completion": 0
+    }
+}

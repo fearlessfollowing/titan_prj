@@ -1,0 +1,1 @@
+{"name": "camera._startRecording","parameters":{"duration":600,"saveFile":false,"origin":{"mime":"h264","width":2560,"height":1920,"framerate":30, "bitrate":30000, "saveOrigin":true, "storage_loc":0},"stiching":{"mode":"3d","mime":"h264","width":3840,"height":3840,"framerate":30,"bitrate":60000}, "mode":"aging"}}

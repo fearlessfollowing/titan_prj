@@ -1,0 +1,21 @@
+{
+    "manufacturer": "Shenzhen Arashi Vision",
+    "model": "Insta360 Pro2",
+    "serialNumber": "000000",
+    "firmwareVersion": "000000",
+    "supportUrl": "https://support.insta360.com",
+    "gps": true,
+    "gyro": true,
+    "uptime": 0,
+    "apiLevel": [2],
+    "endpoints": {
+        "httpPort": 80,
+        "httpUpdatesPort": 10080
+    },
+    "api": [
+        "/osc/info",
+        "/osc/state",
+        "/osc/commands/execute",
+        "/osc/commands/status"
+    ]
+}

@@ -1,0 +1,157 @@
+普通模式
+{
+	"type":46
+	"req": {
+		"action":1,
+		"param":{
+			"delay":0,
+			"origin":{
+				"height":3000,
+				"mime":"jpeg",
+				"saveOrigin":true,
+				"width":4000
+			},
+			"properties":{
+				"audio_gain":0,
+				"len_param":{
+					"aaa_mode":1,
+					"brightness":0,
+					"contrast":64,
+					"ev_bias":0,
+					"hue":0,
+					"iso_value":0,
+					"saturation":64,
+					"sharpness":0,
+					"shutter_value":0,
+					"stabilization":1,
+					"wb":0
+				}
+			},
+			"stabilization":false,
+			"stiching":{
+				"algorithm":"opticalFlow",
+				"height":3840,
+				"mime":"jpeg",
+				"mode":"pano",
+				"width":7680
+			}
+		}
+	},
+}
+
+延时摄影
+{"req":
+	{
+		"action":1,
+		"param":{
+			"fileOverride":false,
+			"origin":{
+				"height":3000,
+				"logMode":0,
+				"mime":"jpeg",
+				"saveOrigin":true,
+				"width":4000
+			},
+			"properties":{
+				"audio_gain":0,
+				"len_param":{
+					"aaa_mode":0,
+					"brightness":0,
+					"contrast":64,
+					"ev_bias":0,
+					"hue":0,
+					"iso_value":4,
+					"saturation":64,
+					"sharpness":0,
+					"shutter_value":19,
+					"stabilization":1,
+					"wb":0
+				}
+			},
+			"stabilization":false,
+			"storageSpeedTest":false,
+			"timelapse":{
+				"enable":true,
+				"interval":4000
+			}
+		}
+	},
+	"type":46
+}
+
+十连拍
+{"req":{
+	"action":1,
+	"param":{
+		"burst":{
+			"count":10,
+			"enable":true
+		},
+		"delay":0,
+		"origin":{
+			"height":3000,
+			"mime":"raw+jpeg",
+			"saveOrigin":true,
+			"width":4000
+		},
+		"properties":{
+			"audio_gain":0,
+			"len_param":{
+				"aaa_mode":0,
+				"brightness":0,
+				"contrast":64,
+				"ev_bias":0,
+				"hue":0,
+				"iso_value":4,
+				"saturation":64,
+				"sharpness":0,
+				"shutter_value":19,
+				"stabilization":1,
+				"wb":0
+			}
+		},
+		"stabilization":false
+		}
+	},
+	"type":46
+}
+
+包围曝光
+{
+	"req":{
+		"action":1,
+		"param":{
+			"bracket":{
+				"count":3,
+				"enable":true,
+				"max_ev":32,
+				"min_ev":-32
+			},
+			"delay":0,
+			"origin":{
+				"height":3000,
+				"mime":"raw+jpeg",
+				"saveOrigin":true,
+				"width":4000
+			},
+			"properties":{
+				"audio_gain":0,
+				"len_param":{
+					"aaa_mode":0,
+					"brightness":0,
+					"contrast":64,
+					"ev_bias":0,
+					"hue":0,
+					"iso_value":4,
+					"saturation":64,
+					"sharpness":0,
+					"shutter_value":19,
+					"stabilization":1,
+					"wb":0
+				}
+			},
+			"stabilization":false
+		}
+	},
+	"type":46
+}

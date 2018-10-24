@@ -1,0 +1,539 @@
+日期：2018年8月6日
+
+1.新增按键灵敏度配置
+默认的属性文件:default.prop中添加一项（目前改为50ms）
+sys.key_resprate=50
+
+
+
+2.修改拍照时各挡位的拍照及拼接后的分辨率及拼接开关（包括默认的配置文件：def_cfg及user_cfg文件）
+BUG #11440=>罗品京 【拍照】【必现】拍照相机机身Pano实时拼接的档位，拍出来的pano照片比例不对 
+已解决
+
+
+BUG #11441=>罗品京 【相机重启】相机插电源线录像，没插电池，相机自动重启。文件损坏。同时也会出现相机在20%~30的电量时，直接关机的情况 
+需要硬件确认？
+
+
+
+BUG #11444=>罗品京 【直播/UI】直播不存片（比如机身的档位），不插卡时右下角不能显示None；直播如果存片的话，要计算出剩余可录时长，在右下角显示；详情如下： 
+直播不存片（比如机身的档位），不插卡时右下角显示None。不存片时，右下角不显示卡的信息
+直播如果存片的话，要计算出剩余可录时长，并在右下角显示
+
+
+3.Direct模式下网络不畅问题？
+在hardware_init.sh中禁止掉NetWorkManager服务
+
+service avahi-daemon stop
+service NetworkManager.service stop
+
+修改net_manager.cpp,网卡工作在Direct模式下会kill掉dhclient
+
+void NetManager::handleMessage(const sp<ARMessage> &msg)
+    case NETM_SET_NETDEV_IP:
+        ...... 
+        /* 使用Direct方式时，先杀掉dhclient进程  - 2018年8月6日 */
+		system("killall dhclient");
+		msg_util::sleep_ms(1000);
+        break;
+
+
+4.客户端连接拼接校正问题？
+UI拼接校准的流程：
+    procPowerKeyEvent
+        handleGyroCalcEvent
+            if ((cam_state & STATE_CALIBRATING) != STATE_CALIBRATING) {
+		        setGyroCalcDelay(5);
+		        oled_disp_type(START_CALIBRATIONING);
+	        } else {
+		        Log.e(TAG, "handleGyroCalcEvent: calibration happen cam_state 0x%x", cam_state);
+	        }
+
+客户端现在的拼接校准调用过程：
+进入预览状态：
+    拼接校准
+        开始
+
+D/MenuUI  (26307): OLED_DISP_STR_TYPE (-1 27 -1 1 0x8)
+D/MenuUI  (26307): nothing
+D/MenuUI  (26307): oled_disp_type (27 MENU_PIC_INFO 0x8)
+D/MenuUI  (26307): gyro calc delay -95 cur_menu [MENU_PIC_INFO]
+D/MenuUI  (26307): send_update_light　(0 [MENU_CALIBRATION] [4096] interval[1000] speaker[1] sound_id -1)
+D/MenuUI  (26307): set back (8 1)
+D/MenuUI  (26307): enterMenu is [MENU_CALIBRATION]
+D/MenuUI  (26307): MENU_CALIBRATION GyroCalc delay -95
+
+
+
+
+
+
+2.USB UDC变成3.0
+echo 0x1 > /sys/class/extcon/extcon0/state
+目前来看好像是机器的问题？
+
+
+
+日期：2018年8月7日
+修改记录：
+1.拍照严格按照6+1卡的机制（没有大卡或小卡都不能拍照，没有大卡显示NO SD CARD，没有小卡显示 NEED TF CARD）
+2.动态检查TF的插入/派出状态，TF卡插入时，显示tf card detected，拔出时显示：tf card removed
+3.拍照的timelapse
+4.修改系统时间和时区
+5.
+6.增加AEB拍照是的ev值
+
+
+设置拍照Customer的调用过程：
+OLED_DISP_STR_TYPE (1 46 -1 1 0x8)
+handleMessage
+    handleDispStrTypeMsg
+        add_qr_res
+            mProCfg->set_def_info(key, -1, mRes);   // 将该参数写入PIC_ALL_PIC_DEF中
+
+
+
+客户端卡速测试调用过程分析：
+camera_cmd_func
+    camera_start_speed_test
+        start_speed_test
+
+def start_speed_test(self, req, from_oled = False):
+    if self.check_allow_speed_test():
+        self.set_cam_state(self.get_cam_state() | config.STATE_SPEED_TEST)
+        if from_oled is False:
+            self.send_oled_type(config.SPEED_START)
+        self.test_path = req[_param]['path']
+        Info('self.test_path {}'.format(self.test_path))
+        read_info = self.write_and_read(req, from_oled)
+    else:
+        if from_oled:
+            Err('rec http req before oled speed test')
+            self.send_oled_type(config.SPEED_TEST_FAIL)
+    return read_info
+
+UI端：
+oled_disp_type(SPEED_START)
+    add_state(STATE_SPEED_TEST);
+        setCurMenu(MENU_SPEED_TEST);    // 进入MENU_SPEED_TEST菜单
+
+
+------------------------------------------------------------------------------------
+日期：2018年8月8日
+
+1.同步系统时间及时区
+2018-08-08 01:42:27,769 - g - INFO - generate random data b'\x8b\xed\x1b\xdf\xfd\x89\xa0\x8c' fp i-0b3_2JoIw=
+2018-08-08 01:42:27,843 - g - INFO - query state res {'state': 'idle', 'version': '1.5.0', 'moduleVersion': '3.3.180804.180804E1'}
+2018-08-08 01:42:27,844 - g - INFO - sync_init_info_to_p res {'state': 'idle', 'version': '1.5.0', 'moduleVersion': '3.3.180804.180804E1'}  cam_state 0 st 0x0
+2018-08-08 01:42:27,844 - g - INFO - st 0x0 mine 0x0 check_need_sync False
+2018-08-08 01:42:27,844 - g - INFO - start_camera_cmd_func name3 camera._queryState
+2018-08-08 01:42:27,845 - g - INFO - camera_get_last_info b
+2018-08-08 01:42:27,845 - g - INFO - b camera_connect st 0x0
+2018-08-08 01:42:27,845 - g - INFO - >>>>>>>>>>>>>>>>>>>>>>>>>>>>> sync time now........
+2018-08-08 01:42:27,846 - g - INFO - tz is GMT+08:00
+2018-08-08 01:42:27,853 - g - INFO - sys cmd setprop persist.sys.timezone GMT+00:00 ret 0
+2018-08-08 01:42:27,854 - g - INFO - get hw_time is 080801432018.04
+2018-08-08 01:42:27,854 - g - INFO - hw_time is 080801432018.04
+2018-08-07 17:43:04,001 - g - INFO - set tz setprop persist.sys.timezone Asia/Taipei
+2018-08-07 17:43:04,007 - g - INFO - sys cmd setprop persist.sys.timezone Asia/Taipei ret 0
+2018-08-07 17:43:04,008 - g - INFO - 2set tz setprop persist.sys.timezone1 Asia/Taipei
+2018-08-07 17:43:04,013 - g - INFO - sys cmd setprop persist.sys.timezone1 Asia/Taipei ret 0
+2018-08-07 17:43:04,014 - g - INFO - set_sys_time_change a
+2018-08-07 17:43:04,014 - g - INFO - start_camera_cmd_func name camera._systemTimeChange
+2018-08-07 17:43:04,015 - g - INFO - start_camera_cmd_func name2 camera._systemTimeChange
+2018-08-07 17:43:04,015 - g - INFO - write_and_read req OrderedDict([('name', 'camera._systemTimeChange')])
+2018-08-07 17:43:04,044 - g - INFO - content_len 70  len res 70
+2018-08-07 17:43:04,044 - g - INFO - sys time change done
+2018-08-07 17:43:04,045 - g - INFO - start_camera_cmd_func name3 camera._systemTimeChange
+2018-08-07 17:43:04,045 - g - INFO - set_sys_time_change b
+2018-08-07 17:43:04,045 - g - INFO - self.sync_param is {'sn': 'sn123456', 'r_v': '0.2.0', 'p_v': 'git: GITDIR-NOTFOUND build: 2018-04-03T03:36:29', 'k_v': '4.4.38'}
+2018-08-07 17:43:04,046 - g - INFO - version is V0.9.2_2017.11.8
+2018-08-07 17:43:04,046 - g - INFO - s_v Linux version 4.4.38 (root@skymixos-Inspiron-3668) (gcc version 4.8.5 (GCC) ) #35 SMP PREEMPT Wed Jul 25 14:48:11 CST 2018
+
+
+2.设置页风扇项的BUG
+已解决
+
+
+设置系统时区: 拷贝对应的时区文件到/etc/localtime文件即可
+设置系统时间:       date xxxxxx.xxx
+保存系统时间到硬件: hwclock --systohc
+
+
+3.设置页存储部分：
+procSetMenuKeyEvent
+    setCurMenu(MENU_STORAGE);
+        enterMenu(MENU_STORAGE);
+            clear_area(0, 16);                                  /* 清除UI下端 */
+            disp_icon(ICON_STORAGE_IC_DEFAULT_0016_25X48);      /* 显示左侧图标 */
+            /* 进入存储页 */
+            dispSettingPage(mStorageList);					    /* 显示"右侧"的项: StorageSpace, TestWriteSpeed */
+
+进入"Storage Space"项：
+procPowerKeyEvent
+    case MENU_STORAGE:
+        setCurMenu(MENU_SHOW_SPACE);        /* 进入显示存储空间 */
+
+
+日期：2018年8月11日
+1.修改时区
+
+
+
+日期：2018年8月13日
+1.去掉jetson_clocks.sh脚本中风扇控制部分
+2.开机时，将风扇的转速调节到最大: /usr/local/bin/hardware_init.sh
+
+#################################################################################
+# Fan Speed
+# 0 - Max Fan Speed
+# 255 - Min Fan Speed
+# debug dir: /sys/kernel/debug/tegra_fan/target_pwm
+#
+#################################################################################
+echo 0 > /sys/kernel/debug/tegra_fan/target_pwm
+
+3.优化TF状态查询（肖神修改了查询时TF卡的索引号：由0 - 5改成1-6）
+4.解决进入MENU_SHOW_SPACE时屏幕重启问题
+5.解决第一次进入拍照页面有插入TF卡，但显示Need mSD Card的错误
+6.录像时长的计算及检查条件
+
+
+日期：2018年8月14日
+1.修改编译系统Scons
+2.将拍摄timelapse的参数保存到MENU_PIC_DEF的Customer挡位
+
+8.直播的时长及检查条件
+9.测速逻辑
+10.客户端控制Pro2关机
+
+
+拍摄timelapse的参数：
+{
+    'name': 'camera._startRecording', 
+    'parameters': {
+        'storageSpeedTest': False, 
+        'stabilization': False, 
+        'timelapse': {
+            'interval': 4000, 
+            'enable': True
+        }, 
+        'origin': {
+            'height': 3000, 
+            'saveOrigin': True, 
+            'mime': 'raw', 
+            'logMode': 0, 
+            'width': 4000
+        }, 
+        'fileOverride': False
+    }
+}
+
+
+保存timelapse的自定义参数：
+
+2018-08-14 11:19:44,952 - g - INFO - set custom req 
+{
+    'name': 'camera._setCustom', 
+    'parameters': {
+        'name': 'camera._takePicture', 
+        'parameters': {
+            'storageSpeedTest': False, 
+            'stabilization': False, 
+            'origin': {
+                'height': 3000, 
+                'saveOrigin': True, 
+                'mime': 'raw', 
+                'logMode': 0, 
+                'width': 4000
+            }, 
+            'timelapse': {
+                'interval': 4000, 
+                'enable': True
+            }, 
+            'fileOverride': False, 
+            'properties': {
+                'audio_gain': 0, 
+                'len_param': {
+                    'brightness': 0, 
+                    'hue': 0, 
+                    'stabilization': 1, 
+                    'contrast': 64, 
+                    'ev_bias': 0, 
+                    'saturation': 64, 
+                    'aaa_mode': 1, 
+                    'sharpness': 0, 
+                    'iso_value': 0, 
+                    'shutter_value': 19, 
+                    'wb': 0
+                }
+            }
+        }
+    }
+}
+
+2018-08-14 11:19:44,954 - g - INFO - start_write conent 
+{
+    "type": 46, 
+    "req": {
+        "action": 1,
+         "param": {
+             "storageSpeedTest": false, 
+             "stabilization": false, 
+             "origin": {
+                 "height": 3000, 
+                 "saveOrigin": true, 
+                 "mime": "raw", 
+                 "logMode": 0, 
+                 "width": 4000
+            }, 
+            "timelapse": {
+                "interval": 4000, 
+                "enable": true
+            }, 
+            "fileOverride": false, 
+            "properties": {
+                "audio_gain": 0, 
+                "len_param": {
+                    "brightness": 0, 
+                    "hue": 0, 
+                    "stabilization": 1, 
+                    "contrast": 64, 
+                    "ev_bias": 0, 
+                    "saturation": 64,
+                    "aaa_mode": 1, 
+                    "sharpness": 0, 
+                    "iso_value": 0, 
+                    "shutter_value": 19, 
+                    "wb": 0
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+网盘实验：
+将6个模组变成6个U盘，通过HTTP访问U盘文件，速度大致为10MB/s
+{ "name":"camera._change_module_usb_mode","parameters":{"mode":0} }
+
+
+
+
+定频问题：
+1.使用Type-C转USB连接Pro2相机和PC（亲测Win10和Win7能出现RNDIS网卡）
+
+
+
+resut info is {"name": "camera._queryStorage", "sequence": 19, "state": "done", "results": {"storagePath": "/mnt/udisk1", "module": [{"storage_total": 61024, "storage_left": 34840, "index": 1}, {"storage_total": 61024, "storage_left": 34840, "index": 2}, {"storage_total": 0, "storage_left": 0, "index": 3}, {"storage_total": 61024, "storage_left": 34840, "index": 4}, {"storage_total": 61024, "storage_left": 34840, "index": 5}, {"storage_total": 61024, "storage_left": 34860, "index": 6}]}}
+
+
+send query storage results to UI {'name': 'camera._queryStorage', 'sequence': 19, 'state': 'done', 'results': {'storagePath': '/mnt/udisk1', 'module': [{'storage_total': 61024, 'storage_left': 34840, 'index': 1}, {'storage_total': 61024, 'storage_left': 34840, 'index': 2}, {'storage_total': 0, 'storage_left': 0, 'index': 3}, {'storage_total': 61024, 'storage_left': 34840, 'index': 4}, {'storage_total': 61024, 'storage_left': 34840, 'index': 5}, {'storage_total': 61024, 'storage_left': 34860, 'index': 6}]}}
+
+
+
+
+TX2与模组连接的两个GPIO：
+G8:     GPIO3_PR.00         320 + 17*8 + 0  = 456
+D7:     GPIO3_PX.06         320 + 19*8 + 6  = 478
+
+
+
+日期：2018年8月15日
+对于TF的查询，提供同步和异步两种接口：
+同步接口主要用于预览状态下，此时查询TF卡的时间非常短（50ms），同步方式下可以设置超时机制，如果查询超时，可以提示查询失败之类的提示
+同步接口用在的场合：
+1.拍照，录像，直播启动预览成功之后，通过查询TF的信息，来显示底部的容量信息
+2.MENU_PIC_SET_DEF, MENU_VIDEO_SET_DEF, MENU_LIVE_SET_DEF菜单中挡位切换时
+3.有TF卡动态插入时，会收到卡插入的消息，此时会主动进行一次查询（可以免去繁琐的更新）
+
+异步接口主要用于非预览状态下，此时查询TF卡的时间非常长，主要用在设置页下查询TF卡容量
+
+
+日期：2018年8月17日
+1.完成菜单中的测速功能（同时将测速结果同步到心跳包中）
+
+
+
+日期：2018年8月18日
+
+1.WIFI的后缀不再使用随机数，而是使用SN文件的后六位
+2.格式化后，清空心跳包中的'test'字段为'false'
+3.完成所有的测速逻辑
+
+
+日期：2018年8月19日
+1.去掉avahi-daemon服务  （mv /etc/avahi /）
+2.系统时，如果没有resolv.conf文件，手动提供一个
+
+root@tegra-ubuntu:/home/nvidia# cat /etc/resolv.conf
+nameserver 202.96.128.86
+nameserver 114.114.114.114
+
+
+
+日期：2018年8月20日
+1.去掉系统自带的dnsmasq服务（mv /usr/sbin/dnsmasq ../）
+2.修改show storage菜单（去掉左侧导航栏）
+3.修改测速完成菜单（屏幕操作，测速完成后停在该页面）
+4.格式化问题
+
+日期：2018年8月21日
+移植samba服务
+- 将samba-ok.zip 安装包拷贝到/home/nvidia/目录下，并解压: unzip samaba-ok.zip
+- 将smb.conf文件拷贝到/etc/samba/下
+- 重启samba服务：/etc/init.d/smbd restart 
+
+
+解决BUG： 相机连接客户端进入预览状态时，屏幕进入测速，然后断开客户端而导致屏幕一直处于测速状态
+解决方案：测速过程中不停止预览
+
+验证gvfs是否对磁盘的卸载有影响
+
+
+日期：2018年8月23日
+1.确认各个模组的卡号对应的USB总线上的总线-端口-子端口号
+卡1 - 
+卡1 - 
+卡1 - 
+卡1 - 
+卡1 - 
+卡1 - 
+
+
+
+1.模组的枚举时间长
+描述：
+Pro2的六个模组是通过2个USB2.0的HUB挂载在TX2的USB BUS-1上，在给USB 模组上电时，发现设备的枚举过程比较慢（有时达6，7秒），
+主要原因在于有时在给模组上电时（模组的电时单独供的），USB HUB的枚举会出错误，或个别模组的枚举会出错误，导致枚举时间长：
+
+
+/:  Bus 01.Port 1: Dev 1, Class=root_hub, Driver=xhci-tegra/4p, 480M
+    |__ Port 2: Dev 30, If 0, Class=Hub, Driver=hub/4p, 480M
+        |__ Port 2: Dev 37, If 0, Class=Mass Storage, Driver=usb-storage, 480M
+        |__ Port 3: Dev 33, If 0, Class=Mass Storage, Driver=usb-storage, 480M
+        |__ Port 4: Dev 35, If 0, Class=Mass Storage, Driver=usb-storage, 480M
+    |__ Port 3: Dev 28, If 0, Class=Hub, Driver=hub/4p, 480M
+        |__ Port 1: Dev 38, If 0, Class=Mass Storage, Driver=usb-storage, 480M
+        |__ Port 2: Dev 36, If 0, Class=Mass Storage, Driver=usb-storage, 480M
+        |__ Port 3: Dev 34, If 0, Class=Mass Storage, Driver=usb-storage, 480M
+        |__ Port 4: Dev 29, If 0, Class=Hub, Driver=hub/2p, 480M
+
+
+模组枚举出错：
+
+
+[64805.177981] usb 1-2.3: new full-speed USB device number 5 using xhci-tegra
+[64805.258167] usb 1-2.3: device descriptor read/64, error -32
+[64805.438161] usb 1-2.3: device descriptor read/64, error -32
+[64805.617987] usb 1-2.3: new full-speed USB device number 6 using xhci-tegra
+[64805.698164] usb 1-2.3: device descriptor read/64, error -32
+[64805.878213] usb 1-2.3: device descriptor read/64, error -32
+[64806.057999] usb 1-2.3: new full-speed USB device number 7 using xhci-tegra
+[64806.065351] usb 1-2.3: Device not responding to setup address.
+[64806.274446] usb 1-2.3: Device not responding to setup address.
+[64806.481988] usb 1-2.3: device not accepting address 7, error -71
+[64806.598309] usb 1-3: reset high-speed USB device number 2 using xhci-tegra
+[64806.801991] usb 1-2.3: new full-speed USB device number 8 using xhci-tegra
+[64806.809380] usb 1-2.3: Device not responding to setup address.
+[64807.018428] usb 1-2.3: Device not responding to setup address.
+[64807.225981] usb 1-2.3: device not accepting address 8, error -71
+[64807.232086] usb 1-2-port3: unable to enumerate USB device
+
+
+
+
+
+2.USB大容量设备的识别，挂载问题
+描述：机身后面的SD卡卡槽（本质上是USB SS1）
+- 机身后面的SD卡槽插入大SD卡（容量128G以上）或（卡套套小卡），出现识别困难（系统枚举设备时间太长），
+- 在偶尔能正常识别和挂载后，也会出现往卡中写入数据慢（这个过程调用sync会被卡住）
+
+[  870.878617] scsi 14:0:0:0: Direct-Access     Generic  MassStorageClass 1616 PQ: 0 ANSI: 6
+[  871.313912] sd 14:0:0:0: [sda] Spinning up disk...
+[  872.320961] ....................................................................................................not responding...
+[  971.731017] sd 14:0:0:0: [sda] Read Capacity(10) failed: Result: hostbyte=0x00 driverbyte=0x08
+[  971.739783] sd 14:0:0:0: [sda] Sense Key : 0x2 [current]
+[  971.745391] sd 14:0:0:0: [sda] ASC=0x4 ASCQ=0x1
+[  971.751519] sd 14:0:0:0: [sda] Test WP failed, assume Write Enabled
+[  971.759279] sd 14:0:0:0: [sda] Asking for cache data failed
+[  971.764931] sd 14:0:0:0: [sda] Assuming drive cache: write through
+[  971.776878] sd 14:0:0:0: [sda] Spinning up disk...
+[  971.784497] sd 14:0:0:0: [sda] Spinning up disk...
+[  972.784954] .
+[  972.792973] .....
+[ 1071.184964] .
+[ 1071.576957] .
+[ 1072.188968] .not responding...
+[ 1072.194975] sd 14:0:0:0: [sda] Read Capacity(10) failed: Result: hostbyte=0x00 driverbyte=0x08
+[ 1072.203612] sd 14:0:0:0: [sda] Sense Key : 0x2 [current]
+[ 1072.209035] sd 14:0:0:0: [sda] ASC=0x4 ASCQ=0x1
+[ 1072.216415] sd 14:0:0:0: [sda] Attached SCSI removable disk
+[ 1072.584961] .not responding...
+[ 1072.591815] sd 14:0:0:0: [sda] Spinning up disk...
+[ 1073.596967] ..................................................................................
+[ 1155.645115] usb 2-2: USB disconnect, device number 14
+[ 1155.665662] xhci-tegra 3530000.xhci: tegra_xhci_mbox_work mailbox command 6
+[ 1155.932958] .ready
+[ 1156.979617] xhci-tegra 3530000.xhci: tegra_xhci_mbox_work mailbox command 5
+[ 1156.986658] xhci-tegra 3530000.xhci: tegra_xhci_mbox_work ignore firmware MBOX_CMD_DEC_SSPI_CLOCK request
+
+
+1.新增8GB的交换内存（/swap/sfile）
+2.直播的已录
+
+
+日期：2018年10月9日
+1.修改init.rc 
+更名python代码的文件夹名为web_server(服务名称更改为web_server)，pro2_service在web_server启动后再启动
+
+# pro_service service for ui and key
+# level: main
+service pro2_service /usr/local/bin/pro2_service
+        class third
+        critical
+
+on property:sys.web_status=true
+        start pro2_service
+
+2.在web_server重启的时候，必须重启pro2_service(pro2_service依赖web_server)
+# web_osc service for http request
+# lelvel: main
+service web_server /usr/local/bin/python3.6 /usr/local/bin/web_server
+    class main
+    critical
+    onrestart restart pro2_service
+
+3.日志文件大小支持动态检测
+
+
+
+
+修改点:
+1.新增状态机,相机的状态由web_server统一管理(避免产生两个进程(web_server与UI)状态不同步的问题，而出现屏幕卡死)
+2.改写日志系统，新增日志分段
+3.新增列出文件的异步接口
+4.修改老化模式脚本及老化界面
+
+
+fixup:
+1.相机4k30FHDMI直播4小时之后，停止直播；插上6张TF卡，此时相机直播页面的UI缺失，并且屏幕卡死
+2.相机在提示测速页面时拔掉大卡，再开始测速，此时测速会卡死(拔掉大卡将自动返回上一菜单页)
+3.与客户端连接过程中，按相机返回按钮退出预览，此时相机卡在“...”(重写状态机)
+4.使用客户端连接相机直播，机身停止直播后立刻再开始录像，此时客户端重启预览会导致相机屏幕卡在拍照的预览页面（重写状态机）
+5.客户端连接相机，相机机身退出预览到设置页，用客户端做拼接校准，校准完成后相机卡死在校准成功的页面
+6.客户端连接相机，相机机身退出预览到设置页，用客户端做拼接校准，校准完成后相机卡死在校准成功的页面
+7.AEB模式拍照的工程文件type写的是HDR而不是bracket
+8.客户端连接相机状态下，按相机返回键退预览，此时用PC端控制录像，在相机还没开始录像时，再手动进预览。此时相机UI缺失，没有ready显示，但是相机功能正常
+9.客户端连接相机状态下，按相机返回键退预览，此时用PC端控制录像，在相机还没开始录像时，再手动进预览。此时相机UI缺失，没有ready显示，但是相机功能正常
+10.客户端连接相机使用时，插上大卡之后，随即手动按相机返回键退预览，此时相机屏幕卡在“...”了；但此时相机预览正常，并且可正常拍照
+11.拍摄Timelapse到卡满（64G），APP和PC端控制时，在存储页面获取相机文件列表会超时，相机这边列出文件大概一分钟。固件listFile增加异步接口
+12.相机使用客户端进入相册页后，再通过机身按键进入Samba服务，小卡都挂载不上
+13.相机进预览报错460，此时按电源键恢复之后，再次进预览OK，但是退预览时卡在“...”
+14.相机与客户端连接状态下，进入U盘模式，在查看文件时，相机容易出异常
+15.相机录像过程中，APP连接相机，并进入设置页面，此时按【恢复出厂设置按钮】，相机屏幕会错乱，但是录像正常进行
+
+

@@ -1,0 +1,7 @@
+*.o
+*.d
+*.so
+build
+SI/
+out/
+.sconsign.dblite

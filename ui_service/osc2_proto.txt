@@ -1,0 +1,595 @@
+1.APP - PRO service: http
+
+2.PRO service - camera servie:fifo
+/data/ins_fifo_to_server : client to server
+/data/ins_fifo_to_client : server to client
+/data/ins_fifo_to_client_a : server to client
+/data/ins_fifo_to_server_father : client to server father process
+/data/ins_fifo_to_client_father :server father process to client
+
+3.camera service - module: usb
+
+
+camera._reset:
+request:
+{"name":"camera._reset" ｝
+
+respone:
+{"name":"camera._reset", "state":"done","error":{"code":int, "description":string}}
+
+
+- 容量查询
+camera._queryStorage
+{"name":"camera._queryStorage"}
+
+respone:
+{
+    "name":"camera._queryStorage",
+    "state":"done", 
+    "error":{"code":int, "description":string}
+    "results":{
+        "storagePath":string //nvidia上的存储路径
+        "module":[{"index":int, "storage_total":int, "storage_left":int}] //6个模组上的存储容量
+    }
+}
+
+indication:
+{
+    "name":"camera._storage_state_",
+    "parameters": {
+        "module":{"index":int, "storage_total":int, "storage_left":int}
+    }
+}
+
+camera._queryState
+request:
+{
+    "name":"camera._queryState"
+}
+respone:
+{
+    "name":"camera._queryState"，
+    "state":"done"
+    "results":{
+        "state":string,
+        "version":string,
+        "moduleVersion":string,
+
+        "origin":{
+            "width":int,
+            "height":int,
+            "framerate":int,
+            "bitrate":int,
+            "mime":string,
+            "saveOrigin":bool
+        },
+
+        "preview":{
+            "width":int,
+            "height":int,
+            "framerate":int,
+            "bitrate":int,
+            "mime":string
+        },
+
+        "live":{
+            "width":int,
+            "height":int,
+            "framerate":int,
+            "bitrate":int,
+            "mime":string,
+            "url":string,
+            "timePast":int,
+            "timeLeft":int,
+            "liveOnHdmi":bool,
+            "liveRecording":bool
+        },
+
+        "record":{
+            "width":int,
+            "height":int,
+            "framerate":int,
+            "bitrate":int,
+            "mime":string,
+            "url":string,
+            "timePast":int,
+            "timeLeft":int
+        },
+
+        "audio":{
+            "mime":string,
+            "sampleFormat":string,
+            "channelLayout":string,
+            "samplerate":int,
+            "bitrate":int
+         }
+    }
+}
+
+tips:
+
+1.state
+idle/record/preview/live/pic_shoot/pic_process/storage_speed_test/
+gyro_calibration/calibration/stitching_box/blc_calibration
+qrscan/stop_rec/stop_live/audio_capture
+
+2.mime
+video mime:h264/h265
+audio mime:aac
+
+3.record
+如果只录原始流的时候，record obj就只有url
+
+4.duration:单位秒
+5.liveOnHdmi:如果是直播到hdmi那么，live中的width/height/url参数都没有
+6.liveRecording:直播过程中是否存原始流
+
+
+camera._setOffset
+request:
+{
+    "name": "camera._setOffset",
+    "parameters":{
+        "offset_pano_4_3":string,
+        "offset_pano_16_9":string,
+        "offset_3d_left":string,
+        "offset_3d_right":string
+    }
+}
+respone:
+{
+    "name":"camera._setOffset",
+    "state":"done",
+    "error":{"code":int, "description":string}
+}
+
+camera._getOffset
+request:
+{
+    "name": "camera._getOffset"
+}
+respone:
+{
+    "name":"camera._getOffset"，
+    "state":"done",
+    "results":{
+        "offset_pano_4_3":string,
+        "offset_pano_16_9":string,
+        "offset_3d_left":string,
+        "offset_3d_right":string
+    }
+}
+
+
+
+
+camera._setOptions
+１.单个设置
+request:
+{
+    "name": "camera._setOptions",
+    "parameters":{“property”:string, "value":int}
+}
+
+2.单个设置：如果property有多个参数的话，value就是一个对象
+request:
+{
+    "name": "camera._setOptions",
+    "parameters":{“property”:string, "value"{xxx}}
+}
+
+3.批量设置：
+request:
+{
+    "name": "camera._setOptions",
+    "parameters":[{“property”:string, "value":int}] //数组
+}
+单个设置响应：
+respone:
+{
+    "name":"camera._setOptions",
+    "state":"done",
+    "error":{"code":int, "description":string}
+}
+
+批量设置响应：
+respone:
+{
+    "name":"camera._setOptions",
+    "state":"done", //如果state不为done,每一个的错误通过result数组返回
+    "error":{"code":int, "description":string},
+    results":{"detail":[{"property":string,"code":int, "description":string}]
+}
+
+tips:
+"aaa_mode": 0:手动 1：自动 2：独立 3：快门优先 4：iso优先
+"wb": 0-14
+"iso_value": 0-9
+"shutter_value": 0-43
+"long_shutter": 1-60(s)
+"brightness": -255:255
+"contrast": 0:255
+"saturation": 0:255
+"hue": -15:15
+"sharpness": 0:6
+"ev_bias": -255:255
+"ae_meter": 0:2
+"iso_cap": int
+"stabilization": 1-eanble 0-disable
+"flicker": 0-pal 1-ntsc
+"logMode": "value":{"mode":int, "effect":int}
+"fanless": 0/1          // 0:启动风扇 1:关闭风扇
+"panoAudio":0/1         // 0:拼接流不存声音 1:拼接流存非全景声 2:拼接流存全景声
+"logo": 0/1             // 0:不打logo 1:打logo
+"audio_gain": 1-127
+"video_fragment": 0/1   // 0:视频不分段 1：视频分段
+"depthMap": string,     // 深度图数据
+
+
+
+camera._getOptions
+request:
+{
+    "name": "camera._getOptions",
+    "parameters":{“property”:string}
+}
+
+respone:
+{
+    "name":"camera._getOptions",
+    "state":"done",
+    "results":{“value”:string}
+}
+
+说明：
+可以获取的property:
+1.moduleHwVersion
+2.supportedFunctions:
+"liveFormat": ["hls","rtsp","rtmp"],
+"projection": ["flat","cube"],
+"gammaCurve": bool,
+"pmode": bool,
+"p8k5fps": bool
+"audioGain": bool
+"depthMap": bool 是否支持深度图功能
+"blc": bool是否支持blc矫正
+3.depthMap:bool 是否有深度图信息
+4.blc_state:int
+0:blc没有矫正过
+1:blc矫正过
+
+
+camera._update_gamma_curve
+request:
+{
+    "name": "camera._update_gamma_curve",
+    "parameters": {"data":string}
+}
+respone:
+{
+    "name": "camera._update_gamma_curve",
+    "state": string,
+}
+说明：
+1.gamma曲线的数据base64编码
+2.重置曲线:data为空:data为空
+
+
+
+
+camera._startPreview
+request:
+{
+    "name": "camera._startPreview",
+    "parameters":{
+        "origin":{"mime":string,"width":int,"height":int,"framerate":int,"bitrate":int,"logMode":int},
+        "stiching":{"mode":string,"mime":string,"width":int,"height":int,"framerate":int,"bitrate":int},
+    },
+
+    "stabilization":bool,
+    "imageProperty":{
+        "aaa_mode":int,
+        "wb":int,
+        "iso_value":int,
+        "shutter_value":int,
+        "brightness":int,
+        "contrast":int,
+        "saturation":int,
+        "hue":int,
+        "sharpness":int,
+        "ev_bias":int,
+        "ae_meter":int,
+        "dig_effect":int,
+        "flicker":int
+    }
+}
+
+respone:
+{
+    "name": "camera._startPreview"，
+    "state": "done"
+    "results": {"_previewUrl": string}
+}
+
+tips:
+mime: h264/h265
+mode: pano/3d_top_left/3d_top_right
+bitrate: kbits/s
+logMode: 0-关闭log模式 1-开启log模式
+
+
+- 停止预览
+camera._stopPreview
+request:
+{"name":"camera._stopPreview"}
+
+respone:
+{
+    "name":"camera._stopPreview",
+    "state":"done",
+    "error":{"code":int, "description":string}
+}
+
+------------------------------------------------------------------------------------------------------
+测卡速：
+request:
+{"name":"camera._storageSpeedTest"}
+
+respone:
+{
+    "name":"camera._storageSpeedTest",
+    "parameters":{
+        "state":"done",
+        "results":{"mode":string},
+        "error":{"code":int,"description":string}
+    }
+}
+
+Async result:
+{
+    "name":"camera._storage_speed_test_finish_",
+    "parameters":{
+        "state":string,
+        "error":{"code":int, "description":string}
+    } 
+}
+
+
+{ 
+    "name": "camera._storage_speed_test_finish_", 
+    "sequence": 21, 
+    "parameters": 
+    { 
+        "local": false, 
+        "module": [ 
+            { "index": 1, "result": true }, 
+            { "index": 2, "result": true }, 
+            { "index": 3, "result": true }, 
+            { "index": 4, "result": true }, 
+            { "index": 5, "result": true }, 
+            { "index": 6, "result": true } 
+            ] 
+        } 
+    }'
+2018-08-15 22:58:29,767 - g - INFO - handle notify content {'name': 'camera._storage_speed_test_finish_', 'sequence': 21, 'parameters': {'local': False, 'module': [{'index': 1, 'result': True}, {'index': 2, 'result': True}, {'index': 3, 'result': True}, {'index': 4, 'result': True}, {'index': 5, 'result': True}, {'index': 6, 'result': True}]}}
+2018-08-15 22:58:29,767 - g - INFO - storage_speed_test_finish_notify param {'local': False, 'module': [{'index': 1, 'result': True}, {'index': 2, 'result': True}, {'index': 3, 'result': True}, {'index': 4, 'result': True}, {'index': 5, 'result': True}, {'index': 6, 'result': True}]}
+2018-08-15 22:58:29,767 - g - ERROR - handle_notify_from_camera exception 'state'
+
+
+{
+    'name': 'camera._storage_speed_test_finish_', 
+    'sequence': 10, 
+    'parameters': {
+        'local': True, 
+        'module': [
+            {'index': 1, 'result': True},
+            {'index': 2, 'result': True}, 
+            {'index': 3, 'result': True}, 
+            {'index': 4, 'result': True}, 
+            {'index': 5, 'result': True}, 
+            {'index': 6, 'result': True}
+        ]
+    }
+}
+
+UI的速度测试：
+camera_start_speed_test
+    start_speed_test
+
+
+测试完成的通知
+storage_speed_test_finish_notify
+
+
+------------------------------------------------------------------------------------------------------
+
+
+
+# 让模组变成U盘模式
+camera._change_module_usb_mode
+request:
+{ "name":"camera._change_module_usb_mode","parameters":{"mode":1} }
+
+{ "name":"camera._change_module_usb_mode","parameters":{"mode":0} }
+respone:
+{
+    "name":"camera._change_module_usb_mode",
+    "state":"done",
+    "error":{"code":int, "description":string}
+}
+
+camera._switch_camera_udisk_mode
+{ "name":"camera._switch_camera_udisk_mode", "parameters":{"mode":1} }
+respone:
+{
+    "name":"camera._switch_camera_udisk_mode",
+    "state":"done",
+    "error":{"code":int, "description":string}
+}
+
+
+
+说明：
+1.mode: 0:非storage模式 1:storage模式
+2.storage模式的时候，camerad处于module_storage状态，此状态下不能做任何模组操作
+
+
+
+
+
+模组存储设备信息
+--------------------------------------------------------------------------------------------------------------
+camera._storage_state_
+indication:
+{
+    "name":"camera._storage_state_",
+    "parameters": {
+        "module":{"index":int, "storage_total":int, "storage_left":int}
+    }
+}
+--------------------------------------------------------------------------------------------------------------
+
+
+
+磁力计校正
+--------------------------------------------------------------------------------------------------------------
+request:
+{ "name":"camera._magmeterCalibration"}
+
+respone:
+{
+    "name":"camera._magmeterCalibration",
+    "parameters":{
+        "state":"done",
+        "results":{"mode":string},
+        "error":{"code":int, "description":string}
+    }
+}
+
+Async result:
+{
+    "name":"camera._magmeter_calibration_finish_",
+    "parameters": {
+        "state":string,
+        "error":{"code":int, "description":string}
+    } 
+}
+--------------------------------------------------------------------------------------------------------------
+
+
+
+
+-------------------------------------------------------------------------------------
+格式化小卡： STATE_IDLE
+{"name": "camera._formatCameraMoudle", "parameters":{"index": -1}}
+{"name": "camera._formatCameraMoudle", "parameters":{"index": -1}}
+{"name": "camera._formatCameraMoudle", "sequence": 0, "state": "done" }
+
+ 
+
+
+UI与Http走的私有协议:
+1.查看camera服务器的当前状态:
+{
+    "name": "camera._getSetCamState",
+    "parameters": {
+        "method": "get/set",
+        "state": int
+    }
+}
+
+2.进入U盘模式请求 -- OK
+Request:
+{
+    "name": "camera._change_udisk_mode",
+    "parameters": {
+        "mode":1            # 1:进入U盘模式; 0:退出U盘模式
+    }
+}
+
+Response:
+{
+    "name":"camera._change_udisk_mode",
+    "state":"done"
+    "sequence":int 
+    "error": {
+        "code": int 
+
+    }      
+}
+
+"sequence": 为可选字段
+"state": "done"  # 表示允许进入U盘模式
+         "error" # 表示不允许进入U盘模式 
+
+3.更新拍timelapse的剩余张数 - OK
+Request:
+{
+    "name":"camera._update_tl_left_count",
+    "parameters":{
+        "tl_left": int
+    }
+}
+
+Response:
+{
+    "name":"camera._update_tl_left_count",
+    "state":"done"
+    "sequence":int 
+    "error": {
+        "code": int 
+
+    }      
+}
+
+4.请求同步  -- OK
+Request:
+{
+    "name":"camera._request_sync",
+    "parameters": {
+        "sn": string,
+        "r_v":string,
+        "p_v":string,
+        "k_v":string
+    }
+}
+
+Response:
+{
+    "name":"camera._request_sync",
+    "state":"done"
+}
+
+5.查询GPS状态 - OK
+Request:
+{"name":"camera._queryGpsStatus"}
+
+Response:
+{
+    "name":"camera._queryGpsStatus",
+    "state":"done"
+}
+
+6.格式化小卡
+Request:
+{
+    "name":"camera._formatCameraMoudle",
+    "parameters":{
+        "index":-1
+    }
+}
+
+Response:
+{ 
+    "name": "camera._formatCameraMoudle", 
+    "sequence": 11, 
+    "state": "error",       
+    "error": { 
+        "code": -1, 
+        "description": "unknow error" 
+    } 
+} 
+
+说明:
+"index": -1:表示格式化所有的小卡; [1-6]表示格式化指定的卡
+"state": "done":成功; "error":操作失败

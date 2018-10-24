@@ -1,0 +1,118 @@
+
+
+[  479.249662] usb 2-2: Disable of device-initiated U1 failed.
+[  479.255312] usb 2-2: Disable of device-initiated U2 failed.
+[  479.260921] Unable to handle kernel paging request at virtual address 175c11f674267ded
+[  479.268824] pgd = ffffffc1bdfa8000
+[  479.272218] [175c11f674267ded] *pgd=0000000000000000, *pud=0000000000000000
+[  479.279187] Internal error: Oops: 96000004 [#1] PREEMPT SMP
+[  479.284748] Modules linked in: bcmdhd fuse pci_tegra bluedroid_pm
+[  479.290888] CPU: 3 PID: 715 Comm: usb-storage Not tainted 4.4.38 #35
+[  479.297229] Hardware name: quill (DT)
+[  479.300882] task: ffffffc1df2b9900 ti: ffffffc1e1658000 task.ti: ffffffc1e1658000
+[  479.308355] PC is at xhci_slot_copy+0x2c/0x94
+[  479.312704] LR is at xhci_change_max_exit_latency+0x74/0x218
+[  479.318350] pc : [<ffffffc000709b50>] lr : [<ffffffc000705bfc>] pstate: 200000c5
+[  479.325729] sp : ffffffc1e165bad0
+[  479.329035] x29: ffffffc1e165bad0 x28: 0000000000000000
+[  479.334354] x27: 0000000000000000 x26: 0000000000000040
+[  479.339672] x25: ffffff800917d000 x24: ffffffc1e1479000
+[  479.344992] x23: 0000000000000000 x22: ffffffc1ece9e2ac
+[  479.350313] x21: ffffffc1df078600 x20: ffffffc07a94e000
+[  479.355634] x19: ffffffc1ece9e260 x18: 0000000000000001
+[  479.360951] x17: 0000007face25750 x16: ffffffc000b65a60
+[  479.366269] x15: ffffffc000b65a60 x14: 0ffffffffffffffe
+[  479.371588] x13: 0000000000000010 x12: ffffffc00127d000
+[  479.376907] x11: 0000000000000006 x10: 00000000000008b0
+[  479.382226] x9 : ffffffc1e165b790 x8 : ffffffc1df2ba210
+[  479.387544] x7 : 0000000000000001 x6 : 0000000000000000
+[  479.392862] x5 : 0000000000000000 x4 : 0000000000000020
+[  479.398181] x3 : ffffff800917d000 x2 : 175c11f674267ded
+[  479.403499] x1 : ffffff800917d040 x0 : ffffffc1ece9e260
+
+[  479.410303] Process usb-storage (pid: 715, stack limit = 0xffffffc1e1658020)
+[  479.417337] Call trace:
+[  479.419779] [<ffffffc000709b50>] xhci_slot_copy+0x2c/0x94
+[  479.425167] [<ffffffc00070645c>] xhci_disable_usb3_lpm_timeout+0x6c/0x90
+[  479.431857] [<ffffffc0006d97e4>] usb_disable_link_state+0x68/0x108
+[  479.438024] [<ffffffc0006dab40>] usb_disable_lpm+0x94/0xc4
+[  479.443497] [<ffffffc0006dab98>] usb_unlocked_disable_lpm+0x28/0x4c
+[  479.449751] [<ffffffc0006dbf48>] usb_reset_and_verify_device+0xb8/0x3b8
+[  479.456351] [<ffffffc0006dc334>] usb_reset_device+0xec/0x27c
+[  479.462000] [<ffffffc00071c3f0>] usb_stor_port_reset+0x58/0x68
+[  479.467821] [<ffffffc00071c484>] usb_stor_invoke_transport+0x84/0x450
+[  479.474248] [<ffffffc00071b234>] usb_stor_transparent_scsi_command+0xc/0x14
+[  479.481196] [<ffffffc00071d888>] usb_stor_control_thread+0x13c/0x200
+[  479.487540] [<ffffffc0000c1f30>] kthread+0xe0/0xf4
+[  479.492323] [<ffffffc000084f90>] ret_from_fork+0x10/0x40
+[  479.497931] ---[ end trace 0e9116e5ddcdb2cf ]---
+[  479.502605] note: usb-storage[715] exited with preempt_count 1
+[  479.508435] ------------[ cut here ]------------
+[  479.513042] WARNING: at ffffffc0000a9074 [verbose debug info unavailable]
+[  479.519815] Modules linked in: bcmdhd fuse pci_tegra bluedroid_pm
+
+[  479.527431] CPU: 3 PID: 715 Comm: usb-storage Tainted: G      D         4.4.38 #35
+[  479.534985] Hardware name: quill (DT)
+[  479.538639] task: ffffffc1df2b9900 ti: ffffffc1e1658000 task.ti: ffffffc1e1658000
+[  479.546111] PC is at __local_bh_enable_ip+0x68/0xb8
+
+
+
+日期：2018年9月18日
+导致崩溃的进程：unity-settings
+崩溃的栈回溯信息：
+解决方案：删除该工具包
+apt-get -y autoremove --purge unity-settings-daemon
+apt-get -y autoremove --purge gvfs
+apt-get -y autoremove --purge gvfsd
+
+root@tegra-ubuntu:/home/nvidia# ps -lef | grep unity-setting
+0 S nvidia    1187   852  0  80   0 - 162912 poll_s 10:47 ?       00:00:00 /usr/lib/unity-settings-daemon/unity-settings-daemon
+0 S nvidia    1414  1204  0  80   0 - 101250 poll_s 10:47 ?       00:00:00 /usr/lib/unity-settings-daemon/unity-fallback-mount-helper
+0 S root      2316  2101  0  80   0 -  1387 pipe_w 10:48 pts/16   00:00:00 grep --color=auto unity-setting
+
+
+[  640.981593] Unable to handle kernel paging request at virtual address c6c8e1dcc946480a
+[  640.989541] pgd = ffffffc074034000
+[  640.992941] [c6c8e1dcc946480a] *pgd=0000000000000000, *pud=0000000000000000
+[  640.999957] Internal error: Oops: 96000044 [#1] PREEMPT SMP
+[  641.005523] Modules linked in: fuse bcmdhd pci_tegra bluedroid_pm
+[  641.011672] CPU: 4 PID: 1298 Comm: unity-settings- Not tainted 4.4.38 #4
+[  641.018362] Hardware name: quill (DT)
+[  641.022022] task: ffffffc1e60fe400 ti: ffffffc1ceb8c000 task.ti: ffffffc1ceb8c000
+[  641.029502] PC is at __unix_remove_socket+0xc/0x4c
+[  641.034289] LR is at unix_release_sock+0x38/0x258
+[  641.038987] pc : [<ffffffc000a8f440>] lr : [<ffffffc000a8f4b8>] pstate: 60000045
+[  641.046369] sp : ffffffc1ceb8fcd0
+[  641.049678] x29: ffffffc1ceb8fcd0 x28: ffffffc1ceb8c000
+[  641.055001] x27: ffffffc000b61000 x26: ffffffc1e60fe400
+[  641.060323] x25: 000000000000011d x24: ffffffc1ce8f4410
+[  641.065645] x23: 0000000000000000 x22: ffffffc1ebfd81a0
+[  641.070967] x21: 0000000000000008 x20: ffffffc07aff8000
+[  641.076288] x19: ffffffc0014bf9c8 x18: 0000000000000010
+[  641.081609] x17: ffffffc000b65a60 x16: 00000000fa83b2da
+[  641.086934] x15: 0000000002b307c1 x14: 0000000000000000
+[  641.092255] x13: 0000000000000000 x12: 0000000000000400
+[  641.097579] x11: 00000000003d8849 x10: 00000000003d8843
+[  641.102900] x9 : 0000000000000001 x8 : ffffffc1f5d515f0
+[  641.108221] x7 : 0000000040060000 x6 : ffffffc1f5d46e84
+[  641.113545] x5 : 0000000000000000 x4 : 0000000000000000
+[  641.118867] x3 : 0000000000000000 x2 : 1f92247cb741abc5
+[  641.124189] x1 : c6c8e1dcc946480a x0 : ffffffc07aff8000
+
+[  641.131000] Process unity-settings- (pid: 1298, stack limit = 0xffffffc1ceb8c020)
+[  641.138470] Call trace:
+[  641.140917] [<ffffffc000a8f440>] __unix_remove_socket+0xc/0x4c
+[  641.146743] [<ffffffc000a8f6f8>] unix_release+0x20/0x34
+[  641.151964] [<ffffffc0009a416c>] sock_release+0x24/0xd0
+[  641.157180] [<ffffffc0009a4228>] sock_close+0x10/0x1c
+[  641.162226] [<ffffffc0001d6924>] __fput+0x90/0x1bc
+[  641.167009] [<ffffffc0001d6aac>] ____fput+0xc/0x14
+[  641.171793] [<ffffffc0000c02ec>] task_work_run+0xa8/0xc4
+[  641.177098] [<ffffffc0000a786c>] do_exit+0x290/0x9a8
+[  641.182055] [<ffffffc0000a7ff4>] do_group_exit+0x40/0xa8
+[  641.187359] [<ffffffc0000a806c>] __wake_up_parent+0x0/0x28
+[  641.192837] [<ffffffc000084ff0>] el0_svc_naked+0x24/0x28
+[  641.198560] ---[ end trace aab6cf005af36075 ]---
+[  641.203328] Fixing recursive fault but reboot is needed!
+

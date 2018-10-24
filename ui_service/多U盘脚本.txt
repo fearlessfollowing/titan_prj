@@ -1,0 +1,157 @@
+
+#!/bin/bash
+set -e
+
+# Ethernet using the RNDIS protocol.
+# Linux: Supported automatically.
+# Windows: Supported automatically via OS descriptors.
+# MacOS: Requires the HoRNDIS driver to be installed.
+enable_rndis=1
+
+# CDC ACM serial port/UART.
+# Linux: Supported automatically.
+# Windows 10: Supported automatically.
+# Windows other: Requires driver manual selection by use of l4t-serial.inf.
+# Mac OS: Supported automatically.
+enable_acm=0
+
+# Ethernet using the CDC ECM protocol.
+# Linux: Supported automatically.
+# Windows: Not supported.
+# Mac OS: Supported automatically.
+enable_ecm=0
+
+# USB Mass Storage (virtual disk drive/USB memory stick).
+# Linux: Supported automatically.
+# Windows: Supported automatically.
+# Mac OS: Supported automatically.
+enable_ums=1
+
+# The IP address shared by all USB network interfaces created by this script.
+net_ip=192.168.55.1
+# The associated netmask.
+net_mask=255.255.255.0
+
+udc_dev_t210=700d0000.xudc
+if [ -e "/sys/class/udc/${udc_dev_t210}" ]; then
+    udc_dev="${udc_dev_t210}"
+fi
+udc_dev_t186=3550000.xudc
+if [ -e "/sys/class/udc/${udc_dev_t186}" ]; then
+    udc_dev="${udc_dev_t186}"
+fi
+if [ "${udc_dev}" == "" ]; then
+    echo No known UDC device found
+    exit 1
+fi
+
+mkdir -p /sys/kernel/config/usb_gadget/l4t
+cd /sys/kernel/config/usb_gadget/l4t
+
+# If this script is modified outside NVIDIA, the idVendor and idProduct values
+# MUST be replaced with appropriate vendor-specific values.
+echo 0x0955 > idVendor
+echo 0x7020 > idProduct
+# BCD value. Each nibble should be 0..9. 0x1234 represents version 12.3.4.
+echo 0x0001 > bcdDevice
+
+# Informs Windows that this device is a composite device, i.e. it implements
+# multiple separate protocols/devices.
+echo 0xEF > bDeviceClass
+echo 0x02 > bDeviceSubClass
+echo 0x01 > bDeviceProtocol
+
+mkdir -p strings/0x409
+cat /proc/device-tree/serial-number > strings/0x409/serialnumber
+# If this script is modified outside NVIDIA, the manufacturer and product values
+# MUST be replaced with appropriate vendor-specific values.
+echo "NVIDIA" > strings/0x409/manufacturer
+echo "Linux for Tegra" > strings/0x409/product
+
+cfg=configs/c.1
+mkdir -p "${cfg}"
+cfg_str=""
+
+# Note: RNDIS must be the first function in the configuration, or Windows'
+# RNDIS support will not operate correctly.
+if [ ${enable_rndis} -eq 1 ]; then
+    cfg_str="${cfg_str}+RNDIS"
+    func=functions/rndis.usb0
+    mkdir -p "${func}"
+    ln -sf "${func}" "${cfg}"
+
+    # Informs Windows that this device is compatible with the built-in RNDIS
+    # driver. This allows automatic driver installation without any need for
+    # a .inf file or manual driver selection.
+    echo 1 > os_desc/use
+    echo 0xcd > os_desc/b_vendor_code
+    echo MSFT100 > os_desc/qw_sign
+    echo RNDIS > "${func}/os_desc/interface.rndis/compatible_id"
+    echo 5162001 > "${func}/os_desc/interface.rndis/sub_compatible_id"
+    ln -sf "${cfg}" os_desc
+fi
+
+# If two USB configs are created, and the second contains RNDIS and ACM, then
+# Windows will ignore at the ACM function in that config. Consequently, this
+# script creates only a single USB config.
+if [ ${enable_acm} -eq 1 ]; then
+    cfg_str="${cfg_str}+ACM"
+    func=functions/acm.GS0
+    mkdir -p "${func}"
+    ln -sf "${func}" "${cfg}"
+fi
+
+if [ ${enable_ums} -eq 1 ]; then
+    cfg_str="${cfg_str}+UMS"
+    func=functions/mass_storage.0
+    mkdir -p "${func}"
+    ln -sf "${func}" "${cfg}"
+    # Prevent users from corrupting the disk image; make it read-only
+    echo 1 > "${func}/lun.0/ro"
+    echo /opt/nvidia/l4t-usb-device-mode/filesystem.img > "${func}/lun.0/file"
+fi
+
+if [ ${enable_ecm} -eq 1 ]; then
+    cfg_str="${cfg_str}+ECM"
+    func=functions/ecm.usb0
+    mkdir -p "${func}"
+    ln -sf "${func}" "${cfg}"
+fi
+
+mkdir -p "${cfg}/strings/0x409"
+# :1 in the variable expansion strips the first character from the value. This
+# removes the unwanted leading + sign. This simplifies the logic to construct
+# $cfg_str above; it can always add a leading delimiter rather than only doing
+# so unless the string is previously empty.
+echo "${cfg_str:1}" > "${cfg}/strings/0x409/configuration"
+
+echo "${udc_dev}" > UDC
+
+# Ethernet devices require additional configuration. This must happen after the
+# UDC device is assigned, since that triggers the creation of the Tegra-side
+# Ethernet interfaces.
+#
+# This script always assigns any-and-all Ethernet devices to an Ethernet
+# bridge, and assigns the static IP to that bridge. This allows the script to
+# more easily handle the potentially variable set of Ethernet devices.
+#
+# If your custom use-case requires separate IP addresses per interface, or
+# only ever has one interface active, you may modify this script to skip
+# bridge creation, and assign IP address(es) directly to the interface(s).
+
+/sbin/brctl addbr l4tbr0
+/sbin/ifconfig l4tbr0 ${net_ip} netmask ${net_mask} up
+
+if [ ${enable_rndis} -eq 1 ]; then
+    /sbin/brctl addif l4tbr0 "$(cat functions/rndis.usb0/ifname)"
+    /sbin/ifconfig "$(cat functions/rndis.usb0/ifname)" up
+fi
+
+if [ ${enable_ecm} -eq 1 ]; then
+    /sbin/brctl addif l4tbr0 "$(cat functions/ecm.usb0/ifname)"
+    /sbin/ifconfig "$(cat functions/ecm.usb0/ifname)" up
+fi
+
+cd - # Out of /sys/kernel/config/usb_gadget
+
+exit 0

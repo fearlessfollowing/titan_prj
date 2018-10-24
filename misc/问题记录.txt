@@ -1,0 +1,274 @@
+日期：2018年7月22日
+主要问题：
+1.升级程序改写
+2.开机后灯的状态不对
+3.存储逻辑
+4.power_on/off脚本需要改写成代码版本
+5.http断开后重连时间重新设置为10S
+6.显示IP地址问题
+7.视频，直播，设置菜单改写
+
+
+
+日期：2018年07月25日
+解决的BUG：
+
+
+
+
+
+
+日期：2018年8月2日
+问题：1402问题追踪
+流程：
+1.Web接收到客户端的请求：camera._takePicture
+config._TAKE_PICTURE:   self.camera_take_pic,   /* Web调用 */
+
+
+D/fifo    ( 1565): ReadFifoThread Msg From Http(CMD_OLED_DISP_TYPE) fifo test {"type": 6, "req": {"action": 1, "param": {"stabilization": false, "origin": {"height": 3000, "mime": "jpeg", "width": 4000, "saveOrigin": true}, "stiching": {"height": 3840, "mode": "pano", "mime": "jpeg", "algorithm": "opticalFlow", "width": 7680}, "delay": 0}}}
+D/fifo    ( 1565): rec req type 6
+D/fifo    ( 1565): bSave org 0
+D/fifo    ( 1565): org 4000 3000
+D/fifo    ( 1565): qr type 1
+D/fifo    ( 1565): stStiInfo.sti_res is (7680 3840)
+D/fifo    ( 1565):  mode (1 0)
+D/fifo    ( 1565): tl type size (0 6 30)
+D/MenuUI  ( 1565): OLED_DISP_STR_TYPE (1 6 -1 1 0x8)
+D/MenuUI  ( 1565): add_qr_res type (1 1)
+D/MenuUI  ( 1565): oled_disp_type (6 cur_menu 0x8)
+D/MenuUI  ( 1565): +++++++++++++++>>>> CAPTURE mControlAct != nullptr
+D/MenuUI  ( 1565): >>>>>>>>>>> setTakePicDelay 0
+
+
+def camera_take_pic(self,req):
+    Info('take pic req {} state {}'.format(req,self.get_cam_state()))
+    if self.check_allow_pic():
+        self.send_oled_type(config.CAPTURE, req)
+        #read_info = self.take_pic(req)
+    else:
+        Info('not allow take pic')
+        read_info = cmd_error_state(req[_name], self.get_cam_state())
+
+    Info('take pic read_info {}'.format(read_info))
+    return read_info
+
+原因：既自己给Camerad发送拍照请求，又通知UI发送拍照请求
+解决方法：
+在oled_disp_type的CAPTURE中：
+if (mControlAct != nullptr) { 
+    mNeedSendAction = false;    // mNeedSendAction 使用该标志来区分是否需要给camerad发送实际请求
+} else {
+    mNeedSendAction = true;
+    ......
+}
+然后在handleDispLightMsg中的倒计时为0判断mNeedSendAction标志来发ACTION
+if (mTakePicDelay == 0) {
+
+    if (mNeedSendAction) {  /* 暂时用于处理客户端发送拍照请求时，UI不发送拍照请求给camerad */
+        send_option_to_fifo(ACTION_PIC);
+    }
+    if (menu == cur_menu) {
+        disp_shooting();
+    }
+
+} else {
+    ......
+}
+
+
+照片全部存储在大卡上，各种规格拍一组照片需要的存储空间：
+8K_3D_OF        36M
+8K_3D_OF_RAW    180M
+
+8K_3D_OF        33M
+8K_3D_OF_RAW    180M
+
+8K              25M
+8K_RAW          160M
+
+AEB9            135M
+AEB9_RAW        1.4G
+
+AEB7            110M
+AEB7_RAW        1.1G
+
+AEB5            80M
+AEB5_RAW        780M
+
+AEB3            45M
+AEB3_RAW        460M
+
+BURST           150M
+BURST_RAW       1.5G
+
+CUSTOMER
+
+
+TAKE_VIDEO部分修改
+
+
+直播流程分析：
+1.主菜单中选中直播项
+procPowerKeyEvent
+    case MAINMENU_LIVE:
+        - 发送预览请求: send_option_to_fifo(ACTION_PREVIEW)
+        - 进入菜单MENU_LIVE_INFO
+
+setCurMenu(MENU_LIVE_INFO)
+    enterMenu(MENU_LIVE_INFO):
+        case MENU_LIVE_INFO:
+            - 显示左侧图标：disp_icon(ICON_LIVE_ICON_0_16_20_32);
+            - 显示底部的挡位及规格
+
+
+
+
+保存自定义参数处理流程：
+UI端：
+handleReqFormHttp   fifo.cpp
+    send_disp_str_type
+        mOLEDHandle->send_disp_str(disp_type);
+            handleDispStrTypeMsg        // MenuUI.cpp
+                add_qr_res
+                    mProCfg->set_def_info       // 保存自定义参数到user_cfg文件中
+                oled_disp_type(SET_CUSTOMER)    // 可以考虑在此处修改剩余空间（按照Customer的参数重新计算）
+
+拍照得到的Customer:
+{
+	"type": 46, 
+	"req": {
+		"action": 1, 
+		"param": {
+			"stabilization": false, 
+			"origin": {
+				"height": 3000, 
+				"mime": "jpeg", 
+				"width": 4000, 
+				"saveOrigin": true
+			}, 
+			"delay": 0, 
+			"properties": {
+				"gamma_param": 
+					"AAAFAAsAEAAWABwAIQAnAC0AMgA4AD4ARABJAE8AVQBbAGEAZwBsAHIAeAB+AIQAigCQAJYAnACiAKgArgC0ALoAwADGAMwA0gDYAN4A5ADqAPAA9gD8AAIBCAEOARUBGwEgAScBLQEzATkBPwFFAUsBUQFXAV0BYwFpAW8BdQF7AYEBhwGMAZMBmAGeAaQBqgGwAbYBuwHBAccBzQHTAdgB3gHkAeoB7wH1AfoBAAIGAgsCEQIWAhwCIQInAiwCMQI3AjwCQgJHAkwCUQJWAlwCYQJmAmsCcAJ1AnoCfwKEAokCjQKSApcCnAKgAqUCqQKuArICtwK7Ar8CxALIAswC0QLVAtkC3QLhAuUC6QLsAvAC9AL4AvsC/wICAwYDCQMNAxADFAMXAxoDHQMgAyMDJwMqAy0DMAMzAzUDOAM7Az4DQQNDA0YDSANLA04DUANTA1UDWANaA1wDXwNhA2MDZgNoA2oDbANuA3EDcwN1A3cDeQN7A30DfwOBA4MDhQOHA4kDiwONA44DkAOSA5QDlgOYA5kDmwOdA58DoQOiA6QDpgOoA6kDqwOtA68DsAOyA7QDtgO3A7kDuwO9A78DwAPCA8QDxgPHA8kDywPNA88D0QPTA9UD1gPYA9oD3APeA+AD4gPkA+YD6APrA+0D7wPxA/MD9QP4A/oD/AM=", 
+				"audio_gain": 0, 
+				"len_param": {
+					"stabilization": 1, 
+					"aaa_mode": 1, 
+					"iso_value": 0, 
+					"brightness": 0, 
+					"shutter_value": 0, 
+					"contrast": 64, 
+					"ev_bias": 0, 
+					"saturation": 64, 
+					"wb": 0, 
+					"sharpness": 0, 
+					"hue": 0
+				}
+			}, 
+			"stiching": {
+				"height": 3840, 
+				"mode": "pano", 
+				"mime": 
+				"jpeg", 
+				"algorithm": "opticalFlow", 
+				"width": 7680
+			}
+		}
+	}
+}
+
+
+
+
+程序运行流程分析：
+MenuUI::MenuUI
+	1.初始化处理UI事件的线程:		init_handler_thread
+	2.初始化对象内部的属性:			init
+	3.给UI线程发送初始化显示消息:	send_init_disp
+
+初始化显示消息处理：
+	oled_init_disp();	/* 初始化显示 */
+		read_sn
+		read_uuid
+		read_ver_info
+		init_cfg_select
+		check_battery_change
+	send_option_to_fifo(ACTION_REQ_SYNC);	/* 发送请求同步消息 */
+
+同步完成：接收到UI_MSG_SET_SYNC_INFO消息:
+exit_sys_err
+set_sync_info: 根据服务端当前的状态显示对应的页面
+
+2.UI上拍照的流程分析：
+- 主菜单上选择拍照项，按下回车进入拍照菜单
+> 发送启动预览请求: send_option_to_fifo(ACTION_PREVIEW)
+> 添加正在启动预览状态: START_PREVIEWING
+> 进入拍照菜单: setCurMenu(MENU_PIC_INFO);
+>> 显示左侧的拍照图标
+>> 根据需要显示底部的默认拍照挡位及对应的标志(是否存原片及拼接: Origin, RTS)及底部的剩余空间
+>> 根据当前的状态机状态显示中间的状态(等待: "...", 就绪: "Ready", 拍照过程中: "shooting", 处理过程中: "processing")
+MenuUI::procPowerKeyEvent
+	case MAINMENU_PIC:	/* 选择的是"拍照"项 */
+		/* 发送预览请求 */
+		if (send_option_to_fifo(ACTION_PREVIEW)) {	/* 发送预览请求: 消息发送完成后需要接收到异步结果 */
+			oled_disp_type(START_PREVIEWING);		/* 添加正在启动预览状态: START_PREVIEWING */
+			setCurMenu(MENU_PIC_INFO);				/* 设置并显示当前菜单 */
+		} else {
+			Log.d(TAG, "pic preview fail?");
+		}
+		break;
+
+setCurMenu(MENU_PIC_INFO)
+	enterMenu(MENU_PIC_INFO)
+		case MENU_PIC_INFO: /* 拍照菜单 */
+			
+            disp_icon(ICON_CAMERA_ICON_0_16_20_32);		/* 显示左侧'拍照'图标 */
+
+            if (dispBottom) {	                 /* 显示底部和右侧信息 */
+                dispBottomInfo(false, false);    /* 正常显示底部规格,不更新剩余空间 */
+            }
+
+            if (check_state_preview()) {	/* 启动预览成功,显示"Ready" */
+                disp_ready_icon();
+            } else if (check_state_equal(STATE_START_PREVIEWING) || check_state_in(STATE_STOP_PREVIEWING)) {
+                disp_waiting();				/* 正在启动,显示"..." */
+            } else if (check_state_in(STATE_TAKE_CAPTURE_IN_PROCESS)) {	/* 正在拍照 */
+                if (mTakePicDelay == 0) {   /* 倒计时为0,显示"shooting" */
+                    disp_shooting();
+                } else {                    /* 清除就绪图标,等待下一次更新消息 */
+                    clear_ready();
+                }
+            } else if (check_state_in(STATE_PIC_STITCHING)) {	/* 如果正在拼接,显示"processing" */
+                disp_processing();
+            } else {
+                Log.d(TAG, "pic menu error state 0x%x", cam_state);
+                if (check_state_equal(STATE_IDLE)) {
+                    procBackKeyEvent();
+                }
+            }
+            break;
+然后收到camerad发送启动预览的结果：
+启动预览成功：
+oled_disp_type(START_PREVIEW_SUC)
+	add_state(STATE_PREVIEW);		修改状态机当前的状态为预览状态：STATE_PREVIEW
+	updateBottomSpace(true); 		更新底部的空间（通过查询系统存储）
+启动预览失败：
+oled_disp_type(START_PREVIEW_FAIL)
+	rm_state(STATE_START_PREVIEWING);	去除STATE_START_PREVIEWING状态
+	disp_sys_err(type, MENU_TOP);		显示系统错误,将返回菜单设置为MENU_TOP
+
+
+
+
+日期：2018年8月6日
+在拔掉电池的情况下，RTC不能保存时间，硬件时间为2016年某个固定时间
+
+
+日期：
+
+多U盘问题：
+1.现在USB设备只是2.0设备非3.0设备？
+
+
+
+

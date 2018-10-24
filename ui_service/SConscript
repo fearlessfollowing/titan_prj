@@ -1,0 +1,61 @@
+####################################################################################################### 
+# Copyright Insta360 @ 2016 - 2025
+# Author:       Skymixos
+# Date:         2018-07-25
+# Version:      V0.1
+# Description:  Compile for UI_SERVICE
+#######################################################################################################
+
+Import('com_env')
+
+import config
+
+src = ['fifo.cpp']
+src += ['MenuUI.cpp']
+src += ['InputManager.cpp']
+src += ['NetManager.cpp']
+src += ['pro_cfg.cpp']
+src += ['main.cpp']
+src += ['NetlinkEvent.cpp']
+src += ['NetlinkHandler.cpp']
+src += ['NetlinkListener.cpp']
+src += ['NetlinkManager.cpp']
+src += ['SocketListener.cpp']
+src += ['SocketClient.cpp']
+src += ['VolumeManager.cpp']
+src += ['Process.cpp']
+src += ['forkUtil.cpp']
+src += ['ProtoManager.cpp']
+
+src += [config.UI_SERVICE + '/util/arlog.c']
+src += [config.UI_SERVICE + '/util/ARMessage.cpp']
+src += [config.UI_SERVICE + '/util/ARLooper.cpp']
+src += [config.UI_SERVICE + '/util/bytes_int_convert.cpp']
+src += [config.UI_SERVICE + '/util/util.cpp']
+src += [config.UI_SERVICE + '/util/cJSON.c']
+src += [config.UI_SERVICE + '/util/stlog.cpp']
+src += [config.UI_SERVICE + '/util/pro_version.cpp']
+src += [config.UI_SERVICE + '/util/http_util.cpp']
+
+
+src += [config.UI_SERVICE + '/hw/oled_module.cpp']
+src += [config.UI_SERVICE + '/hw/oled_light.cpp']
+src += [config.UI_SERVICE + '/hw/battery_interface.cpp']
+src += [config.UI_SERVICE + '/hw/ins_i2c.cpp']
+src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
+
+src += [config.LIBLOG + '/logd_write.c']
+src += [config.LIBLOG + '/log_event_write.c']
+src += [config.LIBLOG + '/logprint.c']
+src += [config.LIBLOG + '/event_tag_map.c']
+src += [config.LIBLOG + '/log_time.cpp']
+src += [config.LIBCUTILS + '/system_properties.c']
+
+
+com_env['CXXFLAGS'] += ' -I' + config.UI_SERVICE + '/include'
+com_env['LINKFLAGS'] += '-L ' + config.UI_SERVICE 
+com_env['LINKFLAGS'] += ' -lrt -lpthread -ljsoncpp'
+UI_SERVICE_obj = com_env.Object(src)
+
+Return('UI_SERVICE_obj')
+

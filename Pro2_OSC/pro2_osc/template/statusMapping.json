@@ -1,0 +1,4 @@
+{
+    "_picUrl":["camera.takePicture", "fileUrl"],
+    "_recordUrl":["camera.startCapture", "fileUrls"]
+}
