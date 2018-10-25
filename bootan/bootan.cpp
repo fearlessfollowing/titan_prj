@@ -34,10 +34,11 @@
 #include <prop_cfg.h>
 #include <system_properties.h>
 
-#include <hw/MenuUI.h>
+// #include <hw/MenuUI.h>
 
 #undef  TAG
 #define TAG "bootlogo"
+
 
 const u8 bootLogo[] = {
 	/* 图像	  128x64	*/
@@ -112,6 +113,7 @@ const u8 bootLogo[] = {
  * BootAnimation - 开机启动动画类
  */
 class BootAnimation {
+
 public:
 	BootAnimation();
 	~BootAnimation();
