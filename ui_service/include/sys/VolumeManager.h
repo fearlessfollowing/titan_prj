@@ -161,9 +161,9 @@ typedef struct stVol {
 static Volume gSysVols[] = {
     {   /* SD卡 - 3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb2-2,usb2-2.2",
+        .pBusAddr       = "usb2-1.1,usb2-2.2",      /* USB3.0设备 */
         .pMountPath     = "/mnt/sdcard",
-        .cVolName       = {0},             /* 动态生成 */
+        .cVolName       = {0},                      /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
         .iType          = VOLUME_TYPE_NV,

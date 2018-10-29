@@ -3,3 +3,60 @@
 
 参考链接：
 http://blog.irsqs.com/archives/12
+
+
+2.禁止一些无用的开机服务
+apt-get install rcconf
+
+列出当前开机启动的服务
+rcconf --list
+root@tegra-ubuntu:/lib/systemd/system# rcconf --list
+nfs-kernel-server on
+saned on
+cryptdisks on
+lvm2-lvmetad on
+speech-dispatcher on
+anacron on
+whoopsie on
+brltty on
+apparmor on
+rsync on
+lvm2-lvmpolld on
+rpcbind on
+hostapd on
+lightdm on
+bluetooth on
+cups-browsed on
+gpsd on
+kmod on
+avahi-daemon on
+procps on
+console-setup on
+plymouth on
+ssh on
+kerneloops on
+plymouth-log on
+alsa-utils on
+apport on
+checkroot-bootclean.sh on
+x11-common on
+dnsmasq on
+dbus on
+udev on
+cups on
+lvm2 on
+cron on
+pppd-dns on
+nmbd on
+smbd on
+rsyslog on
+samba-ad-dc on
+samba off
+
+禁止无用的服务：
+root@tegra-ubuntu:/lib/systemd/system# rcconf --off bluetooth
+root@tegra-ubuntu:/lib/systemd/system# rcconf --off dnsmasq
+root@tegra-ubuntu:/lib/systemd/system# rcconf --off pppd-dns
+root@tegra-ubuntu:/lib/systemd/system# rcconf --off avahi-daemon
+root@tegra-ubuntu:/lib/systemd/system# rcconf --off gpsd
+root@tegra-ubuntu:/lib/systemd/system# rcconf --off hostapd

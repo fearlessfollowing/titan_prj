@@ -1,0 +1,19 @@
+{
+    "sys_setting": {
+        "dhcp":1,
+        "flicker":0,
+        "hdr":0,
+        "raw":0,
+        "aeb":3,
+        "ph_delay":1,
+        "speaker":1,
+        "light_on":1,
+        "aud_on":1,
+        "aud_spatial":1,
+        "flow_state":0,
+        "gyro_on":1,
+        "fan_on":1,
+        "set_logo":0,
+        "video_fragment":0
+    }
+}

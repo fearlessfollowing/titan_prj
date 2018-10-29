@@ -118,6 +118,9 @@
 #define PROP_MAX_DISK_SLOT_NUM	    10
 
 
+#define PROP_SD_RESET_GPIO          "sys.sd_reset_gpio"
+
+
 /*
  * WIFI固件路径
  */

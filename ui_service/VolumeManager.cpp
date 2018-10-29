@@ -77,6 +77,8 @@ using namespace std;
 #define ENABLE_USB_NEW_UDISK_POWER_ON       /* 新的进入U盘模式的上电方式 */
 
 
+
+
 /*********************************************************************************************
  *  输出日志的TAG(用于刷选日志)
  *********************************************************************************************/
@@ -96,7 +98,8 @@ using namespace std;
 
 
 #define MKFS_EXFAT          "/sbin/mkexfatfs"
-#define USE_TRAN_SEND_MSG
+
+// #define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
 
 
 /*********************************************************************************************
@@ -356,6 +359,7 @@ VolumeManager::VolumeManager() :
     /* 删除/mnt/下未挂载的目录，已经挂载了的不处理（实时上update_check已经将升级设备挂载了） */
     clearAllunmountPoint();
 
+#if 0
     /*
      * 初始化与模组交互的两个GPIO
      */
@@ -363,6 +367,7 @@ VolumeManager::VolumeManager() :
     system("echo 478 > /sys/class/gpio/export");
     system("echo out > /sys/class/gpio/gpio456/direction");
     system("echo out > /sys/class/gpio/gpio478/direction");
+#endif
 
 
     /* 根据类型将各个卷加入到系统多个Vector中 */
@@ -1110,8 +1115,8 @@ void VolumeManager::exitUdiskMode()
     }
 #endif
   
-    system("echo 0 > /sys/class/gpio/gpio456/value");   /* gpio456 = 0 */
-    system("echo 1 > /sys/class/gpio/gpio478/value");   /* gpio456 = 0 */
+    // system("echo 0 > /sys/class/gpio/gpio456/value");   /* gpio456 = 0 */
+    // system("echo 1 > /sys/class/gpio/gpio478/value");   /* gpio456 = 0 */
 
     msg_util::sleep_ms(6 * 1000);
 
@@ -1564,10 +1569,10 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
      * 挂载成功后/卸载成功后,通知UI(SD/USB attached/detacheed)
      */
 
-    AutoMutex _l(gHandleBlockEvtLock);
+    // AutoMutex _l(gHandleBlockEvtLock);
 
 
-    Log.d(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d) <<<<<<<<<<<<<<<", evt->getAction());
+    Log.d(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", evt->getAction(), evt->getBusAddr());
     
     Volume* tmpVol = NULL;
     int iResult = 0;
@@ -1617,7 +1622,11 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
                                 tmpVol->iSpeedTest = 0;
                             }
                             setVolCurPrio(tmpVol, evt);
+
                             setSavepathChanged(VOLUME_ACTION_ADD, tmpVol);
+
+                            Log.d(TAG, "-------- Current save path: %s", getLocalVolMountPath());
+
                         #ifdef USE_TRAN_SEND_MSG
                             sendCurrentSaveListNotify();
                             sendDevChangeMsg2UI(VOLUME_ACTION_ADD, tmpVol->iVolSubsys, getCurSavepathList());
@@ -1644,6 +1653,7 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
                 if (!iResult) {    /* 卸载卷成功 */
 
                     tmpVol->iVolState = VOLUME_STATE_INIT;
+                    
                     if (volumeIsTfCard(tmpVol) == false) {
                         setVolCurPrio(tmpVol, evt); /* 重新修改该卷的优先级 */
                         setSavepathChanged(VOLUME_ACTION_REMOVE, tmpVol);   /* 检查是否修改当前的存储路径 */
@@ -1817,13 +1827,13 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
     mBsavePathChanged = false;
 
     switch (iAction) {
-        case VOLUME_ACTION_ADD: {   
+        case VOLUME_ACTION_ADD: {
+
             if (mCurrentUsedLocalVol == NULL) {
                 mCurrentUsedLocalVol = pVol;
                 mBsavePathChanged = true;       /* 表示存储设备路径发生了改变 */
                 
-                Log.d(TAG, "[%s: %d] Fist Local Volume Insert, Current Save path [%s]", 
-                                            __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
+                Log.d(TAG, "[%s: %d] Fist Local Volume Insert, Current Save path [%s]", __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
 
             } else {    /* 本来已有本地存储设备，根据存储设备的优先级来判断否需要改变存储路径 */
 
@@ -1852,13 +1862,14 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
             }
 
             if (mCurrentUsedLocalVol) {
-                Log.d(TAG, "[%s: %d] >>> After Add action, Current Local save path: %s", __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
+                Log.d(TAG, "[%s: %d] After Add action, Current Local save path: [%s]", __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
             }            
             break;
         }
 
         case VOLUME_ACTION_REMOVE: {
             
+            Log.d(TAG, "-------------------------> Remove Action");
             if (pVol == mCurrentUsedLocalVol) { /* 移除的是当前存储路径,需要从剩余的存储设备列表中选择优先级最高的存储设备 */
                 Volume* oldVol = NULL;
                 if (mCurrentUsedLocalVol) {
@@ -1874,8 +1885,7 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
                             if (tmpVol->iPrio >= mCurrentUsedLocalVol->iPrio) {
                                 mCurrentUsedLocalVol = tmpVol;
                                 mBsavePathChanged = true;
-                                Log.d(TAG, "[%s: %d] Changed current save path [%s]", 
-                                                        __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
+                                Log.d(TAG, "[%s: %d] Changed current save path [%s]",  __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
 
                             }
                         }
@@ -1916,6 +1926,7 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
 
 
 #ifdef USE_TRAN_SEND_MSG
+
 void VolumeManager::sendSavepathChangeNotify(const char* pSavePath)
 {
     std::string savePathStr;
@@ -2323,6 +2334,7 @@ int VolumeManager::mountVolume(Volume* pVol)
 
     AutoMutex _l(pVol->mVolLock);
 
+    #if 0
     /* 如果使能了Check,在挂载之前对卷进行check操作 */
     iRet = checkFs(pVol);
     if (iRet) {
@@ -2331,6 +2343,7 @@ int VolumeManager::mountVolume(Volume* pVol)
         /* 修复一下卡 */
         repairVolume(pVol);
     }
+    #endif
 
     /* 挂载点为非挂载状态，但是挂载点有其他文件，会先删除 */
     checkMountPath(pVol->pMountPath);
@@ -2432,8 +2445,8 @@ int VolumeManager::mountVolume(Volume* pVol)
         Log.e(TAG, ">>> Mount Volume failed (unknown exit code %d)", status);
         return -1;
     }
-
     #endif
+
     return 0;
 }
 

@@ -34,8 +34,6 @@
 #include <prop_cfg.h>
 #include <system_properties.h>
 
-// #include <hw/MenuUI.h>
-
 #undef  TAG
 #define TAG "bootlogo"
 

@@ -20,7 +20,8 @@
 ** V2.5			skymixos	2018年06月09日			将涉及的属性名统一移动到/include/prop_cfg.h中，便于管理
 ** V2.6			skymixos	2018年07月27日			提取update_app.zip到/tmp目录下
 ** V3.0			skymixos	2018年09月08日			将提取pro2_update.zip及解压pro2_update.zip的任务
-***													交由update_check处理，并将升级包存放于/mnt/update/下
+**													交由update_check处理，并将升级包存放于/mnt/update/下
+** V3.1			skymixos    2018年10月29日			更改挂载检测时间
 ******************************************************************************************************/
 
 
@@ -77,6 +78,9 @@
 #undef  TAG
 #define TAG "update_check"
 
+#define HW_PLATFORM_TITAN
+
+
 using namespace std;
 
 /*
@@ -86,7 +90,7 @@ using namespace std;
 #define UPDATE_APP_ZIP 			"update_app.zip"
 #define UPDATE_APP_DEST_PATH	"/usr/local/bin"
 #define UPDATE_DEST_BASE_DIR	"/mnt/update/"
-#define UPDAE_CHECK_VER			"V3.0"
+#define UPDAE_CHECK_VER			"V3.1"
 #define TMP_UNZIP_PATH			"/tmp/update"	/* 解压升级包的目标路径 */
 #define PRO_UPDATE_ZIP			"pro2_update.zip"
 
@@ -214,6 +218,7 @@ static bool isNeedUpdate(SYS_VERSION* old_ver, SYS_VERSION* cur_ver)
 }
 
 
+
 /*************************************************************************
 ** 方法名称: version_check
 ** 方法功能: 固件版本检查
@@ -314,33 +319,6 @@ static int copyUpdateFile2Memory(const char* dstFile, const char* srcFile)
         return -1;
     }
 }
-
-
-#if 0
-/*************************************************************************
-** 方法名称: check_header_match
-** 方法功能: 检查UPDATE_HEADER是否合法
-** 入口参数: 
-**		pstTmp - 头部数据制作
-** 返 回 值: 成功返回0;失败返回-1
-** 调     用: start_update_app
-**
-*************************************************************************/
-static bool check_header_match(UPDATE_HEADER * pstTmp)
-{
-    bool bRet = false;
-    if (pstTmp->cid == get_cid()) {
-        if (pstTmp->mid == get_mid()) {
-            bRet = true;
-        } else {
-            Log.e(TAG, "header mismatch mid(%d %d)\n", pstTmp->mid, get_mid());
-        }
-    } else {
-        Log.e(TAG, "header mismatch cid (%d %d) mid(%d %d)\n", pstTmp->cid, get_cid(), pstTmp->mid, get_mid());
-    }
-    return bRet;
-}
-#endif
 
 
 static int getPro2UpdatePackage(FILE* fp, u32 offset)
@@ -528,16 +506,90 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
 	return 0;
 }
 
+
+#ifdef HW_PLATFORM_TITAN	
+
+static int exportGpio(int iGpio)
+{
+	char gpioPath[512] = {0};
+	sprintf(gpioPath, "/sys/class/gpio/gpio%d", iGpio);
+
+	Log.d(TAG, "check gpio path: %s", gpioPath);
+
+	if (access(gpioPath, F_OK)) {	/* Not export */
+		char cmd[512] = {0};
+		sprintf(cmd, "echo %d > /sys/class/gpio/export", iGpio);
+		Log.d(TAG, "export cmd: %s", cmd);
+		if (system(cmd)) return -1;
+	}
+	return 0;
+}
+
+
+static void resetIC(int iGpio)
+{
+	char gpioPath[512] = {0};
+	char directionPath[512] = {0};
+	char valPath[512] = {0};
+
+	sprintf(gpioPath, "/sys/class/gpio/gpio%d", iGpio);
+	sprintf(directionPath, "/sys/class/gpio/gpio%d/direction", iGpio);
+	sprintf(valPath, "/sys/class/gpio/gpio%d/value", iGpio);
+
+	std::string sGpioDirectionPath(directionPath);
+	std::string setOutputcmd = "echo out > " + sGpioDirectionPath;
+	Log.d("set output cmd: %s", setOutputcmd.c_str());
+	system(setOutputcmd.c_str());
+
+	std::string sGpioValPath(valPath);
+	std::string setValCmd = "echo 1 > " + sGpioValPath;
+	Log.d("set val cmd: %s", setValCmd.c_str());
+	system(setValCmd.c_str());
+
+	msg_util::sleep_ms(100);
+
+	setValCmd = "echo 0 > " + sGpioValPath;
+	Log.d("set val cmd: %s", setValCmd.c_str());
+	system(setValCmd.c_str());
+}
+#endif
+
+/*
+ * Titan这部分还未确定
+ * 暂时默认的为gpio298
+ * 属性名: sys.sd_reset_gpio
+ */
 static void resetSdSlot()
 {
 	Log.d(TAG, "[%s: %d] Reset SD Slot First", __FILE__, __LINE__);
+
+#ifdef HW_PLATFORM_TITAN	
+
+	int iDefaultSdResetGpio = 298;
+	const char* pSdResetProp = NULL;
+	
+	/* 从属性系统文件中获取USB转SD卡芯片使用的复位引脚 */
+	pSdResetProp = property_get(PROP_SD_RESET_GPIO);
+	if (pSdResetProp) {
+		iDefaultSdResetGpio = atoi(pSdResetProp);
+		Log.d(TAG, "[%s: %d] Use Property Sd Reset GPIO: %d", __FILE__, __LINE__, iDefaultSdResetGpio);
+	}
+
+	/* 检查该GPIO是否已经导出 */
+	exportGpio(iDefaultSdResetGpio);
+
+	/* 复位芯片 */
+	resetIC(iDefaultSdResetGpio);
+
+#else	/* PRO2 */
 	
 	/* 直接设置I2C电源控制部分 */
 	system("i2cset -f -y 0 0x77 0x3 0x40");
 	msg_util::sleep_ms(500);
 	system("i2cset -f -y 0 0x77 0x3 0x70");
-}
 
+#endif
+}
 
 
 /*************************************************************************
@@ -573,10 +625,9 @@ int main(int argc, char **argv)
 	property_set(PROP_RO_MOUNT_TF, "true");
 
 
-	Log.d(TAG, ">>>>>>>>>>> Service: update_check starting (Version: %s) ^_^ <<<<<<<<<<", property_get(PROP_SYS_UC_VER));
+	Log.d(TAG, "\n\n>>>>>>>>>>> Service: update_check starting (Version: %s) ^_^ <<<<<<<<<<", property_get(PROP_SYS_UC_VER));
 
 	Log.d(TAG, "[%s: %d] get prop: [sys.tf_mount_ro] = %s", __FILE__, __LINE__, property_get(PROP_RO_MOUNT_TF));
-
 
 	/** 复位一下SD卡模块，使得在有SD卡的情况下可以识别到 */
 	resetSdSlot();
@@ -584,7 +635,7 @@ int main(int argc, char **argv)
 	/** 启动卷管理器,用于挂载升级设备 */
     VolumeManager* vm = VolumeManager::Instance();
     if (vm) {
-        Log.d(TAG, "[%s: %d] +++++++++++++ Start Vold(2.4) Manager +++++++++++", __FILE__, __LINE__);
+        Log.d(TAG, "[%s: %d] +++++++++++++ Start Vold(2.5) Manager +++++++++++", __FILE__, __LINE__);
         vm->start();
     }
 
@@ -598,14 +649,19 @@ int main(int argc, char **argv)
 	if (pUcDelayStr != NULL) {
 		iDelay = atol(pUcDelayStr);
 		if (iDelay < 0 || iDelay > 20)
-			iDelay = 0;
+			iDelay = 5;
+	} else {
+		iDelay = 5;
+	}
 
-		Log.d(TAG, "[%s: %d] update_check service delay [%d]s for update device mounted", __FILE__, __LINE__, iDelay);
-		sleep(iDelay);
+	while (iDelay-- > 0) {
+		if (strcmp(vm->getLocalVolMountPath(), "none")) {
+			break;
+		}
+		sleep(1);
 	}
 	
-
-	if (vm->checkLocalVolumeExist()) {		/* 升级设备存在，并且已经挂载 */
+	if (strcmp(vm->getLocalVolMountPath(), "none")) {		/* 升级设备存在，并且已经挂载 */
 		string updateFilePathName = vm->getLocalVolMountPath();
 		updateFilePathName += "/";
 		updateFilePathName += UPDATE_IMAGE_FILE;
@@ -724,7 +780,6 @@ int main(int argc, char **argv)
 		Log.d(TAG, "[%s: %d] Local storage device Not exist or Not Mounted, start app now ...", __FILE__, __LINE__);
 		goto no_update_device;
 	}
-
 
 err_regula_update_file:
 err_low_ver:
