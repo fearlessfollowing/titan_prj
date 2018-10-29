@@ -60,3 +60,8 @@ root@tegra-ubuntu:/lib/systemd/system# rcconf --off pppd-dns
 root@tegra-ubuntu:/lib/systemd/system# rcconf --off avahi-daemon
 root@tegra-ubuntu:/lib/systemd/system# rcconf --off gpsd
 root@tegra-ubuntu:/lib/systemd/system# rcconf --off hostapd
+
+
+
+安装最新的exfat工具
+github: https://github.com/relan/exfat

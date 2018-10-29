@@ -2334,7 +2334,7 @@ int VolumeManager::mountVolume(Volume* pVol)
 
     AutoMutex _l(pVol->mVolLock);
 
-    #if 0
+    #if 1
     /* 如果使能了Check,在挂载之前对卷进行check操作 */
     iRet = checkFs(pVol);
     if (iRet) {
@@ -2825,11 +2825,12 @@ int VolumeManager::checkFs(Volume* pVol)
     Log.d(TAG, "[%s: %d] >>> checkFs: Type[%s], Mount Point[%s]", __FILE__, __LINE__, pVol->cVolFsType, pVol->pMountPath);
 
     if (!strcmp(pVol->cVolFsType, "exfat")) {
-        const char *args[2];
-        args[0] = "/sbin/exfatfsck";
-        args[1] = pVol->cDevNode;
+        const char *args[3];
+        args[0] = "/usr/local/bin/exfatfsck";
+        args[1] = "-p";
+        args[2] = pVol->cDevNode;
 
-        Log.d(TAG, "[%s: %d] Check Fs cmd: %s %s", __FILE__, __LINE__, args[0], args[1]);
+        Log.d(TAG, "[%s: %d] Check Fs cmd: %s %s %s", __FILE__, __LINE__, args[0], args[1], args[2]);
         rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
 
     } else if (!strcmp(pVol->cVolFsType, "ext4") || !strcmp(pVol->cVolFsType, "ext3") || !strcmp(pVol->cVolFsType, "ext2")) {
