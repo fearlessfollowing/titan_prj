@@ -52,22 +52,22 @@ com_env.Program('out/update_app', update_app_obj)
 	
 
 ############################ bootanimation ##################################
-#bootan_obj = SConscript('./bootan/SConscript')
-#com_env.Program('out/bootanimation', bootan_obj)
+bootan_obj = SConscript('./bootan/SConscript')
+com_env.Program('out/bootanimation', bootan_obj)
 
 
 ############################ power_manager ##################################
-#power_obj = SConscript('./ui_service/power/SConscript')
-#com_env.Program('./out/power_manager', power_obj)
+power_obj = SConscript('./ui_service/power/SConscript')
+com_env.Program('./out/power_manager', power_obj)
 
 ############################ pwr_ctl ##################################
-#pwr_obj = SConscript('./ui_service/pwr_ctl/SConscript')
-#com_env.Program('./out/pwr_ctl', pwr_obj)
+pwr_obj = SConscript('./ui_service/pwr_ctl/SConscript')
+com_env.Program('./out/pwr_ctl', pwr_obj)
 
 
 ############################ ui_service ##################################
-#ui_service_obj = SConscript('./ui_service/SConscript')
-#com_env.Program('./out/ui_service', ui_service_obj)
+ui_service_obj = SConscript('./ui_service/SConscript')
+com_env.Program('./out/ui_service', ui_service_obj)
 
 
 ############################ mongoose ##################################

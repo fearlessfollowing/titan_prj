@@ -15,16 +15,10 @@
 ******************************************************************************************************/
 
 #include <util/msg_util.h>
-#include <sys/sig_util.h>
-#include <log/arlog.h>
 #include <system_properties.h>
 #include <common/include_common.h>
 #include <common/sp.h>
 #include <sys/sig_util.h>
-#include <common/check.h>
-#include <update/update_util.h>
-#include <update/dbg_util.h>
-#include <log/arlog.h>
 #include <system_properties.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -40,8 +34,12 @@
 #include <sys/MidProto.h>
 #include <prop_cfg.h>
 
+#include <log/log_wrapper.h>
+
+#include <common/check.h>
+
 #undef      TAG
-#define     TAG "pro2_service"
+#define     TAG "uiService"
 
 void start_all();
 void init_fifo();
@@ -55,24 +53,21 @@ int main(int argc ,char *argv[])
 {
     int iRet = 0;
 
-    debug_version_info();
-
-    registerSig(default_signal_handler);
-	
+    registerSig(default_signal_handler);	
     signal(SIGPIPE, pipe_signal_handler);
-
-    // arlog_configure(true, true, PRO2_SERVICE_LOG_PATH, false);
-    logWrapperInit("p_log", 0, 0);
 
     iRet = __system_properties_init();	/* 属性区域初始化 */
     if (iRet) {
-        Log.e(TAG, "pro_service service exit: __system_properties_init() faile, ret = %d", iRet);
+        fprintf(stderr, "ui_service service exit: __system_properties_init() faile, ret = %d\n", iRet);
         return -1;
     }
 
+    LogWrapper::init("/home/nvidia/insta360/log", "ui_log", true);
+
+
     property_set(PROP_PRO2_VER, PRO2_VER);
 
-    Log.d(TAG, ">>>>>>>>>>>>>>>>>>>>>>> Start pro2_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", property_get(PROP_PRO2_VER));
+    LOGDBG(TAG, "\n>>>>>>>>>>>>>>>>>>>>>>> Start pro2_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", property_get(PROP_PRO2_VER));
 
 #if 1
     init_fifo();
@@ -94,7 +89,6 @@ int main(int argc ,char *argv[])
         msg_util::sleep_ms(5*1000);
     }
 
-    Log.d(TAG, "main pro over");
+    LOGDBG(TAG, "------- UI Service Exit now --------------");
     
-    logWrapperDeInit();
 }

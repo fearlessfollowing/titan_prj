@@ -9,7 +9,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <log/stlog.h>
+
+#include <log/log_wrapper.h>
 
 #include <sys/SocketClient.h>
 
@@ -134,7 +135,7 @@ char *SocketClient::quoteArg(const char *arg)
     char *oldresult;
 
     if (result == NULL) {
-        Log.w(TAG, "malloc error (%s)", strerror(errno));
+        LOGWARN(TAG, "malloc error (%s)", strerror(errno));
         return NULL;
     }
 
@@ -159,7 +160,7 @@ int SocketClient::sendMsg(const char *msg)
 {
     // Send the message including null character
     if (sendData(msg, strlen(msg) + 1) != 0) {
-        Log.w(TAG, "Unable to send msg '%s'", msg);
+        LOGWARN(TAG, "Unable to send msg '%s'", msg);
         return -1;
     }
     return 0;
@@ -228,10 +229,10 @@ int SocketClient::sendDataLockedv(struct iovec *iov, int iovcnt)
 
         if (rc == 0) {
             e = EIO;
-            Log.w(TAG, "0 length write :(");
+            LOGWARN(TAG, "0 length write :(");
         } else {
             e = errno;
-            Log.w(TAG, "write error (%s)", strerror(e));
+            LOGWARN(TAG, "write error (%s)", strerror(e));
         }
         ret = -1;
         break;
@@ -260,7 +261,7 @@ bool SocketClient::decRef()
     if (mRefCount == 0) {
         deleteSelf = true;
     } else if (mRefCount < 0) {
-        Log.e(TAG, "SocketClient refcount went negative!");
+        LOGERR(TAG, "SocketClient refcount went negative!");
     }
     pthread_mutex_unlock(&mRefCountMutex);
 	

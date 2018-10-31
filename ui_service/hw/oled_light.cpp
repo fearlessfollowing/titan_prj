@@ -16,15 +16,16 @@
 
 #include <hw/oled_light.h>
 #include <hw/ins_i2c.h>
-#include <log/stlog.h>
 #include <util/msg_util.h>
+
+#include <log/log_wrapper.h>
 
 using namespace std;
 
-#undef TAG
+#undef  TAG
 #define TAG "oled_light"
 
-#define LED_I2C_REG 0x02
+#define LED_I2C_REG 0x03
 
 #define LED_I2C_CONTROL_REG 0x06
 
@@ -57,7 +58,7 @@ void oled_light::init()
 void oled_light::suspend_led_status()
 {
     if (mI2CLight->i2c_read(LED_I2C_REG, &light_restore_val) != 0) {
-        Log.e(TAG, ">>> restore led light status failed, so bad...");
+        LOGERR(TAG, ">>> restore led light status failed, so bad...");
     } else {
 
     }
@@ -67,7 +68,7 @@ void oled_light::suspend_led_status()
 void oled_light::resume_led_status()
 {
     if (mI2CLight->i2c_write_byte(LED_I2C_REG, light_restore_val) != 0) {
-        Log.e(TAG, ">>> resume led light status failed,[0x%x]", light_restore_val);
+        LOGERR(TAG, ">>> resume led light status failed,[0x%x]", light_restore_val);
     }
 }
 
@@ -80,23 +81,23 @@ void oled_light::set_light_val(u8 val)
 
     if (mI2CLight->i2c_read(LED_I2C_REG, &orig_val) == 0) {
     #ifdef DEBUG_LED
-        Log.d(TAG, "+++++++>>> read orig val [0x%x]", orig_val);
-        Log.d(TAG, "set_light_val --> val[0x%x]", val);
+        LOGDBG(TAG, "+++++++>>> read orig val [0x%x]", orig_val);
+        LOGDBG(TAG, "set_light_val --> val[0x%x]", val);
     #endif
 
         orig_val &= 0xc0;	/* led just low 6bit */
         orig_val |= val;
 
         if (mI2CLight->i2c_write_byte(LED_I2C_REG, orig_val) != 0) {
-            Log.e(TAG, " oled write val 0x%x fail", val);
+            LOGERR(TAG, " oled write val 0x%x fail", val);
         } else {
         #ifdef DEBUG_LED
-            Log.d(TAG, "set_light_val, new val [0x%x]", orig_val);
+            LOGDBG(TAG, "set_light_val, new val [0x%x]", orig_val);
         #endif
         }
 
     } else {
-        Log.e(TAG, "set_light_val [0x%x] failed ...", val);
+        LOGERR(TAG, "set_light_val [0x%x] failed ...", val);
     }
 }
 
@@ -115,16 +116,16 @@ void oled_light::setAllLight(int iOnOff)
         if (iOnOff == 1) {  /* On */
             mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x00);
             orig_val |= mRestoreLedVal;
-            Log.d(TAG, "[%s: %d] Resume Val 0x%x", __FILE__, __LINE__, mRestoreLedVal);
+            LOGDBG(TAG, "[%s: %d] Resume Val 0x%x", __FILE__, __LINE__, mRestoreLedVal);
         } else {    /* Off */
             mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x3f);
             mRestoreLedVal = orig_val;
-            Log.d(TAG, "[%s: %d] Restore LED Val 0x%x", __FILE__, __LINE__, mRestoreLedVal);
+            LOGDBG(TAG, "[%s: %d] Restore LED Val 0x%x", __FILE__, __LINE__, mRestoreLedVal);
             orig_val &= 0xc0;
         }
         mI2CLight->i2c_write_byte(LED_I2C_REG, orig_val);
     } else {
-        Log.e(TAG, ">>>> read i2c 0x2 failed...");
+        LOGERR(TAG, ">>>> read i2c 0x2 failed...");
     }
 
 }
@@ -143,35 +144,35 @@ int oled_light::factory_test(int icnt)
  	 */
  	int iRet = 0;
 
-	Log.d(TAG, "factory_test ....");
+	LOGDBG(TAG, "factory_test ....");
 
 	if (icnt < 3)
 		icnt = 3;
 	
     for (int i = 0; i < icnt; i++) {
         if (mI2CLight->i2c_write_byte(LED_I2C_REG, 0x3f) != 0) {
-			Log.e(TAG," oled write val 0x%x fail", 0x3f);
+			LOGERR(TAG," oled write val 0x%x fail", 0x3f);
 			iRet = -1;
 		}
 			
 		msg_util::sleep_ms(1000);
 		
         if (mI2CLight->i2c_write_byte(LED_I2C_REG, 0x09) != 0) {
-			Log.e(TAG," oled write val 0x%x fail", 0x09);
+			LOGERR(TAG," oled write val 0x%x fail", 0x09);
 			iRet = -1;
 		}
 			
 		msg_util::sleep_ms(1000);
 		
         if (mI2CLight->i2c_write_byte(LED_I2C_REG, 0x12) != 0) {
-			Log.e(TAG," oled write val 0x%x fail", 0x12);
+			LOGERR(TAG," oled write val 0x%x fail", 0x12);
 			iRet = -1;
 		}
 			
 		msg_util::sleep_ms(1000);
 		
         if (mI2CLight->i2c_write_byte(LED_I2C_REG, 0x24) != 0) {
-			Log.e(TAG," oled write val 0x%x fail", 0x24);
+			LOGERR(TAG," oled write val 0x%x fail", 0x24);
 			iRet = -1;
 		}	
 		

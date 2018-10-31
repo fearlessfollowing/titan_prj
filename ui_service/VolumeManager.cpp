@@ -28,7 +28,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/mount.h>
 #include <sys/ioctl.h>
 #include <dirent.h>
 #include <string>
@@ -36,14 +35,12 @@
 #include <vector>
 
 #include <sys/vfs.h>   
-#include <sys/types.h>
 #include <sys/wait.h>
 
 #include <prop_cfg.h>
 
 #include <dirent.h>
 
-#include <log/stlog.h>
 #include <util/msg_util.h>
 #include <util/ARMessage.h>
 
@@ -53,6 +50,7 @@
 #include <sys/NetlinkEvent.h>
 #include <sys/ProtoManager.h>
 
+#include <log/log_wrapper.h>
 
 #include <hw/ins_i2c.h>
 
@@ -215,7 +213,7 @@ bool isMountpointMounted(const char *mp)
     char line[1024];
 
     if (!(fp = fopen("/proc/mounts", "r"))) {
-        Log.e(TAG, "Error opening /proc/mounts (%s)", strerror(errno));
+        LOGERR(TAG, "Error opening /proc/mounts (%s)", strerror(errno));
         return false;
     }
 
@@ -264,10 +262,10 @@ static void clearAllunmountPoint()
         cPath[iParentLen] = 0;
         strcat(cPath, de->d_name);
 
-        Log.d(TAG, "[%s: %d] Current Path name: %s", __FILE__, __LINE__, cPath);
+        LOGDBG(TAG, "Current Path name: %s", cPath);
 
         if (false == isMountpointMounted(cPath)) {
-            Log.w(TAG, "[%s: %d] Remove it [%s]", __FILE__, __LINE__, cPath);
+            LOGWARN(TAG, "Remove it [%s]", cPath);
             string rmCmd = "rm -rf ";
             rmCmd += cPath;
             system(rmCmd.c_str());
@@ -344,7 +342,7 @@ VolumeManager::VolumeManager() :
     property_set(PROP_RO_MOUNT_TF, "true");     /* 只读的方式挂载TF卡 */    
     #endif
 
-    Log.d(TAG, "[%s: %d] Umont All device now .....", __FILE__, __LINE__);
+    LOGDBG(TAG, " Umont All device now .....");
 
     umount2("/mnt/mSD1", MNT_FORCE);
     umount2("/mnt/mSD2", MNT_FORCE);
@@ -384,7 +382,7 @@ VolumeManager::VolumeManager() :
         }
     }
 
-    Log.d(TAG, "[%s: %d] Construtor VolumeManager Done...", __FILE__, __LINE__);
+    LOGDBG(TAG, " Construtor VolumeManager Done...");
 }
 
 
@@ -398,14 +396,14 @@ void handleDevRemove(const char* pDevNode)
     VolumeManager *vm = VolumeManager::Instance();
     vector<Volume*>& tmpVector = vm->getRemoteVols();
 
-    Log.d(TAG, "[%s: %d] handleDevRemove -> [%s]", __FILE__, __LINE__, pDevNode);
-    Log.d(TAG, "[%s: %d] Remote vols size = %d", __FILE__, __LINE__, tmpVector.size());
+    LOGDBG(TAG, " handleDevRemove -> [%s]", pDevNode);
+    LOGDBG(TAG, " Remote vols size = %d", tmpVector.size());
 
     /* 处理TF卡的移除 */
     for (i = 0; i < tmpVector.size(); i++) {
         tmpVol = tmpVector.at(i);
     
-        Log.d(TAG, "[%s: %d] Volue[%d] -> %s", __FILE__, __LINE__, i, tmpVol->cDevNode);
+        LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
     
         if (tmpVol && !strcmp(tmpVol->cDevNode, devNodePath.c_str())) {
             NetlinkEvent *evt = new NetlinkEvent();
@@ -431,9 +429,9 @@ void VolumeManager::checkAllUdiskIdle()
         tmpVol = mModuleVols.at(i);
         if (tmpVol) {
             if (tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
-                Log.d(TAG, "[%s: %d] Current Volume(%s) is Mouted State, force unmount now....", __FILE__, __LINE__, tmpVol->pMountPath);
+                LOGDBG(TAG, " Current Volume(%s) is Mouted State, force unmount now....", tmpVol->pMountPath);
                 if (doUnmount(tmpVol->pMountPath, true)) {
-                    Log.e(TAG, "[%s: %d] Force Unmount Volume Failed!!!", __FILE__, __LINE__);
+                    LOGERR(TAG, " Force Unmount Volume Failed!!!");
                 }
                 tmpVol->iVolState = VOLUME_STATE_IDLE;
             }
@@ -460,7 +458,7 @@ void VolumeManager::calcTakeTimelapseCnt(Json::Value& jsonCmd)
         AutoMutex _l(gTimelapseLock);
         mTaketimelapseCnt = calcTakepicLefNum(jsonCmd, false);
     }
-    Log.d(TAG, "[%s: %d] ++++++++++++++++++>>> calcTakeTimelapseCnt [%d]", __FILE__, __LINE__, mTaketimelapseCnt);
+    LOGDBG(TAG, " ++++++++++++++++++>>> calcTakeTimelapseCnt [%d]", mTaketimelapseCnt);
 }
 
 
@@ -502,7 +500,7 @@ bool VolumeManager::isMountpointMounted(const char *mp)
     char line[1024];
 
     if (!(fp = fopen("/proc/mounts", "r"))) {
-        Log.e(TAG, "Error opening /proc/mounts (%s)", strerror(errno));
+        LOGERR(TAG, "Error opening /proc/mounts (%s)", strerror(errno));
         return false;
     }
 
@@ -561,13 +559,13 @@ void VolumeManager::powerOnOffModuleByIndex(bool bOnOff, int iIndex)
 
     iRet1 = mI2CLight->i2c_read(0x2, &module1_val);
     if (iRet1) {
-        Log.e(TAG, "[%s: %d] I2c read 0x77 -> 0x2 Failed", __FILE__, __LINE__);
+        LOGERR(TAG, " I2c read 0x77 -> 0x2 Failed");
         return;
     }
 
     iRet2 = mI2CLight->i2c_read(0x3, &module2_val);		
     if (iRet2) {
-        Log.e(TAG, "[%s: %d] I2c read 0x77 -> 0x3 Failed", __FILE__, __LINE__);
+        LOGERR(TAG, " I2c read 0x77 -> 0x3 Failed");
         return;
     }
 
@@ -713,7 +711,7 @@ Volume* VolumeManager::getUdiskVolByIndex(int iIndex)
 {
     Volume* pVol = NULL;
     if (iIndex < 0 || iIndex > mModuleVols.size()) {
-        Log.e(TAG, "[%s: %d] Invalid udisk index[%d], please check", __FILE__, __LINE__, iIndex);
+        LOGERR(TAG, " Invalid udisk index[%d], please check", iIndex);
     } else {
         for (u32 i = 0; i < mModuleVols.size(); i++) {
             if (mModuleVols.at(i)->iIndex == iIndex) {
@@ -762,7 +760,7 @@ bool VolumeManager::enterUdiskMode()
      * 3.等待所有的模组挂上
      * 4.检查是否所有的模组都挂载成功
      */
-    Log.d(TAG, "[%s: %d] Enter U-disk Mode now ...", __FILE__, __LINE__);
+    LOGDBG(TAG, " Enter U-disk Mode now ...");
 
     mHandledAddUdiskVolCnt = 0;     /* 成功挂载模组的个数 */
     setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_UDISK);
@@ -783,11 +781,11 @@ bool VolumeManager::enterUdiskMode()
     msg_util::sleep_ms(2000);
     
     if (waitHub1RestComplete()) {
-        Log.d(TAG, "[%s: %d] -------------- Hub1 Reset Complete", __FILE__, __LINE__);
+        LOGDBG(TAG, " -------------- Hub1 Reset Complete");
     }
     
     if (waitHub2RestComplete()) {
-        Log.d(TAG, "[%s: %d] -------------- Hub2 Reset Complete", __FILE__, __LINE__);
+        LOGDBG(TAG, " -------------- Hub2 Reset Complete");
     }
 
     gettimeofday(&enterTv, NULL);   
@@ -798,7 +796,7 @@ bool VolumeManager::enterUdiskMode()
 
     for (int i = 6; i >= 1; i--) {
         for (iModulePowerOnTimes = 0; iModulePowerOnTimes < 3; iModulePowerOnTimes++) {
-            Log.d(TAG, "[%s: %d] Power on for device[%d]", __FILE__, __LINE__, i);
+            LOGDBG(TAG, " Power on for device[%d]", i);
             powerOnOffModuleByIndex(true, i);        /* 6, 1, 2 */
             if (checkVolIsMountedByIndex(i)) {
                 break;
@@ -809,7 +807,7 @@ bool VolumeManager::enterUdiskMode()
         }
 
         if (iModulePowerOnTimes >= 3) {
-            Log.e(TAG, "[%s: %d] Mount Module[%d] Failed, What's wrong!", __FILE__, __LINE__, i);
+            LOGERR(TAG, " Mount Module[%d] Failed, What's wrong!", i);
         }
     }
 
@@ -823,7 +821,7 @@ bool VolumeManager::enterUdiskMode()
 
     gettimeofday(&exitTv, NULL);   
     int iNeedSleepTime = iEnterTotalLen - (exitTv.tv_sec - enterTv.tv_sec);
-    Log.d(TAG, "[%s: %d] Should Sleep time: %ds", __FILE__, __LINE__, iNeedSleepTime);
+    LOGDBG(TAG, " Should Sleep time: %ds", iNeedSleepTime);
     if (iNeedSleepTime > 0) {
         sleep(iNeedSleepTime);
     }
@@ -920,7 +918,7 @@ bool VolumeManager::decLiveRecLeftSec()
         mLiveRecLeftSec--;   
         return true; 
     } else {
-        Log.d(TAG, "[%s: %d] Warnning Live Record Left sec is 0", __FILE__, __LINE__);
+        LOGDBG(TAG, " Warnning Live Record Left sec is 0");
     }
     return false;
 }
@@ -984,7 +982,7 @@ bool VolumeManager::decRecLeftSec()
         mRecLeftSec--;  
         return true;  
     } else {
-        Log.d(TAG, "[%s: %d] Warnning Record Left sec is 0", __FILE__, __LINE__);
+        LOGDBG(TAG, " Warnning Record Left sec is 0");
     }
     return false;
 }
@@ -1045,7 +1043,7 @@ void VolumeManager::unmountAll()
 
             tmpVol = mModuleVols.at(i);
         
-            Log.d(TAG, "[%s: %d] Volue[%d] -> %s", __FILE__, __LINE__, i, tmpVol->cDevNode);
+            LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
             if (tmpVol) {
 
                 NetlinkEvent *evt = new NetlinkEvent();        
@@ -1056,7 +1054,7 @@ void VolumeManager::unmountAll()
                 evt->setDevNodeName(tmpVol->cDevNode);            
                 iResult = handleBlockEvent(evt);
                 if (iResult) {
-                    Log.d(TAG, "[%s: %d] Remove Device Failed ...", __FILE__, __LINE__);
+                    LOGDBG(TAG, " Remove Device Failed ...");
                 }       
                 delete evt;
             }
@@ -1084,7 +1082,7 @@ void VolumeManager::exitUdiskMode()
     int iResult = -1;
     Volume* tmpVol = NULL;
 
-    Log.d(TAG, "[%s: %d] Exit U-disk Mode now ...", __FILE__, __LINE__);
+    LOGDBG(TAG, " Exit U-disk Mode now ...");
     
     mHandledRemoveUdiskVolCnt = 0;
 
@@ -1096,7 +1094,7 @@ void VolumeManager::exitUdiskMode()
 
             tmpVol = mModuleVols.at(i);
         
-            Log.d(TAG, "[%s: %d] Volue[%d] -> %s", __FILE__, __LINE__, i, tmpVol->cDevNode);
+            LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
             if (tmpVol) {
 
                 NetlinkEvent *evt = new NetlinkEvent();        
@@ -1107,7 +1105,7 @@ void VolumeManager::exitUdiskMode()
                 evt->setDevNodeName(tmpVol->cDevNode);            
                 iResult = handleBlockEvent(evt);
                 if (iResult) {
-                    Log.d(TAG, "[%s: %d] Remove Device Failed ...", __FILE__, __LINE__);
+                    LOGDBG(TAG, " Remove Device Failed ...");
                 }       
                 delete evt;
             }
@@ -1139,19 +1137,19 @@ void VolumeManager::runFileMonitorListener()
 
     iFd = inotify_init();
     if (iFd < 0) {
-        Log.e(TAG, "[%s: %d] inotify init failed...", __FILE__, __LINE__);
+        LOGERR(TAG, " inotify init failed...");
         return;
     }
 
-    Log.d(TAG, "[%s: %d] Inotify init OK", __FILE__, __LINE__);
+    LOGDBG(TAG, " Inotify init OK");
 
     iRes = inotify_add_watch(iFd, "/mnt", IN_CREATE | IN_DELETE);
     if (iRes < 0) {
-        Log.e(TAG, "[%s: %d] inotify_add_watch /mnt failed", __FILE__, __LINE__);
+        LOGERR(TAG, " inotify_add_watch /mnt failed");
         return;
     }    
 
-    Log.d(TAG, "[%s: %d] Add Listener object /mnt", __FILE__, __LINE__);
+    LOGDBG(TAG, " Add Listener object /mnt");
 
     while (true) {
 
@@ -1182,7 +1180,7 @@ void VolumeManager::runFileMonitorListener()
             char c = CtrlPipe_Shutdown;
             TEMP_FAILURE_RETRY(read(mFileMonitorPipe[0], &c, 1));	
             if (c == CtrlPipe_Shutdown) {
-                Log.d(TAG, "[%s: %d] VolumeManager notify our exit now ...", __FILE__, __LINE__);
+                LOGDBG(TAG, " VolumeManager notify our exit now ...");
                 break;
             }
             continue;
@@ -1194,7 +1192,7 @@ void VolumeManager::runFileMonitorListener()
             readCount  = 0;
             readCount = read(iFd, inotifyBuf, MAXCOUNT);
             if (readCount <  sizeof(inotifyEvent)) {
-                Log.e(TAG, "error inofity event");
+                LOGERR(TAG, "error inofity event");
                 continue;
             }
 
@@ -1209,12 +1207,12 @@ void VolumeManager::runFileMonitorListener()
                     if (curInotifyEvent->mask & IN_CREATE) {
                         /* 有新设备插入,根据设备文件执行挂载操作 */
                         // handleMonitorAction(ACTION_ADD, devPath);
-                        Log.d(TAG, "[%s: %d] [%s] Insert", __FILE__, __LINE__, devNode.c_str());
+                        LOGDBG(TAG, " [%s] Insert", devNode.c_str());
                     } else if (curInotifyEvent->mask & IN_DELETE) {
                         /* 有设备拔出,执行卸载操作 
                          * 由设备名找到对应的卷(地址，子系统，挂载路径，设备命) - 构造出一个NetlinkEvent事件
                          */
-                        Log.d(TAG, "[%s: %d] [%s] Remove", __FILE__, __LINE__, devNode.c_str());
+                        LOGDBG(TAG, " [%s] Remove", devNode.c_str());
                         // handleDevRemove(curInotifyEvent->name);
                     }
                 }
@@ -1223,11 +1221,11 @@ void VolumeManager::runFileMonitorListener()
             }
         }
         #else 
-            Log.d(TAG, "[%s: %d] Enter Udisk, times = %d", __FILE__, __LINE__, ++iTimes);
+            LOGDBG(TAG, " Enter Udisk, times = %d", ++iTimes);
             enterUdiskMode();
             msg_util::sleep_ms(20* 1000);
             
-            Log.d(TAG, "[%s: %d] Exit Udisk, times = %d", __FILE__, __LINE__, iTimes);
+            LOGDBG(TAG, " Exit Udisk, times = %d", iTimes);
             exitUdiskMode();
             msg_util::sleep_ms(5* 1000);
 
@@ -1240,7 +1238,7 @@ void VolumeManager::runFileMonitorListener()
 void* fileMonitorThread(void *obj) 
 {
     VolumeManager* me = reinterpret_cast<VolumeManager *>(obj);
-    Log.d(TAG, "[%s: %d] Enter Listener mode now ...", __FILE__, __LINE__);
+    LOGDBG(TAG, " Enter Listener mode now ...");
     me->runFileMonitorListener();		
     pthread_exit(NULL);
     return NULL;
@@ -1257,12 +1255,12 @@ bool VolumeManager::initFileMonitor()
 {
     bool bResult = false;
     if (pipe(mFileMonitorPipe)) {
-        Log.e(TAG, "[%s: %d] initFileMonitor pipe failed", __FILE__, __LINE__);
+        LOGERR(TAG, " initFileMonitor pipe failed");
     } else {
         if (pthread_create(&mFileMonitorThread, NULL, fileMonitorThread, this)) {	
-            Log.e(TAG, "[%s: %d] pthread_create (%s)", __FILE__, __LINE__, strerror(errno));
+            LOGERR(TAG, " pthread_create (%s)", strerror(errno));
         } else {
-            Log.d(TAG, "[%s: %d] Create File Monitor notify Thread....", __FILE__, __LINE__);
+            LOGDBG(TAG, " Create File Monitor notify Thread....");
             bResult = true;
         }  
     }
@@ -1274,15 +1272,15 @@ bool VolumeManager::start()
 {
     bool bResult = false;
 
-    Log.d(TAG, "[%s: %d] Start VolumeManager now ....", __FILE__, __LINE__);
+    LOGDBG(TAG, " Start VolumeManager now ....");
 
     if (mListenerMode == VOLUME_MANAGER_LISTENER_MODE_NETLINK) {
         NetlinkManager* nm = NULL;
         if (!(nm = NetlinkManager::Instance())) {	
-            Log.e(TAG, "[%s: %d] Unable to create NetlinkManager", __FILE__, __LINE__);
+            LOGERR(TAG, " Unable to create NetlinkManager");
         } else {
             if (nm->start()) {
-                Log.e(TAG, "Unable to start NetlinkManager (%s)", strerror(errno));
+                LOGERR(TAG, "Unable to start NetlinkManager (%s)", strerror(errno));
             } else {
                 coldboot("/sys/block");
                 bResult = true;
@@ -1295,7 +1293,7 @@ bool VolumeManager::start()
         }      
     
     } else {
-        Log.d(TAG, "[%s: %d] VolumeManager Not Support Listener Mode[%d]", __FILE__, __LINE__, mListenerMode);
+        LOGDBG(TAG, " VolumeManager Not Support Listener Mode[%d]", mListenerMode);
     }
     return bResult;
 }
@@ -1308,12 +1306,12 @@ bool VolumeManager::deInitFileMonitor()
 
     rc = TEMP_FAILURE_RETRY(write(mFileMonitorPipe[1], &c, 1));
     if (rc != 1) {
-        Log.e(TAG, "Error writing to control pipe (%s)", strerror(errno));
+        LOGERR(TAG, "Error writing to control pipe (%s)", strerror(errno));
     }
 
     void *ret;
     if (pthread_join(mFileMonitorThread, &ret)) {	
-        Log.e(TAG, "Error joining to listener thread (%s)", strerror(errno));
+        LOGERR(TAG, "Error joining to listener thread (%s)", strerror(errno));
     }
 	
     close(mFileMonitorPipe[0]);	
@@ -1336,18 +1334,18 @@ bool VolumeManager::stop()
     if (mListenerMode == VOLUME_MANAGER_LISTENER_MODE_NETLINK) {
         NetlinkManager* nm = NULL;
         if (!(nm = NetlinkManager::Instance())) {	
-            Log.e(TAG, "[%s: %d] Unable to create NetlinkManager", __FILE__, __LINE__);
+            LOGERR(TAG, " Unable to create NetlinkManager");
         } else {
             /* 停止监听线程 */
             if (nm->stop()) {
-                Log.e(TAG, "Unable to start NetlinkManager (%s)", strerror(errno));
+                LOGERR(TAG, "Unable to start NetlinkManager (%s)", strerror(errno));
             } else {
                 bResult = true;
             }
         }
     
     } else {
-        Log.d(TAG, "[%s: %d] VolumeManager Not Support Listener Mode[%d]", __FILE__, __LINE__, mListenerMode);
+        LOGDBG(TAG, " VolumeManager Not Support Listener Mode[%d]", mListenerMode);
     }
     return bResult;
 }
@@ -1362,7 +1360,7 @@ vector<Volume*>& VolumeManager::getSysStorageDevList()
     vector<Volume*>& remoteVols = getRemoteVols();
     Volume* tmpVol = NULL;
 
-    Log.d(TAG, "[%s: %d] >>>>>> getSysStorageDevList", __FILE__, __LINE__);
+    LOGDBG(TAG, " >>>>>> getSysStorageDevList");
 
     mSysStorageVolList.clear();
 
@@ -1380,7 +1378,7 @@ vector<Volume*>& VolumeManager::getSysStorageDevList()
         }
     }
 
-    Log.d(TAG, "[%s: %d] Current System Storage list size = %d", __FILE__, __LINE__, mSysStorageVolList.size());
+    LOGDBG(TAG, " Current System Storage list size = %d", mSysStorageVolList.size());
     return mSysStorageVolList;
 }
 
@@ -1400,7 +1398,7 @@ Volume* VolumeManager::isSupportedDev(const char* busAddr)
         tmpVol = mVolumes.at(i);
         if (tmpVol) {
             if (strstr(tmpVol->pBusAddr, busAddr)) {   /* 只要含有字串，认为支持 */
-                Log.d(TAG, "[%s: %d] Volume Addr: %s, Current dev Addr: %s", __FILE__, __LINE__, tmpVol->pBusAddr, busAddr);
+                LOGDBG(TAG, " Volume Addr: %s, Current dev Addr: %s", tmpVol->pBusAddr, busAddr);
                 break;
             }
         }
@@ -1420,7 +1418,7 @@ bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int
 
     FILE* fp = popen(cmd.c_str(), "r");
     if (!fp) {
-        Log.e(TAG, "Failed to run %s: %s", cmd.c_str(), strerror(errno));
+        LOGERR(TAG, "Failed to run %s: %s", cmd.c_str(), strerror(errno));
         bResult = false;
         goto done;
     }
@@ -1429,7 +1427,7 @@ bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int
      
     if (fgets(line, sizeof(line), fp) != NULL) {
 		//blkid identified as /dev/block/vold/179:14: LABEL="ROCKCHIP" UUID="0FE6-0808" TYPE="vfat"
-        Log.d(TAG, "blkid identified as %s", line);
+        LOGDBG(TAG, "blkid identified as %s", line);
 		
         #if 0
         char* start = strstr(line, "UUID=");
@@ -1451,7 +1449,7 @@ bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int
         if (pType) {
 
             if (ptType) {
-                Log.d(TAG, "ptType - pType = %d", ptType - pType);
+                LOGDBG(TAG, "ptType - pType = %d", ptType - pType);
 
                 if (abs(ptType - pType) == 2) {
                     bResult = false;
@@ -1467,11 +1465,11 @@ bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int
                 }
             }
         }
-        Log.d(TAG, "Parse File system type: %s", volFsType);
+        LOGDBG(TAG, "Parse File system type: %s", volFsType);
         #endif
 
     } else {
-        Log.w(TAG, "blkid failed to identify %s", devicePath);
+        LOGWARN(TAG, "blkid failed to identify %s", devicePath);
         bResult = false;
     }
 
@@ -1497,16 +1495,16 @@ bool VolumeManager::checkMountPath(const char* mountPath)
 {
     char cmd[128] = {0};
 
-    Log.d(TAG, "[%s: %d] >>>>> checkMountPath [%s]", __FILE__, __LINE__, mountPath);    
+    LOGDBG(TAG, " >>>>> checkMountPath [%s]", mountPath);    
 
     if (access(mountPath, F_OK) != 0) {     /* 挂载点不存在,创建挂载点 */
         mkdir(mountPath, 0777);
     } else {
         if (isMountpointMounted(mountPath)) {
-            Log.d(TAG, "[%s: %d] Mount point -> %s has mounted!", __FILE__, __LINE__);
+            LOGDBG(TAG, " Mount point -> %s has mounted!");
             return false;
         } else {
-            Log.d(TAG, "[%s: %d] Mount point[%s] not Mounted, clear mount point first!", __FILE__, __LINE__, mountPath);
+            LOGDBG(TAG, " Mount point[%s] not Mounted, clear mount point first!", mountPath);
             sprintf(cmd, "rm -rf %s/*", mountPath);
             system(cmd);
         }
@@ -1530,17 +1528,17 @@ bool VolumeManager::isValidFs(const char* devName, Volume* pVol)
      */
 
     sprintf(cDevNodePath, "/dev/%s", devName);
-    Log.d(TAG, "[%s: %d] dev node path: %s", __FILE__, __LINE__, cDevNodePath);
+    LOGDBG(TAG, " dev node path: %s", cDevNodePath);
 
     if (access(cDevNodePath, F_OK) == 0) {
-        Log.d(TAG, "dev node path exist %s", cDevNodePath);
+        LOGDBG(TAG, "dev node path exist %s", cDevNodePath);
 
         if (extractMetadata(cDevNodePath, pVol->cVolFsType, sizeof(pVol->cVolFsType))) {
             strcpy(pVol->cDevNode, cDevNodePath);
             bResult = true;
         }
     } else {
-        Log.e(TAG, "dev node[%s] not exist, what's wrong", cDevNodePath);
+        LOGERR(TAG, "dev node[%s] not exist, what's wrong", cDevNodePath);
     }
     return bResult;
 }
@@ -1572,7 +1570,7 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
     // AutoMutex _l(gHandleBlockEvtLock);
 
 
-    Log.d(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", evt->getAction(), evt->getBusAddr());
+    LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", evt->getAction(), evt->getBusAddr());
     
     Volume* tmpVol = NULL;
     int iResult = 0;
@@ -1591,18 +1589,18 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
 
                 if (isValidFs(evt->getDevNodeName(), tmpVol)) {
                     if (tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
-                        Log.e(TAG, "[%s: %d] Volume Maybe unmount failed, last time", __FILE__, __LINE__);
+                        LOGERR(TAG, " Volume Maybe unmount failed, last time");
                         unmountVolume(tmpVol, evt, true);
                         tmpVol->iVolState = VOLUME_STATE_INIT;
                     }
 
-                    Log.d(TAG, "[%s: %d] dev[%s] mount point[%s]", __FILE__, __LINE__, tmpVol->cDevNode, tmpVol->pMountPath);
+                    LOGDBG(TAG, " dev[%s] mount point[%s]", tmpVol->cDevNode, tmpVol->pMountPath);
 
                     if (mountVolume(tmpVol)) {
-                        Log.e(TAG, "mount device[%s -> %s] failed, reason [%d]", tmpVol->cDevNode, tmpVol->pMountPath, errno);
+                        LOGERR(TAG, "mount device[%s -> %s] failed, reason [%d]", tmpVol->cDevNode, tmpVol->pMountPath, errno);
                         iResult = -1;
                     } else {
-                        Log.d(TAG, "mount device[%s] on path [%s] success", tmpVol->cDevNode, tmpVol->pMountPath);
+                        LOGDBG(TAG, "mount device[%s] on path [%s] success", tmpVol->cDevNode, tmpVol->pMountPath);
 
                         tmpVol->iVolState = VOLUME_STATE_MOUNTED;
 
@@ -1625,7 +1623,7 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
 
                             setSavepathChanged(VOLUME_ACTION_ADD, tmpVol);
 
-                            Log.d(TAG, "-------- Current save path: %s", getLocalVolMountPath());
+                            LOGDBG(TAG, "-------- Current save path: %s", getLocalVolMountPath());
 
                         #ifdef USE_TRAN_SEND_MSG
                             sendCurrentSaveListNotify();
@@ -1635,7 +1633,7 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
                     }
                 }
             } else {
-                Log.d(TAG, "[%s: %d] Not Support Device Addr[%s] or Slot Not Enable[%d]", __FILE__, __LINE__, evt->getBusAddr(), tmpVol->iVolSlotSwitch);
+                LOGDBG(TAG, " Not Support Device Addr[%s] or Slot Not Enable[%d]", evt->getBusAddr(), tmpVol->iVolSlotSwitch);
             }
             break;
         }
@@ -1666,11 +1664,11 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
                     #endif
                     }
                 } else {
-                    Log.d(TAG, "[%s: %d] Unmount Failed!!", __FILE__, __LINE__);
+                    LOGDBG(TAG, " Unmount Failed!!");
                     iResult = -1;
                 }
             } else {
-                Log.e(TAG, "[%s: %d] unmount volume Failed, Reason = %d", __FILE__, __LINE__, iResult);
+                LOGERR(TAG, " unmount volume Failed, Reason = %d", iResult);
             }
             break;
         }
@@ -1741,7 +1739,7 @@ bool VolumeManager::volumeIsTfCard(Volume* pVol)
 bool VolumeManager::changeMountMethod(const char* mode)
 {
     /* 根据模式来修改所有已经挂上的卡 */
-    Log.d(TAG, "[%s: %d] changeMountMethod ---> %s", __FILE__, __LINE__, mode);
+    LOGDBG(TAG, "changeMountMethod ---> %s", mode);
     Volume* tmpVol = NULL;
 
     int status;
@@ -1762,9 +1760,9 @@ bool VolumeManager::changeMountMethod(const char* mode)
             args[3] = tmpVol->cDevNode;
             args[4] = tmpVol->pMountPath;
             forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
-            Log.d(TAG, "[%s: %d] Remount Device mount way", __FILE__, __LINE__);    
+            LOGDBG(TAG, "Remount Device mount way");    
         } else {
-            Log.d(TAG, "[%s: %d] Volume [%s] not mounted???", __FILE__, __LINE__, tmpVol->pMountPath);
+            LOGDBG(TAG, "Volume [%s] not mounted???", tmpVol->pMountPath);
         }
     }
 }
@@ -1833,7 +1831,7 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
                 mCurrentUsedLocalVol = pVol;
                 mBsavePathChanged = true;       /* 表示存储设备路径发生了改变 */
                 
-                Log.d(TAG, "[%s: %d] Fist Local Volume Insert, Current Save path [%s]", __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
+                LOGDBG(TAG, "Fist Local Volume Insert, Current Save path [%s]", mCurrentUsedLocalVol->pMountPath);
 
             } else {    /* 本来已有本地存储设备，根据存储设备的优先级来判断否需要改变存储路径 */
 
@@ -1841,19 +1839,19 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
                 for (u32 i = 0; i < mLocalVols.size(); i++) {
                     tmpVol = mLocalVols.at(i);
                     
-                    Log.d(TAG, "[%s: %d] Volume mount point[%s], slot sate[%d], mounted state[%d]", __FILE__, __LINE__,
+                    LOGDBG(TAG, "Volume mount point[%s], slot sate[%d], mounted state[%d]",
                                                                     tmpVol->pMountPath, tmpVol->iVolState, tmpVol->iVolState);
                     
                     if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE) && (tmpVol->iVolState == VOLUME_STATE_MOUNTED)) {
                         
-                        Log.d(TAG, "[%s: %d] New Volume prio %d, Current Volue prio %d", __FILE__, __LINE__,
+                        LOGDBG(TAG, "New Volume prio %d, Current Volue prio %d",
                                             tmpVol->iPrio, mCurrentUsedLocalVol->iPrio);
                         
                         /* 挑选优先级更高的设备作为当前的存储设备 */
                         if (tmpVol->iPrio > mCurrentUsedLocalVol->iPrio) {
                 
-                            Log.d(TAG, "[%s: %d] New high prio Volume insert, Changed current save path [%s -> %s]", 
-                                                        __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath, tmpVol->pMountPath);
+                            LOGDBG(TAG, "New high prio Volume insert, Changed current save path [%s -> %s]", 
+                                                        mCurrentUsedLocalVol->pMountPath, tmpVol->pMountPath);
                             mCurrentUsedLocalVol = tmpVol;
                             mBsavePathChanged = true;
                         }
@@ -1862,14 +1860,14 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
             }
 
             if (mCurrentUsedLocalVol) {
-                Log.d(TAG, "[%s: %d] After Add action, Current Local save path: [%s]", __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
+                LOGDBG(TAG, "After Add action, Current Local save path: [%s]", mCurrentUsedLocalVol->pMountPath);
             }            
             break;
         }
 
         case VOLUME_ACTION_REMOVE: {
             
-            Log.d(TAG, "-------------------------> Remove Action");
+            LOGDBG(TAG, "-------------------------> Remove Action");
             if (pVol == mCurrentUsedLocalVol) { /* 移除的是当前存储路径,需要从剩余的存储设备列表中选择优先级最高的存储设备 */
                 Volume* oldVol = NULL;
                 if (mCurrentUsedLocalVol) {
@@ -1885,27 +1883,27 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
                             if (tmpVol->iPrio >= mCurrentUsedLocalVol->iPrio) {
                                 mCurrentUsedLocalVol = tmpVol;
                                 mBsavePathChanged = true;
-                                Log.d(TAG, "[%s: %d] Changed current save path [%s]",  __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
+                                LOGDBG(TAG, "Changed current save path [%s]", mCurrentUsedLocalVol->pMountPath);
 
                             }
                         }
                     } 
 
                     if (mCurrentUsedLocalVol == oldVol) {   /* 只有一个本地卷被挂载 */
-                        Log.d(TAG, "[%s: %d] System Have one Volume,but removed, now is null", __FILE__, __LINE__);
+                        LOGDBG(TAG, "System Have one Volume,but removed, now is null");
                         mCurrentUsedLocalVol = NULL;
                         mBsavePathChanged = true;
                     }
 
                     if (mCurrentUsedLocalVol) {
-                        Log.d(TAG, "[%s: %d] >>>>> After remove action, Current Local save path: %s", __FILE__, __LINE__, mCurrentUsedLocalVol->pMountPath);
+                        LOGDBG(TAG, ">>>>> After remove action, Current Local save path: %s", mCurrentUsedLocalVol->pMountPath);
                     }
 
                 } else {
-                    Log.e(TAG, "[%s: %d] Remove Volume Not exist ?????", __FILE__, __LINE__);
+                    LOGERR(TAG, "Remove Volume Not exist ?????");
                 }
             } else {    /* 移除的不是当前存储路径，不需要任何操作 */
-                Log.d(TAG, "[%s: %d] Remove Volume[%s] not Current save path, Do nothing", __FILE__, __LINE__, pVol->pMountPath);
+                LOGDBG(TAG, "Remove Volume[%s] not Current save path, Do nothing", pVol->pMountPath);
             }
             break;
         }
@@ -1985,7 +1983,7 @@ void VolumeManager::sendCurrentSaveListNotify()
 	writer->write(curDevListRoot, &osOutput);
     devListStr = osOutput.str();    
 
-    Log.d(TAG, "[%s: %d] Current Save List: %s", __FILE__, __LINE__, devListStr.c_str());
+    LOGDBG(TAG, "Current Save List: %s", devListStr.c_str());
     
     #if 0
     sp<ARMessage> msg = mNotify->dup();
@@ -2017,18 +2015,18 @@ void VolumeManager::listVolumes()
     for (u32 i = 0; i < mModuleVols.size(); i++) {
         tmpVol = mModuleVols.at(i);
         if (tmpVol) {
-            Log.d(TAG, "Volume type: %s", (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "VOLUME_SUBSYS_SD": "VOLUME_SUBSYS_USB" );
-            Log.d(TAG, "Volume bus: %s", tmpVol->pBusAddr);
-            Log.d(TAG, "Volume mountpointer: %s", tmpVol->pMountPath);
-            Log.d(TAG, "Volume devnode: %s", tmpVol->cDevNode);
+            LOGDBG(TAG, "Volume type: %s", (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "VOLUME_SUBSYS_SD": "VOLUME_SUBSYS_USB" );
+            LOGDBG(TAG, "Volume bus: %s", tmpVol->pBusAddr);
+            LOGDBG(TAG, "Volume mountpointer: %s", tmpVol->pMountPath);
+            LOGDBG(TAG, "Volume devnode: %s", tmpVol->cDevNode);
 
-            Log.d(TAG, "Volume Type %d", tmpVol->iType);
-            Log.d(TAG, "Volume index: %d", tmpVol->iIndex);
-            Log.d(TAG, "Volume state: %d", tmpVol->iVolState);
+            LOGDBG(TAG, "Volume Type %d", tmpVol->iType);
+            LOGDBG(TAG, "Volume index: %d", tmpVol->iIndex);
+            LOGDBG(TAG, "Volume state: %d", tmpVol->iVolState);
 
-            Log.d(TAG, "Volume total %d MB", tmpVol->uTotal);
-            Log.d(TAG, "Volume avail: %d MB", tmpVol->uAvail);
-            Log.d(TAG, "Volume speed: %d MB", tmpVol->iSpeedTest);
+            LOGDBG(TAG, "Volume total %d MB", tmpVol->uTotal);
+            LOGDBG(TAG, "Volume avail: %d MB", tmpVol->uAvail);
+            LOGDBG(TAG, "Volume speed: %d MB", tmpVol->iSpeedTest);
         }
     }
 }
@@ -2178,7 +2176,7 @@ u64 VolumeManager::calcRemoteRemainSpace(bool bFactoryMode)
         mReoteRecLiveLeftSize = iTmpMinSize;
 
     }
-    Log.d(TAG, "[%s: %d] remote left space [%d]M", __FILE__, __LINE__, mReoteRecLiveLeftSize);
+    LOGDBG(TAG, "remote left space [%d]M", mReoteRecLiveLeftSize);
     return mReoteRecLiveLeftSize;
 }
 
@@ -2196,10 +2194,10 @@ u64 VolumeManager::calcRemoteRemainSpace(bool bFactoryMode)
 void VolumeManager::updateLocalVolSpeedTestResult(int iResult)
 {
     if (mCurrentUsedLocalVol) { /* 在根目录的底层目录创建'.pro_suc' */
-        Log.d(TAG, "[%s: %d] >>>> Create Speet Test Success File [.pro_suc]", __FILE__, __LINE__);
+        LOGDBG(TAG, ">>>> Create Speet Test Success File [.pro_suc]");
         mCurrentUsedLocalVol->iSpeedTest = iResult;
         if (iResult) {
-            Log.d(TAG, "[%s: %d] Speed test suc, create pro_suc Now...", __FILE__, __LINE__);
+            LOGDBG(TAG, "Speed test suc, create pro_suc Now...");
             string cmd = "touch ";
             cmd += mCurrentUsedLocalVol->pMountPath;
             cmd += "/.pro_suc";
@@ -2274,7 +2272,7 @@ int VolumeManager::handleRemoteVolHotplug(vector<sp<Volume>>& volChangeList)
     int iAction = VOLUME_ACTION_UNSUPPORT;
 
     if (volChangeList.size() > 1) {
-        Log.e(TAG, "[%s: %d] Hotplug Remote volume num than 1", __FILE__, __LINE__);
+        LOGERR(TAG, "Hotplug Remote volume num than 1");
     } else {
         sp<Volume> tmpChangedVolume = volChangeList.at(0);
 
@@ -2288,11 +2286,11 @@ int VolumeManager::handleRemoteVolHotplug(vector<sp<Volume>>& volChangeList)
                         tmpSourceVolume->uAvail     = tmpChangedVolume->uAvail;
                         tmpSourceVolume->iSpeedTest = tmpChangedVolume->iSpeedTest;
                         if (tmpSourceVolume->uTotal > 0) {
-                            Log.d(TAG, "[%s: %d] TF Card Add action", __FILE__, __LINE__);
+                            LOGDBG(TAG, "TF Card Add action");
                             iAction = VOLUME_ACTION_ADD;
                         } else {
                             iAction = VOLUME_ACTION_REMOVE;
-                            Log.d(TAG, "[%s: %d] TF Card Remove action", __FILE__, __LINE__);
+                            LOGDBG(TAG, "TF Card Remove action");
                         }                        
                         break;
                     }
@@ -2300,7 +2298,7 @@ int VolumeManager::handleRemoteVolHotplug(vector<sp<Volume>>& volChangeList)
             }  
         }
     }
-    Log.d(TAG, "[%s: %d] handleRemoteVolHotplug return action: %d", __FILE__, __LINE__, iAction);
+    LOGDBG(TAG, " handleRemoteVolHotplug return action: %d", iAction);
     return iAction;
 }
 
@@ -2312,13 +2310,13 @@ void VolumeManager::repairVolume(Volume* pVol)
 
     sprintf(cmd, "dd if=%s of=./repair.data bs=512 count=24", pVol->cDevNode);
 
-    Log.d(TAG, "[%s: %d] export repair data: %s", __FILE__, __LINE__, cmd);
+    LOGDBG(TAG, " export repair data: %s", cmd);
     system(cmd);
 
     system("sync");
 
     sprintf(repairCmd, "dd of=%s if=./repair.data bs=512 count=12 skip=12", pVol->cDevNode);
-    Log.d(TAG, "[%s: %d] repair cmd: %s", __FILE__, __LINE__, repairCmd);
+    LOGDBG(TAG, " repair cmd: %s", repairCmd);
     system(repairCmd);
     
     system("sync");
@@ -2339,7 +2337,7 @@ int VolumeManager::mountVolume(Volume* pVol)
     iRet = checkFs(pVol);
     if (iRet) {
 
-        Log.d(TAG, "[%s: %d] Check over, Need repair Volume now", __FILE__, __LINE__);
+        LOGDBG(TAG, " Check over, Need repair Volume now");
         /* 修复一下卡 */
         repairVolume(pVol);
     }
@@ -2348,7 +2346,7 @@ int VolumeManager::mountVolume(Volume* pVol)
     /* 挂载点为非挂载状态，但是挂载点有其他文件，会先删除 */
     checkMountPath(pVol->pMountPath);
 
-    Log.d(TAG, "[%s: %d] >>>>> Filesystem type: %s", __FILE__, __LINE__, pVol->cVolFsType);
+    LOGDBG(TAG, " >>>>> Filesystem type: %s", pVol->cVolFsType);
 
     #ifdef ENABLE_USE_SYSTEM_VOL_MOUNTUMOUNT
 
@@ -2362,7 +2360,7 @@ int VolumeManager::mountVolume(Volume* pVol)
         if (!iRet) {
             break;
         } else {
-            Log.e(TAG, "[%s: %d] Mount [%s] failed, errno[%d]", __FILE__, __LINE__, pVol->pMountPath, errno);
+            LOGERR(TAG, " Mount [%s] failed, errno[%d]", pVol->pMountPath, errno);
             iRet = -1;
         }
         msg_util::sleep_ms(200);
@@ -2403,22 +2401,22 @@ int VolumeManager::mountVolume(Volume* pVol)
     #endif
 
     if (iRet != 0) {
-        Log.e(TAG, "mount failed due to logwrap error");
+        LOGERR(TAG, "mount failed due to logwrap error");
         return -1;
     }
 
     if (!WIFEXITED(status)) {
-        Log.e(TAG, "mount sub process did not exit properly");
+        LOGERR(TAG, "mount sub process did not exit properly");
         return -1;
     }
 
     status = WEXITSTATUS(status);
     if (status == 0) {
 
-        Log.d(TAG, "------------> Mount Volume Step 1 is OK");
+        LOGDBG(TAG, "------------> Mount Volume Step 1 is OK");
 
         char lost_path[256] = {0};
-        Log.d(TAG, "[%s: %d] Mkdir in mount point", __FILE__, __LINE__);
+        LOGDBG(TAG, " Mkdir in mount point");
 
         sprintf(lost_path, "%s/.LOST.DIR", pVol->pMountPath);
         if (access(lost_path, F_OK) == 0) {
@@ -2426,7 +2424,7 @@ int VolumeManager::mountVolume(Volume* pVol)
         }
 
         if (mkdir(lost_path, 0755)) {
-            Log.e(TAG, "Unable to create LOST.DIR (%s)", strerror(errno));
+            LOGERR(TAG, "Unable to create LOST.DIR (%s)", strerror(errno));
         }
 
         /* 对于TF卡，挂载成功后，根据标志再次挂载成只读的 */
@@ -2438,11 +2436,11 @@ int VolumeManager::mountVolume(Volume* pVol)
             args[3] = pVol->cDevNode;
             args[4] = pVol->pMountPath;
             forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
-            Log.d(TAG, "[%s: %d] Step 2 Mount device to Read Only device", __FILE__, __LINE__);
+            LOGDBG(TAG, " Step 2 Mount device to Read Only device");
         }
         return 0;
     } else {
-        Log.e(TAG, ">>> Mount Volume failed (unknown exit code %d)", status);
+        LOGERR(TAG, ">>> Mount Volume failed (unknown exit code %d)", status);
         return -1;
     }
     #endif
@@ -2489,7 +2487,7 @@ u32 VolumeManager::calcTakeRecLefSec(Json::Value& jsonCmd, bool bFactoryMode)
 
             uRemoteRecSec = (u32) (calcRemoteRemainSpace(false) / iOriginBitRate);
 
-            Log.d(TAG, "[%s: %d] ---------------- Origin bitrate(%f MB/s), Video Left sec %lu", __FILE__, __LINE__, iOriginBitRate, uRemoteRecSec);
+            LOGDBG(TAG, " ---------------- Origin bitrate(%f MB/s), Video Left sec %lu", iOriginBitRate, uRemoteRecSec);
         }
 
         /* 计算出大卡能录制的秒数 */
@@ -2504,7 +2502,7 @@ u32 VolumeManager::calcTakeRecLefSec(Json::Value& jsonCmd, bool bFactoryMode)
 
         uLocalRecSec = (u32) (getLocalVolLeftSize(false) / iNativeTotoalBitRate);
 
-        Log.d(TAG, "[%s: %d] --------------- Logcal bitrate = %f MB/s, Left sec: %lu", __FILE__, __LINE__, iNativeTotoalBitRate, uLocalRecSec);
+        LOGDBG(TAG, " --------------- Logcal bitrate = %f MB/s, Left sec: %lu", iNativeTotoalBitRate, uLocalRecSec);
         return (uRemoteRecSec > uLocalRecSec) ? uLocalRecSec : uRemoteRecSec;
     }
 }
@@ -2533,7 +2531,7 @@ u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
 
         uRemoteRecSec = (u32) (calcRemoteRemainSpace(false) / iOriginBitRate);
 
-        Log.d(TAG, "[%s: %d] >>>>>>>>>>>>>> Remote Origin bitrate[%f]MB/s Left sec %lu", __FILE__, __LINE__, iOriginBitRate, uRemoteRecSec);
+        LOGDBG(TAG, " >>>>>>>>>>>>>> Remote Origin bitrate[%f]MB/s Left sec %lu", iOriginBitRate, uRemoteRecSec);
         
         return uRemoteRecSec;
     }
@@ -2546,7 +2544,7 @@ u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
         iStitchBitRate = iTmpStichBitRate / (1024 * 8 * 1.0f);
         uLocalRecSec = (u32)(getLocalVolLeftSize(false) / iStitchBitRate);
 
-        Log.d(TAG, "[%s: %d] Local Stitch bitrate[%f]MB/s Left sec %lu", __FILE__, __LINE__, iStitchBitRate, uLocalRecSec);
+        LOGDBG(TAG, " Local Stitch bitrate[%f]MB/s Left sec %lu", iStitchBitRate, uLocalRecSec);
         return uLocalRecSec;
     }
 
@@ -2565,11 +2563,9 @@ u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
 
 
 
-        Log.d(TAG, "[%s: %d] Local bitrate [%f]Mb/s, Remote bitrate[%f]Mb/s", 
-                        __FILE__, __LINE__, iStitchBitRate, iOriginBitRate);
+        LOGDBG(TAG, " Local bitrate [%f]Mb/s, Remote bitrate[%f]Mb/s", iStitchBitRate, iOriginBitRate);
 
-        Log.d(TAG, "[%s: %d] --------------- Local Live Left sec %lu, Remote Live Left sec %lu", 
-                        __FILE__, __LINE__, uLocalRecSec, uRemoteRecSec);
+        LOGDBG(TAG, " --------------- Local Live Left sec %lu, Remote Live Left sec %lu", uLocalRecSec, uRemoteRecSec);
 
         return (uRemoteRecSec > uLocalRecSec) ? uLocalRecSec : uRemoteRecSec;
     }
@@ -2598,7 +2594,7 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
 
         if (jsonCmd["parameters"].isMember("bracket")) {            /* 包围曝光：全部存储在本地 - AEB3 */
 
-            Log.d(TAG, "[%s: %d] ----- calcTakepicLefNum for bracket mode", __FILE__, __LINE__);
+            LOGDBG(TAG, " ----- calcTakepicLefNum for bracket mode");
 
             if (jsonCmd["parameters"]["origin"].isMember("mime")) {
                 if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "jpeg")) {
@@ -2610,11 +2606,11 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
                 }
                 uTakepicNum = uLocalVolSize / iUnitSize;
             } else {
-                Log.e(TAG, "[%s: %d] >>> origin not mime!", __FILE__, __LINE__);
+                LOGERR(TAG, " >>> origin not mime!");
             }
         } else if (jsonCmd["parameters"].isMember("burst")) {       /* Burst：全部存储在本地 */
 
-            Log.d(TAG, "[%s: %d] ----- calcTakepicLefNum for burst mode", __FILE__, __LINE__);
+            LOGDBG(TAG, " ----- calcTakepicLefNum for burst mode");
 
             if (jsonCmd["parameters"]["origin"].isMember("mime")) {
                 if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "jpeg")) {
@@ -2625,20 +2621,20 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
                     iUnitSize = 1200;    /* 8K - raw */
                 }
                 uTakepicNum = uLocalVolSize / iUnitSize;
-                Log.d(TAG, "[%s: %d] burst mode can take pic num = %d", __FILE__, __LINE__, uTakepicNum);
+                LOGDBG(TAG, " burst mode can take pic num = %d", uTakepicNum);
 
             } else {
-                Log.e(TAG, "[%s: %d] >>> origin not mime!", __FILE__, __LINE__);
+                LOGERR(TAG, " >>> origin not mime!");
             }
 
         } else if (jsonCmd["parameters"].isMember("timelapse")) {   /* 表示拍的是Timelapse */
 
-            Log.d(TAG, "[%s: %d] ----->>>>> calcTakepicLefNum for timelapse mode", __FILE__, __LINE__);
+            LOGDBG(TAG, " ----->>>>> calcTakepicLefNum for timelapse mode");
 
             if (jsonCmd["parameters"]["origin"].isMember("mime")) {
                 if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "jpeg")) {
                     iUnitSize = 13;     /* timelapse - jpeg 存在大卡 */
-                    Log.d(TAG, "[%s: %d] Just Capture jpeg, each group size 13M", __FILE__, __LINE__);
+                    LOGDBG(TAG, " Just Capture jpeg, each group size 13M");
                 } else if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "raw+jpeg")) {
                     iUnitSize = 13;    /* timelapse - raw + jpeg */     
                     iTfCardUnitSize = 22;
@@ -2651,17 +2647,17 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
                     uTfCanTakeNum = uRemoteVolSize / iTfCardUnitSize;
                     uTakepicTmpNum = uLocalVolSize / iUnitSize;
                     uTakepicNum = (uTfCanTakeNum > uTakepicTmpNum) ? uTakepicTmpNum: uTfCanTakeNum;
-                    Log.d(TAG, "[%s: %d] -------- Timeplapse[raw+jpeg] Remote can store num[%d], Local can store num[%d]", __FILE__, __LINE__, uTfCanTakeNum, uTakepicTmpNum);
+                    LOGDBG(TAG, " -------- Timeplapse[raw+jpeg] Remote can store num[%d], Local can store num[%d]", uTfCanTakeNum, uTakepicTmpNum);
                 } else if ((iTfCardUnitSize > 0) && (iUnitSize < 0)) {  /* Raw */
                     uTakepicNum = uRemoteVolSize / iTfCardUnitSize;
-                    Log.d(TAG, "[%s: %d] -------- Timeplapse[raw only] Remote can store num[%d]", __FILE__, __LINE__, uTakepicNum);                    
+                    LOGDBG(TAG, " -------- Timeplapse[raw only] Remote can store num[%d]", uTakepicNum);                    
                 } else {                                                /* jpeg */
                     uTakepicNum = uLocalVolSize / iUnitSize;
-                    Log.d(TAG, "[%s: %d] -------- Timeplapse[jpeg] Local can store num[%d]", __FILE__, __LINE__, uTakepicNum);                    
+                    LOGDBG(TAG, " -------- Timeplapse[jpeg] Local can store num[%d]", uTakepicNum);                    
                 }
 
             } else {
-                Log.e(TAG, "[%s: %d] >>> origin not mime!", __FILE__, __LINE__);
+                LOGERR(TAG, " >>> origin not mime!");
             }
 
         } else {    /* 普通模式：全部存储在本地 */
@@ -2670,12 +2666,12 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
              * stitch: on/off
              * saveOrigin: on/off
              */
-            Log.d(TAG, "[%s: %d] ----- calcTakepicLefNum for normal mode", __FILE__, __LINE__);
+            LOGDBG(TAG, " ----- calcTakepicLefNum for normal mode");
 
             iUnitSize = 20; 
             if (jsonCmd["parameters"].isMember("stiching")) {   /* 有"stitch" */
 
-                Log.d(TAG, "[%s: %d] calcTakepicLefNum Normal and Stitch Mode", __FILE__, __LINE__);
+                LOGDBG(TAG, " calcTakepicLefNum Normal and Stitch Mode");
 
                 if (jsonCmd["parameters"]["stiching"].isMember("mode")) {
                     if (!strcmp(jsonCmd["parameters"]["stiching"]["mode"].asCString(), "pano")) {   /* pano */
@@ -2689,7 +2685,7 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
                             }
                             uTakepicNum = uLocalVolSize / iUnitSize;                            
                         } else {
-                            Log.e(TAG, "[%s: %d] >>> origin not mime!", __FILE__, __LINE__);
+                            LOGERR(TAG, " >>> origin not mime!");
                         }
                     } else {    /* 3d */
 
@@ -2703,15 +2699,15 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
                             }
                             uTakepicNum = uLocalVolSize / iUnitSize;                            
                         } else {
-                            Log.e(TAG, "[%s: %d] >>> origin not mime!", __FILE__, __LINE__);
+                            LOGERR(TAG, " >>> origin not mime!");
                         }
                     }
                 } else {
-                    Log.e(TAG, "[%s: %d] Have stich, but not stitch mode", __FILE__, __LINE__);
+                    LOGERR(TAG, " Have stich, but not stitch mode");
                 }
             } else {    /* 无"stitch" */
 
-                Log.d(TAG, "[%s: %d] ------- calcTakepicLefNum Normal In non-stitch Mode!!", __FILE__, __LINE__);
+                LOGDBG(TAG, " ------- calcTakepicLefNum Normal In non-stitch Mode!!");
             
                 /* 分为"raw", "raw+jpeg", "jpeg" */
                 if (jsonCmd["parameters"]["origin"].isMember("mime")) {
@@ -2724,12 +2720,12 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
                     }
                     uTakepicNum = uLocalVolSize / iUnitSize;                    
                 } else {
-                    Log.e(TAG, "[%s: %d] origin not mime!", __FILE__, __LINE__);
+                    LOGERR(TAG, " origin not mime!");
                 }
             }
         }
     } else {    
-        Log.e(TAG, "[%s: %d] Invalid Takepic Json Cmd recved!", __FILE__, __LINE__);
+        LOGERR(TAG, " Invalid Takepic Json Cmd recved!");
     }
 
     return uTakepicNum;
@@ -2743,7 +2739,7 @@ int VolumeManager::doUnmount(const char *path, bool force)
     while (retries--) {
         
         if (!umount(path) || errno == EINVAL || errno == ENOENT) {
-            Log.i(TAG, "%s sucessfully unmounted", path);
+            LOGINFO(TAG, "%s sucessfully unmounted", path);
             return 0;
         }
 
@@ -2756,7 +2752,7 @@ int VolumeManager::doUnmount(const char *path, bool force)
             }
         }
 
-        Log.e(TAG, "Failed to unmount %s (%s, retries %d, action %d)", path, strerror(errno), retries, action);
+        LOGERR(TAG, "Failed to unmount %s (%s, retries %d, action %d)", path, strerror(errno), retries, action);
 
         Process::killProcessesWithOpenFiles(path, action);
 
@@ -2764,7 +2760,7 @@ int VolumeManager::doUnmount(const char *path, bool force)
     }
 
     errno = EBUSY;
-    Log.e(TAG, "Giving up on unmount %s (%s)", path, strerror(errno));
+    LOGERR(TAG, "Giving up on unmount %s (%s)", path, strerror(errno));
     return -1;
 }
 
@@ -2779,7 +2775,7 @@ int VolumeManager::unmountVolume(Volume* pVol, NetlinkEvent* pEvt, bool force)
     if (pEvt->getEventSrc() == NETLINK_EVENT_SRC_KERNEL) {
         string devnode = "/dev/";
         devnode += pEvt->getDevNodeName();
-        Log.d(TAG, "[%s: %d] umount volume devname[%s], event devname[%s]", __FILE__, __LINE__, pVol->cDevNode, devnode.c_str());
+        LOGDBG(TAG, " umount volume devname[%s], event devname[%s]", pVol->cDevNode, devnode.c_str());
 
         if (strcmp(pVol->cDevNode, devnode.c_str())) {   /* 设备名不一致,直接返回 */
             return -1;
@@ -2787,7 +2783,7 @@ int VolumeManager::unmountVolume(Volume* pVol, NetlinkEvent* pEvt, bool force)
     }
 
     if (pVol->iVolState != VOLUME_STATE_MOUNTED) {
-        Log.e(TAG, "Volume [%s] unmount request when not mounted, state[0x%x]", pVol->pMountPath, pVol->iVolState);
+        LOGERR(TAG, "Volume [%s] unmount request when not mounted, state[0x%x]", pVol->pMountPath, pVol->iVolState);
         errno = EINVAL;
         return -2;
     }
@@ -2796,14 +2792,14 @@ int VolumeManager::unmountVolume(Volume* pVol, NetlinkEvent* pEvt, bool force)
     usleep(1000 * 1000);    // Give the framework some time to react
 
     if (doUnmount(pVol->pMountPath, force) != 0) {
-        Log.e(TAG, "Failed to unmount %s (%s)", pVol->pMountPath, strerror(errno));
+        LOGERR(TAG, "Failed to unmount %s (%s)", pVol->pMountPath, strerror(errno));
         goto out_mounted;
     }
 
-    Log.i(TAG, "[%s: %d] %s unmounted successfully", __FILE__, __LINE__, pVol->pMountPath);
+    LOGINFO(TAG, " %s unmounted successfully", pVol->pMountPath);
 
     if (rmdir(pVol->pMountPath)) {
-        Log.e(TAG, "[%s: %d] remove dir [%s] failed...", __FILE__, __LINE__, pVol->pMountPath);
+        LOGERR(TAG, " remove dir [%s] failed...", pVol->pMountPath);
     }
 
     pVol->iVolState = VOLUME_STATE_IDLE;
@@ -2811,7 +2807,7 @@ int VolumeManager::unmountVolume(Volume* pVol, NetlinkEvent* pEvt, bool force)
     return 0;
 
 out_mounted:
-    Log.e(TAG, "[%s: %d] Unmount Volume[%s] Failed", __FILE__, __LINE__, pVol->pMountPath);
+    LOGERR(TAG, " Unmount Volume[%s] Failed", pVol->pMountPath);
     pVol->iVolState = VOLUME_STATE_MOUNTED;     /* 卸载失败 */
     return -1;
 }
@@ -2822,7 +2818,7 @@ int VolumeManager::checkFs(Volume* pVol)
     int rc = 0;
     int status;
         
-    Log.d(TAG, "[%s: %d] >>> checkFs: Type[%s], Mount Point[%s]", __FILE__, __LINE__, pVol->cVolFsType, pVol->pMountPath);
+    LOGDBG(TAG, " >>> checkFs: Type[%s], Mount Point[%s]", pVol->cVolFsType, pVol->pMountPath);
 
     if (!strcmp(pVol->cVolFsType, "exfat")) {
         const char *args[3];
@@ -2830,7 +2826,7 @@ int VolumeManager::checkFs(Volume* pVol)
         args[1] = "-p";
         args[2] = pVol->cDevNode;
 
-        Log.d(TAG, "[%s: %d] Check Fs cmd: %s %s %s", __FILE__, __LINE__, args[0], args[1], args[2]);
+        LOGDBG(TAG, " Check Fs cmd: %s %s %s", args[0], args[1], args[2]);
         rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
 
     } else if (!strcmp(pVol->cVolFsType, "ext4") || !strcmp(pVol->cVolFsType, "ext3") || !strcmp(pVol->cVolFsType, "ext2")) {
@@ -2840,19 +2836,19 @@ int VolumeManager::checkFs(Volume* pVol)
         args[1] = "-p";
         args[2] = "-f";
         args[3] = pVol->cDevNode;
-        Log.d(TAG, "[%s: %d] Check Fs cmd: %s %s %s", __FILE__, __LINE__, args[0], args[1], args[2], args[3]);        
+        LOGDBG(TAG, " Check Fs cmd: %s %s %s", args[0], args[1], args[2], args[3]);        
         rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
     }
 
 
     if (rc != 0) {
-        Log.e(TAG, "Filesystem check failed due to logwrap error");
+        LOGERR(TAG, "Filesystem check failed due to logwrap error");
         errno = EIO;
         return -1;
     }
 
     if (!WIFEXITED(status)) {
-        Log.e(TAG, "[%s: %d] Filesystem check did not exit properly", __FILE__, __LINE__);
+        LOGERR(TAG, " Filesystem check did not exit properly");
         return -1;
     }
 
@@ -2860,16 +2856,16 @@ int VolumeManager::checkFs(Volume* pVol)
 
     switch(status) {
     case 0:
-        Log.d(TAG, "-------> Filesystem check completed OK");
+        LOGDBG(TAG, "-------> Filesystem check completed OK");
         return 0;
 
     case 2:
-        Log.d(TAG, "----> Filesystem check failed (not a FAT filesystem)");
+        LOGDBG(TAG, "----> Filesystem check failed (not a FAT filesystem)");
         errno = ENODATA;
         return -1;
 
     default:
-        Log.d(TAG, "----> Filesystem check failed (unknown exit code %d)", status);
+        LOGDBG(TAG, "----> Filesystem check failed (unknown exit code %d)", status);
         errno = EIO;
         return -1;
     }
@@ -2893,14 +2889,14 @@ void VolumeManager::updateVolumeSpace(Volume* pVol)
             
             u32 uBlockSize = diskInfo.f_bsize / 1024;
 
-            // Log.d(TAG, "[%s: %d] stat fs path: %s", __FILE__, __LINE__, pVol->pMountPath);
+            // LOGDBG(TAG, " stat fs path: %s", pVol->pMountPath);
 
-            // Log.d(TAG, "[%s: %d] statfs block size: %d KB", __FILE__, __LINE__, uBlockSize);
-            // Log.d(TAG, "[%s: %d] statfs total block: %d ", __FILE__, __LINE__, diskInfo.f_blocks);
-            // Log.d(TAG, "[%s: %d] statfs free block: %d ", __FILE__, __LINE__, diskInfo.f_bfree);
+            // LOGDBG(TAG, " statfs block size: %d KB", uBlockSize);
+            // LOGDBG(TAG, " statfs total block: %d ", diskInfo.f_blocks);
+            // LOGDBG(TAG, " statfs free block: %d ", diskInfo.f_bfree);
 
-            // Log.d(TAG, "[%s: %d] statfs Tatol size = %u MB", __FILE__, __LINE__, (diskInfo.f_blocks * uBlockSize) / 1024);
-            // Log.d(TAG, "[%s: %d] state Avail size = %u MB", __FILE__, __LINE__, (diskInfo.f_bfree * uBlockSize) / 1024);
+            // LOGDBG(TAG, " statfs Tatol size = %u MB", (diskInfo.f_blocks * uBlockSize) / 1024);
+            // LOGDBG(TAG, " state Avail size = %u MB", (diskInfo.f_bfree * uBlockSize) / 1024);
 
             pVol->uTotal = (uBlockSize * diskInfo.f_blocks) / 1024;
             
@@ -2911,14 +2907,14 @@ void VolumeManager::updateVolumeSpace(Volume* pVol)
                 pVol->uAvail = 0;
             }
             
-            Log.d(TAG, "[%s: %d] Local Volume Tatol size = %d MB", __FILE__, __LINE__, pVol->uTotal);
-            Log.d(TAG, "[%s: %d] Local Volume Avail size = %d MB", __FILE__, __LINE__, pVol->uAvail);
+            LOGDBG(TAG, " Local Volume Tatol size = %d MB", pVol->uTotal);
+            LOGDBG(TAG, " Local Volume Avail size = %d MB", pVol->uAvail);
 
         } else {
-            Log.d(TAG, "[%s: %d] statfs failed ...", __FILE__, __LINE__);
+            LOGDBG(TAG, " statfs failed ...");
         }
     } else {
-        Log.d(TAG, "[%s: %d] Current Local Vol May Locked or Not Mounted!", __FILE__, __LINE__);
+        LOGDBG(TAG, " Current Local Vol May Locked or Not Mounted!");
     }
 }
 
@@ -2926,7 +2922,7 @@ void VolumeManager::updateVolumeSpace(Volume* pVol)
 void VolumeManager::syncTakePicLeftSapce(u32 uLeftSize)
 {
     if (mCurrentUsedLocalVol) {
-        Log.d(TAG, "[%s: %d] Update mCurrentUsedLocalVol Left size: %ld MB", __FILE__, __LINE__, uLeftSize + lefSpaceThreshold);
+        LOGDBG(TAG, " Update mCurrentUsedLocalVol Left size: %ld MB", uLeftSize + lefSpaceThreshold);
         mCurrentUsedLocalVol->uAvail = uLeftSize + lefSpaceThreshold;
     }
 }
@@ -3058,7 +3054,7 @@ int VolumeManager::formatVolume(Volume* pVol, bool wipe)
         || (pVol->iVolState != VOLUME_STATE_MOUNTED) 
         || !isMountpointMounted(pVol->pMountPath) ) {  
 
-        Log.e(TAG, "[%s: %d] Volume slot not enable or Volume not mounted yet!", __FILE__, __LINE__);
+        LOGERR(TAG, " Volume slot not enable or Volume not mounted yet!");
         return FORMAT_ERR_UNKOWN;
     }
 
@@ -3075,23 +3071,23 @@ int VolumeManager::formatVolume(Volume* pVol, bool wipe)
      * 3.重新挂载
      */
     if (!wipe) {
-        Log.d(TAG, "[%s: %d] Just simple format Volume", __FILE__, __LINE__);
+        LOGDBG(TAG, " Just simple format Volume");
 
         if (doUnmount(pVol->pMountPath, true)) {
-            Log.d(TAG, "[%s: %d] Failed Unmount Volume, Fomart Failed ...", __FILE__, __LINE__);
+            LOGDBG(TAG, " Failed Unmount Volume, Fomart Failed ...");
             iRet = FORMAT_ERR_UMOUNT_EXFAT;
             goto err_umount_volume;
         }
 
-        Log.d(TAG, "[%s: %d] Unmont Sucess!!", __FILE__, __LINE__);
+        LOGDBG(TAG, " Unmont Sucess!!");
 
         if (!formatVolume2Exfat(pVol)) {
-            Log.d(TAG, "[%s: %d] Format Volume 2 Exfat Failed.", __FILE__, __LINE__);
+            LOGDBG(TAG, " Format Volume 2 Exfat Failed.");
             iRet = FORMAT_ERR_FORMAT_EXFAT;
             goto err_format_exfat;
         }
 
-        Log.d(TAG, "[%s: %d] Format Volume 2 Exfat Success.", __FILE__, __LINE__);
+        LOGDBG(TAG, " Format Volume 2 Exfat Success.");
         iRet = FORMAT_ERR_SUC;
         goto suc_format_exfat;
 
@@ -3105,20 +3101,20 @@ int VolumeManager::formatVolume(Volume* pVol, bool wipe)
         * 5.格式化为Exfat
         * 6.挂载
         */
-        Log.d(TAG, "[%s: %d] Depp format Volume", __FILE__, __LINE__);
+        LOGDBG(TAG, " Depp format Volume");
         return FORMAT_ERR_SUC;
     }
 
 suc_format_exfat:
 err_format_exfat:
     
-    Log.d(TAG, "[%s: %d] Format Volume Failed/Success, Remount now..", __FILE__, __LINE__);
+    LOGDBG(TAG, " Format Volume Failed/Success, Remount now..");
 
     if (mountVolume(pVol)) {
-        Log.d(TAG, "[%s: %d] Remount Volume[%s] Failed", __FILE__, __LINE__, pVol->cDevNode);
+        LOGDBG(TAG, " Remount Volume[%s] Failed", pVol->cDevNode);
         pVol->iVolState = VOLUME_STATE_ERROR;
     } else {
-        Log.d(TAG, "[%s: %d] Format Volume[%s] Success", __FILE__, __LINE__, pVol->cDevNode);
+        LOGDBG(TAG, " Format Volume[%s] Success", pVol->cDevNode);
         pVol->iVolState = VOLUME_STATE_MOUNTED;
         system("sync");
         setSavepathChanged(VOLUME_ACTION_ADD, pVol);
@@ -3140,7 +3136,7 @@ void VolumeManager::updateRemoteTfsInfo(std::vector<sp<Volume>>& mList)
     {        
         AutoMutex _l(gRemoteVolLock);
 
-        Log.d(TAG, "[%s: %d] ---> updateRemoteTfsInfo", __FILE__, __LINE__);
+        LOGDBG(TAG, " ---> updateRemoteTfsInfo");
         sp<Volume> tmpVolume = NULL;
         Volume* localVolume = NULL;
 
@@ -3190,7 +3186,7 @@ bool VolumeManager::formatVolume2Exfat(Volume* pVol)
     /* 1.检查设备文件是否存在 */
     /* 2.调用forkExecvpExt创建子进程进行格式化操作 */
     if (access(pVol->cDevNode, F_OK) != 0) {
-        Log.e(TAG, "[%s: %d] formatVolume2Exfat -> No dev node[%s]", __FILE__, __LINE__, pVol->cDevNode);
+        LOGERR(TAG, " formatVolume2Exfat -> No dev node[%s]", pVol->cDevNode);
         return false;
     } else {
         int status;
@@ -3198,26 +3194,25 @@ bool VolumeManager::formatVolume2Exfat(Volume* pVol)
         args[0] = MKFS_EXFAT;
         args[1] = pVol->cDevNode;
     
-        Log.d(TAG, "[%s: %d] formatVolume2Exfat cmd [%s %s]", 
-                                __FILE__, __LINE__, args[0], args[1]);
+        LOGDBG(TAG, " formatVolume2Exfat cmd [%s %s]", args[0], args[1]);
 
         int rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
         if (rc != 0) {
-            Log.e(TAG, "[%s: %d] Filesystem format failed due to logwrap error", __FILE__, __LINE__);
+            LOGERR(TAG, " Filesystem format failed due to logwrap error");
             return false;
         }
 
         if (!WIFEXITED(status)) {
-            Log.e(TAG, "Format sub process did not exit properly");
+            LOGERR(TAG, "Format sub process did not exit properly");
             return false;
         }
 
         status = WEXITSTATUS(status);
         if (status == 0) {
-            Log.d(TAG, ">>>> Filesystem formatted OK");
+            LOGDBG(TAG, ">>>> Filesystem formatted OK");
             return true;
         } else {
-            Log.e(TAG, ">>> Mount Volume failed (unknown exit code %d)", status);
+            LOGERR(TAG, ">>> Mount Volume failed (unknown exit code %d)", status);
             return false;
         }        
    }

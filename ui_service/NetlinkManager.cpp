@@ -9,10 +9,11 @@
 #include <unistd.h>
 
 #include <linux/netlink.h>
-#include <log/stlog.h>
 
 #include <sys/NetlinkManager.h>
 #include <sys/NetlinkHandler.h>
+
+#include <log/log_wrapper.h>
 
 #undef  TAG
 #define TAG "Vold"
@@ -52,29 +53,29 @@ int NetlinkManager::start()
     nladdr.nl_groups = 0xffffffff;		
 
     if ((mSock = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_KOBJECT_UEVENT)) < 0) {
-        Log.e(TAG, "Unable to create uevent socket: %s", strerror(errno));
+        LOGERR(TAG, "Unable to create uevent socket: %s", strerror(errno));
         return -1;
     }
 
     if (setsockopt(mSock, SOL_SOCKET, SO_RCVBUFFORCE, &sz, sizeof(sz)) < 0) {
-        Log.e(TAG, "Unable to set uevent socket SO_RCVBUFFORCE option: %s", strerror(errno));
+        LOGERR(TAG, "Unable to set uevent socket SO_RCVBUFFORCE option: %s", strerror(errno));
         goto out;
     }
 
     if (setsockopt(mSock, SOL_SOCKET, SO_PASSCRED, &on, sizeof(on)) < 0) {
-        Log.e(TAG, "Unable to set uevent socket SO_PASSCRED option: %s", strerror(errno));
+        LOGERR(TAG, "Unable to set uevent socket SO_PASSCRED option: %s", strerror(errno));
         goto out;
     }
 
     if (bind(mSock, (struct sockaddr *) &nladdr, sizeof(nladdr)) < 0) {
-        Log.e(TAG, "Unable to bind uevent socket: %s", strerror(errno));
+        LOGERR(TAG, "Unable to bind uevent socket: %s", strerror(errno));
         goto out;
     }
 
 
     mHandler = new NetlinkHandler(mSock);
     if (mHandler->start()) {	
-        Log.e(TAG, "Unable to start NetlinkHandler: %s", strerror(errno));
+        LOGERR(TAG, "Unable to start NetlinkHandler: %s", strerror(errno));
         goto out;
     }
 
@@ -92,7 +93,7 @@ int NetlinkManager::stop()
     int status = 0;
 
     if (mHandler->stop()) {
-        Log.e(TAG, "Unable to stop NetlinkHandler: %s", strerror(errno));
+        LOGERR(TAG, "Unable to stop NetlinkHandler: %s", strerror(errno));
         status = -1;
     }
 	

@@ -43,6 +43,10 @@
         "thread": "cpp",
         "hash_map": "cpp",
         "property_service.h": "c",
-        "_futex.h": "c"
+        "_futex.h": "c",
+        "cmath": "cpp",
+        "cstdarg": "cpp",
+        "cstring": "cpp",
+        "cinttypes": "cpp"
     }
 }

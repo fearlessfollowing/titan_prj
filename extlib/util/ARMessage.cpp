@@ -6,14 +6,12 @@ void ARMessage::postWithDelayMs(int ms)
 {
     sp<ARHandler> handler = mHandler.lock();
     if (handler == nullptr) {
-        Log.w(NULL, "ARMessage.post(), handler not exits now");
         return;
     }
 
     wp<ARLooper> looperWp = handler->getLooperWp();
     sp<ARLooper> looper = looperWp.lock();
     if (looper == nullptr) {
-        Log.w(NULL, "ARMessage.post(), looper not exits now");
         return;
     }
 

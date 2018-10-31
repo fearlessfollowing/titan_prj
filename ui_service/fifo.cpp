@@ -27,7 +27,6 @@
 
 #include <sys/action_info.h>
 #include <hw/ins_gpio.h>
-#include <log/arlog.h>
 
 #include <system_properties.h>
 #include <sys/VolumeManager.h>
@@ -37,6 +36,7 @@
 #include <json/value.h>
 #include <json/json.h>
 
+#include <log/log_wrapper.h>
 
 
 using namespace std;
@@ -201,7 +201,7 @@ void fifo::init()
 
     th_read_fifo_ = thread([this] { read_fifo_thread(); });
 
-    Log.d(TAG, "fifo::init() ... OK");
+    LOGDBG(TAG, "fifo::init() ... OK");
 }
 
 
@@ -213,7 +213,7 @@ void fifo::start_all()
 
 void fifo::stop_all(bool delay)
 {
-    Log.d(TAG, "stop_all");
+    LOGDBG(TAG, "stop_all");
 
     if (!bReadThread) {
         bReadThread = true;
@@ -225,7 +225,7 @@ void fifo::stop_all(bool delay)
     mOLEDHandle = nullptr;
 
     msg_util::sleep_ms(200);
-    Log.d(TAG, "stop_all3");
+    LOGDBG(TAG, "stop_all3");
 }
 
 sp<ARMessage> fifo::obtainMessage(uint32_t what)
@@ -247,7 +247,7 @@ void fifo::sendExit()
             obtainMessage(MSG_EXIT)->post();
             th_msg_.join();
         } else {
-            Log.e(TAG, " th_msg_ not joinable ");
+            LOGERR(TAG, " th_msg_ not joinable ");
         }
     }
 }
@@ -267,7 +267,7 @@ void fifo::send_err_type_code(int type, int code)
 
 void fifo::send_wifi_config(const char *ssid, const char *pwd, int open)
 {
-    Log.d(TAG, "send wifi config");
+    LOGDBG(TAG, "send wifi config");
     sp<WIFI_CONFIG> mConfig = sp<WIFI_CONFIG>(new WIFI_CONFIG());
     sp<ARMessage> msg = obtainMessage(MSG_SET_WIFI_CONFIG);
     snprintf(mConfig->ssid, sizeof(mConfig->ssid), "%s", ssid);
@@ -342,7 +342,7 @@ void fifo::write_fifo(int iEvent, const char *str)
         len = strlen(str);
 #if 1
         if (len > (int)((sizeof(data) - FIFO_HEAD_LEN))) {
-            Log.e(TAG, "fifo len exceed (%d %d)", len, (sizeof(data) - FIFO_HEAD_LEN));
+            LOGERR(TAG, "fifo len exceed (%d %d)", len, (sizeof(data) - FIFO_HEAD_LEN));
             len = (sizeof(data) - FIFO_HEAD_LEN);
         }
 		
@@ -359,9 +359,9 @@ void fifo::write_fifo(int iEvent, const char *str)
 	
     write_len = write(write_fd, data, total);
     if (write_len != total) {
-        Log.e(TAG, "write fifo len %d but total is %d\n", write_len, total);
+        LOGERR(TAG, "write fifo len %d but total is %d\n", write_len, total);
         if (write_len == -1) {
-            Log.e(TAG, "write fifo broken");
+            LOGERR(TAG, "write fifo broken");
             close_write_fd();
         }
     } 
@@ -428,9 +428,10 @@ const char *getActionName(int iAction)
     * }
     */	
 
+
+#if 0
 void fifo::handleUiKeyReq(int action, const sp<ARMessage>& msg)
 {
-    int iIndex = -1;
     Json::FastWriter writer;
     string sendDataStr;
 
@@ -442,11 +443,11 @@ void fifo::handleUiKeyReq(int action, const sp<ARMessage>& msg)
         /* {"action": ACTION_LOW_BAT} */
         case ACTION_LOW_BAT: {
             CHECK_EQ(msg->find<int>("cmd", &reboot_cmd), true);
-            Log.d(TAG, "low bat reboot cmd is %d", reboot_cmd);
+            LOGDBG(TAG, "low bat reboot cmd is %d", reboot_cmd);
 
             rootNode["action"] = ACTION_LOW_BAT;
             sendDataStr = writer.write(rootNode);
-		    Log.d(TAG, "Action Low Battery: %s", sendDataStr.c_str());
+		    LOGDBG(TAG, "Action Low Battery: %s", sendDataStr.c_str());
 
             break;
         }
@@ -466,7 +467,7 @@ void fifo::handleUiKeyReq(int action, const sp<ARMessage>& msg)
         case ACTION_POWER_OFF: {
             rootNode["action"] = action;
             sendDataStr = writer.write(rootNode);
-		    Log.d(TAG, "Action %s: %s", getActionName(action), sendDataStr.c_str());           
+		    LOGDBG(TAG, "Action %s: %s", getActionName(action), sendDataStr.c_str());           
             break;
         }
 
@@ -476,157 +477,7 @@ void fifo::handleUiKeyReq(int action, const sp<ARMessage>& msg)
             rootNode["parameters"] = paramNode;
 
             sendDataStr = writer.write(rootNode);
-		    Log.d(TAG, "Action AWB: %s", sendDataStr.c_str());
-            break;
-        }
-
-        case ACTION_SET_OPTION: {
-            int type;
-            CHECK_EQ(msg->find<int>("type", &type), true);
-
-            Log.d(TAG, " type is %d", type);
-            switch (type) {
-                /* {"action": ACTION_SET_OPTION, "parameters":{"property":"flicker", "value":int} } */
-                case OPTION_FLICKER: { 
-                    int flicker;
-                    CHECK_EQ(msg->find<int>("flicker", &flicker), true);
-
-                    paramNode["property"] = "flicker";
-                    paramNode["value"] = flicker;
-                    rootNode["action"] = ACTION_SET_OPTION;
-                    rootNode["parameters"] = paramNode; 
-
-                    sendDataStr = writer.write(rootNode);
-		            Log.d(TAG, "Action ACTION_SET_OPTION: %s", sendDataStr.c_str());
-
-                    break;
-                }
-
-                /* {"action": ACTION_SET_OPTION, "parameters":{"property":"logMode", "mode":int, "effect":int, ""} } */
-                case OPTION_LOG_MODE: {	 /* {"action": ACTION_SET_OPTION, "type": OPTION_FLICKER } */
-                    int mode;
-                    int effect;
-
-                    CHECK_EQ(msg->find<int>("mode", &mode), true);
-                    CHECK_EQ(msg->find<int>("effect", &effect), true);
-                    
-
-                    Json::Value valNode;
-
-                    valNode["mode"] = mode;
-                    valNode["effect"] = effect;
-
-                    paramNode["property"] = "logMode";
-                    paramNode["value"] = valNode;
-                    rootNode["action"] = ACTION_SET_OPTION;
-                    rootNode["parameters"] = paramNode; 
-
-                    sendDataStr = writer.write(rootNode);
-		            Log.d(TAG, "Action ACTION_SET_OPTION: %s", sendDataStr.c_str());
-                    break;
-                }
-                
-                /* {"action": ACTION_SET_OPTION, {"property": "fanless", "value": 0/1}} */
-                case OPTION_SET_FAN: {
-                    int fan;
-                    CHECK_EQ(msg->find<int>("fan", &fan), true);
-
-                    paramNode["property"] = "fanless";
-                    paramNode["value"] = (fan == 1) ? 0 : 1;
-                    rootNode["action"] = ACTION_SET_OPTION;
-                    rootNode["parameters"] = paramNode; 
-
-                    sendDataStr = writer.write(rootNode);
-		            Log.d(TAG, "Action ACTION_SET_OPTION: %s", sendDataStr.c_str());                    
-                    break;
-                }
-
-                /* {"action": ACTION_SET_OPTION, {"property": "panoAudio", "value": 0/1}} */
-                case OPTION_SET_AUD: {
-                    int aud;
-                    CHECK_EQ(msg->find<int>("aud", &aud), true);
-
-                    paramNode["property"] = "panoAudio";
-                    paramNode["value"] = aud;
-                    rootNode["action"] = ACTION_SET_OPTION;
-                    rootNode["parameters"] = paramNode; 
-
-                    sendDataStr = writer.write(rootNode);
-		            Log.d(TAG, "Action ACTION_SET_OPTION: %s", sendDataStr.c_str());                    
-                     
-                    break;
-                }
-
-                /* {"action": ACTION_SET_OPTION, {"property": "stabilization_cfg", "value": 0/1}} */
-                case OPTION_GYRO_ON: {
-                    int gyro_on;
-                    CHECK_EQ(msg->find<int>("gyro_on", &gyro_on), true);
-
-                    paramNode["property"] = "stabilization_cfg";
-                    paramNode["value"] = gyro_on;
-                    rootNode["action"] = ACTION_SET_OPTION;
-                    rootNode["parameters"] = paramNode; 
-
-                    sendDataStr = writer.write(rootNode);
-		            Log.d(TAG, "Action ACTION_SET_OPTION: %s", sendDataStr.c_str());                    
-                    break;
-                }
-
-                /* {"action": ACTION_SET_OPTION, {"property": "logo", "value": 0/1}} */
-                case OPTION_SET_LOGO: {
-                    int logo_on;
-                    CHECK_EQ(msg->find<int>("logo_on", &logo_on), true);
-
-                    paramNode["property"] = "logo";
-                    paramNode["value"] = logo_on;
-                    rootNode["action"] = ACTION_SET_OPTION;
-                    rootNode["parameters"] = paramNode; 
-
-                    sendDataStr = writer.write(rootNode);
-		            Log.d(TAG, "Action ACTION_SET_OPTION: %s", sendDataStr.c_str());                    
-            
-                    break;
-                }
-
-                /*
-                 {
-                     "action":OPTION_SET_VID_SEG,
-                     "parameters":{
-                         "property": "video_fragment",
-                         "value": 0/1
-                     }
-                 }
-                 */
-                case OPTION_SET_VID_SEG: {
-                    int video_fragment;
-                    CHECK_EQ(msg->find<int>("video_fragment", &video_fragment), true);
-                   
-                    paramNode["property"] = "video_fragment";
-                    paramNode["value"] = video_fragment;
-                    rootNode["action"] = ACTION_SET_OPTION;
-                    rootNode["parameters"] = paramNode; 
-
-                    sendDataStr = writer.write(rootNode);
-		            Log.d(TAG, "Action ACTION_SET_OPTION: %s", sendDataStr.c_str());                    
-
-                    break;
-                }
-
-            #if 0
-                case OPTION_SET_AUD_GAIN: {
-                    sp<CAM_PROP> mCamProp;
-                    CHECK_EQ(msg->find<sp<CAM_PROP>>("cam_prop", &mCamProp), true);
-                    param = cJSON_CreateObject();
-                    Log.d(TAG,"set aud gain %d",
-                            mCamProp->audio_gain);
-                    cJSON_AddStringToObject(param, "property", "audio_gain");
-                    cJSON_AddNumberToObject(param, "value", mCamProp->audio_gain);
-                     break;
-                }
-            #endif
-                               
-                SWITCH_DEF_ERROR(type)
-            }
+		    LOGDBG(TAG, "Action AWB: %s", sendDataStr.c_str());
             break;
         }
 
@@ -634,8 +485,10 @@ void fifo::handleUiKeyReq(int action, const sp<ARMessage>& msg)
             break;
     }
 
+
     write_fifo(EVENT_OLED_KEY, sendDataStr.c_str());
 }
+#endif
 
 
 
@@ -666,8 +519,8 @@ void fifo::handleUiNotify(const sp<ARMessage> &msg)
             CHECK_EQ(msg->find<int>("action", &action), true);
 
 			/* {"action": [0/9]} */
-			Log.d(TAG, "FIFO RECV OLED ACTION [%s]", getActionName(action));
-            handleUiKeyReq(action, msg);
+			LOGDBG(TAG, "FIFO RECV OLED ACTION [%s]", getActionName(action));
+            // handleUiKeyReq(action, msg);
             break;
         }
 			
@@ -690,7 +543,7 @@ void fifo::handleSavePathChanged(const sp<ARMessage>& msg)
     sp<SAVE_PATH> mSavePath;
     CHECK_EQ(msg->find<sp<SAVE_PATH>>("save_path", &mSavePath), true);
 
-    Log.d(TAG, "[%s: %d] <<--------------------------- [SavePathChanged Message] %s", __FILE__, __LINE__, mSavePath->path);
+    LOGDBG(TAG, "<<--------------------------- [SavePathChanged Message] %s", mSavePath->path);
     write_fifo(EVENT_SAVE_PATH, mSavePath->path);   
 }
 
@@ -699,7 +552,7 @@ void fifo::handleUpdateDevList(const sp<ARMessage>& msg)
     sp<SAVE_PATH> mSavePath;
     CHECK_EQ(msg->find<sp<SAVE_PATH>>("dev_list", &mSavePath), true);
 
-    Log.d(TAG, "[%s: %d] <<--------------------------- [UpdateDevList Message] %s", __FILE__, __LINE__, mSavePath->path);
+    LOGDBG(TAG, "<<--------------------------- [UpdateDevList Message] %s", mSavePath->path);
     write_fifo(EVENT_DEV_NOTIFY, mSavePath->path);   
 }
 
@@ -936,15 +789,15 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 		}
 	}
 								
-	Log.d(TAG, "qr version %d array size is %d qr_index %d", qr_version, iArraySize, qr_index);
+	LOGDBG(TAG, "qr version %d array size is %d qr_index %d", qr_version, iArraySize, qr_index);
 	if (qr_index != -1) {
 		subNode = subNode->next;
 		CHECK_EQ(subNode->type, cJSON_Number);
 		mDispType->qr_type = subNode->valueint;
 		
-		Log.d(TAG,"qr type %d", mDispType->qr_type);
+		LOGDBG(TAG,"qr type %d", mDispType->qr_type);
 		qr_action_index = (mDispType->qr_type - ACTION_PIC);
-		Log.d(TAG, "qr action index %d iArraySize %d "
+		LOGDBG(TAG, "qr action index %d iArraySize %d "
 				"mQRInfo[qr_index].astQRInfo[qr_action_index].qr_size %d ",
 				qr_action_index,
 				iArraySize,
@@ -957,7 +810,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 			CHECK_EQ(subNode->type, cJSON_Number);
 			mDispType->mAct->size_per_act = subNode->valueint;
 
-			Log.d(TAG, "size per act %d", mDispType->mAct->size_per_act);
+			LOGDBG(TAG, "size per act %d", mDispType->mAct->size_per_act);
 			//org
 			subNode = subNode->next;
 			CHECK_EQ(subNode->type, cJSON_Array);
@@ -1038,7 +891,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 					SWITCH_DEF_ERROR(mDispType->qr_type)
 				}
 			} else {
-				Log.w(TAG, "no org mDispType->qr_type %d", mDispType->qr_type);
+				LOGWARN(TAG, "no org mDispType->qr_type %d", mDispType->qr_type);
 			}
 
 			//sti
@@ -1072,7 +925,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 						CHECK_EQ(child->type, cJSON_Number);
 						
 						mDispType->mAct->stStiInfo.stich_mode = child->valueint;
-						Log.d(TAG, "2qr pic info %d,[%d,%d,%d,%d,%d],[%d,%d,%d,%d,%d]",
+						LOGDBG(TAG, "2qr pic info %d,[%d,%d,%d,%d,%d],[%d,%d,%d,%d,%d]",
                                                           mDispType->mAct->size_per_act,
                                                           mDispType->mAct->stOrgInfo.w,
                                                           mDispType->mAct->stOrgInfo.h,
@@ -1086,7 +939,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
                                                           mDispType->mAct->stStiInfo.stich_mode);
 					} else {
 						mDispType->mAct->stStiInfo.stich_mode = STITCH_OFF;
-						Log.d(TAG, "3qr pic org %d,[%d,%d,%d,%d,%d]",
+						LOGDBG(TAG, "3qr pic org %d,[%d,%d,%d,%d,%d]",
                                                           mDispType->mAct->size_per_act,
                                                           mDispType->mAct->stOrgInfo.w,
                                                           mDispType->mAct->stOrgInfo.h,
@@ -1115,7 +968,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 						
 						mDispType->mAct->stOrgInfo.stOrgAct.mOrgP.max_ev = child->valueint;
 
-						Log.d(TAG,"hdr %d %d %d",
+						LOGDBG(TAG,"hdr %d %d %d",
 											mDispType->mAct->stOrgInfo.stOrgAct.mOrgP.hdr_count,
 											mDispType->mAct->stOrgInfo.stOrgAct.mOrgP.min_ev,
 											mDispType->mAct->stOrgInfo.stOrgAct.mOrgP.max_ev);
@@ -1130,7 +983,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 						CHECK_EQ(child->type, cJSON_Number);
 							
 						mDispType->mAct->stOrgInfo.stOrgAct.mOrgP.burst_count = child->valueint;
-						Log.d(TAG, "burst count %d",
+						LOGDBG(TAG, "burst count %d",
 										mDispType->mAct->stOrgInfo.stOrgAct.mOrgP.burst_count);
 					}
 					break;
@@ -1169,7 +1022,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 
 						//force to stitch normal
 						mDispType->mAct->stStiInfo.stich_mode = STITCH_NORMAL;
-						Log.d(TAG, "qr video sti info [%d,%d,%d,%d,%d,%d]",
+						LOGDBG(TAG, "qr video sti info [%d,%d,%d,%d,%d,%d]",
                                                           mDispType->mAct->stStiInfo.w,
                                                           mDispType->mAct->stStiInfo.h,
                                                           mDispType->mAct->stStiInfo.mime,
@@ -1178,10 +1031,10 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
                                                           mDispType->mAct->stStiInfo.stStiAct.mStiV.sti_br);
 					} else {
 						mDispType->mAct->stStiInfo.stich_mode = STITCH_OFF;
-						Log.d(TAG, "stich off");
+						LOGDBG(TAG, "stich off");
 					}
 					
-					Log.d(TAG, "qr vid org info %d,[%d,%d,%d,%d,%d,%d]",
+					LOGDBG(TAG, "qr vid org info %d,[%d,%d,%d,%d,%d,%d]",
                                                 mDispType->mAct->size_per_act,
                                                 mDispType->mAct->stOrgInfo.w,
                                                 mDispType->mAct->stOrgInfo.h,
@@ -1200,7 +1053,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 						CHECK_EQ(child->type, cJSON_Number);
 						
 						mDispType->mAct->stOrgInfo.stOrgAct.mOrgV.tim_lap_int = child->valueint *1000;
-						Log.d(TAG,"tim_lap_int  %d", mDispType->mAct->stOrgInfo.stOrgAct.mOrgV.tim_lap_int);
+						LOGDBG(TAG,"tim_lap_int  %d", mDispType->mAct->stOrgInfo.stOrgAct.mOrgV.tim_lap_int);
 						if (mDispType->mAct->size_per_act == 0) {
 							mDispType->mAct->size_per_act = 10;
 						}
@@ -1241,7 +1094,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 					
 					mDispType->mAct->stStiInfo.stStiAct.mStiL.hdmi_on = child->valueint;
 
-					Log.d(TAG, "qr live org info [%d,%d,%d,%d,%d]",
+					LOGDBG(TAG, "qr live org info [%d,%d,%d,%d,%d]",
 								mDispType->mAct->stOrgInfo.w,
 								mDispType->mAct->stOrgInfo.h,
 								mDispType->mAct->stOrgInfo.mime,
@@ -1294,7 +1147,7 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
 						mDispType->mAct->stStiInfo.w = mResInfos[sti_res].w;
 					}
 					
-					Log.d(TAG, "qr live info [%d,%d,%d,%d,%d,%d %d %d] url %s",
+					LOGDBG(TAG, "qr live info [%d,%d,%d,%d,%d,%d %d %d] url %s",
 								mDispType->mAct->stStiInfo.w,
 								mDispType->mAct->stStiInfo.h,
 								mDispType->mAct->stStiInfo.mime,
@@ -1325,7 +1178,7 @@ void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, cJSON *root, cJSON *subNo
 {
     cJSON *child = nullptr;
 
-	Log.d(TAG, "rec req type %d", mDispType->type);     // rec req type 6
+	LOGDBG(TAG, "rec req type %d", mDispType->type);     // rec req type 6
 	GET_CJSON_OBJ_ITEM_INT(child, subNode, "action", mDispType->qr_type)
 
 	/* 获取"param"子节点 */
@@ -1344,14 +1197,14 @@ void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, cJSON *root, cJSON *subNo
 		GET_CJSON_OBJ_ITEM_INT(subNode, org, "width", mAI->stOrgInfo.w)
 		GET_CJSON_OBJ_ITEM_INT(subNode, org, "height", mAI->stOrgInfo.h)
 		GET_CJSON_OBJ_ITEM_INT(subNode, org, "saveOrigin", bSaveOrg)
-		Log.d(TAG, "bSave org %d", mAI->stOrgInfo.save_org);
+		LOGDBG(TAG, "bSave org %d", mAI->stOrgInfo.save_org);
 		if (bSaveOrg) {
 			mAI->stOrgInfo.save_org = SAVE_DEF;
 		} else {
 			mAI->stOrgInfo.save_org= SAVE_OFF;
 		}
 										
-		Log.d(TAG, "org %d %d", mAI->stOrgInfo.w, mAI->stOrgInfo.h);
+		LOGDBG(TAG, "org %d %d", mAI->stOrgInfo.w, mAI->stOrgInfo.h);
 
 		/* 获取"origin"的子节点"mime" */
 		subNode = cJSON_GetObjectItem(org, "mime");
@@ -1359,7 +1212,7 @@ void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, cJSON *root, cJSON *subNo
 			mAI->stOrgInfo.mime = get_mime_index(subNode->valuestring);
 		}
 
-		Log.d(TAG, "qr type %d", mDispType->qr_type);
+		LOGDBG(TAG, "qr type %d", mDispType->qr_type);
 		switch (mDispType->qr_type) {
 			case ACTION_PIC:
 				if (mAI->stOrgInfo.w >= 7680) {
@@ -1420,7 +1273,7 @@ void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, cJSON *root, cJSON *subNo
 		char sti_mode[32];
 		GET_CJSON_OBJ_ITEM_INT(subNode, sti, "width", mAI->stStiInfo.w)
 		GET_CJSON_OBJ_ITEM_INT(subNode, sti, "height", mAI->stStiInfo.h)
-		Log.d(TAG, "stStiInfo.sti_res is (%d %d)", mAI->stStiInfo.w, mAI->stStiInfo.h);
+		LOGDBG(TAG, "stStiInfo.sti_res is (%d %d)", mAI->stStiInfo.w, mAI->stStiInfo.h);
 		GET_CJSON_OBJ_ITEM_STR(subNode, sti, "mode", sti_mode, sizeof(sti_mode));
 		mAI->mode = get_mode_index(sti_mode);
 		
@@ -1435,7 +1288,7 @@ void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, cJSON *root, cJSON *subNo
 			mAI->stStiInfo.stich_mode = get_sti_mode(subNode->valuestring);
 		}
 
-		Log.d(TAG, " mode (%d %d)", mAI->mode, mAI->stStiInfo.stich_mode);
+		LOGDBG(TAG, " mode (%d %d)", mAI->mode, mAI->stStiInfo.stich_mode);
 		switch (mDispType->qr_type) {
 			case ACTION_PIC:
 				subNode = cJSON_GetObjectItem(sti, "algorithm");
@@ -1540,24 +1393,24 @@ void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, cJSON *root, cJSON *subNo
 	mAI->stProp.audio_gain = 96;
 	if (props) {
 		GET_CJSON_OBJ_ITEM_INT(subNode, props, "audio_gain", mAI->stProp.audio_gain);
-		Log.d(TAG, "aud_gain %d", mAI->stProp.audio_gain);
+		LOGDBG(TAG, "aud_gain %d", mAI->stProp.audio_gain);
 		
 		// {"aaa_mode":2,"ev_bias":0,"wb":0,"long_shutter":1-60(s),"shutter_value":21,"iso_value","value":7,"brightness","value":87,"saturation","value":156,"sharpness","value":4,"contrast","value":143}
 		subNode = cJSON_GetObjectItem(props, "len_param");
 		if (subNode) {
-			Log.d(TAG, "found len param %s", cJSON_Print(subNode));
+			LOGDBG(TAG, "found len param %s", cJSON_Print(subNode));
 			snprintf(mAI->stProp.len_param,sizeof(mAI->stProp.len_param),"%s",cJSON_Print(subNode));
 		}
 
 		subNode = cJSON_GetObjectItem(props, "gamma_param");
 		if (subNode) {
-			Log.d(TAG, "subNode->valuestring %s", subNode->valuestring);
+			LOGDBG(TAG, "subNode->valuestring %s", subNode->valuestring);
 			memcpy(mAI->stProp.mGammaData, subNode->valuestring, strlen(subNode->valuestring));
-			Log.d(TAG, "mAI->stProp.mGammaData %s", mAI->stProp.mGammaData);
+			LOGDBG(TAG, "mAI->stProp.mGammaData %s", mAI->stProp.mGammaData);
 		}
 	}
 									
-	Log.d(TAG, "tl type size (%d %d %d)",
+	LOGDBG(TAG, "tl type size (%d %d %d)",
                                     mAI->stOrgInfo.stOrgAct.mOrgV.tim_lap_int,
                                     mDispType->type, 
                                     mAI->size_per_act);
@@ -1590,7 +1443,7 @@ void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, cJSON *root, cJSON *subNo
 
 void fifo::handleSetting(sp<struct _disp_type_>& mDispType, Json::Value& reqNode)
 {
-    cJSON *child = nullptr;
+    // cJSON *child = nullptr;
     mDispType->mSysSetting = sp<SYS_SETTING>(new SYS_SETTING());
 
     memset(mDispType->mSysSetting.get(), -1, sizeof(SYS_SETTING));
@@ -1631,7 +1484,7 @@ void fifo::handleSetting(sp<struct _disp_type_>& mDispType, Json::Value& reqNode
         mDispType->mSysSetting->video_fragment = reqNode["video_fragment"].asInt();
     }
 
-    Log.d(TAG, "%d %d %d %d %d %d %d %d %d",
+    LOGDBG(TAG, "%d %d %d %d %d %d %d %d %d",
                 mDispType->mSysSetting->flicker,
                 mDispType->mSysSetting->speaker,
                 mDispType->mSysSetting->led_on,
@@ -1661,25 +1514,25 @@ void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, Json::Value& reqNode)
 						
 	switch (mDispType->type) {
 		case START_LIVE_SUC: {	/* 16, 启动录像成功 */
-            Log.d(TAG, "[%s: %d] Client control Live", __FILE__, __LINE__);
+            LOGDBG(TAG, "Client control Live");
         	mDispType->control_act = ACTION_LIVE;
 			break;
         }
 										
 		case CAPTURE: {			/* 拍照 */
-            Log.d(TAG, "[%s: %d] Client control Capture", __FILE__, __LINE__);
+            LOGDBG(TAG, "Client control Capture");
 			mDispType->control_act = ACTION_PIC;
 			break;
         }
 										
 		case START_REC_SUC:	{	/* 1, 启动录像成功 */
-            Log.d(TAG, "[%s: %d] Client control Video", __FILE__, __LINE__);
+            LOGDBG(TAG, "Client control Video");
 			mDispType->control_act = ACTION_VIDEO;
 			break;
         }
 											
 		case SET_CUS_PARAM:	{	/* 46, 设置自定义参数 */
-            Log.d(TAG, "[%s: %d] Client control Set Customer", __FILE__, __LINE__);
+            LOGDBG(TAG, "Client control Set Customer");
 			mDispType->control_act = CONTROL_SET_CUSTOM;
 			break;
         }
@@ -1699,7 +1552,7 @@ void fifo::handleGpsStateChange(Json::Value& queryJson)
 
 void fifo::handleShutdownMachine(Json::Value& queryJson)
 {
-    Log.d(TAG, "[%s: %d] Recv Shut down machine message ...", __FILE__, __LINE__);
+    LOGDBG(TAG, "Recv Shut down machine message ...");
     mOLEDHandle->sendShutdown();
 }
 
@@ -1731,7 +1584,7 @@ void fifo::handleQueryLeftInfo(Json::Value& queryJson)
         uLeft = 0;
     }
 
-    Log.d(TAG, "-------- handleQueryLeftInfo");
+    LOGDBG(TAG, "-------- handleQueryLeftInfo");
 
     rootNode["left"] = uLeft;    
     sendDataStr = writer.write(rootNode);
@@ -1744,7 +1597,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 {
     // Json::FastWriter writer;
     // string data = writer.write(jsonData);
-    // Log.d(TAG, "[%s: %d] =============>> Recv Message type[%s], data[%s]", __FILE__, __LINE__, getRecvMsgName(iMsgType), data.c_str());
+    // LOGDBG(TAG, "=============>> Recv Message type[%s], data[%s]", getRecvMsgName(iMsgType), data.c_str());
 
     switch (iMsgType) {
         case CMD_OLED_DISP_TYPE: {	/* 通信UI线程显示指定UI */
@@ -1753,7 +1606,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             if (jsonData["type"].isNull()) {
             } else {
                 mDispType->type = jsonData["type"].asInt();
-                Log.d(TAG, "[%s: %d] ----------->> Display Type: %s", __FILE__, __LINE__, getDispType(mDispType->type));                
+                LOGDBG(TAG, "----------->> Display Type: %s", getDispType(mDispType->type));                
             }
 
             mDispType->mSysSetting = nullptr;
@@ -1764,7 +1617,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             mDispType->qr_type  = -1;
 
             if (jsonData["content"].isNull() == false) {
-                Log.d(TAG, "[%s: %d] Qr Function Not implement now ..", __FILE__, __LINE__);
+                LOGDBG(TAG, "Qr Function Not implement now ..");
                 // handleQrContent(mDispType, root, subNode);
             } else if (jsonData["req"].isNull() == false) {
                 handleReqFormHttp(mDispType, jsonData["req"]);
@@ -1773,7 +1626,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             } else if (jsonData["tl_count"].isNull() == false) {
                 mDispType->tl_count = jsonData["tl_count"].asInt();
             } else {
-                // Log.e(TAG, "[%s: %d] ---------Unkown Error", __FILE__, __LINE__);
+                // LOGERR(TAG, "---------Unkown Error");
             }
 
             mOLEDHandle->send_disp_str(mDispType);
@@ -1781,19 +1634,19 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
         }
 
         case CMD_WEB_UI_QUERY_LEFT_INFO: {  /* 查询剩余量信息 */
-            Log.d(TAG, "[%s: %d] Query Left Info now....", __FILE__, __LINE__);
+            LOGDBG(TAG, "Query Left Info now....");
             handleQueryLeftInfo(jsonData);
             break;
         }
 
         case CMD_WEB_UI_GPS_STATE_CHANGE: {
-            Log.d(TAG, "[%s: %d] Gps State change now....", __FILE__, __LINE__);
+            LOGDBG(TAG, "Gps State change now....");
             handleGpsStateChange(jsonData);
             break;
         }
 
         case CMD_WEB_UI_SHUT_DOWN: {
-            Log.d(TAG, "[%s: %d] shut down machine ....", __FILE__, __LINE__);
+            LOGDBG(TAG, "shut down machine ....");
             handleShutdownMachine(jsonData);
             break;
         }
@@ -1804,12 +1657,12 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             
             if (jsonData["sn"].isString()) {
                 snprintf(mSysInfo->sn, sizeof(mSysInfo->sn), "%s", jsonData["sn"].asCString());    
-                Log.d(TAG, "[%s: %d] Recv SN: %s", __FILE__, __LINE__, mSysInfo->sn);
+                LOGDBG(TAG, "Recv SN: %s", mSysInfo->sn);
             }
 
             if (jsonData["uuid"].isString()) {
                 snprintf(mSysInfo->uuid, sizeof(mSysInfo->uuid), "%s", jsonData["uuid"].asCString());    
-                Log.d(TAG, "[%s: %d] Recv SN: %s", __FILE__, __LINE__, mSysInfo->uuid);
+                LOGDBG(TAG, "Recv SN: %s", mSysInfo->uuid);
             }
             mOLEDHandle->send_sys_info(mSysInfo);
             break;
@@ -1855,9 +1708,8 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 
         case CMD_WEB_UI_TF_CHANGED: {   /* 暂时每次只能解析一张卡的变化 */  
 
-            Log.d(TAG, "[%s:%d] Get Tfcard Changed....", __FILE__, __LINE__);      
+            LOGDBG(TAG, "[%s:%d] Get Tfcard Changed....");      
 
-            int iModuleArray = 0;
             std::vector<sp<Volume>> storageList;
             
             storageList.clear();
@@ -1886,7 +1738,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
                 /* 直接将消息丢入UI线程的消息队列中 */
                 mOLEDHandle->sendTfStateChanged(storageList);                
             } else {
-                Log.d(TAG, "[%s:%d] get module json node[module] failed", __FILE__, __LINE__);                               
+                LOGDBG(TAG, "[%s:%d] get module json node[module] failed");                               
             }
             break;
         }
@@ -1911,12 +1763,11 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             }
         */
         case CMD_WEB_UI_TF_NOTIFY: {    /* 查询TF卡的状态 */
-            Log.d(TAG, "[%s:%d] get notify form server for TF info", __FILE__, __LINE__);
+            LOGDBG(TAG, "[%s:%d] get notify form server for TF info");
 
             bool bResult = false;
-            char cStoragePath[64] = {0};
-            char cState[32] = {0};
-            int iModuleArray = 0;
+            // char cStoragePath[64] = {0};
+            // int iModuleArray = 0;
             std::vector<sp<Volume>> storageList;
             
             storageList.clear();
@@ -1947,7 +1798,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
                             * 名称: "tf-1","tf-2","tf-3"....
                             */
                             sprintf(tmpVol->cVolName, "mSD%d", tmpVol->iIndex);
-                            Log.d(TAG, "[%s: %d] TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d]",
+                            LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d]",
                                         __FILE__, __LINE__, tmpVol->cVolName, 
                                         tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest);
 
@@ -1956,11 +1807,11 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
                         }
                         bResult = true; 
                     } else {
-                        Log.e(TAG, "[%s: %d] module not array, what's wrong", __FILE__, __LINE__);
+                        LOGERR(TAG, "module not array, what's wrong");
                     }
                 }
             } else {
-                Log.e(TAG, "[%s: %d] state node not exist!", __FILE__, __LINE__);
+                LOGERR(TAG, "state node not exist!");
             }
 
             mOLEDHandle->updateTfStorageInfo(bResult, storageList);
@@ -1969,15 +1820,13 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 
 
         case CMD_WEB_UI_TF_FORMAT: {    /* 格式化结果 */
-            Log.d(TAG, "[%s: %d] Get Notify(mSD Format Info)", __FILE__, __LINE__);
+            LOGDBG(TAG, "Get Notify(mSD Format Info)");
 
             sp<Volume> tmpVolume = (sp<Volume>)(new Volume());
-
-            cJSON* pState = NULL;
             std::vector<sp<Volume>> storageList;
 
             if (jsonData["state"].isNull()) {
-                Log.d(TAG, "[%s:%d] CMD_WEB_UI_TF_FORMAT Protocal Err, no 'state'", __FILE__, __LINE__);
+                LOGDBG(TAG, "[%s:%d] CMD_WEB_UI_TF_FORMAT Protocal Err, no 'state'");
                 storageList.push_back(tmpVolume); 
             } else {
                 
@@ -1996,7 +1845,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 
         case CMD_WEB_UI_TEST_SPEED_RES: {
 
-            Log.d(TAG, "[%s: %d] Return Speed Test Result", __FILE__, __LINE__);
+            LOGDBG(TAG, "Return Speed Test Result");
 
             std::vector<sp<Volume>> storageList;
             sp<Volume> tmpVol = NULL;
@@ -2008,7 +1857,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
                 tmpVol = (sp<Volume>)(new Volume());
                 tmpVol->iType = VOLUME_TYPE_NV;
                 tmpVol->iSpeedTest = jsonData["local"].asInt();
-                Log.d(TAG, "[%s: %d] Local Device Test Speed Result: %d", __FILE__, __LINE__, tmpVol->iSpeedTest);
+                LOGDBG(TAG, "Local Device Test Speed Result: %d", tmpVol->iSpeedTest);
                 storageList.push_back(tmpVol);
             }
 
@@ -2026,14 +1875,14 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
                         * 名称: "tf-1","tf-2","tf-3"....
                         */
                         snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
-                        Log.d(TAG, "[%s: %d] mSD card node[%s] info index[%d], speed[%d]",
+                        LOGDBG(TAG, "mSD card node[%s] info index[%d], speed[%d]",
                                     __FILE__, __LINE__, tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
 
                         storageList.push_back(tmpVol);
                     }
 
                 } else {
-                    Log.e(TAG, "[%s: %d] node module not array!!", __FILE__, __LINE__);
+                    LOGERR(TAG, "node module not array!!");
                 }
                 
             }
@@ -2044,27 +1893,26 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 
 
         case CMD_WEB_UI_SWITCH_MOUNT_MODE: {
-            Log.d(TAG, "[%s: %d] Switch Mount Mode", __FILE__, __LINE__);
+            LOGDBG(TAG, "Switch Mount Mode");
             VolumeManager* vm = VolumeManager::Instance();
 
             if (jsonData.isMember("parameters")) {
                 if (jsonData["parameters"].isMember("mode")) {
                        if (!strcmp(jsonData["parameters"]["mode"].asCString(), "ro")) {
-                           Log.d(TAG, "[%s: %d] Change mount mode to ReadOnly", __FILE__, __LINE__);
+                           LOGDBG(TAG, "Change mount mode to ReadOnly");
                            vm->changeMountMethod("ro");
                        } else if (!strcmp(jsonData["parameters"]["mode"].asCString(), "rw")) {
-                           Log.d(TAG, "[%s: %d] Change mount mode to Read-Write", __FILE__, __LINE__);
+                           LOGDBG(TAG, "Change mount mode to Read-Write");
                            vm->changeMountMethod("rw");
                        }
                 } else {
-                    Log.e(TAG, "[%s: %d] not Member mode", __FILE__, __LINE__);
+                    LOGERR(TAG, "not Member mode");
                 }
             } else {
-                Log.d(TAG, "[%s: %d] Invalid Arguments", __FILE__, __LINE__);
+                LOGDBG(TAG, "Invalid Arguments");
             }
             break;
         }
-
 
         default: 
             break;
@@ -2098,15 +1946,15 @@ void fifo::read_fifo_thread()
 		/* 首先读取8字节的头部 */
         int len = read(read_fd, buf, FIFO_HEAD_LEN);
         if (len != FIFO_HEAD_LEN) {	/* 头部读取错误 */
-            Log.w(TAG, "ReadFifoThread: read fifo head mismatch(rec[%d] act[%d])", len, FIFO_HEAD_LEN);
+            LOGWARN(TAG, "ReadFifoThread: read fifo head mismatch(rec[%d] act[%d])", len, FIFO_HEAD_LEN);
             if (++error_times >= 3) {
-                Log.e(TAG, ">> read fifo broken?");
+                LOGERR(TAG, ">> read fifo broken?");
                 close_read_fd();
             }
         } else {
             int msg_what = bytes_to_int(buf);	/* 前4字节代表消息类型: what */
             if (msg_what == CMD_EXIT) {	/* 如果是退出消息 */
-				// Log.d(TAG," rec cmd exit");
+				// LOGDBG(TAG," rec cmd exit");
                 break;
             } else {
 				
@@ -2118,9 +1966,9 @@ void fifo::read_fifo_thread()
                 len = read(read_fd, &buf[FIFO_HEAD_LEN], content_len);
 
 				if (len != content_len) {	/* 读取的数据长度不一致 */
-                    Log.w(TAG, "3read fifo content mismatch(%d %d)", len, content_len);
+                    LOGWARN(TAG, "3read fifo content mismatch(%d %d)", len, content_len);
                     if (++error_times >= 3) {
-                        Log.e(TAG, " 2read fifo broken? ");
+                        LOGERR(TAG, " 2read fifo broken? ");
                         close_read_fd();
                     }
                 } else {
@@ -2130,7 +1978,7 @@ void fifo::read_fifo_thread()
 
                     cJSON *subNode = 0;
                     if (!root) {	/* 解析出错 */
-                        Log.e(TAG, "cJSON parse string error, func(%s), line(%d)", __FILE__, __LINE__);
+                        LOGERR(TAG, "cJSON parse string error, func(%s), line(%d)");
                     }
                     #endif
 					
@@ -2138,7 +1986,7 @@ void fifo::read_fifo_thread()
                     Json::Reader reader;
                     Json::FastWriter writer;
 	                if (!reader.parse(&buf[FIFO_HEAD_LEN], rootJson, false)) {
-		                Log.e(TAG, "[%s: %d] bad json format!", __FILE__, __LINE__);
+		                LOGERR(TAG, "bad json format!");
 		                continue;
 	                }
                     parseAndDispatchRecMsg(msg_what, rootJson);                  
@@ -2165,18 +2013,16 @@ void fifo::write_exit_for_read()
     //pipe broken
     CHECK_EQ(len, FIFO_HEAD_LEN);
 
-//    Log.d(TAG,"write_exit_for_read over");
     close(fd);
 }
 
 void fifo::deinit()
 {
-    Log.d(TAG, "deinit");
+    LOGDBG(TAG, "deinit");
     stop_all();
-    Log.d(TAG, "deinit2");
+    LOGDBG(TAG, "deinit2");
     sendExit();
-    Log.d(TAG, "deinit3");
-    arlog_close();
+    LOGDBG(TAG, "deinit3");
 }
 
 void fifo::close_read_fd()
@@ -2198,12 +2044,12 @@ void fifo::close_write_fd()
 int fifo::get_read_fd()
 {
     if (read_fd == -1) {
-//        Log.d(TAG, " read_fd fd %d", read_fd);
+//        LOGDBG(TAG, " read_fd fd %d", read_fd);
 //        bRFifoStop = true;
         read_fd = open(FIFO_FROM_CLIENT, O_RDONLY);
         CHECK_NE(read_fd, -1);
 //        bRFifoStop = false;
-//        Log.d(TAG, "2 read_fd fd %d", read_fd);
+//        LOGDBG(TAG, "2 read_fd fd %d", read_fd);
     }
     return read_fd;
 }
@@ -2224,14 +2070,14 @@ int fifo::make_fifo()
 {
     if (access(FIFO_FROM_CLIENT, F_OK) == -1) {
         if (mkfifo(FIFO_FROM_CLIENT, 0777)) {
-            Log.d("make fifo:%s fail", FIFO_FROM_CLIENT);
+            LOGDBG("make fifo:%s fail", FIFO_FROM_CLIENT);
             return INS_ERR;
         }
     }
 
     if (access(FIFO_TO_CLIENT, F_OK) == -1) {
         if (mkfifo(FIFO_TO_CLIENT, 0777)) {
-            Log.d("make fifo:%s fail", FIFO_TO_CLIENT);
+            LOGDBG("make fifo:%s fail", FIFO_TO_CLIENT);
             return INS_ERR;
         }
     }

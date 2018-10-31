@@ -5,7 +5,6 @@
 #include <stdarg.h>
 #include <string>
 #include <common/sp.h>
-#include <log/stlog.h>
 #include <util/StringFormat.h>
 
 
@@ -71,11 +70,12 @@ inline std::string ToString(const T &a)
 {
     return "unknown_obj";
 }
+
 #ifdef ENABLE_ABORT
 #define CHECK_EQ(a, b) \
     do { \
     if((a) != (b)) {\
-        Log.e(NULL, "CHECK_EQ(%s, %s) failed<%s, %s>(%s:%s:%d)", \
+        LOGERR(NULL, "CHECK_EQ(%s, %s) failed<%s, %s>(%s:%s:%d)", \
             #a, #b, ToString((a)).c_str(), ToString((b)).c_str(),\
             __FILE__, __FUNCTION__, __LINE__);\
         abort();\
@@ -86,7 +86,7 @@ inline std::string ToString(const T &a)
 #define CHECK_NE(a, b) \
     do { \
     if((a) == (b)) {\
-        Log.e(NULL, "CHECK_NE(%s, %s) failed<%s, %s>(%s:%s:%d)", \
+        LOGERR(NULL, "CHECK_NE(%s, %s) failed<%s, %s>(%s:%s:%d)", \
             #a, #b, ToString((a)).c_str(), ToString((b)).c_str(),\
             __FILE__, __FUNCTION__, __LINE__);\
         abort();\
@@ -96,7 +96,7 @@ inline std::string ToString(const T &a)
 #define CHECK_OP(a, b, op) \
     do { \
     if(!((a) op (b))) {\
-        Log.e(NULL, "CHECK_OP(%s, %s, %s) failed<%s, %s>(%s:%s:%d)", \
+        LOGERR(NULL, "CHECK_OP(%s, %s, %s) failed<%s, %s>(%s:%s:%d)", \
             #a, #b, #op, ToString((a)).c_str(), ToString((b)).c_str(),\
             __FILE__, __FUNCTION__, __LINE__);\
         abort();\
@@ -106,7 +106,7 @@ inline std::string ToString(const T &a)
 #define CHECK(a, ...) \
     do { \
     if(!(a)) {\
-        Log.e(NULL, "CHECK(%s) failed: %s.(%s:%s:%d)", \
+        LOGERR(NULL, "CHECK(%s) failed: %s.(%s:%s:%d)", \
             #a, StringFormat(__VA_ARGS__).c_str(), \
             __FILE__, __FUNCTION__, __LINE__);\
         abort(); \
@@ -114,41 +114,10 @@ inline std::string ToString(const T &a)
     } while(0)
 
 #else
-#define CHECK_EQ(a, b) \
-    do { \
-    if((a) != (b)) {\
-        Log.e(NULL, "CHECK_EQ(%s, %s) failed<%s, %s>(%s:%s:%d)", \
-            #a, #b, ToString((a)).c_str(), ToString((b)).c_str(),\
-            __FILE__, __FUNCTION__, __LINE__);\
-    }\
-    } while(0)
-
-#define CHECK_NE(a, b) \
-    do { \
-    if((a) == (b)) {\
-        Log.e(NULL, "CHECK_NE(%s, %s) failed<%s, %s>(%s:%s:%d)", \
-            #a, #b, ToString((a)).c_str(), ToString((b)).c_str(),\
-            __FILE__, __FUNCTION__, __LINE__);\
-    }\
-    } while(0)
-
-#define CHECK_OP(a, b, op) \
-    do { \
-    if(!((a) op (b))) {\
-        Log.e(NULL, "CHECK_OP(%s, %s, %s) failed<%s, %s>(%s:%s:%d)", \
-            #a, #b, #op, ToString((a)).c_str(), ToString((b)).c_str(),\
-            __FILE__, __FUNCTION__, __LINE__);\
-    }\
-    } while(0)
-
-#define CHECK(a, ...) \
-    do { \
-    if(!(a)) {\
-        Log.e(NULL, "CHECK(%s) failed: %s.(%s:%s:%d)", \
-            #a, StringFormat(__VA_ARGS__).c_str(), \
-            __FILE__, __FUNCTION__, __LINE__);\
-    }\
-    } while(0)
+#define CHECK_EQ(a, b)
+#define CHECK_NE(a, b)
+#define CHECK_OP(a, b, op) 
+#define CHECK(a, ...) 
 
 #endif
 #endif

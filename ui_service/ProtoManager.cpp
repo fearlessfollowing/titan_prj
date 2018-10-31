@@ -24,6 +24,7 @@
 #include <sys/Mutex.h>
 #include <sys/ProtoManager.h>
 
+#include <log/log_wrapper.h>
 
 /*********************************************************************************************
  *  输出日志的TAG(用于刷选日志)
@@ -103,7 +104,7 @@ ProtoManager* ProtoManager::Instance()
 ProtoManager::ProtoManager(): mSyncReqExitFlag(false), 
                               mAsyncReqExitFlag(false)
 {
-    Log.d(TAG, "[%s: %d] Constructor ProtoManager now ...", __FILE__, __LINE__);
+    LOGDBG(TAG, "Constructor ProtoManager now ...");
     mCurRecvData.clear();
 }
 
@@ -133,9 +134,9 @@ int ProtoManager::sendHttpSyncReq(const std::string &url, Json::Value* pJsonRes,
                                                         url.c_str(), pExtraHeaders, pPostData);
 	mg_set_protocol_http_websocket(connection);
 
-	// Log.d(TAG, "Send http request URL: %s", url.c_str());
-	// Log.d(TAG, "Extra Headers: %s", pExtraHeaders);
-	// Log.d(TAG, "Post data: %s", pPostData);
+	// LOGDBG(TAG, "Send http request URL: %s", url.c_str());
+	// LOGDBG(TAG, "Extra Headers: %s", pExtraHeaders);
+	// LOGDBG(TAG, "Post data: %s", pPostData);
 
     setSyncReqExitFlag(false);
 
@@ -159,7 +160,7 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
 	    case MG_EV_CONNECT: {
 		    iConnState = *(int *)pEventData;
 		    if (iConnState != 0)  {
-                Log.e(TAG, "[%s: %d] Connect to Server Failed, Error Code: %d", __FILE__, __LINE__, iConnState);
+                LOGERR(TAG, "Connect to Server Failed, Error Code: %d", iConnState);
                 pm->setSyncReqExitFlag(true);
                 mSyncReqErrno = PROTO_MANAGER_REQ_CONN_FAILED;
 		    }
@@ -167,15 +168,15 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
         }
 	
         case MG_EV_HTTP_REPLY: {
-		    // Log.d(TAG, "Got reply:\n%.*s\n", (int)hm->body.len, hm->body.p);
+		    // LOGDBG(TAG, "Got reply:\n%.*s\n", (int)hm->body.len, hm->body.p);
             if (mSaveSyncReqRes) {
                 Json::Reader reader;
                 if (!reader.parse(std::string(hm->body.p, hm->body.len), (*mSaveSyncReqRes), false)) {
-                    Log.e(TAG, "[%s: %d] Parse Http Reply Failed!", __FILE__, __LINE__);
+                    LOGERR(TAG, "Parse Http Reply Failed!");
                     mSyncReqErrno = PROTO_MANAGER_REQ_PARSE_REPLY_FAIL;
                 }
             } else {
-                Log.e(TAG, "[%s: %d] Invalid mSaveSyncReqRes, maybe client needn't reply results", __FILE__, __LINE__);
+                LOGERR(TAG, "Invalid mSaveSyncReqRes, maybe client needn't reply results");
             }
 		    conn->flags |= MG_F_SEND_AND_CLOSE;
             pm->setSyncReqExitFlag(true);
@@ -185,7 +186,7 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
 
 	    case MG_EV_CLOSE: {
 		    if (pm->getSyncReqExitFlag() == false) {
-			    Log.d(TAG, "[%s: %d] Server closed connection", __FILE__, __LINE__);
+			    LOGDBG(TAG, "Server closed connection");
                 pm->setSyncReqExitFlag(true);
                 mSyncReqErrno = PROTO_MANAGER_REQ_CONN_CLOSEED;
 		    };
@@ -235,13 +236,13 @@ bool ProtoManager::getServerState(uint64_t* saveState)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            // Log.d(TAG, "getServerState -> request Result: %s", resultStr.c_str());
+            // LOGDBG(TAG, "getServerState -> request Result: %s", resultStr.c_str());
 
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {
                     *saveState = jsonRes["value"].asUInt64();
                     bRet = true;
-                    // Log.d(TAG, "[%s: %d] Get Server State: 0x%x", __FILE__, __LINE__, *saveState);
+                    // LOGDBG(TAG, "Get Server State: 0x%x", *saveState);
                 }
             } else {
                 bRet = false;
@@ -250,7 +251,7 @@ bool ProtoManager::getServerState(uint64_t* saveState)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] getServerState -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "getServerState -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -284,7 +285,7 @@ bool ProtoManager::setServerState(uint64_t saveState)
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
-    Log.d(TAG, "[%s: %d] Add state: 0x%x", __FILE__, __LINE__, saveState);
+    LOGDBG(TAG, "Add state: 0x%x", saveState);
 
     iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
     switch (iResult) {
@@ -292,7 +293,7 @@ bool ProtoManager::setServerState(uint64_t saveState)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "setServerState -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "setServerState -> request Result: %s", resultStr.c_str());
 
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {
@@ -305,7 +306,7 @@ bool ProtoManager::setServerState(uint64_t saveState)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] setServerState -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "setServerState -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -339,7 +340,7 @@ bool ProtoManager::rmServerState(uint64_t saveState)
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
-    Log.d(TAG, "[%s: %d] Clear state: 0x%x", __FILE__, __LINE__, saveState);
+    LOGDBG(TAG, "Clear state: 0x%x", saveState);
 
     iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
     switch (iResult) {
@@ -347,7 +348,7 @@ bool ProtoManager::rmServerState(uint64_t saveState)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "rmServerState -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "rmServerState -> request Result: %s", resultStr.c_str());
 
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {
@@ -360,7 +361,7 @@ bool ProtoManager::rmServerState(uint64_t saveState)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] rmServerState -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "rmServerState -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -481,7 +482,7 @@ bool ProtoManager::sendStartPreview()
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -522,7 +523,7 @@ bool ProtoManager::sendStopPreview()
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendStopPreview -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendStopPreview -> request Result: %s", resultStr.c_str());
 
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {
@@ -535,7 +536,7 @@ bool ProtoManager::sendStopPreview()
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendStopPreview -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendStopPreview -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -564,7 +565,7 @@ bool ProtoManager::sendStopPreview()
 
 bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
 {
-    Log.d(TAG, "[%s:%d] ---> parseQueryTfcardResult", __FILE__, __LINE__);
+    LOGDBG(TAG, "[%s:%d] ---> parseQueryTfcardResult");
 
     bool bResult = false;
     mStorageList.clear();
@@ -591,7 +592,7 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
                     }
 
                     sprintf(tmpVol->cVolName, "mSD%d", tmpVol->iIndex);
-                    Log.d(TAG, "[%s: %d] TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d]",
+                    LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d]",
                                 __FILE__, __LINE__, tmpVol->cVolName, 
                                 tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest);
 
@@ -600,11 +601,11 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
                 }
                 bResult = true; 
             } else {
-                Log.e(TAG, "[%s: %d] module not array, what's wrong", __FILE__, __LINE__);
+                LOGERR(TAG, "module not array, what's wrong");
             }
         }
     } else {
-        Log.e(TAG, "[%s: %d] state node not exist!", __FILE__, __LINE__);
+        LOGERR(TAG, "state node not exist!");
     } 
     return bResult;   
 }
@@ -640,7 +641,7 @@ bool ProtoManager::sendQueryTfCard()
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendQueryTfCard -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendQueryTfCard -> request Result: %s", resultStr.c_str());
 
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     /* 调用卷管理器来更新TF卡的信息 */
@@ -656,7 +657,7 @@ bool ProtoManager::sendQueryTfCard()
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendStopPreview -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendStopPreview -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -694,7 +695,7 @@ bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendSetCustomLensReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendSetCustomLensReq -> request Result: %s", resultStr.c_str());
 
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     /* 调用卷管理器来更新TF卡的信息 */
@@ -707,7 +708,7 @@ bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendSetCustomLensReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendSetCustomLensReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -746,7 +747,7 @@ bool ProtoManager::sendSpeedTestReq(const char* path)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendSpeedTestReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendSpeedTestReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -758,7 +759,7 @@ bool ProtoManager::sendSpeedTestReq(const char* path)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendSpeedTestReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendSpeedTestReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -791,7 +792,7 @@ bool ProtoManager::sendTakePicReq(Json::Value& takePicReq)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendTakePicReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendTakePicReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -803,7 +804,7 @@ bool ProtoManager::sendTakePicReq(Json::Value& takePicReq)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendTakePicReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendTakePicReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -837,7 +838,7 @@ bool ProtoManager::sendTakeVideoReq(Json::Value& takeVideoReq)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendTakeVideoReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendTakeVideoReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -848,7 +849,7 @@ bool ProtoManager::sendTakeVideoReq(Json::Value& takeVideoReq)
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendTakeVideoReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendTakeVideoReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -884,7 +885,7 @@ bool ProtoManager::sendStopVideoReq()
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendStopVideoReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendStopVideoReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -896,7 +897,7 @@ bool ProtoManager::sendStopVideoReq()
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendStopVideoReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendStopVideoReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -942,7 +943,7 @@ bool ProtoManager::sendStartLiveReq(Json::Value& takeLiveReq)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendTakeLiveReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendTakeLiveReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -953,7 +954,7 @@ bool ProtoManager::sendStartLiveReq(Json::Value& takeLiveReq)
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendTakeLiveReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendTakeLiveReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -989,7 +990,7 @@ bool ProtoManager::sendStopLiveReq()
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendStopLiveReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendStopLiveReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1001,7 +1002,7 @@ bool ProtoManager::sendStopLiveReq()
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendStopLiveReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendStopLiveReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1040,7 +1041,7 @@ bool ProtoManager::sendStichCalcReq()
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendStichCalcReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendStichCalcReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1052,7 +1053,7 @@ bool ProtoManager::sendStichCalcReq()
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendStichCalcReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendStichCalcReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1092,7 +1093,7 @@ bool ProtoManager::sendSavePathChangeReq(const char* savePath)
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendSavePathChangeReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendSavePathChangeReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1104,7 +1105,7 @@ bool ProtoManager::sendSavePathChangeReq(const char* savePath)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendSavePathChangeReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendSavePathChangeReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1139,7 +1140,7 @@ bool ProtoManager::sendStorageListReq(const char* devList)
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendStorageListReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendStorageListReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1150,7 +1151,7 @@ bool ProtoManager::sendStorageListReq(const char* devList)
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendStorageListReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendStorageListReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1192,7 +1193,7 @@ bool ProtoManager::sendUpdateBatteryInfo(BAT_INFO* pBatInfo)
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendUpdateBatteryInfo -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendUpdateBatteryInfo -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1203,7 +1204,7 @@ bool ProtoManager::sendUpdateBatteryInfo(BAT_INFO* pBatInfo)
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendUpdateBatteryInfo -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendUpdateBatteryInfo -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1238,7 +1239,7 @@ bool ProtoManager::sendStartNoiseSample()
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendStartNoiseSample -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendStartNoiseSample -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1249,7 +1250,7 @@ bool ProtoManager::sendStartNoiseSample()
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendStartNoiseSample -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendStartNoiseSample -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1284,7 +1285,7 @@ bool ProtoManager::sendGyroCalcReq()
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendGyroCalcReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendGyroCalcReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1295,7 +1296,7 @@ bool ProtoManager::sendGyroCalcReq()
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendGyroCalcReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendGyroCalcReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1330,7 +1331,7 @@ bool ProtoManager::sendLowPowerReq()
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendLowPowerReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendLowPowerReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1341,7 +1342,7 @@ bool ProtoManager::sendLowPowerReq()
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendLowPowerReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendLowPowerReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1376,7 +1377,7 @@ bool ProtoManager::sendWbCalcReq()
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendWbCalcReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendWbCalcReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1387,7 +1388,7 @@ bool ProtoManager::sendWbCalcReq()
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendWbCalcReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendWbCalcReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1422,7 +1423,7 @@ bool ProtoManager::sendSetOptionsReq(Json::Value& optionsReq)
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendSetOptionsReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendSetOptionsReq -> request Result: %s", resultStr.c_str());
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     
                     bRet = true;
@@ -1433,7 +1434,7 @@ bool ProtoManager::sendSetOptionsReq(Json::Value& optionsReq)
             break;
         }
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendSetOptionsReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendSetOptionsReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1476,7 +1477,7 @@ bool ProtoManager::sendSwitchUdiskModeReq(bool bEnterExitFlag)
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
-            Log.d(TAG, "sendEnterUdiskModeReq -> request Result: %s", resultStr.c_str());
+            LOGDBG(TAG, "sendEnterUdiskModeReq -> request Result: %s", resultStr.c_str());
 
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {
@@ -1489,7 +1490,7 @@ bool ProtoManager::sendSwitchUdiskModeReq(bool bEnterExitFlag)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] sendEnterUdiskModeReq -> Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "sendEnterUdiskModeReq -> Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1547,7 +1548,7 @@ bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uL
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1598,7 +1599,7 @@ bool ProtoManager::sendUpdateTakeTimelapseLeft(u32 leftVal)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1649,7 +1650,7 @@ bool ProtoManager::sendStateSyncReq(REQ_SYNC* pReqSyncInfo)
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "Maybe Transfer Error");
             bRet = false;
         }
     }
@@ -1682,18 +1683,18 @@ int ProtoManager::sendQueryGpsState()
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {
                     iResult = jsonRes[_results][_state].asInt();
-                    Log.d(TAG, "[%s: %d] Query Gps State Result = %d", __FILE__, __LINE__, iResult);
+                    LOGDBG(TAG, "Query Gps State Result = %d", iResult);
                 } else {
-                    Log.e(TAG, "[%s: %d] Reply 'state' val not 'done' ", __FILE__, __LINE__);
+                    LOGERR(TAG, "Reply 'state' val not 'done' ");
                 }
             } else {
-                Log.e(TAG, "[%s: %d] Reply content not 'state' member??", __FILE__, __LINE__);
+                LOGERR(TAG, "Reply content not 'state' member??");
             }
             break;
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "Maybe Transfer Error");
         }
     }
     return iResult;    
@@ -1733,7 +1734,7 @@ int ProtoManager::sendFormatmSDReq(int iIndex)
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
             if (jsonRes.isMember(_state)) {
                 if (jsonRes[_state] == _done) {     /* 格式化成功(所有的卡或单张卡) */
-                    Log.d(TAG, "[%s: %d] Format Tf Card Success", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Format Tf Card Success");
                     iResult = ERROR_FORMAT_SUC;
                 } else {
                     if (jsonRes.isMember(_error) && jsonRes[_error].isMember(_code)) {
@@ -1747,14 +1748,14 @@ int ProtoManager::sendFormatmSDReq(int iIndex)
                     }
                 }
             } else {
-                Log.e(TAG, "[%s: %d] Reply content not 'state' member??", __FILE__, __LINE__);
+                LOGERR(TAG, "Reply content not 'state' member??");
                 iResult = ERROR_FORMAT_REQ_FAILED;
             }
             break;
         }
 
         default: {  /* 通信错误 */
-            Log.e(TAG, "[%s: %d] Maybe Transfer Error", __FILE__, __LINE__);
+            LOGERR(TAG, "Maybe Transfer Error");
             iResult = ERROR_FORMAT_REQ_FAILED;            
         }
     }

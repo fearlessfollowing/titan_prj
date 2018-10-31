@@ -6,11 +6,11 @@
 #include <netinet/icmp6.h>
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <log/stlog.h>
 
 #include <sys/NetlinkEvent.h>
 #include <sys/VolumeManager.h>
 
+#include <log/log_wrapper.h>
 
 const int QLOG_NL_EVENT  = 112;
 
@@ -67,7 +67,7 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
         return false;
 
 #ifdef ENABLE_DEBUG_NETLINK_MSG
-    Log.d(TAG, ">>> parseAsciiNetlinkMessage: %s", buffer);
+    LOGDBG(TAG, ">>> parseAsciiNetlinkMessage: %s", buffer);
 #endif
 
     buffer[size-1] = '\0';
@@ -102,7 +102,7 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
         }
 
         #ifdef ENABLE_DEBUG_NETLINK_MSG
-        Log.d(TAG, ">>>> Action is %s", (mAction == NETLINK_ACTION_ADD) ? "add" : "remove");
+        LOGDBG(TAG, ">>>> Action is %s", (mAction == NETLINK_ACTION_ADD) ? "add" : "remove");
         #endif
 
  
@@ -119,7 +119,7 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
         }
 
         #ifdef ENABLE_DEBUG_NETLINK_MSG
-        Log.d(TAG, ">>>> subsystem is %d", mSubsys);
+        LOGDBG(TAG, ">>>> subsystem is %d", mSubsys);
         #endif
 
         if (mSubsys == VOLUME_SUBSYS_USB) {
@@ -132,7 +132,7 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
                 pSlash = strrchr(cBusAddr, '/');
                 if (pSlash) {
                     strncpy(mBusAddr, pSlash + 1, (pColon - (pSlash + 1)));
-                    Log.d(TAG, "New Version usb bus addr: %s", mBusAddr);
+                    LOGDBG(TAG, "New Version usb bus addr: %s", mBusAddr);
                 } else {
                     return false;
                 }
@@ -141,7 +141,7 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
                 pDevNode = strrchr(s, '/');
                 if (pDevNode) {
                     strcpy(mDevNodeName, pDevNode + 1);
-                    Log.d(TAG, "New Version dev node name: %s", mDevNodeName);
+                    LOGDBG(TAG, "New Version dev node name: %s", mDevNodeName);
                 } else {
                     return false;
                 }
@@ -162,7 +162,7 @@ bool NetlinkEvent::decode(char *buffer, int size, int format)
     if (format == NetlinkListener::NETLINK_FORMAT_ASCII) {
         return parseAsciiNetlinkMessage(buffer, size);
     } else {
-        Log.e(TAG, "[%s: %d] Not support format[%d]", __FILE__, __LINE__, format);
+        LOGERR(TAG, "Not support format[%d]", format);
         return false;
     }
 }

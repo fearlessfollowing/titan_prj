@@ -24,7 +24,6 @@ ARLooper::~ARLooper()
 
 void ARLooper::run()
 {
-    Log.d(TAG, __FUNCTION__);
     mThreadID = this_thread::get_id();
     mRunning = true;
     mLoop.run();
@@ -36,7 +35,6 @@ void ARLooper::run()
 
 void ARLooper::quit()
 {
-//    Log.d(TAG, __FUNCTION__);
     CHECK_EQ(mThreadID, this_thread::get_id());
     mQuit = true;
     mLoop.break_loop(ev::ALL);
@@ -44,7 +42,6 @@ void ARLooper::quit()
 
 void ARLooper::sendMessageWithDelayMs(const sp<ARMessage> &msg, int ms)
 {
-//    if(TRACE) Log.d(TAG, __FUNCTION__);
     CHECK_OP(ms, 0, >=);
     {
         unique_lock<mutex> lock(mMutex);
@@ -56,13 +53,9 @@ void ARLooper::sendMessageWithDelayMs(const sp<ARMessage> &msg, int ms)
 
 void ARLooper::dispatchMessage(const sp<ARMessage> &msg)
 {
-//    if(TRACE) Log.d(TAG, __FUNCTION__);
     wp<ARHandler> handlerWp = msg->getHandler();
     sp<ARHandler> handler = handlerWp.lock();
-    if(handler == nullptr)
-    {
-        Log.w(TAG, "dispatching message %p, found handler doesn't exit now", 
-            msg.get());
+    if (handler == nullptr) {
         return;
     }
 
@@ -71,10 +64,8 @@ void ARLooper::dispatchMessage(const sp<ARMessage> &msg)
 
 void ARLooper::performAsync(ev::async &watcher, int events)
 {
-//    if(TRACE) Log.d(TAG, __FUNCTION__);
     sp<MsgInfo> msgInfo;
-    while(!mQuit)
-    {
+    while (!mQuit) {
         {
             unique_lock<mutex> lock(mMutex);
             if(mMsgs.empty())
@@ -82,13 +73,11 @@ void ARLooper::performAsync(ev::async &watcher, int events)
             msgInfo = mMsgs.front();
             mMsgs.pop_front();
         }
-        if(!msgInfo->is_delay_msg)
-        {
+
+        if (!msgInfo->is_delay_msg) {
             dispatchMessage(msgInfo->msg);
             msgInfo = nullptr;
-        }
-        else
-        {
+        } else {
             sp<ev::timer> timerWatcher(new ev::timer(mLoop));
             timerWatcher->set<ARLooper, &ARLooper::performTimer>(this);
             mTimers.insert({timerWatcher.get(), {timerWatcher, msgInfo->msg}});
@@ -103,7 +92,6 @@ void ARLooper::performAsync(ev::async &watcher, int events)
 
 void ARLooper::performTimer(ev::timer &watcher, int events)
 {
-    if(TRACE) Log.d(TAG, __FUNCTION__);
     if(mQuit)
         return;
     auto itr = mTimers.find(&watcher);

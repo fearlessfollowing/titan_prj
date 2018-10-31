@@ -42,7 +42,6 @@
 #include <sys/pro_uevent.h>
 #include <sys/action_info.h>
 #include <util/GitVersion.h>
-#include <log/stlog.h>
 #include <system_properties.h>
 #include <prop_cfg.h>
 
@@ -66,6 +65,8 @@
 #include <icon/setting_menu_icon.h>
 #include <icon/pic_video_select.h>
 
+#include <log/log_wrapper.h>
+
 using namespace std;
 
 #undef      TAG
@@ -86,10 +87,10 @@ using namespace std;
 
 
 #define ERR_MENU_STATE(menu,state) \
-Log.e(TAG,"[%s:%d] err menu state (%d 0x%x)", __FILE__, __LINE__, menu, state);
+LOGERR(TAG,"err menu state (%d 0x%x)",  menu, state);
 
 #define INFO_MENU_STATE(menu,state) \
-Log.d(TAG, "[%s:%d] menu state (%d 0x%x)", __FILE__, __LINE__, menu, state);
+LOGDBG(TAG, "menu state (%d 0x%x)", menu, state);
 
 
 static Mutex gStateLock;
@@ -198,7 +199,6 @@ static const SYS_READ astSysRead[] = {
 
 #define INTERVAL_1HZ 	    (1000)
 
-//#define INTERVAL_3HZ      (333)
 #define INTERVAL_5HZ 		(200)
 
 #define FLASH_LIGHT			BACK_BLUE
@@ -427,9 +427,9 @@ void MenuUI::init_menu_select()
     mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_num = 1;
     cfgPicVidLiveSelectMode(&mMenuInfos[MENU_PIC_SET_DEF], mPicAllItemsList);
     
-    Log.d(TAG, "[%s:%d] mPicAllItemsList size = %d", __FILE__, __LINE__, mPicAllItemsList.size());
+    LOGDBG(TAG, "mPicAllItemsList size = %d", mPicAllItemsList.size());
 
-    Log.d(TAG, "MENU_PIC_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+    LOGDBG(TAG, "MENU_PIC_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total,
                 mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_num,
                 mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.cur_page,
@@ -445,9 +445,9 @@ void MenuUI::init_menu_select()
     mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_num = 1;
     cfgPicVidLiveSelectMode(&mMenuInfos[MENU_VIDEO_SET_DEF], mVidAllItemsList);
     
-    Log.d(TAG, "[%s:%d] mVidAllItemsList size = %d", __FILE__, __LINE__, mVidAllItemsList.size());
+    LOGDBG(TAG, "mVidAllItemsList size = %d", mVidAllItemsList.size());
 
-    Log.d(TAG, "MENU_VIDEO_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+    LOGDBG(TAG, "MENU_VIDEO_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total,
                 mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_num,
                 mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.cur_page,
@@ -465,9 +465,9 @@ void MenuUI::init_menu_select()
 
     cfgPicVidLiveSelectMode(&mMenuInfos[MENU_LIVE_SET_DEF], mLiveAllItemsList);
     
-    Log.d(TAG, "[%s:%d] mLiveAllItemsList size = %d", __FILE__, __LINE__, mLiveAllItemsList.size());
+    LOGDBG(TAG, "mLiveAllItemsList size = %d", mLiveAllItemsList.size());
 
-    Log.d(TAG, "MENU_LIVE_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+    LOGDBG(TAG, "MENU_LIVE_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total,
                 mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.page_num,
                 mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.cur_page,
@@ -486,23 +486,23 @@ void MenuUI::init_menu_select()
 *************************************************************************/
 void MenuUI::init()
 {
-    Log.d(TAG, "MenuUI init objects start ... file[%s], line[%d], date[%s], time[%s]", __FILE__, __LINE__, __DATE__, __TIME__);
+    LOGDBG(TAG, "MenuUI init objects start ... file[%s], line[%d], date[%s], time[%s]", __DATE__, __TIME__);
 
     CHECK_EQ(sizeof(mMenuInfos) / sizeof(mMenuInfos[0]), MENU_MAX);
     CHECK_EQ(sizeof(astSysRead) / sizeof(astSysRead[0]), SYS_KEY_MAX);
 
-    Log.d(TAG, "init UI state: STATE_IDLE");
+    LOGDBG(TAG, "init UI state: STATE_IDLE");
     
     mGpsState = GPS_STATE_NO_DEVICE;
 
     property_set(PROP_SPEED_TEST_COMP_FLAG, "false");
 
-    Log.d(TAG, "Create OLED display Object...");
+    LOGDBG(TAG, "Create OLED display Object...");
 	/* OLED对象： 显示系统 */
     mOLEDModule = sp<oled_module>(new oled_module());
     CHECK_NE(mOLEDModule, nullptr);
 
-    Log.d(TAG, "Create System Configure Object...");
+    LOGDBG(TAG, "Create System Configure Object...");
     mProCfg = sp<pro_cfg>(new pro_cfg());
 
 
@@ -510,12 +510,12 @@ void MenuUI::init()
     CHECK_NE(mRecInfo, nullptr);
     memset(mRecInfo.get(), 0, sizeof(REC_INFO));
 
-    Log.d(TAG, "Create System Light Manager Object...");
+    LOGDBG(TAG, "Create System Light Manager Object...");
 
     mOLEDLight = sp<oled_light>(new oled_light());
     CHECK_NE(mOLEDLight, nullptr);
 
-    Log.d(TAG, "Create System Battery Manager Object...");
+    LOGDBG(TAG, "Create System Battery Manager Object...");
     mBatInterface = sp<battery_interface>(new battery_interface());
     CHECK_NE(mBatInterface, nullptr);
 
@@ -525,11 +525,11 @@ void MenuUI::init()
     m_bat_info_->battery_level = 1000;
 
 
-    Log.d(TAG, "Create System Info Object...");
+    LOGDBG(TAG, "Create System Info Object...");
     mReadSys = sp<SYS_INFO>(new SYS_INFO());
     CHECK_NE(mReadSys, nullptr);
 
-    Log.d(TAG, "Create System Version Object...");
+    LOGDBG(TAG, "Create System Version Object...");
     mVerInfo = sp<VER_INFO>(new VER_INFO());
     CHECK_NE(mVerInfo, nullptr);
 
@@ -539,7 +539,7 @@ void MenuUI::init()
     memset(mWifiConfig.get(), 0, sizeof(WIFI_CONFIG));
     #endif
 
-    Log.d(TAG, "Create System NetManager Object...");
+    LOGDBG(TAG, "Create System NetManager Object...");
 
 #ifdef ENABLE_PESUDO_SN
 
@@ -548,29 +548,29 @@ void MenuUI::init()
 		srand(time(NULL));
 
 		int iRandNum = rand() % 32768;
-		Log.d(TAG, ">>>> Generate Rand Num %d", iRandNum);
+		LOGDBG(TAG, ">>>> Generate Rand Num %d", iRandNum);
 
 		sprintf(tmpName, "%d", iRandNum);
 		FILE* fp = fopen(WIFI_RAND_NUM_CFG, "w+");
 		if (fp) {
 			fprintf(fp, "%s", tmpName);
 			fclose(fp);
-			Log.d(TAG, "generated rand num and save[%s] ok", WIFI_RAND_NUM_CFG);
+			LOGDBG(TAG, "generated rand num and save[%s] ok", WIFI_RAND_NUM_CFG);
 		}
 	} else {
 		FILE* fp = fopen(WIFI_RAND_NUM_CFG, "r");
 		if (fp) {
 			fgets(tmpName, 6, fp);
-			Log.d(TAG, "get rand num [%s]", tmpName);
+			LOGDBG(TAG, "get rand num [%s]", tmpName);
 			fclose(fp);
 		} else {
-			Log.e(TAG, "open [%s] failed", WIFI_RAND_NUM_CFG);
+			LOGERR(TAG, "open [%s] failed", WIFI_RAND_NUM_CFG);
 			strcpy(tmpName, "Test");
 		}
 	}
 
 	property_set(PROP_SYS_AP_PESUDO_SN, tmpName);
-	Log.d(TAG, "get pesudo sn [%s]", property_get(PROP_SYS_AP_PESUDO_SN));
+	LOGDBG(TAG, "get pesudo sn [%s]", property_get(PROP_SYS_AP_PESUDO_SN));
 
 #else
 
@@ -581,7 +581,7 @@ void MenuUI::init()
 		FILE* fp = fopen(SYS_SN_PATH, "r");
 		if (fp) {
 			fgets(tmpName, 128, fp);
-			Log.d(TAG, "get sn [%s]", tmpName);
+			LOGDBG(TAG, "get sn [%s]", tmpName);
 			
             int iLen = strlen(tmpName);
             if (iLen < 6) {
@@ -595,7 +595,7 @@ void MenuUI::init()
             }
             fclose(fp);
 		} else {
-			Log.e(TAG, "open [%s] failed", WIFI_RAND_NUM_CFG);
+			LOGERR(TAG, "open [%s] failed", WIFI_RAND_NUM_CFG);
 			strcpy(tmpName, "Test");
 		}
     } else {    /* SN文件不存在 */
@@ -615,7 +615,7 @@ void MenuUI::init()
     mNetManager->startNetManager();
 
     /* 注册以太网卡(eth0) */
-	Log.d(TAG, "eth0 get ip mode [%s]", (mProCfg->get_val(KEY_DHCP) == 1) ? "DHCP" : "STATIC" );
+	LOGDBG(TAG, "eth0 get ip mode [%s]", (mProCfg->get_val(KEY_DHCP) == 1) ? "DHCP" : "STATIC" );
     sp<EtherNetDev> eth0 = (sp<EtherNetDev>)(new EtherNetDev("eth0", mProCfg->get_val(KEY_DHCP)));
     sp<ARMessage> registerLanMsg = obtainMessage(NETM_REGISTER_NETDEV);
     registerLanMsg->set<sp<NetDev>>("netdev", eth0);
@@ -658,7 +658,7 @@ void MenuUI::init()
 		wifiConfig->iApChannel = DEFAULT_WIFI_AP_CHANNEL_NUM_BG;
 		wifiConfig->iAuthMode = AUTH_WPA2;			/* 加密认证模式 */
 
-		Log.d(TAG, "SSID[%s], Passwd[%s], Inter[%s], Mode[%d], Channel[%d], Auth[%d]",
+		LOGDBG(TAG, "SSID[%s], Passwd[%s], Inter[%s], Mode[%d], Channel[%d], Auth[%d]",
 								wifiConfig->cApName,
 								wifiConfig->cPasswd,
 								wifiConfig->cInterface,
@@ -670,7 +670,7 @@ void MenuUI::init()
 		mHaveConfigSSID = true;
 	}
 
-    Log.d(TAG, "---------> Init Input Manager");
+    LOGDBG(TAG, "---------> Init Input Manager");
     sp<ARMessage> inputNotify = obtainMessage(UI_MSG_KEY_EVENT);
     InputManager* in = InputManager::Instance();
     in->setNotifyRecv(inputNotify);
@@ -684,14 +684,14 @@ void MenuUI::init()
     sp<ARMessage> dev_notify = obtainMessage(UI_UPDATE_DEV_INFO);
     VolumeManager* volInstance = VolumeManager::Instance();
     if (volInstance) {
-        Log.d(TAG, "[%s: %d] +++++++++ Start Vold(2.4) Manager +++++++++", __FILE__, __LINE__);
+        LOGDBG(TAG, "+++++++++ Start Vold(2.4) Manager +++++++++");
         volInstance->setNotifyRecv(dev_notify);
         volInstance->start();
     }
 
     mAgingMode = false;
 
-    Log.d(TAG, ">>>>>>>> Init MenUI object ok ......");
+    LOGDBG(TAG, ">>>>>>>> Init MenUI object ok ......");
 }
 
 
@@ -705,7 +705,7 @@ void MenuUI::init()
 *************************************************************************/
 MenuUI::MenuUI(const sp<ARMessage> &notify): mNotify(notify)
 {
-    Log.d(TAG, "[%s: %d]>>>>>>> Constructor MenuUI Object", __FILE__, __LINE__);
+    LOGDBG(TAG, "[%s: %d]>>>>>>> Constructor MenuUI Object");
  
     initUiMsgHandler();	        /* 初始化消息处理线程 */
     init();					    /* MenuUI内部成员初始化 */
@@ -753,7 +753,7 @@ void MenuUI::send_init_disp()
 void MenuUI::init_cfg_select()
 {
     
-    Log.d(TAG, "[%s:%d] init_cfg_select...", __FILE__, __LINE__);
+    LOGDBG(TAG, "init_cfg_select...");
 
     mSetItemsList.clear();
     mPhotoDelayList.clear();
@@ -787,7 +787,7 @@ void MenuUI::init_cfg_select()
 	}	
 
     msg = (sp<ARMessage>)(new ARMessage(iCmd));
-    Log.d(TAG, "init_cfg_select: wifi state[%d]", mProCfg->get_val(KEY_WIFI_ON));
+    LOGDBG(TAG, "init_cfg_select: wifi state[%d]", mProCfg->get_val(KEY_WIFI_ON));
     msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
     NetManager::getNetManagerInstance()->postNetMessage(msg);
 }
@@ -810,7 +810,7 @@ void MenuUI::write_p(int p, int val)
     int  rc;
     rc = write(p, &c, 1);
     if (rc != 1) {
-        Log.d("Error writing to control pipe (%s) val %d", strerror(errno), val);
+        LOGDBG("Error writing to control pipe (%s) val %d", strerror(errno), val);
         return;
     }
 }
@@ -830,7 +830,7 @@ void MenuUI::play_sound(u32 type)
             snprintf(cmd, sizeof(cmd), "aplay %s", sound_str[type]);
             exec_sh(cmd);
 		} else {
-            Log.d(TAG, "[%s: %d] sound type %d exceed", __FILE__, __LINE__, type);
+            LOGDBG(TAG, "sound type %d exceed", type);
 		}
     }
 }
@@ -887,7 +887,7 @@ void MenuUI::disp_msg_box(int type)
     uint64_t serverState = getServerState();
 
     if (cur_menu == -1) {
-        Log.e(TAG,"disp msg box before pro_service finish\n");
+        LOGERR(TAG,"disp msg box before pro_service finish\n");
         return;
     }
 
@@ -1056,7 +1056,7 @@ void MenuUI::updateMenuCurPageAndSelect(int menu, int iSelect)
 *************************************************************************/
 void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
 {
-    Log.d(TAG, "[%s:%d] Init System Setting subsyste Menu...", __FILE__, __LINE__);
+    LOGDBG(TAG, "Init System Setting subsyste Menu...");
 
     int size = pParentMenu->mSelectInfo.total;
     ICON_POS tmPos;
@@ -1092,65 +1092,65 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
 
         if (!strcmp(pItemName, SET_ITEM_NAME_DHCP)) {   /* DHCP */
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_DHCP);
-            Log.d(TAG, "DHCP Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "DHCP Init Val --> [%d]", pSetItem[i]->iCurVal);
             /* 需要开启DHCP?? */
             switchEtherIpMode(pSetItem[i]->iCurVal);
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FREQ)) {            /* FREQ -> 需要通知对方 */
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_PAL_NTSC);
-            Log.d(TAG, "Flick Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "Flick Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_FLICKER);        
         } else if (!strcmp(pItemName, SET_ITEM_NAME_HDR)) {             /* HDR -> 需要通知对方 */
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_HDR);
-            Log.d(TAG, "HDR Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "HDR Init Val --> [%d]", pSetItem[i]->iCurVal);
         } else if (!strcmp(pItemName, SET_ITEM_NAME_RAW)) {             /* RAW */
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_RAW);
-            Log.d(TAG, "Raw Init Val --> [%d]", pSetItem[i]->iCurVal);            
+            LOGDBG(TAG, "Raw Init Val --> [%d]", pSetItem[i]->iCurVal);            
         } else if (!strcmp(pItemName, SET_ITEM_NAME_AEB)) {             /* AEB */
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_AEB);
-            Log.d(TAG, "AEB Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "AEB Init Val --> [%d]", pSetItem[i]->iCurVal);
 
         } else if (!strcmp(pItemName, SET_ITEM_NAME_PHDEALY)) {         /* PHTODELAY */
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_PH_DELAY);
-            Log.d(TAG, "PhotoDelay Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "PhotoDelay Init Val --> [%d]", pSetItem[i]->iCurVal);
  
         } else if (!strcmp(pItemName, SET_ITEM_NAME_SPEAKER)) {         /* Speaker */
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_SPEAKER);
-            Log.d(TAG, "Speaker Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "Speaker Init Val --> [%d]", pSetItem[i]->iCurVal);
             
         } else if (!strcmp(pItemName, SET_ITEM_NAME_LED)) {             /* 开机时根据配置,来决定是否开机后关闭前灯 */     
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_LIGHT_ON);
             if (val == 0) {
                 setLightDirect(LIGHT_OFF);
             }
-            Log.d(TAG, "LedLight Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "LedLight Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_AUDIO)) {           /* Audio -> 需要通知对方 */     
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_AUD_ON);
-            Log.d(TAG, "Audio Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "Audio Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_SPAUDIO)) {         /* Spatital Audio -> 需要通知对方 */          
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_AUD_SPATIAL);
-            Log.d(TAG, "SpatitalAudio Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "SpatitalAudio Init Val --> [%d]", pSetItem[i]->iCurVal);
            
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FLOWSTATE)) {       /* FlowState -> 需要通知对方 */        
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_FLOWSTATE);
-            Log.d(TAG, "FlowState Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "FlowState Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_GYRO_ONOFF)) {      /* Gyro -> 需要通知对方  */         
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_GYRO_ON);
-            Log.d(TAG, "Gyro OnOff Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "Gyro OnOff Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);          
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FAN)) {             /* Fan -> 需要通知对方  */          
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_FAN);
-            Log.d(TAG, "Fan Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "Fan Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_SET_FAN);           
         } else if (!strcmp(pItemName, SET_ITEM_NAME_BOOTMLOGO)) {       /* Bottom Logo -> 需要通知对方  */      
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_SET_LOGO);
-            Log.d(TAG, "BottomLogo Init Val --> [%d]", pSetItem[i]->iCurVal);
+            LOGDBG(TAG, "BottomLogo Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_SET_LOGO);
         } else if (!strcmp(pItemName, SET_ITEM_NAME_VIDSEG)) {          /* Video Segment -> 需要通知对方  */        
             pSetItem[i]->iCurVal = mProCfg->get_val(KEY_VID_SEG);
-            Log.d(TAG, "VideoSeg Init Val --> [%d]", pSetItem[i]->iCurVal); 
+            LOGDBG(TAG, "VideoSeg Init Val --> [%d]", pSetItem[i]->iCurVal); 
             sendRpc(ACTION_SET_OPTION, OPTION_SET_VID_SEG);
         }
         mSetItemsList.push_back(pSetItem[i]);
@@ -1161,7 +1161,7 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
 
 void MenuUI::setCommonMenuInit(MENU_INFO* pParentMenu, std::vector<struct stSetItem*>& pItemLists, SettingItem**  pSetItem, ICON_POS* pIconPos)
 {
-    Log.d(TAG, "[%s:%d] Init Set Photo Delay Menu...", __FILE__, __LINE__);
+    LOGDBG(TAG, "Init Set Photo Delay Menu...");
 
     if (pParentMenu) {
         int size = pParentMenu->mSelectInfo.total;
@@ -1184,13 +1184,13 @@ void MenuUI::setCommonMenuInit(MENU_INFO* pParentMenu, std::vector<struct stSetI
             pItemLists.push_back(pSetItem[i]);  
         }
     } else {
-        Log.e(TAG, "[%s:%d] Invalid Pointer, please checke!!!", __FILE__, __LINE__);
+        LOGERR(TAG, "Invalid Pointer, please checke!!!");
     }
 }
 
 void MenuUI::setStorageMenuInit(MENU_INFO* pParentMenu, std::vector<struct stSetItem*>& pItemLists)
 {
-    Log.d(TAG, "[%s:%d] Init Set Photo Delay Menu...", __FILE__, __LINE__);
+    LOGDBG(TAG, "Init Set Photo Delay Menu...");
 
     if (pParentMenu) {
         int size = pParentMenu->mSelectInfo.total;
@@ -1226,7 +1226,7 @@ void MenuUI::setStorageMenuInit(MENU_INFO* pParentMenu, std::vector<struct stSet
             pItemLists.push_back(pSetItem[i]);  
         }
     } else {
-        Log.e(TAG, "[%s:%d] Invalid Pointer, please checke!!!", __FILE__, __LINE__);
+        LOGERR(TAG, "Invalid Pointer, please checke!!!");
     }
 }
 
@@ -1257,7 +1257,7 @@ void MenuUI::setMenuCfgInit()
     }
 
     mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_num = iPageCnt;
-    Log.d(TAG, "Setting Menu Info: total items [%d], page count[%d]", 
+    LOGDBG(TAG, "Setting Menu Info: total items [%d], page count[%d]", 
                 mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total,
                 mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_num);
 
@@ -1287,7 +1287,7 @@ void MenuUI::setMenuCfgInit()
     /* 使用配置值来初始化首次显示的页面 */
     updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, mProCfg->get_val(KEY_PH_DELAY));
 
-    Log.d(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+    LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total,
                 mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_num,
                 mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.cur_page,
@@ -1323,7 +1323,7 @@ void MenuUI::setMenuCfgInit()
     updateMenuCurPageAndSelect(MENU_SET_AEB, mProCfg->get_val(KEY_AEB));
 
 
-    Log.d(TAG, "Set AEB Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+    LOGDBG(TAG, "Set AEB Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_SET_AEB].mSelectInfo.total,
                 mMenuInfos[MENU_SET_AEB].mSelectInfo.page_num,
                 mMenuInfos[MENU_SET_AEB].mSelectInfo.cur_page,
@@ -1357,7 +1357,7 @@ void MenuUI::setMenuCfgInit()
     mMenuInfos[MENU_STORAGE].mSelectInfo.page_num = iPageCnt;
 
 
-    Log.d(TAG, "Set Storage Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+    LOGDBG(TAG, "Set Storage Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_STORAGE].mSelectInfo.total,
                 mMenuInfos[MENU_STORAGE].mSelectInfo.page_num,
                 mMenuInfos[MENU_STORAGE].mSelectInfo.cur_page,
@@ -1393,7 +1393,7 @@ void MenuUI::setMenuCfgInit()
 
     mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_num = iPageCnt;
 
-    Log.d(TAG, "Set TF Card format select Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+    LOGDBG(TAG, "Set TF Card format select Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total,
                 mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_num,
                 mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.cur_page,
@@ -1434,7 +1434,7 @@ void MenuUI::setCurMenu(int menu, int back_menu)
     bool bUpdateAllMenuUI = true;
 
 	if (menu == cur_menu) {
-        Log.d(TAG, "set cur menu same menu %d cur menu %d\n", menu, cur_menu);
+        LOGDBG(TAG, "set cur menu same menu %d cur menu %d\n", menu, cur_menu);
         bUpdateAllMenuUI = false;
     } else  {
         if (menuHasStatusbar(menu))  {
@@ -1466,20 +1466,20 @@ void MenuUI::commUpKeyProc()
     bool bUpdatePage = false;
 
     #ifdef DEBUG_INPUT_KEY	
-	Log.d(TAG, "addr 0x%p", &(mMenuInfos[cur_menu].mSelectInfo));
+	LOGDBG(TAG, "addr 0x%p", &(mMenuInfos[cur_menu].mSelectInfo));
     #endif
 
     SELECT_INFO * mSelect = getCurMenuSelectInfo();
     CHECK_NE(mSelect, nullptr);
 
     #ifdef DEBUG_INPUT_KEY		
-	Log.d(TAG, "mSelect 0x%p", mSelect);
+	LOGDBG(TAG, "mSelect 0x%p", mSelect);
     #endif
 
     mSelect->last_select = mSelect->select;
 
     #ifdef DEBUG_INPUT_KEY	
-    Log.d(TAG, "cur_menu %d commUpKeyProc select %d mSelect->last_select %d "
+    LOGDBG(TAG, "cur_menu %d commUpKeyProc select %d mSelect->last_select %d "
                   "mSelect->page_num %d mSelect->cur_page %d "
                   "mSelect->page_max %d mSelect->total %d", cur_menu,
           mSelect->select, mSelect->last_select, mSelect->page_num,
@@ -1489,7 +1489,7 @@ void MenuUI::commUpKeyProc()
     mSelect->select--;
 
     #ifdef DEBUG_INPUT_KEY	
-    Log.d(TAG, "select %d total %d mSelect->page_num %d",
+    LOGDBG(TAG, "select %d total %d mSelect->page_num %d",
           mSelect->select, mSelect->total, mSelect->page_num);
     #endif
 
@@ -1508,7 +1508,7 @@ void MenuUI::commUpKeyProc()
     }
 
     #ifdef DEBUG_INPUT_KEY	
-    Log.d(TAG," commUpKeyProc select %d mSelect->last_select %d "
+    LOGDBG(TAG," commUpKeyProc select %d mSelect->last_select %d "
                   "mSelect->page_num %d mSelect->cur_page %d "
                   "mSelect->page_max %d mSelect->total %d over",
           mSelect->select, mSelect->last_select, mSelect->page_num,
@@ -1524,7 +1524,7 @@ void MenuUI::commUpKeyProc()
                 vector<struct stSetItem*>* pSetItemLists = static_cast<vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
                 dispSettingPage(*pSetItemLists);
             } else {
-                Log.e(TAG, "[%s:%d] Current Menu[%s] havn't privList ????, Please check", __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGERR(TAG, "Current Menu[%s] havn't privList ????, Please check", getMenuName(cur_menu));
             }        
         }
     } else {    /* 更新菜单(页内更新) */
@@ -1550,7 +1550,7 @@ void MenuUI::commDownKeyProc()
     CHECK_NE(mSelect, nullptr);
 
     #ifdef DEBUG_INPUT_KEY	
-	Log.d(TAG," commDownKeyProc select %d mSelect->last_select %d "
+	LOGDBG(TAG," commDownKeyProc select %d mSelect->last_select %d "
                   "mSelect->page_num %d mSelect->cur_page %d "
                   "mSelect->page_max %d mSelect->total %d",
           mSelect->select, mSelect->last_select, mSelect->page_num,
@@ -1574,7 +1574,7 @@ void MenuUI::commDownKeyProc()
     }
 
     #ifdef DEBUG_INPUT_KEY	
-    Log.d(TAG," commDownKeyProc select %d mSelect->last_select %d "
+    LOGDBG(TAG," commDownKeyProc select %d mSelect->last_select %d "
                   "mSelect->page_num %d mSelect->cur_page %d "
                   "mSelect->page_max %d mSelect->total %d over bUpdatePage %d",
           mSelect->select,mSelect->last_select,mSelect->page_num,
@@ -1590,7 +1590,7 @@ void MenuUI::commDownKeyProc()
                 vector<struct stSetItem*>* pSetItemLists = static_cast<vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
                 dispSettingPage(*pSetItemLists);
             } else {
-                Log.e(TAG, "[%s:%d] Current Menu[%s] havn't privList ????, Please check", __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGERR(TAG, "Current Menu[%s] havn't privList ????, Please check", getMenuName(cur_menu));
             }
         }
     } else {
@@ -1615,8 +1615,8 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
             pPicCfg->iCurVal = 0;
             pPicCfg->pStAction = mProCfg->get_def_info(KEY_ALL_PIC_DEF);
             if (pPicCfg->pStAction) {   /* 得到保存在配置文件中ACTION_INFO */
-                Log.d(TAG, "Get user_cfg PIC ACTION_INFO ......");
-                Log.d(TAG, "mode[%d] size_per_act [%d]M", pPicCfg->pStAction->mode, pPicCfg->pStAction->size_per_act);
+                LOGDBG(TAG, "Get user_cfg PIC ACTION_INFO ......");
+                LOGDBG(TAG, "mode[%d] size_per_act [%d]M", pPicCfg->pStAction->mode, pPicCfg->pStAction->size_per_act);
             }
         } else if (!strcmp(pItemName, TAKE_PIC_MODE_AEB)) {
             int iIndexBase = 0;
@@ -1628,15 +1628,15 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
 
             pPicCfg->iCurVal = iIndexBase + iAebVal;
             if (pPicCfg->iCurVal > pPicCfg->iItemMaxVal) {
-                Log.e(TAG, "[%s: %d] Current val [%d], max val[%d]", __FILE__, __LINE__, pPicCfg->iCurVal, pPicCfg->iItemMaxVal);
+                LOGERR(TAG, "Current val [%d], max val[%d]", pPicCfg->iCurVal, pPicCfg->iItemMaxVal);
             }
         } else {
             pPicCfg->iCurVal = iRawVal;
-            Log.d(TAG, "[%s: %d] Current val [%d]", __FILE__, __LINE__, pPicCfg->iCurVal);
+            LOGDBG(TAG, "Current val [%d]", pPicCfg->iCurVal);
         }
 
     } else {
-        Log.e(TAG, "[%s: %d] Invalid Argument passed", __FILE__, __LINE__);
+        LOGERR(TAG, "Invalid Argument passed");
     }
 }
 
@@ -1644,7 +1644,7 @@ void MenuUI::printJsonCfg(Json::Value& json)
 {
     Json::FastWriter weriter;
     string jsonstr = weriter.write(json);
-    Log.d(TAG, "[%s: %d] print json: %s", __FILE__, __LINE__, jsonstr.c_str());
+    LOGDBG(TAG, "print json: %s", jsonstr.c_str());
 }
 
 
@@ -1682,20 +1682,20 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                     cfgItemJsonFilePath +=  pSetItems[i]->pItemName;
                     cfgItemJsonFilePath += ".json";
                     const char* path = cfgItemJsonFilePath.c_str();
-                    Log.d(TAG, "[%s: %d] Takepic [%s] Configure json file path: %s", __FILE__, __LINE__, pSetItems[i]->pItemName, path);
+                    LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
                     if (access(path, F_OK) == 0) {
                         std::ifstream is;  
                         is.open (path, std::ios::binary); 
                         if (reader.parse(is, *(pRoot.get()), false)) {
-                            Log.d(TAG, "[%s: %d] parse [%s] success", __FILE__, __LINE__, path);
+                            LOGDBG(TAG, "parse [%s] success", path);
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         } 
                     }
 
                     if (bParseFileFlag == false) {
-                        Log.d(TAG, "[%s: %d] Json cfg file not exist or Parse Failed, Used Default Configuration", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
                         
                         const char* pCommJsonCmd = NULL;
                         if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_8K_3D_OF)) {
@@ -1713,10 +1713,10 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                         } 
                         
                         if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
-                            Log.d(TAG, "[%s: %d] parse [%s] success", __FILE__, __LINE__, pCommJsonCmd);
+                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
                             pSetItems[i]->jsonCmd = pRoot;
                         } else {
-                            Log.e(TAG, "[%s: %d] Parse Json String Failed!", __FILE__, __LINE__);
+                            LOGERR(TAG, "Parse Json String Failed!");
                             pSetItems[i]->jsonCmd = NULL;
                         }
                     }
@@ -1741,20 +1741,20 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                     cfgItemJsonFilePath +=  pSetItems[i]->pItemName;
                     cfgItemJsonFilePath += ".json";
                     const char* path = cfgItemJsonFilePath.c_str();
-                    Log.d(TAG, "[%s: %d] Takepic [%s] Configure json file path: %s", __FILE__, __LINE__, pSetItems[i]->pItemName, path);
+                    LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
                     if (access(path, F_OK) == 0) {
                         std::ifstream is;  
                         is.open (path, std::ios::binary); 
                         if (reader.parse(is, *(pRoot.get()), false)) {
-                            Log.d(TAG, "[%s: %d] parse [%s] success", __FILE__, __LINE__, path);
+                            LOGDBG(TAG, "parse [%s] success", path);
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         } 
                     }
 
                     if (bParseFileFlag == false) {
-                        Log.d(TAG, "[%s: %d] Json cfg file not exist or Parse Failed, Used Default Configuration", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
                         
                         const char* pCommJsonCmd = NULL;
                         if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K_30F_3D)) {
@@ -1781,10 +1781,10 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                         } 
                         
                         if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
-                            Log.d(TAG, "[%s: %d] parse [%s] success", __FILE__, __LINE__, pCommJsonCmd);
+                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
                             pSetItems[i]->jsonCmd = pRoot;
                         } else {
-                            Log.e(TAG, "[%s: %d] Parse Json String Failed!", __FILE__, __LINE__);
+                            LOGERR(TAG, "Parse Json String Failed!");
                             pSetItems[i]->jsonCmd = NULL;
                         }
                     }
@@ -1794,8 +1794,8 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                         pSetItems[i]->iCurVal = 0;
                         pSetItems[i]->pStAction = mProCfg->get_def_info(KEY_ALL_VIDEO_DEF);
                         if (pSetItems[i]->pStAction) {   /* 得到保存在配置文件中ACTION_INFO */
-                            Log.d(TAG, "Get user_cfg VIDEO ACTION_INFO ......");
-                            Log.d(TAG, "mode[%d] size_per_act [%d]M", pSetItems[i]->pStAction->mode, pSetItems[i]->pStAction->size_per_act);
+                            LOGDBG(TAG, "Get user_cfg VIDEO ACTION_INFO ......");
+                            LOGDBG(TAG, "mode[%d] size_per_act [%d]M", pSetItems[i]->pStAction->mode, pSetItems[i]->pStAction->size_per_act);
                         }
                     } 
                     pItemLists.push_back(pSetItems[i]);
@@ -1817,20 +1817,20 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                     cfgItemJsonFilePath += ".json";
                     const char* path = cfgItemJsonFilePath.c_str();
 
-                    Log.d(TAG, "[%s: %d] TakeLive [%s] Configure json file path: %s", __FILE__, __LINE__, pSetItems[i]->pItemName, path);
+                    LOGDBG(TAG, "TakeLive [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
                     if (access(path, F_OK) == 0) {
                         std::ifstream is;  
                         is.open (path, std::ios::binary); 
                         if (reader.parse(is, *(pRoot.get()), false)) {
-                            Log.d(TAG, "[%s: %d] parse [%s] success", __FILE__, __LINE__, path);
+                            LOGDBG(TAG, "parse [%s] success", path);
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         } 
                     }
 
                     if (bParseFileFlag == false) {
-                        Log.d(TAG, "[%s: %d] Json cfg file not exist or Parse Failed, Used Default Configuration", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
                         
                         const char* pCommJsonCmd = NULL;
                         if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_4K_30F)) {
@@ -1848,10 +1848,10 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                         if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
                             pSetItems[i]->jsonCmd = pRoot;
 
-                            Log.d(TAG, "[%s: %d] [%s]parse [%s] success", __FILE__, __LINE__,  pSetItems[i]->pItemName, pCommJsonCmd);
+                            LOGDBG(TAG, "[%s]parse [%s] success",  pSetItems[i]->pItemName, pCommJsonCmd);
                             printJsonCfg( *((pSetItems[i]->jsonCmd).get()));
                         } else {
-                            Log.e(TAG, "[%s: %d] Parse Json String Failed!", __FILE__, __LINE__);
+                            LOGERR(TAG, "Parse Json String Failed!");
                             pSetItems[i]->jsonCmd = nullptr;
                         }
                     }
@@ -1861,8 +1861,8 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                         pSetItems[i]->iCurVal = 0;
                         pSetItems[i]->pStAction = mProCfg->get_def_info(KEY_ALL_LIVE_DEF);
                         if (pSetItems[i]->pStAction) {   /* 得到保存在配置文件中ACTION_INFO */
-                            Log.d(TAG, "Get user_cfg LIVE ACTION_INFO ......");
-                            Log.d(TAG, "mode[%d] size_per_act [%d]M", pSetItems[i]->pStAction->mode, pSetItems[i]->pStAction->size_per_act);
+                            LOGDBG(TAG, "Get user_cfg LIVE ACTION_INFO ......");
+                            LOGDBG(TAG, "mode[%d] size_per_act [%d]M", pSetItems[i]->pStAction->mode, pSetItems[i]->pStAction->size_per_act);
                         }
                     } 
                     pItemLists.push_back(pSetItems[i]);
@@ -1871,11 +1871,11 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
             }
 
             default:
-                Log.w(TAG, "[%s:%d] Unkown mode Please check", __FILE__, __LINE__);
+                LOGWARN(TAG, "Unkown mode Please check");
                 break;
         }
     } else {
-        Log.e(TAG, "[%s: %d] Invalid Arguments Please check", __FILE__, __LINE__);
+        LOGERR(TAG, "Invalid Arguments Please check");
     }
 }
 
@@ -1901,23 +1901,23 @@ void MenuUI::uiShowStatusbarIp()
 void MenuUI::stop_bat_thread()
 {
 #if 0
-    Log.d(TAG, "sendExit bExitBat %d", bExitBat);
+    LOGDBG(TAG, "sendExit bExitBat %d", bExitBat);
     if (!bExitBat) {
         bExitBat = true;
         if (th_bat_.joinable()) {
             th_bat_.join();
         } else {
-            Log.e(TAG, " th_light_ not joinable ");
+            LOGERR(TAG, " th_light_ not joinable ");
         }
     }
-    Log.d(TAG, "sendExit bExitBat %d over", bExitBat);
+    LOGDBG(TAG, "sendExit bExitBat %d over", bExitBat);
 #endif
 }
 
 
 void MenuUI::sendExit()
 {
-    Log.d(TAG, "sendExit");
+    LOGDBG(TAG, "sendExit");
 
     if (!bExitMsg) {
         bExitMsg = true;
@@ -1925,10 +1925,10 @@ void MenuUI::sendExit()
             obtainMessage(UI_EXIT)->post();
             th_msg_.join();
         } else {
-            Log.e(TAG, " th_msg_ not joinable ");
+            LOGERR(TAG, " th_msg_ not joinable ");
         }
     }
-    Log.d(TAG, "sendExit2");
+    LOGDBG(TAG, "sendExit2");
 }
 
 
@@ -1961,10 +1961,10 @@ void MenuUI::set_cur_menu_from_exit()
     
     CHECK_NE(cur_menu, new_menu);
 	
-    Log.d(TAG, "cur_menu is %d new_menu %d", cur_menu, new_menu);
+    LOGDBG(TAG, "cur_menu is %d new_menu %d", cur_menu, new_menu);
     
     if (new_menu == -1 && cur_menu == MENU_TOP) {
-        Log.e(TAG,"set_cur_menu_from_exit met error ");
+        LOGERR(TAG,"set_cur_menu_from_exit met error ");
         new_menu = MENU_TOP;
     }
 
@@ -1995,12 +1995,12 @@ void MenuUI::set_cur_menu_from_exit()
         }
 		
         case MENU_SYS_ERR: {
-            Log.e(TAG, "func back to sys err");
+            LOGERR(TAG, "func back to sys err");
             break;
         }
 		
         case MENU_CALIBRATION: {
-            Log.d(TAG, "func back from other to calibration");
+            LOGDBG(TAG, "func back from other to calibration");
             break;
         }
 
@@ -2026,7 +2026,7 @@ void MenuUI::restore_all()
     mProCfg->reset_all();
     msg_util::sleep_ms(500);
     init_cfg_select();
-    Log.d(TAG, "STATE_RESTORE_ALL cur_menu is %d Server state: 0x%x", MENU_TOP, getServerState());
+    LOGDBG(TAG, "STATE_RESTORE_ALL cur_menu is %d Server state: 0x%x", MENU_TOP, getServerState());
     if (cur_menu == MENU_TOP) {
         setCurMenu(cur_menu);
     } else {
@@ -2042,7 +2042,7 @@ void MenuUI::update_sys_info()
 
     mSelect->last_select = mSelect->select;
 
-    Log.d(TAG, " mSelect->last_select %d select %d\n", mSelect->last_select, mSelect->select);
+    LOGDBG(TAG, " mSelect->last_select %d select %d\n", mSelect->last_select, mSelect->select);
 
     switch (mSelect->last_select) {
         case 0:
@@ -2098,7 +2098,7 @@ bool MenuUI::checkServerAllowTakePic()
     if (checkStateEqual(serverState, STATE_PREVIEW) || checkStateEqual(serverState, STATE_IDLE)) {
         bRet = true;
     } else {
-        Log.e(TAG, "---> checkServerAllowTakePic error state 0x%x ", serverState);
+        LOGERR(TAG, "---> checkServerAllowTakePic error state 0x%x ", serverState);
     }
     return bRet;
 }
@@ -2113,15 +2113,15 @@ bool MenuUI::checkVidLiveStorageSpeed()
     } else {
         if (vm->checkAllmSdSpeedOK()) {
             if (vm->checkLocalVolSpeedOK()) {
-                Log.d(TAG, "[%s: %d] All Card Speed is OK, very good !!", __FILE__, __LINE__);
+                LOGDBG(TAG, "All Card Speed is OK, very good !!");
             } else {
                 /* 提示警告 */
-                Log.w(TAG, "[%s: %d] mSD speed is OK, but Local Storage speed is bad", __FILE__, __LINE__);
+                LOGWARN(TAG, "mSD speed is OK, but Local Storage speed is bad");
             }
             return true;
         } else {
             /* 直接进入 */
-            Log.d(TAG, "[%s: %d] mSD Need Speed Test ....", __FILE__, __LINE__);
+            LOGDBG(TAG, "mSD Need Speed Test ....");
             if (mSpeedTestUpdateFlag) {
                 mSpeedTestUpdateFlag = false;
                 property_set(PROP_SPEED_TEST_COMP_FLAG, "false");
@@ -2152,15 +2152,15 @@ int MenuUI::check_live_save(Json::Value* liveJson)
 
     if ((*liveJson)["parameters"]["origin"]["saveOrigin"].asBool() == true 
         && (*liveJson)["parameters"]["stiching"]["fileSave"].asBool() == true) {
-        // Log.d(TAG, "[%s: %d] >>>>> LIVE_SAVE_ORIGIN_STICH", __FILE__, __LINE__);
+        // LOGDBG(TAG, ">>>>> LIVE_SAVE_ORIGIN_STICH");
         iRet = LIVE_SAVE_ORIGIN_STICH;
     } else if ((*liveJson)["parameters"]["origin"]["saveOrigin"].asBool() == false 
                 && (*liveJson)["parameters"]["stiching"]["fileSave"].asBool() == true) {
-        // Log.d(TAG, "[%s: %d] >>>>> LIVE_SAVE_STICH", __FILE__, __LINE__);
+        // LOGDBG(TAG, ">>>>> LIVE_SAVE_STICH");
         iRet = LIVE_SAVE_STICH;
     } else if ((*liveJson)["parameters"]["origin"]["saveOrigin"].asBool() == true 
                 && (*liveJson)["parameters"]["stiching"]["fileSave"].asBool() == false) {
-        // Log.d(TAG, "[%s: %d] >>>>> LIVE_SAVE_ORIGIN", __FILE__, __LINE__);
+        // LOGDBG(TAG, ">>>>> LIVE_SAVE_ORIGIN");
         iRet = LIVE_SAVE_ORIGIN;
     }
     return iRet;
@@ -2169,7 +2169,7 @@ int MenuUI::check_live_save(Json::Value* liveJson)
 
 void MenuUI::setGyroCalcDelay(int iDelay)
 {
-    Log.d(TAG, "[%s: %d] setGyroCalcDelay = %d", __FILE__, __LINE__, iDelay);
+    LOGDBG(TAG, "setGyroCalcDelay = %d", iDelay);
 	if (iDelay > 0)
 		mGyroCalcDelay = iDelay;
 	else 
@@ -2199,7 +2199,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
         case ACTION_PIC: {	/* 拍照动作： 因为有倒计时,倒计时完成需要检查存储设备还是否存在 */
 
-            Log.d(TAG, "=------------->> sendRpc +++ ACTION_PIC");
+            LOGDBG(TAG, "=------------->> sendRpc +++ ACTION_PIC");
             Json::Value* pTakePicJson = NULL;
             bool bAllow = false;
             
@@ -2209,7 +2209,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
             if (pTmpPicVidCfg) {
                 
-                Log.d(TAG, "[%s: %d] Take pic mode [%s]", __FILE__, __LINE__, pTmpPicVidCfg->pItemName);
+                LOGDBG(TAG, "Take pic mode [%s]", pTmpPicVidCfg->pItemName);
                 
                 /* 所有的拍照挡位参数都是以PicVideoCfg.jsonCmd为准
                  * 对于Customer挡位,保存模板参数时会更新Customer对应的jsonCmd
@@ -2227,7 +2227,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 if (pAebSetItem && pAebPicVidCfg) {
                     pTmpAeb = pAebSetItem->stOrigArg[pAebSetItem->iCurVal];
                     memcpy(&(pAebPicVidCfg->pStAction->stOrgInfo.stOrgAct.mOrgP), pTmpAeb, sizeof(PIC_ORG));
-                    Log.d(TAG, "[%s: %d] Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", 
+                    LOGDBG(TAG, "Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", 
                                 __FILE__, __LINE__, pTmpAeb->hdr_count, pTmpAeb->min_ev, pTmpAeb->max_ev);
 
                     /* 非Customer模式时，需要更新AEB参数 */
@@ -2239,7 +2239,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                         }
                     }
                 } else {
-                    Log.w(TAG, "[%s:%d] Warnning Aeb Item lossed, please check!!!", __FILE__, __LINE__);
+                    LOGWARN(TAG, "Warnning Aeb Item lossed, please check!!!");
                 }
             #endif
 
@@ -2252,12 +2252,12 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 }
 
                 if ((*pTakePicJson)["parameters"].isMember("properties")) {
-                    Log.d(TAG, "[%s: %d] -----------> Send Takepic Customer args First", __FILE__, __LINE__);
+                    LOGDBG(TAG, "-----------> Send Takepic Customer args First");
                     pm->sendSetCustomLensReq(*pTakePicJson);
                 }
                 pm->sendTakePicReq(*pTakePicJson);
             } else {
-                Log.e(TAG, "[%s:%d] Invalid index[%d]", __FILE__, __LINE__);
+                LOGERR(TAG, "Invalid index[%d]");
             }
             return true;
         }
@@ -2273,7 +2273,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 if (pm->sendStopVideoReq()) {   /* 服务器接收停止录像请求,此时系统处于停止录像状态 */
                     dispSaving();
                 } else {
-                    Log.e(TAG, "[%s: %d] Stop Record Request Failed, More detail please check h_log", __FILE__, __LINE__);
+                    LOGERR(TAG, "Stop Record Request Failed, More detail please check h_log");
                 }                
             } else if (checkAllowStartRecord(serverState)) {
 
@@ -2287,7 +2287,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
                         if (cmd == TAKE_VID_IN_TIMELAPSE) { /* 拍Timelapse */
                             
-                            Log.d(TAG, "[%s: %d] ----> Take video, but in Timelapse Mode", __FILE__, __LINE__);
+                            LOGDBG(TAG, "----> Take video, but in Timelapse Mode");
 
                             if (mControlVideoJsonCmd["parameters"].isMember("properties")) {
                                 pm->sendSetCustomLensReq(mControlVideoJsonCmd);
@@ -2296,7 +2296,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                             if (pm->sendTakeVideoReq(mControlVideoJsonCmd)) {
                                 dispWaiting();
                             } else {
-                                Log.e(TAG, "[%s: %d] Customer Mode, Request Take timelapse Failed, More detailed check h_log", __FILE__, __LINE__);
+                                LOGERR(TAG, "Customer Mode, Request Take timelapse Failed, More detailed check h_log");
                             }
 
                         } else {    /* 普通录像 */
@@ -2314,7 +2314,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                                     if (pm->sendTakeVideoReq(*pTakeVidJson)) {
                                         dispWaiting();                                
                                     } else {
-                                        Log.e(TAG, "[%s: %d] Request Take Video Failed, More detailed check h_log", __FILE__, __LINE__);
+                                        LOGERR(TAG, "Request Take Video Failed, More detailed check h_log");
                                     }
                                 }  
                             }
@@ -2322,13 +2322,13 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     }
                 }
             } else {
-                Log.w(TAG, "[%s: %d] Invalid State for Record Operation, Server State[0x%x]", __FILE__, __LINE__, serverState);
+                LOGWARN(TAG, "Invalid State for Record Operation, Server State[0x%x]", serverState);
             }          
             return true;
         }
 			
         case ACTION_LIVE: {
-            Log.d(TAG, "------------------> ACTION_LIVE");
+            LOGDBG(TAG, "------------------> ACTION_LIVE");
 
             Json::Value* pTakeLiveJson = NULL;
             
@@ -2336,7 +2336,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 if (pm->sendStopLiveReq()) {
                     dispWaiting();
                 } else {
-                    Log.e(TAG, "[%s: %d] Stop Living Request Failed, More detail please check h_log", __FILE__, __LINE__);
+                    LOGERR(TAG, "Stop Living Request Failed, More detail please check h_log");
                 }
             } else if (checkAllowStartLive(serverState)) {
 
@@ -2344,7 +2344,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 iIndex = getMenuSelectIndex(MENU_LIVE_SET_DEF);
                 pTmpPicVidCfg = mLiveAllItemsList.at(iIndex);
                 pTakeLiveJson = pTmpPicVidCfg->jsonCmd.get();
-                Log.d(TAG, "[%s: %d] Take Live mode [%s]", __FILE__, __LINE__, pTmpPicVidCfg->pItemName);
+                LOGDBG(TAG, "Take Live mode [%s]", pTmpPicVidCfg->pItemName);
                 
                 if (pTakeLiveJson) {
 
@@ -2358,7 +2358,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                         if (pm->sendStartLiveReq(*pTakeLiveJson)) {     /* 允许启动录像 */
                             dispWaiting();
                         } else {
-                            Log.e(TAG, "[%s: %d] What's wrong for Start Living, More Detail check h_log", __FILE__, __LINE__);
+                            LOGERR(TAG, "What's wrong for Start Living, More Detail check h_log");
                         }
                     } else {    /* 需要存片 */
 
@@ -2367,14 +2367,14 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                                 if (pm->sendStartLiveReq(*pTakeLiveJson)) {
                                     dispWaiting();
                                 } else {
-                                    Log.e(TAG, "[%s: %d] What's wrong for Start Living, More Detail check h_log", __FILE__, __LINE__);
+                                    LOGERR(TAG, "What's wrong for Start Living, More Detail check h_log");
                                 }
                             }
                         } 
                     }
                 }
             } else {
-                Log.w(TAG, "[%s: %d] Invalid State for Live Operation, Server State[0x%x]", __FILE__, __LINE__, serverState);
+                LOGWARN(TAG, "Invalid State for Live Operation, Server State[0x%x]", serverState);
             }
             return true;
         }
@@ -2387,7 +2387,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 oled_disp_type(START_CALIBRATIONING);
                 pm->sendStichCalcReq();
             } else {
-                Log.e(TAG, "[ %s: %d] ---> calibration happen mCamState 0x%x", __FILE__, __LINE__, serverState);
+                LOGERR(TAG, "[ %s: %d] ---> calibration happen mCamState 0x%x", serverState);
             }			
             return true;
         }
@@ -2406,7 +2406,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
 			
         case ACTION_LOW_BAT: {
-            Log.d(TAG, "[%s: %d] Battery is Low, Send Command[%d] to Camerad", __FILE__, __LINE__, cmd);
+            LOGDBG(TAG, "Battery is Low, Send Command[%d] to Camerad", cmd);
             msg->set<int>("cmd", cmd);
             break;
         }
@@ -2615,7 +2615,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
 #if 0
 	if (bAllow) {
-        Log.d(TAG, "[%s: %d] -------------> sendRpc use fifo thread, ACTION: %d", __FILE__, __LINE__, option);
+        LOGDBG(TAG, "-------------> sendRpc use fifo thread, ACTION: %d", option);
         msg->set<int>("what", OLED_KEY);
         msg->set<int>("action", option);
         msg->post();
@@ -2658,7 +2658,7 @@ void MenuUI::read_ver_info()
         }
         close(fd);
     } else {
-        Log.d(TAG, "r not f");
+        LOGDBG(TAG, "r not f");
         snprintf(mVerInfo->r_ver, sizeof(mVerInfo->r_ver), "%s", "000");
     }
 	
@@ -2668,7 +2668,7 @@ void MenuUI::read_ver_info()
 
 	/* 内核使用的版本 */
     snprintf(mVerInfo->k_ver, sizeof(mVerInfo->k_ver), "%s", "4.4.38");
-    Log.d(TAG, "r:%s p:%s k:%s\n", mVerInfo->r_ver, mVerInfo->p_ver, mVerInfo->k_ver);
+    LOGDBG(TAG, "r:%s p:%s k:%s\n", mVerInfo->r_ver, mVerInfo->p_ver, mVerInfo->k_ver);
 }
 
 
@@ -2735,7 +2735,7 @@ bool MenuUI::read_sys_info(int type, const char *name)
                         }
                     }
                 } else {
-                    Log.d(TAG, "no buf is in %s", name);
+                    LOGDBG(TAG, "no buf is in %s", name);
                 }
             }
             close(fd);
@@ -2788,7 +2788,7 @@ bool MenuUI::read_sys_info(int type)
 
 void MenuUI::disp_wifi(bool bState, int disp_main)
 {
-    Log.d(TAG, "disp wifi bState %d disp_main %d", bState, disp_main);
+    LOGDBG(TAG, "disp wifi bState %d disp_main %d", bState, disp_main);
 
     if (bState) {
         set_mainmenu_item(MAINMENU_WIFI, 1);
@@ -2837,7 +2837,7 @@ void MenuUI::disp_wifi(bool bState, int disp_main)
 
 void MenuUI::handleWifiAction()
 {
-    Log.e(TAG, " handleWifiAction %d", mProCfg->get_val(KEY_WIFI_ON));
+    LOGERR(TAG, " handleWifiAction %d", mProCfg->get_val(KEY_WIFI_ON));
     
     const char* pWifiDrvProp = NULL;
     int iCmd = -1;
@@ -2857,7 +2857,7 @@ void MenuUI::handleWifiAction()
     pWifiDrvProp = property_get(PROP_WIFI_DRV_EXIST);
 
     if (pWifiDrvProp == NULL || strcmp(pWifiDrvProp, "false") == 0) {
-        Log.e(TAG, ">>>> Wifi driver not loaded, please load wifi deriver first!!!");
+        LOGERR(TAG, ">>>> Wifi driver not loaded, please load wifi deriver first!!!");
         return;
     } else {
 #endif
@@ -2865,12 +2865,12 @@ void MenuUI::handleWifiAction()
          * 检查启动WIFI热点的情况（PROP_WIFI_AP_STATE） 
          */
         if (mProCfg->get_val(KEY_WIFI_ON) == 1) {
-            Log.e(TAG, "set KEY_WIFI_ON -> 0");
+            LOGERR(TAG, "set KEY_WIFI_ON -> 0");
             iCmd = NETM_CLOSE_NETDEV;
             bShowWifiIcon = false;
             iSetVal = 0;
         } else {
-            Log.e(TAG, "set KEY_WIFI_ON -> 1");
+            LOGERR(TAG, "set KEY_WIFI_ON -> 1");
             iCmd = NETM_STARTUP_NETDEV;
             bShowWifiIcon = true;
             iSetVal = 1;
@@ -2882,7 +2882,7 @@ void MenuUI::handleWifiAction()
 
         msg_util::sleep_ms(500);
 
-        Log.d(TAG, "Current wifi state [%s]", property_get(PROP_WIFI_AP_STATE));
+        LOGDBG(TAG, "Current wifi state [%s]", property_get(PROP_WIFI_AP_STATE));
 
         mProCfg->set_val(KEY_WIFI_ON, iSetVal);
         disp_wifi(bShowWifiIcon, 1);
@@ -2896,7 +2896,7 @@ int MenuUI::get_back_menu(int item)
     if (item >= 0 && (item < MENU_MAX)) {
         return mMenuInfos[item].back_menu;
     } else {
-        Log.e(TAG, "get_back_menu item %d", item);
+        LOGERR(TAG, "get_back_menu item %d", item);
         return MENU_TOP;
     }
 }
@@ -2908,7 +2908,7 @@ void MenuUI::set_back_menu(int item, int menu)
             cur_menu = MENU_TOP;
             menu = MENU_TOP;
         } else {
-            Log.e(TAG, "back menu is -1 cur_menu %d", cur_menu);
+            LOGERR(TAG, "back menu is -1 cur_menu %d", cur_menu);
 
             #ifdef ENABLE_ABORT
 			#else
@@ -2925,16 +2925,16 @@ void MenuUI::set_back_menu(int item, int menu)
         }
 
         if (item == menu) {
-            Log.e(TAG, "same (%d %d)", item, menu);
+            LOGERR(TAG, "same (%d %d)", item, menu);
             menu = get_back_menu(menu);
         }
 
         if (item != menu)  {
-            Log.d(TAG, "set back (%d %d)", item, menu);
+            LOGDBG(TAG, "set back (%d %d)", item, menu);
             mMenuInfos[item].back_menu = menu;
         }
     } else {
-        Log.e(TAG, "set_back_menu item %d", item);
+        LOGERR(TAG, "set_back_menu item %d", item);
     }
 }
 
@@ -2950,7 +2950,7 @@ void MenuUI::procBackKeyEvent()
     ProtoManager* pm = ProtoManager::Instance();
     InputManager* im = InputManager::Instance();
 
-    Log.d(TAG, "[%s: %d] procBackKeyEvent --> Current menu[%s], Current Server state[0x%x]", __FILE__, __LINE__, getMenuName(cur_menu), tmpState);
+    LOGDBG(TAG, "procBackKeyEvent --> Current menu[%s], Current Server state[0x%x]", getMenuName(cur_menu), tmpState);
 
     if (cur_menu == MENU_SYS_ERR || cur_menu == MENU_SYS_DEV_INFO ||
 		cur_menu == MENU_DISP_MSG_BOX || cur_menu == MENU_LOW_BAT ||
@@ -2967,7 +2967,7 @@ void MenuUI::procBackKeyEvent()
     #endif    
     } else if (cur_menu == MENU_FORMAT_INDICATION) {
         if (checkServerStateIn(tmpState, STATE_FORMATING)) {
-            Log.d(TAG, "[%s: %d] In Device Formating state, Can't return here", __FILE__, __LINE__);
+            LOGDBG(TAG, "In Device Formating state, Can't return here");
         } else {
             if (mFormartState) {
                 mFormartState = false;      /* 清除在格式化状态标志 */
@@ -2976,7 +2976,7 @@ void MenuUI::procBackKeyEvent()
         }
     } else if (cur_menu == MENU_SPEED_TEST || cur_menu == MENU_SET_TEST_SPEED) {
         if (checkServerStateIn(tmpState, STATE_SPEED_TEST)) {
-            Log.d(TAG, "[%s: %d] Server in Speed Test state, you can't back until Test is over", __FILE__, __LINE__);
+            LOGDBG(TAG, "Server in Speed Test state, you can't back until Test is over");
         } else {
             if (true == mSpeedTestUpdateFlag) { 
                 mSpeedTestUpdateFlag = false;
@@ -3011,7 +3011,7 @@ void MenuUI::procBackKeyEvent()
             }
             im->setEnableReport(true);
         } else {
-            Log.e(TAG, "[%s: %d] Server is busy, 0x%x", __FILE__, __LINE__, tmpState);
+            LOGERR(TAG, "Server is busy, 0x%x", tmpState);
         }
     } 
     #endif
@@ -3029,7 +3029,7 @@ void MenuUI::procBackKeyEvent()
                 if (vm->checkEnteredUdiskMode()) {
                     oled_disp_type(EXIT_UDISK_MODE);
                 } else {
-                    Log.e(TAG, "[%s: %d] Entering Udisk Mode, please Wait...", __FILE__, __LINE__);
+                    LOGERR(TAG, "Entering Udisk Mode, please Wait...");
                 }
                 break;
             }
@@ -3047,7 +3047,7 @@ void MenuUI::procBackKeyEvent()
                         if (pm->sendStopPreview()) {
                             dispWaiting();		/* 屏幕中间显示"..." */
                         } else {
-                            Log.e(TAG, "[%s: %d] Stop preview request fail", __FILE__, __LINE__);
+                            LOGERR(TAG, "Stop preview request fail");
                         }
                         break;
                     }
@@ -3089,11 +3089,11 @@ void MenuUI::procBackKeyEvent()
                         break;
 					
                     default:
-                        Log.d(TAG, "[%s: %d] strange enter (%s 0x%x)", __FILE__, __LINE__, getMenuName(cur_menu), tmpState);
+                        LOGDBG(TAG, "strange enter (%s 0x%x)", getMenuName(cur_menu), tmpState);
 
                         if (checkInLive(tmpState)) {
                             if (cur_menu != MENU_LIVE_INFO) {
-                                Log.e(TAG, "[%s: %d] ---> In Live State, but Current Menu is [%s]", __FILE__, __LINE__, getMenuName(cur_menu));
+                                LOGERR(TAG, "---> In Live State, but Current Menu is [%s]", getMenuName(cur_menu));
                                 setCurMenu(MENU_LIVE_INFO);
                             }
                         } else if (checkServerStateIn(tmpState, STATE_RECORD)) {
@@ -3195,7 +3195,7 @@ void MenuUI::updateInnerSetPage(vector<struct stSetItem*>& setItemList, bool bUp
     int iLastSelectIndex = getMenuLastSelectIndex(cur_menu);
     int iCurSelectedIndex = getMenuSelectIndex(cur_menu);
 	
-    // Log.d(TAG, "[%s:%d] Last Selected index[%d], Current Index[%d]", __FILE__, __LINE__, iLastSelectIndex, iCurSelectedIndex);
+    // LOGDBG(TAG, "Last Selected index[%d], Current Index[%d]", iLastSelectIndex, iCurSelectedIndex);
     
     pTmpLastSetItem = setItemList.at(iLastSelectIndex);
     pTmpCurSetItem = setItemList.at(iCurSelectedIndex);
@@ -3206,7 +3206,7 @@ void MenuUI::updateInnerSetPage(vector<struct stSetItem*>& setItemList, bool bUp
         }
         dispSetItem(pTmpCurSetItem, true);
     } else {
-        Log.d(TAG, "[%s:%d] Invalid Last Selected index[%d], Current Index[%d]", iLastSelectIndex, iCurSelectedIndex);
+        LOGDBG(TAG, "Invalid Last Selected index[%d], Current Index[%d]", iLastSelectIndex, iCurSelectedIndex);
     }
 }
 
@@ -3228,7 +3228,7 @@ void MenuUI::updateInnerStoragePage(SetStorageItem** pItemList, bool bUpdateLast
         }
         dispStorageItem(pTmpCurItem, true);
     } else {
-        Log.d(TAG, "[%s:%d] Invalid Last Selected index[%d], Current Index[%d]", iLastSelectIndex, iCurSelectedIndex);
+        LOGDBG(TAG, "Invalid Last Selected index[%d], Current Index[%d]", iLastSelectIndex, iCurSelectedIndex);
     }
 }
 
@@ -3250,7 +3250,7 @@ void MenuUI::updateSetItemCurVal(std::vector<struct stSetItem*>& setItemList, co
     struct stSetItem* pTmpItem = NULL;
     bool bFound = false;
 
-    Log.d(TAG, "[%s: %d] updateSetItemCurVal item name [%s], new val[%d]", __FILE__, __LINE__, name, iSetVal);
+    LOGDBG(TAG, "updateSetItemCurVal item name [%s], new val[%d]", name, iSetVal);
 
     for (u32 i = 0; i < setItemList.size(); i++) {
         pTmpItem = setItemList.at(i);
@@ -3262,14 +3262,14 @@ void MenuUI::updateSetItemCurVal(std::vector<struct stSetItem*>& setItemList, co
 
     if (bFound) {
         if (iSetVal < 0 || iSetVal > pTmpItem->iItemMaxVal) {
-            Log.e(TAG, "[%s:%d] invalid set val[%d], set itme[%s] curVal[%d], maxVal[%d]", __FILE__, __LINE__,
+            LOGERR(TAG, "invalid set val[%d], set itme[%s] curVal[%d], maxVal[%d]",
                     iSetVal, pTmpItem->pItemName, pTmpItem->iCurVal, pTmpItem->iItemMaxVal);
         } else {
             pTmpItem->iCurVal = iSetVal;
-            Log.d(TAG, "[%s:%d] item [%s] current val[%d]", __FILE__, __LINE__, pTmpItem->pItemName, pTmpItem->iCurVal);
+            LOGDBG(TAG, "item [%s] current val[%d]", pTmpItem->pItemName, pTmpItem->iCurVal);
         }
     } else {
-        Log.w(TAG, "[%s:%d] Can't find set item[%s], please check it ....", __FILE__, __LINE__, name);
+        LOGWARN(TAG, "Can't find set item[%s], please check it ....", name);
     }
 }
 
@@ -3278,7 +3278,7 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
 {
     iVal = iVal & 0x00000001;
 
-    Log.d(TAG, "[%s:%d] updateSetItemVal Item Name[%s], iVal [%d]", __FILE__, __LINE__, pSetItemName, iVal);
+    LOGDBG(TAG, "updateSetItemVal Item Name[%s], iVal [%d]", pSetItemName, iVal);
     
     if (!strcmp(pSetItemName, SET_ITEM_NAME_FREQ)) {
         mProCfg->set_val(KEY_PAL_NTSC, iVal);
@@ -3324,7 +3324,7 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_GYRO_ONOFF, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);            
     } else {
-        Log.d(TAG, "[%s:%d] Not Support item[%s] Yet!!!", __FILE__, __LINE__, pSetItemName);
+        LOGDBG(TAG, "Not Support item[%s] Yet!!!", pSetItemName);
     }
 }
 
@@ -3333,7 +3333,7 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
 #ifdef ENABLE_MENU_STITCH_BOX
 void MenuUI::disp_stitch_progress(sp<struct _stich_progress_> &mProgress)
 {
-    Log.d(TAG,"%s %d %d %d %d %f",
+    LOGDBG(TAG,"%s %d %d %d %d %f",
           __FUNCTION__,
           mProgress->total_cnt,
           mProgress->successful_cnt,
@@ -3377,7 +3377,7 @@ void MenuUI::disp_stitch_progress(sp<struct _stich_progress_> &mProgress)
             bStiching = true;
         }
     } else {
-        Log.e(TAG,"%s cur_menu %d %d", __FUNCTION__,cur_menu,bStiching);
+        LOGERR(TAG,"%s cur_menu %d %d", __FUNCTION__,cur_menu,bStiching);
     }
 }
 #endif
@@ -3389,7 +3389,7 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
     CHECK_NE(mSysSetting, nullptr);
 
 #if 1
-    Log.d(TAG, "%s %d %d %d %d %d %d %d %d %d", __FUNCTION__,
+    LOGDBG(TAG, "%s %d %d %d %d %d %d %d %d %d", __FUNCTION__,
                                                     mSysSetting->flicker,
                                                     mSysSetting->speaker,
                                                     mSysSetting->led_on,
@@ -3460,7 +3460,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
     }
 
 	if ((fp = fopen(filePath, "w")) == NULL) {
-        Log.e(TAG, "[%s: %d] Write Json 2 File ,Open File Error", __FILE__, __LINE__);
+        LOGERR(TAG, "Write Json 2 File ,Open File Error");
 		return;
 	}
 	
@@ -3473,7 +3473,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
                 u32 iLen = mPicAllItemsList.size();
                 PicVideoCfg* pTmpCfg = mPicAllItemsList.at(iLen - 1);
                 if (pTmpCfg) {
-                    Log.d(TAG, "[%s: %d] Update  Cutomer Json Command for TakePic", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Update  Cutomer Json Command for TakePic");
                     pTmpCfg->jsonCmd = pRoot;
                 }                   
                 break;
@@ -3483,7 +3483,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
                 u32 iLen = mVidAllItemsList.size();
                 PicVideoCfg* pTmpCfg = mVidAllItemsList.at(iLen - 1);
                 if (pTmpCfg) {
-                    Log.d(TAG, "[%s: %d] Update  Cutomer Json Command for TakeVideo", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Update  Cutomer Json Command for TakeVideo");
                     pTmpCfg->jsonCmd = pRoot;
                 }                   
                 break;
@@ -3493,15 +3493,15 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
                 u32 iLen = mLiveAllItemsList.size();
                 PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(iLen - 1);
                 if (pTmpCfg) {
-                    Log.d(TAG, "[%s: %d] Update  Cutomer Json Command for TakeLive", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Update  Cutomer Json Command for TakeLive");
                     pTmpCfg->jsonCmd = pRoot;
                 }                   
                 break;
             }
         }             
-        Log.d(TAG, "[%s: %d] Update Json arguments to Customer mode OK", __FILE__, __LINE__);
+        LOGDBG(TAG, "Update Json arguments to Customer mode OK");
     } else {
-        Log.e(TAG, "[%s: %d] Update Json arguments to Customer mode failed...", __FILE__, __LINE__);
+        LOGERR(TAG, "Update Json arguments to Customer mode failed...");
     }
 }
 
@@ -3512,8 +3512,8 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
     Json::FastWriter writer;
     string actionStr = writer.write(actionJson);
 
-    Log.d(TAG, "[%s: %d] Action Json: %s", __FILE__, __LINE__, actionStr.c_str());
-    Log.d(TAG, "add_qr_res type (%d %d)", type, control_act);
+    LOGDBG(TAG, "Action Json: %s", actionStr.c_str());
+    LOGDBG(TAG, "add_qr_res type (%d %d)", type, control_act);
 
     /* 客户端发起的拍照，录像，直播 
      * 拍照过程：1.发送拍照的参数，保存在mControlPicJsonCmd
@@ -3523,7 +3523,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
     switch (control_act) {
 
         case ACTION_PIC: {      /* 客户端发起的拍照,录像，直播 CAPTURE */
-            Log.d(TAG, "[%s: %d] Client Control Takepicture ..", __FILE__, __LINE__);
+            LOGDBG(TAG, "Client Control Takepicture ..");
             mClientTakePicUpdate = true;    /* 检查是否需要进行组装 */
             mControlPicJsonCmd["name"] = "camera._takePicture";
             mControlPicJsonCmd["parameters"] = actionJson;
@@ -3532,7 +3532,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
         }
 
         case ACTION_VIDEO: {        /* 需要判断是否为老化模式 */
-            Log.d(TAG, "[%s: %d] Client Control TakeVideo ...", __FILE__, __LINE__);
+            LOGDBG(TAG, "Client Control TakeVideo ...");
 
             syncQueryTfCard();  /* 查询一下TF卡容量,避免出现客户端启动拍照，录像，直播，需要存片时，显示0的问题 */
 
@@ -3542,24 +3542,24 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
 
             /* 检查是否发的是拍摄timelapse */
             if (mControlVideoJsonCmd["parameters"].isMember("timelapse")) {  /* 表示是拍摄Timelapse */
-                Log.d(TAG, "[%s: %d] >>>>>>>>>>>>>>> In timelapse Mode", __FILE__, __LINE__);
+                LOGDBG(TAG, ">>>>>>>>>>>>>>> In timelapse Mode");
                 if (mControlVideoJsonCmd["parameters"]["timelapse"]["enable"].asBool() == true) {
                     mTakeVideInTimelapseMode = true;
                 }
             } else if (mControlVideoJsonCmd["parameters"].isMember("mode")) {
                 if (mControlVideoJsonCmd["parameters"]["mode"] == "aging") {
-                    Log.d(TAG, "[%s: %d] ----> Aging mode detect", __FILE__, __LINE__);
+                    LOGDBG(TAG, "----> Aging mode detect");
                     mAgingMode = true;
                 }
             } else {
                 mTakeVideInTimelapseMode = false;
-                Log.d(TAG, "[%s: %d] >>>>>>>>>>>>>>>> In Normal Mode", __FILE__, __LINE__);
+                LOGDBG(TAG, ">>>>>>>>>>>>>>>> In Normal Mode");
             }   
             break;
         }
 
         case ACTION_LIVE: {
-            Log.d(TAG, "[%s: %d] Client Control TakeLive ..", __FILE__, __LINE__);
+            LOGDBG(TAG, "Client Control TakeLive ..");
 
             syncQueryTfCard();  /* 查询一下TF卡容量,避免出现客户端启动拍照，录像，直播，需要存片时，显示0的问题 */
 
@@ -3574,8 +3574,8 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
                 case ACTION_PIC: {       /* 设置拍照模式的Customer */
 
                     /* 将拍照的Customer的模板参数保存为json文件 */
-                    Log.d(TAG, "[%s: %d] Save Take Picture Templet", __FILE__, __LINE__);
-                    Log.d(TAG, "Templet args: %s", actionStr.c_str());
+                    LOGDBG(TAG, "Save Take Picture Templet");
+                    LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
 
                     Json::Value picRoot;
 
@@ -3591,8 +3591,8 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
 
                 case ACTION_VIDEO: {     /* 设置录像模式下的Customer */
 
-                    Log.d(TAG, "[%s: %d] Save Take Video Templet", __FILE__, __LINE__);
-                    Log.d(TAG, "Templet args: %s", actionStr.c_str());
+                    LOGDBG(TAG, "Save Take Video Templet");
+                    LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
 
                     Json::Value vidRoot;
 
@@ -3607,8 +3607,8 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
                 }
 
                 case ACTION_LIVE: {      /* 直播模式下的Customer */
-                    Log.d(TAG, "[%s: %d] Save Take Live Templet", __FILE__, __LINE__);
-                    Log.d(TAG, "Templet args: %s", actionStr.c_str());
+                    LOGDBG(TAG, "Save Take Live Templet");
+                    LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
 
                     Json::Value liveRoot;
                     liveRoot["name"] = "camera._startLive";
@@ -3659,7 +3659,7 @@ void MenuUI::updateMenu()
          * 拍照完成后（特别时数据量大时）,为了解决此时切换挡位不卡顿,使用缓存的剩余空间 - 日期
          */
         case MENU_PIC_SET_DEF: {
-            Log.d(TAG, "[%s: %d] Update SET_PIC_DEF val[%d]", __FILE__, __LINE__, item);
+            LOGDBG(TAG, "Update SET_PIC_DEF val[%d]", item);
             mProCfg->set_def_info(KEY_ALL_PIC_DEF, item);   /* 设置当前选中的项到mProcCfg */
             updateBottomMode(true);                         /* 高亮显示挡位 */
             updateBottomSpace(true, true);                  /* 更新底部的剩余空间 */
@@ -3668,7 +3668,7 @@ void MenuUI::updateMenu()
 			
 
         case MENU_VIDEO_SET_DEF: {  
-            Log.d(TAG, "[%s: %d] Update SET_PIC_DEF val[%d]", __FILE__, __LINE__, item);
+            LOGDBG(TAG, "Update SET_PIC_DEF val[%d]", item);
             mProCfg->set_def_info(KEY_ALL_VIDEO_DEF, item);   /* 设置当前选中的项到mProcCfg */
             dispBottomInfo(true, true);   
             break;
@@ -3703,7 +3703,7 @@ void MenuUI::updateMenu()
         }
 
         default: {
-            Log.w(TAG, " Unkown join Update Menu [%d]", cur_menu);
+            LOGWARN(TAG, " Unkown join Update Menu [%d]", cur_menu);
             break;
         }
     }
@@ -3745,7 +3745,7 @@ void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, vector<Volume*>& mVolumeList
 
         gStorageInfoItems[i]->stPos = tmPos;
         gStorageInfoItems[i]->pStVolumeInfo = mVolumeList.at(i);
-        Log.d(TAG, "[%d] name: %s", i, gStorageInfoItems[i]->pStVolumeInfo->cVolName);
+        LOGDBG(TAG, "[%d] name: %s", i, gStorageInfoItems[i]->pStVolumeInfo->cVolName);
     }
 }
 
@@ -3780,7 +3780,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
 
     uint64_t serverState = getServerState();
 
-    Log.d(TAG, "[%s: %d] Use New Way Calc Remian Space now ......", __FILE__, __LINE__);
+    LOGDBG(TAG, "Use New Way Calc Remian Space now ......");
 
     VolumeManager* vm = VolumeManager::Instance();
 
@@ -3789,7 +3789,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
 
         if (mClientTakePicUpdate == true) { /* 远端控制的拍照 */
             mCanTakePicNum = vm->calcTakepicLefNum(mControlPicJsonCmd, false);
-            Log.d(TAG, "[%s: %d] --> App Mode, Left take picture num[%d]", __FILE__, __LINE__, mCanTakePicNum);
+            LOGDBG(TAG, "--> App Mode, Left take picture num[%d]", mCanTakePicNum);
         } else {    /* 本地的拍照 - 非Customer模式 */
 
             int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
@@ -3803,7 +3803,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                     if (iRawVal) {
                         iUnitSize = iUnitSize * pPicVidCfg->iRawStorageRatio;
                     }
-                    Log.d(TAG, "[%s:%d] One Group Picture size [%d]M", __FILE__, __LINE__, iUnitSize);
+                    LOGDBG(TAG, "One Group Picture size [%d]M", iUnitSize);
                     mCanTakePicNum = vm->getLocalVolLeftSize(false) / iUnitSize;
                 } else {    /* Customer模式 */
                     if (true == checkIsTakeTimelpaseInCustomer()) {
@@ -3815,9 +3815,9 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                     }
                 }
             } else {
-                Log.e(TAG, "[%s: %d] Invalid item[%d]", __FILE__, __LINE__, item);
+                LOGERR(TAG, "Invalid item[%d]", item);
             }
-            Log.d(TAG, "[%s: %d] ------- Calc Can Take Picture num [%d] in CALC_MODE_TAKE_PIC Mode.", __FILE__, __LINE__, mCanTakePicNum);
+            LOGDBG(TAG, "------- Calc Can Take Picture num [%d] in CALC_MODE_TAKE_PIC Mode.", mCanTakePicNum);
         }
     }
 
@@ -3838,7 +3838,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                 * 普通录像和老化
                 */
                 if (vm->getRecSec() > 0) {  /* 正在录像中(客户端启动的无法通过服务器的状态是否为STATE_RECORD来区别) */
-                    Log.d(TAG, "[%s: %d] In recording, don't recalc left time here.", __FILE__, __LINE__);
+                    LOGDBG(TAG, "In recording, don't recalc left time here.");
                 } else {
                     if (takeVideoIsAgeingMode()) {
                         u32 uRecLeftSec = 60 * 60;  /* 默认为1小时 */
@@ -3846,11 +3846,11 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                             uRecLeftSec = mControlVideoJsonCmd["parameters"]["duration"].asInt();
                         }
                         vm->setRecLeftSec(uRecLeftSec); 
-                        Log.d(TAG, "[%s: %d] --> Aging duration: [%d]s", __FILE__, __LINE__, uRecLeftSec);
+                        LOGDBG(TAG, "--> Aging duration: [%d]s", uRecLeftSec);
                     } else {
                         u32 uRecLeftSec = vm->calcTakeRecLefSec(mControlVideoJsonCmd);
                         vm->setRecLeftSec(uRecLeftSec);                     
-                        Log.d(TAG, "[%s: %d] --> App Mode, Rec left secs: %u", __FILE__, __LINE__, uRecLeftSec);
+                        LOGDBG(TAG, "--> App Mode, Rec left secs: %u", uRecLeftSec);
                     }
                 }
             }
@@ -3861,7 +3861,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                 
                 mCanTakeTimelapseNum = 0;
                 if (true == mTakeVideInTimelapseMode) {
-                    Log.d(TAG, "[%s: %d] ------------->> takepicture in Customer, calc it now", __FILE__, __LINE__);
+                    LOGDBG(TAG, "------------->> takepicture in Customer, calc it now");
                     vm->calcTakeTimelapseCnt(mControlVideoJsonCmd);   
                     ProtoManager* pm = ProtoManager::Instance();
                     pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
@@ -3871,7 +3871,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                     if (pTmpCfg) {
                         u32 uRecLeftSec = vm->calcTakeRecLefSec(*((pTmpCfg->jsonCmd).get()));
                         vm->setRecLeftSec(uRecLeftSec);                    
-                        Log.d(TAG, "[%s: %d]--> UI Mode, Record left secs: %u", __FILE__, __LINE__, uRecLeftSec);
+                        LOGDBG(TAG, "[%s: %d]--> UI Mode, Record left secs: %u", uRecLeftSec);
                     }
                 }                
             }
@@ -3882,7 +3882,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
         if (mClientTakeLiveUpdate == true) {    /* 客户端直接发送的直播请求 */
             u32 uLiveRecLeftSec = vm->calcTakeLiveRecLefSec(mControlLiveJsonCmd);
             vm->setLiveRecLeftSec(uLiveRecLeftSec);            
-            Log.d(TAG, "[%s: %d] --> App Mode, Live left secs: %u", __FILE__, __LINE__, uLiveRecLeftSec);
+            LOGDBG(TAG, "--> App Mode, Live left secs: %u", uLiveRecLeftSec);
         } else {    /* 本地的Customer模式下 */
             int item = getMenuSelectIndex(MENU_LIVE_SET_DEF);
             PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(item); 
@@ -3890,7 +3890,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                 int iRet = check_live_save((pTmpCfg->jsonCmd).get());
                 if (iRet != LIVE_SAVE_NONE) {
                     u32 uLiveRecLeftSec = vm->calcTakeLiveRecLefSec(*((pTmpCfg->jsonCmd).get()));
-                    Log.d(TAG, "[%s: %d] --> UI Mode, Live left secs: %u", __FILE__, __LINE__, uLiveRecLeftSec);
+                    LOGDBG(TAG, "--> UI Mode, Live left secs: %u", uLiveRecLeftSec);
                     vm->setLiveRecLeftSec(uLiveRecLeftSec);                    
                 }
             }
@@ -3918,7 +3918,7 @@ void MenuUI::convStorageSize2Str(int iUnit, u64 size, char* pStore, int iLen)
             break;   
 
         default:
-            Log.e(TAG, "[%s: %d] Invalid unit passed[%d]!!!", __FILE__, __LINE__, iUnit);  
+            LOGERR(TAG, "Invalid unit passed[%d]!!!", iUnit);  
             break;   
     }
 
@@ -3940,7 +3940,7 @@ void MenuUI::dispBottomLeftSpace()
     uint64_t serverState = getServerState();
 
     if (checkServerStateIn(serverState, STATE_START_PREVIEWING))  { 
-        Log.d(TAG, "[%s: %d] Start Preview state, Clear this area ....", __FILE__, __LINE__);
+        LOGDBG(TAG, "Start Preview state, Clear this area ....");
         clearArea(78, 48);
     } else {
         switch (cur_menu) {
@@ -3953,7 +3953,7 @@ void MenuUI::dispBottomLeftSpace()
                 #else
                 if (!vm->checkLocalVolumeExist() || !(vm->checkAllTfCardExist())) {     /* 不满足存储条件: 没有插大卡或者没有插小卡 */
                 #endif
-                    Log.d(TAG, "[%s: %d] Current menu[%s] have not local stroage device, show none", __FILE__, __LINE__, getMenuName(cur_menu));
+                    LOGDBG(TAG, "Current menu[%s] have not local stroage device, show none", getMenuName(cur_menu));
                     dispIconByType(ICON_LIVE_INFO_NONE_7848_50X16);
                 } else {    /* 条件满足: 显示剩余张数 */
                     /* 如果是拍timelapse显示可拍timelapse的张数
@@ -3994,7 +3994,7 @@ void MenuUI::dispBottomLeftSpace()
                             vm->convSec2TimeStr(vm->getRecLeftSec(), disk_info, sizeof(disk_info));                            
                             dispStrFill((const u8 *) disk_info, 78, 48);
                         } else {
-                            Log.d(TAG, "[%s: %d] --->Take Video, but no storage", __FILE__, __LINE__);
+                            LOGDBG(TAG, "--->Take Video, but no storage");
                             dispIconByType(ICON_LIVE_INFO_NONE_7848_50X16);     
                         }
                     }
@@ -4030,7 +4030,7 @@ void MenuUI::dispBottomLeftSpace()
                         dispStrFill((const u8 *) disk_info, 78, 48);                    
 
                     } else {
-                        Log.d(TAG, "[%s: %d] Take Live Record, but no storage", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Take Live Record, but no storage");
                         dispIconByType(ICON_LIVE_INFO_NONE_7848_50X16);     
                     }
                 } else {    /* 只显示已经直播的时间 */
@@ -4145,12 +4145,12 @@ void MenuUI::dispSettingPage(vector<struct stSetItem*>& setItemsList)
         clearArea(pIconPos->xPos + pIconPos->iWidth, 16);
 
     #ifdef ENABLE_DEBUG_SET_PAGE
-        Log.d(TAG, "start %d end  %d select %d ", start, end, iIndex);
+        LOGDBG(TAG, "start %d end  %d select %d ", start, end, iIndex);
     #endif
         while (start < end) {
 
         #ifdef ENABLE_DEBUG_SET_PAGE        
-            Log.d(TAG, "[%s:%d] dispSettingPage -> cur index [%d] in lists", __FILE__, __LINE__, start);
+            LOGDBG(TAG, "dispSettingPage -> cur index [%d] in lists", start);
         #endif
             pTempSetItem = setItemsList.at(start);
             
@@ -4164,13 +4164,13 @@ void MenuUI::dispSettingPage(vector<struct stSetItem*>& setItemsList)
                     dispSetItem(pTempSetItem, iSelected);
                 }
             } else {
-                Log.e(TAG, "[%s:%d] dispSettingPage -> invalid index[%d]", start);
+                LOGERR(TAG, "dispSettingPage -> invalid index[%d]", start);
             }
             start++;
             item++;
         }
     } else {
-        Log.e(TAG, "[%s: %d] Warnning Invalid Nv Position in Menu[%s]", __FILE__, __LINE__, getMenuName(cur_menu));
+        LOGERR(TAG, "Warnning Invalid Nv Position in Menu[%s]", getMenuName(cur_menu));
     }
 }
 
@@ -4190,7 +4190,7 @@ void MenuUI::format(const char *src,const char *path,int trim_err_icon,int err_i
     char buf[1024];
     int err_trim = 0;
 
-    Log.d(TAG," %d src %s path %s cur_menu %d", getMenuSelectIndex(MENU_FORMAT), src, path, cur_menu);
+    LOGDBG(TAG," %d src %s path %s cur_menu %d", getMenuSelectIndex(MENU_FORMAT), src, path, cur_menu);
 
     switch (getMenuSelectIndex(MENU_FORMAT)) {
         //exfat
@@ -4225,7 +4225,7 @@ void MenuUI::format(const char *src,const char *path,int trim_err_icon,int err_i
             if (exec_sh_new((const char *)buf) != 0) {
                 goto ERROR;
             }
-            Log.d(TAG,"err_trim %d",err_trim);
+            LOGDBG(TAG,"err_trim %d",err_trim);
     #ifdef NEW_FORMAT
             reset_devmanager();
     #else
@@ -4235,7 +4235,7 @@ void MenuUI::format(const char *src,const char *path,int trim_err_icon,int err_i
             if (exec_sh((const char *)buf) != 0) {
                 goto ERROR;
             }  else {
-                Log.d(TAG,"mountufsd suc");
+                LOGDBG(TAG,"mountufsd suc");
             }
     #endif
 
@@ -4380,22 +4380,22 @@ void MenuUI::startFormatDevice()
     int iIndex = getMenuSelectIndex(MENU_SHOW_SPACE);
     tmpStorageItem = gStorageInfoItems[iIndex];
         
-    Log.d(TAG, "[%s: %d] Volume name [%s]", __FILE__, __LINE__, tmpStorageItem->pStVolumeInfo->cVolName);
+    LOGDBG(TAG, "Volume name [%s]", tmpStorageItem->pStVolumeInfo->cVolName);
     
     /* 选中的是小卡 */
     if (!strncmp(tmpStorageItem->pStVolumeInfo->cVolName, "mSD", strlen("mSD"))) {    /* 根据名称来区别是小卡还是大卡 */
         int iMode = getMenuSelectIndex(MENU_TF_FORMAT_SELECT);
-        Log.d(TAG, "[%s: %d] Format mSD Method [%s]", __FILE__, __LINE__, (iIndex == 0) ? "Format One TF Card": "Format All TF Card");
+        LOGDBG(TAG, "Format mSD Method [%s]", (iIndex == 0) ? "Format One TF Card": "Format All TF Card");
 
         tmpFormatSelectItem = gTfFormatSelectItems[iMode];
         if (!strcmp(tmpFormatSelectItem->pItemName, SET_ITEM_NAME_TF_FOMART_THIS_CARD)) {
             
             /* 格式化一张卡 */
-            Log.d(TAG, "[%s: %d] Format mSD Card [%s]", __FILE__, __LINE__, tmpStorageItem->pStVolumeInfo->cVolName);
+            LOGDBG(TAG, "Format mSD Card [%s]", tmpStorageItem->pStVolumeInfo->cVolName);
             iTfIndex = tmpStorageItem->pStVolumeInfo->iIndex;
         } else {
             /* 格式化所有的卡 */
-            Log.d(TAG, "[%s: %d] Format All mSD Card", __FILE__, __LINE__);
+            LOGDBG(TAG, "Format All mSD Card");
             iTfIndex = -1;
         }
 
@@ -4420,13 +4420,13 @@ void MenuUI::startFormatDevice()
             }
 
             case ERROR_FORMAT_REQ_FAILED: { /* 请求失败， */
-                Log.e(TAG, "[%s: %d] Format TF Card request failed...", __FILE__, __LINE__);
+                LOGERR(TAG, "Format TF Card request failed...");
                 setCurMenu(MENU_FORMAT_INDICATION);
                 break;
             }
 
             case ERROR_FORMAT_STATE_NOT_ALLOW: {    /* 状态不允许 */
-                Log.e(TAG, "[%s: %d] Format TF Card Server State Not Allowed ...", __FILE__, __LINE__);
+                LOGERR(TAG, "Format TF Card Server State Not Allowed ...");
                 setCurMenu(MENU_FORMAT_INDICATION);
                 break;
             }
@@ -4437,12 +4437,12 @@ void MenuUI::startFormatDevice()
 
 
     } else {    /* 大卡或USB设备 */
-        Log.d(TAG, "[%s: %d] Format Native USB Device", __FILE__, __LINE__);
+        LOGDBG(TAG, "Format Native USB Device");
 
         /*
          * 获取卷的设备名称,挂载路径信息
          */
-        Log.d(TAG, "[%s: %d] Volume name [%s] device node [%s], mount path[%s]", __FILE__, __LINE__, 
+        LOGDBG(TAG, "Volume name [%s] device node [%s], mount path[%s]", 
                 tmpStorageItem->pStVolumeInfo->cVolName, 
                 tmpStorageItem->pStVolumeInfo->cDevNode,
                 tmpStorageItem->pStVolumeInfo->pMountPath);
@@ -4531,18 +4531,18 @@ int MenuUI::formatDev(const char* pDevNode, const char* pMountPath)
     #ifdef ENABLE_FORMAT_DEV_USE_SYSTEM_CMD
     snprintf(buf, sizeof(buf), "umount -f %s", pMountPath);
     if (exec_sh_new((const char *)buf) != 0) {
-        Log.d(TAG, "[%s: %d] umount path[%s] failed", __FILE__, __LINE__, pMountPath);
+        LOGDBG(TAG, "umount path[%s] failed", pMountPath);
         iErrNo = FORMAT_ERR_UMOUNT;
         goto ERROR;
     }
-    Log.d(TAG, "[%s: %d] Umount dev [%s] Success !!", __FILE__, __LINE__, pDevNode);
+    LOGDBG(TAG, "Umount dev [%s] Success !!", pDevNode);
 
     #else   /* 使用API卸载 */
 
     for (i = 0; i < iRetry; i++) {
-        Log.d(TAG, "[%s: %d] umount2 dev[%s], mount pointer[%s]", __FILE__, __LINE__, pDevNode, pMountPath);
+        LOGDBG(TAG, "umount2 dev[%s], mount pointer[%s]", pDevNode, pMountPath);
         if (umount2(pMountPath, MNT_FORCE)) {
-            Log.e(TAG, "[%s: %d] umount dev[%s] failed, times[%d]", __FILE__, __LINE__, pDevNode, i);
+            LOGERR(TAG, "umount dev[%s] failed, times[%d]", pDevNode, i);
             msg_util::sleep_ms(100);
             continue;
         } else {
@@ -4551,11 +4551,11 @@ int MenuUI::formatDev(const char* pDevNode, const char* pMountPath)
     }
 
     if (i >= iRetry) {
-        Log.e(TAG, "[%s: %d] umount dev[%s] failed", __FILE__, __LINE__, pDevNode);
+        LOGERR(TAG, "umount dev[%s] failed", pDevNode);
         iErrNo = FORMAT_ERR_UMOUNT_EXFAT;
         goto ERROR;
     } else {    /* 卸载成功(可以考虑直接操作mLocalStorageList,将Volume的状态设置为已卸载状态) */
-        Log.e(TAG, "[%s: %d] umount dev[%s] Suc", __FILE__, __LINE__, pDevNode);
+        LOGERR(TAG, "umount dev[%s] Suc", pDevNode);
     }
 
     #endif
@@ -4565,25 +4565,25 @@ int MenuUI::formatDev(const char* pDevNode, const char* pMountPath)
     memset(buf, 0, sizeof(buf));
     snprintf(buf, sizeof(buf), "mke2fs -F -t ext4 %s", pDevNode);   
 
-    Log.d(TAG, "[%s: %d] Format dev[%s] to Ext4", __FILE__, __LINE__, pDevNode); 
+    LOGDBG(TAG, "Format dev[%s] to Ext4", pDevNode); 
 
     if (exec_sh_new((const char *)buf) != 0) {
-        Log.d(TAG, "[%s: %d] Format dev[%s] Failed", __FILE__, __LINE__, pDevNode);
+        LOGDBG(TAG, "Format dev[%s] Failed", pDevNode);
         iErrNo = FORMAT_ERR_FORMAT_EXT4;
         goto ERROR;
     }  else {
         
-        Log.d(TAG, "[%s: %d] Format dev[%s] to Ext4 Success!!!", __FILE__, __LINE__, pDevNode);
+        LOGDBG(TAG, "Format dev[%s] to Ext4 Success!!!", pDevNode);
 
         memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "mount -t ext4 -o discard %s %s", pDevNode, pMountPath);
         if (exec_sh_new((const char *)buf) != 0) {
-            Log.d(TAG, "[%s: %d] Mount dev[%s] -> path[%s] Failed", __FILE__, __LINE__, pDevNode, pMountPath);
+            LOGDBG(TAG, "Mount dev[%s] -> path[%s] Failed", pDevNode, pMountPath);
             iErrNo = FORMAT_ERR_MOUNT_EXT4;
             goto ERROR;
         } else {    /* 挂载正常 */
 
-            Log.d(TAG, "[%s: %d] ReMount dev[%s] to [%s] Success!!!", __FILE__, __LINE__, pDevNode, pMountPath);
+            LOGDBG(TAG, "ReMount dev[%s] to [%s] Success!!!", pDevNode, pMountPath);
 
         #ifdef ENABLE_FS_TRIM            
             memset(buf, 0, sizeof(buf));
@@ -4592,12 +4592,12 @@ int MenuUI::formatDev(const char* pDevNode, const char* pMountPath)
                 iErrNo = FORMAT_ERR_FSTRIM;
                 goto ERROR;
             }
-            Log.d(TAG, "[%s: %d] Fstrim Dev[%s] Success!", __FILE__, __LINE__, pMountPath);
+            LOGDBG(TAG, "Fstrim Dev[%s] Success!", pMountPath);
         #else
             memset(buf, 0, sizeof(buf));
             snprintf(buf, sizeof(buf), "e4defrag %s", pMountPath);
             exec_sh_new((const char *)buf);
-            Log.d(TAG, "[%s: %d] e4defrag Dev[%s] Success!", __FILE__, __LINE__, pMountPath);
+            LOGDBG(TAG, "e4defrag Dev[%s] Success!", pMountPath);
 
         #endif
             msg_util::sleep_ms(200);
@@ -4609,7 +4609,7 @@ int MenuUI::formatDev(const char* pDevNode, const char* pMountPath)
                 goto ERROR;
             }
             
-            Log.d(TAG, "[%s: %d] umount Dev[%s] Success!", __FILE__, __LINE__, pMountPath);
+            LOGDBG(TAG, "umount Dev[%s] Success!", pMountPath);
 
             msg_util::sleep_ms(500);
 
@@ -4619,7 +4619,7 @@ int MenuUI::formatDev(const char* pDevNode, const char* pMountPath)
                 iErrNo = FORMAT_ERR_FORMAT_EXFAT;
                 goto ERROR;
             }
-            Log.d(TAG, "[%s: %d] Format Dev[%s] to Exfat Success!", __FILE__, __LINE__, pDevNode);
+            LOGDBG(TAG, "Format Dev[%s] to Exfat Success!", pDevNode);
 
             system("killall vold_test");    /* 重启挂载服务 */
         }
@@ -4633,12 +4633,12 @@ ERROR:
         case FORMAT_ERR_UMOUNT_EXT4:
         case FORMAT_ERR_FORMAT_EXFAT:
         case FORMAT_ERR_E4DEFRAG:
-            Log.d(TAG, "[%s: %d] Action[%d] dev[%s], path[%s]", __FILE__, __LINE__, iErrNo, pDevNode, pMountPath);
+            LOGDBG(TAG, "Action[%d] dev[%s], path[%s]", iErrNo, pDevNode, pMountPath);
             break;
         
         case FORMAT_ERR_FSTRIM: {     /* fstrim失败,应该将其重启格式化成exfat格式 */
 
-            Log.d(TAG, "[%s: %d] Fstrim Failed Now, umount, and format it to exfat", __FILE__, __LINE__);
+            LOGDBG(TAG, "Fstrim Failed Now, umount, and format it to exfat");
             memset(buf, 0, sizeof(buf));
             snprintf(buf, sizeof(buf), "umount -f %s", pMountPath);
             exec_sh_new((const char *)buf);
@@ -4684,7 +4684,7 @@ void MenuUI::dispStorageItem(struct stStorageItem* pStorageItem, bool bSelected)
     }
 
 #ifdef ENABLE_DEBUG_SET_PAGE
-        Log.d(TAG, "[%s:%d] dispStorageItem item name [%s], selected[%s]", __FILE__, __LINE__, 
+        LOGDBG(TAG, "dispStorageItem item name [%s], selected[%s]", 
                         pStorageItem->stVolumeInfo.cVolName, (bSelected == true) ? "yes": "no");
 #endif
 
@@ -4694,7 +4694,7 @@ void MenuUI::dispStorageItem(struct stStorageItem* pStorageItem, bool bSelected)
     sprintf(cItems, "%s: %s/%s", pStorageItem->pStVolumeInfo->cVolName, cUsed, cTotal);
 
 #ifdef ENABLE_DEBUG_SET_PAGE
-    Log.d(TAG, "[%s: %d] Calc show Str Len %d", __FILE__, __LINE__, strlen(cItems));
+    LOGDBG(TAG, "Calc show Str Len %d", strlen(cItems));
 #endif
 
     /* 名称: Used/Total - 为了节省绘制空间，单位统一用G */
@@ -4730,14 +4730,14 @@ void MenuUI::dispShowStoragePage(SetStorageItem** storageList)
 
     #ifdef ENABLE_DEBUG_SET_PAGE
 	/* 5/3 = 1 8 (3, 6, 5) 5 = (1*3) + 2 */
-    Log.d(TAG, "start %d end  %d select %d ", start, end, iIndex);
+    LOGDBG(TAG, "start %d end  %d select %d ", start, end, iIndex);
     #endif
 
     if (mSelect->total) {
         while (start < end) {
 
         #ifdef ENABLE_DEBUG_SET_PAGE
-            Log.d(TAG, "[%s:%d] dispSettingPage -> cur index [%d] in lists", __FILE__, __LINE__, start);
+            LOGDBG(TAG, "dispSettingPage -> cur index [%d] in lists", start);
         #endif
 
             pTempStorageItem = storageList[start];
@@ -4752,13 +4752,13 @@ void MenuUI::dispShowStoragePage(SetStorageItem** storageList)
                     dispStorageItem(pTempStorageItem, iSelected);
                 }
             } else {
-                Log.e(TAG, "[%s:%d] dispSettingPage -> invalid index[%d]", start);
+                LOGERR(TAG, "dispSettingPage -> invalid index[%d]", start);
             }
             start++;
             item++;
         }
     } else {
-        Log.d(TAG, "[%s: %d] None Storage device yet!", __FILE__, __LINE__);
+        LOGDBG(TAG, "None Storage device yet!");
         dispStr((const u8*)"None storage", 32, 32, false, 128);
     }   
 }
@@ -4796,7 +4796,7 @@ void MenuUI::disp_org_rts(Json::Value& jsonCmd, int hdmi)
 
     // Json::FastWriter writer;
     // string jsonstr = writer.write(jsonCmd);
-    // Log.d(TAG, "[%s: %d] cmd: %s", __FILE__, __LINE__, jsonstr.c_str());
+    // LOGDBG(TAG, "cmd: %s", jsonstr.c_str());
 
     if (jsonCmd.isMember("name")) {
 
@@ -4864,7 +4864,7 @@ void MenuUI::disp_org_rts(Json::Value& jsonCmd, int hdmi)
         }
 
     } else {
-        Log.e(TAG, "[%s: %d] Invalid Json command!", __FILE__, __LINE__);
+        LOGERR(TAG, "Invalid Json command!");
     }
 
     disp_org_rts(org, rts, hdmi);
@@ -4947,7 +4947,7 @@ void MenuUI::dispPicVidCfg(PicVideoCfg* pCfg, bool bLight)
 {
 	ICON_INFO iconInfo = {0};
 
-    Log.d(TAG, "[%s: %d] dispPicVidCfg Current val[%d]", __FILE__, __LINE__, pCfg->iCurVal);
+    LOGDBG(TAG, "dispPicVidCfg Current val[%d]", pCfg->iCurVal);
 
     iconInfo.x = pCfg->stPos.xPos;
     iconInfo.y = pCfg->stPos.yPos;
@@ -4955,8 +4955,8 @@ void MenuUI::dispPicVidCfg(PicVideoCfg* pCfg, bool bLight)
     iconInfo.h = pCfg->stPos.iHeight;
 
     if (pCfg->iCurVal > pCfg->iItemMaxVal) {
-        Log.e(TAG, "[%s: %d] Invalid Current val[%d], Max val[%d]", __FILE__, __LINE__, pCfg->iCurVal, pCfg->iItemMaxVal);
-        Log.e(TAG, "Can't show bottom Mode!!!!!");
+        LOGERR(TAG, "Invalid Current val[%d], Max val[%d]", pCfg->iCurVal, pCfg->iItemMaxVal);
+        LOGERR(TAG, "Can't show bottom Mode!!!!!");
     } else {
         /* 显示图标版本 */
         #if  1
@@ -5001,24 +5001,24 @@ void MenuUI::updateBottomMode(bool bLight)
                 /* 根据当前选择的挡位进行显示 */
                 iIndex = getMenuSelectIndex(MENU_PIC_SET_DEF);    /* 得到菜单的索引值 */
 
-                Log.d(TAG, "[%s: %d] menu[%s] current selected index[%d]", __FILE__, __LINE__, getMenuName(MENU_PIC_SET_DEF), iIndex);
+                LOGDBG(TAG, "menu[%s] current selected index[%d]", getMenuName(MENU_PIC_SET_DEF), iIndex);
                 
-                Log.d(TAG, "[%s: %d] menu[%s] total[%d] PIC cfg list len[%d]", __FILE__, __LINE__, 
+                LOGDBG(TAG, "menu[%s] total[%d] PIC cfg list len[%d]", 
                                                                                 getMenuName(MENU_PIC_SET_DEF), 
                                                                                 mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total, 
                                                                                 mPicAllItemsList.size());
 
                 if (iIndex >= mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total || iIndex >= mPicAllItemsList.size()) {
-                    Log.e(TAG, "[%s: %d] invalid index(%d) on current menu[%s]", __FILE__, __LINE__, iIndex, getMenuName(cur_menu));
+                    LOGERR(TAG, "invalid index(%d) on current menu[%s]", iIndex, getMenuName(cur_menu));
                 } else {
                     pTmpCfg = mPicAllItemsList.at(iIndex);
                     if (pTmpCfg) {
-                        Log.d(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
+                        LOGDBG(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
                         cfgPicModeItemCurVal(pTmpCfg);      /* 更新拍照各项的当前值(根据设置系统的值，比如RAW, AEB) */
                         disp_org_rts(*(pTmpCfg->jsonCmd.get()), 0);
                         dispPicVidCfg(pTmpCfg, bLight);     /* 显示拍照的挡位 */
                     } else {
-                        Log.e(TAG, "[%s: %d] invalid pointer pTmpCfg", __FILE__, __LINE__);
+                        LOGERR(TAG, "invalid pointer pTmpCfg");
                     }
                 }
             }
@@ -5030,7 +5030,7 @@ void MenuUI::updateBottomMode(bool bLight)
         case MENU_VIDEO_SET_DEF: {
 
             if (true == mTakeVideInTimelapseMode) {   /* timelapse拍摄: 本地拍Timelapse及客户端控制拍摄timelapse */
-                Log.d(TAG, "[%s: %d] Show Bottom Video Mode ---> Timelapse[remote control]", __FILE__, __LINE__);                
+                LOGDBG(TAG, "Show Bottom Video Mode ---> Timelapse[remote control]");                
                 disp_org_rts(mControlVideoJsonCmd, 0);
                 
                 if (true == mClientTakeVideoUpdate) {   /* 客户端请求发送拍timelapse */
@@ -5040,7 +5040,7 @@ void MenuUI::updateBottomMode(bool bLight)
                 }
 
             } else if (mClientTakeVideoUpdate == true) {   /* 来自客户端直播请求 */
-                Log.d(TAG, "[%s: %d] Show Bottom Video Mode ---> Client control[remote control]", __FILE__, __LINE__);
+                LOGDBG(TAG, "Show Bottom Video Mode ---> Client control[remote control]");
                 
                 if (takeVideoIsAgeingMode()) {
                     disp_org_rts(mControlVideoJsonCmd, 0);
@@ -5055,28 +5055,28 @@ void MenuUI::updateBottomMode(bool bLight)
                 /* 根据菜单中选择的挡位进行显示 */
                 iIndex = getMenuSelectIndex(MENU_VIDEO_SET_DEF);
 
-                Log.d(TAG, "[%s: %d] menu[%s] current selected index[%d]", __FILE__, __LINE__, getMenuName(MENU_VIDEO_SET_DEF), iIndex);
+                LOGDBG(TAG, "menu[%s] current selected index[%d]", getMenuName(MENU_VIDEO_SET_DEF), iIndex);
                 
-                Log.d(TAG, "[%s: %d] menu[%s] total[%d] pic cfg list len[%d]", __FILE__, __LINE__, 
+                LOGDBG(TAG, "menu[%s] total[%d] pic cfg list len[%d]", 
                                                                                 getMenuName(MENU_VIDEO_SET_DEF), 
                                                                                 mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total, 
                                                                                 mVidAllItemsList.size());
 
 
                 if (iIndex >= mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total || iIndex >= mVidAllItemsList.size()) {
-                    Log.e(TAG, "[%s: %d] invalid index(%d) on current menu[%s]", __FILE__, __LINE__, iIndex, getMenuName(cur_menu));
+                    LOGERR(TAG, "invalid index(%d) on current menu[%s]", iIndex, getMenuName(cur_menu));
                 } else {
 
                     pTmpCfg = mVidAllItemsList.at(iIndex);
                     if (pTmpCfg) {
 
-                        Log.d(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
+                        LOGDBG(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
 
                         disp_org_rts(*(pTmpCfg->jsonCmd.get()), 0);
 
                         dispPicVidCfg(pTmpCfg, bLight); /* 显示配置 */
                     } else {
-                        Log.e(TAG, "[%s: %d] invalid pointer pTmpCfg", __FILE__, __LINE__);
+                        LOGERR(TAG, "invalid pointer pTmpCfg");
                     }
                 }
             }           
@@ -5096,23 +5096,23 @@ void MenuUI::updateBottomMode(bool bLight)
             } else {
                 iIndex = getMenuSelectIndex(MENU_LIVE_SET_DEF);
 
-                Log.d(TAG, "[%s: %d] menu[%s] current selected index[%d]", __FILE__, __LINE__, getMenuName(MENU_LIVE_SET_DEF), iIndex);
+                LOGDBG(TAG, "menu[%s] current selected index[%d]", getMenuName(MENU_LIVE_SET_DEF), iIndex);
                 
-                Log.d(TAG, "[%s: %d] menu[%s] total[%d] pic cfg list len[%d]", __FILE__, __LINE__, 
+                LOGDBG(TAG, "menu[%s] total[%d] pic cfg list len[%d]", 
                             getMenuName(MENU_LIVE_SET_DEF), mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total, mLiveAllItemsList.size());
 
 
                 if (iIndex >= mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total || iIndex >= mLiveAllItemsList.size()) {
-                    Log.e(TAG, "[%s: %d] invalid index(%d) on current menu[%s]", __FILE__, __LINE__, iIndex, getMenuName(cur_menu));
+                    LOGERR(TAG, "invalid index(%d) on current menu[%s]", iIndex, getMenuName(cur_menu));
                 } else {
 
                     pTmpCfg = mLiveAllItemsList.at(iIndex);
                     if (pTmpCfg) {
-                        Log.d(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
+                        LOGDBG(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
                         disp_org_rts(*(pTmpCfg->jsonCmd.get()), 0);
                         dispPicVidCfg(pTmpCfg, bLight); /* 显示配置 */
                     } else {
-                        Log.e(TAG, "[%s: %d] invalid pointer pTmpCfg", __FILE__, __LINE__);
+                        LOGERR(TAG, "invalid pointer pTmpCfg");
                     }
                 }
             }
@@ -5133,7 +5133,7 @@ void MenuUI::disp_sec(int sec,int x,int y)
 
 void MenuUI::disp_calibration_res(int type, int t)
 {
-    Log.d(TAG, " disp_calibration_res type %d", type);
+    LOGDBG(TAG, " disp_calibration_res type %d", type);
 	
     switch (type) {
         //suc
@@ -5146,7 +5146,7 @@ void MenuUI::disp_calibration_res(int type, int t)
         case 1:
 #if 0        
             mCamState |= STATE_CALIBRATE_FAIL;
-            Log.d(TAG,"cal fail state 0x%x", mCamState);
+            LOGDBG(TAG,"cal fail state 0x%x", mCamState);
             CHECK_EQ(mCamState, STATE_CALIBRATE_FAIL);
             dispIconByType(ICON_CALIBRATION_FAILED128_16);
 #endif
@@ -5209,7 +5209,7 @@ void MenuUI::func_low_protect()
         disp_sec(times - i, 52, 48);
         msg_util::sleep_ms(1000);
         ret =get_battery_charging(&bCharge);
-        Log.d(TAG,"prot (%d %d)",ret,bCharge);
+        LOGDBG(TAG,"prot (%d %d)",ret,bCharge);
         if ( ret == 0 && bCharge)
         {
             m_bat_info_->bCharge = bCharge;
@@ -5219,7 +5219,7 @@ void MenuUI::func_low_protect()
 
     }
 
-    Log.d(TAG, "func_low_protect %d", bSend);
+    LOGDBG(TAG, "func_low_protect %d", bSend);
     
     if (bSend) {
         sendRpc(ACTION_LOW_PROTECT,REBOOT_SHUTDOWN);
@@ -5233,7 +5233,7 @@ void MenuUI::func_low_protect()
         // back for battery charge
         procBackKeyEvent();
     }
-    Log.d(TAG, "func_low_protect %d menu %d state 0x%x", bSend, cur_menu, mCamState);
+    LOGDBG(TAG, "func_low_protect %d menu %d state 0x%x", bSend, cur_menu, mCamState);
 #endif
 }
 
@@ -5244,7 +5244,7 @@ void MenuUI::func_low_protect()
  */
 void MenuUI::showSpaceQueryTfCallback()
 {
-    Log.d(TAG, "[%s: %d] Current Menu[%s] and State[0x%x]", __FILE__, __LINE__, getMenuName(cur_menu), getServerState());
+    LOGDBG(TAG, "Current Menu[%s] and State[0x%x]", getMenuName(cur_menu), getServerState());
     
     /* 统计系统中卡的信息 */
     getShowStorageInfo();
@@ -5269,7 +5269,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 
     uint64_t serverState = getServerState();
 
-	Log.d(TAG, "enterMenu is [%s], Server State [0x%x], update all [%s]", 
+	LOGDBG(TAG, "enterMenu is [%s], Server State [0x%x], update all [%s]", 
                         getMenuName(cur_menu), serverState, (bUpdateAllMenuUI == true) ? "true": "false");
     
     ICON_INFO* pNvIconInfo = NULL;
@@ -5320,7 +5320,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                     /*
                     * 非预览状态下，客户端启动timelpase并停止后再次进入到MENU_PIC_INFO中,此时server处于STATE_IDLE状态，会直接返回主菜单
                     */
-                    Log.d(TAG, "[%s: %d] ---> pic menu error state 0x%x", __FILE__, __LINE__, serverState);
+                    LOGDBG(TAG, "---> pic menu error state 0x%x", serverState);
                 }
             }
 
@@ -5330,7 +5330,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 
         case MENU_VIDEO_INFO: { /* 录像菜单 STATE_IDLE */
 
-            Log.d(TAG, "[%s: %d] -------------> Enter MENU_VIDEO_INFO, cam state[0x%x]", __FILE__, __LINE__, serverState);
+            LOGDBG(TAG, "-------------> Enter MENU_VIDEO_INFO, cam state[0x%x]", serverState);
             
             if (checkStateEqual(serverState, STATE_IDLE)) {
                 procBackKeyEvent();
@@ -5341,7 +5341,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                 }
 
                 if (true == mTakeVideInTimelapseMode) {   /* timelapse拍摄,显示拍照的图标 */
-                    Log.d(TAG, "[%s: %d] Enter MENU_VIDEO_INFO, But in Timelapse Mode", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Enter MENU_VIDEO_INFO, But in Timelapse Mode");
                     clearArea(0, 16);
                     dispIconByType(ICON_CAMERA_ICON_0_16_20_32);		/* 显示左侧'拍照'图标 */
                     if (true == mClientTakeVideoUpdate) {
@@ -5374,13 +5374,13 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                     dispWaiting();
                 } else if (checkServerStateIn(serverState, STATE_RECORD)) {
                     #if 0
-                    Log.d(TAG, "do nothing in rec cam state 0x%x", getServerState());
+                    LOGDBG(TAG, "do nothing in rec cam state 0x%x", getServerState());
                     if (tl_count != -1) {
                         clearReady();
                     }
                     #endif
                 } else {
-                    Log.d(TAG, "vid menu error state 0x%x menu %d", serverState, cur_menu);
+                    LOGDBG(TAG, "vid menu error state 0x%x menu %d", serverState, cur_menu);
                     if (checkStateEqual(serverState, STATE_IDLE)) {
                         procBackKeyEvent();
                     }
@@ -5407,7 +5407,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                     if (checkServerStateIn(serverState, STATE_LIVE) && (vm->getLiveRecSec() > 0)) {    /* 已经处于直播状态 */
                         updateBottomMode(false);
                         dispBottomLeftSpace();
-                        Log.d(TAG, "[%s: %d] enter MENU_LIVE_INFO is resume live", __FILE__, __LINE__);
+                        LOGDBG(TAG, "enter MENU_LIVE_INFO is resume live");
                     } else {
                         dispBottomInfo(false, true);   /* 正常显示规格,不显示剩余时长 */
                     }
@@ -5420,11 +5420,11 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                             checkServerStateIn(serverState, STATE_START_LIVING)) {
                     dispWaiting();
                 } else if (checkServerStateIn(serverState, STATE_LIVE)) {
-                    Log.d(TAG, "do nothing in live cam state 0x%x", serverState);
+                    LOGDBG(TAG, "do nothing in live cam state 0x%x", serverState);
                 } else if (checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) {
                     dispConnecting();
                 } else {
-                    Log.d(TAG, "live menu error state 0x%x", serverState);
+                    LOGDBG(TAG, "live menu error state 0x%x", serverState);
                     if (checkStateEqual(serverState, STATE_IDLE)) {
                         procBackKeyEvent();
                     }
@@ -5444,7 +5444,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             if (pNvIconInfo) {
                 dispIconByLoc(pNvIconInfo);
             } else {
-                Log.e(TAG, "[%s: %d] Current Menu[%s] NV Icon not exist", __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGERR(TAG, "Current Menu[%s] NV Icon not exist", getMenuName(cur_menu));
             }
             dispSettingPage(mStorageList);  /* 显示"右侧"的项: Storage Space; Test Write Speed */
 
@@ -5470,7 +5470,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             if (pNvIconInfo) {
                 dispIconByLoc(pNvIconInfo);
             } else {
-                Log.e(TAG, "[%s: %d] Current Menu[%s] NV Icon not exist", __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGERR(TAG, "Current Menu[%s] NV Icon not exist", getMenuName(cur_menu));
             }            
             #endif
 
@@ -5494,14 +5494,14 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 
 		case MENU_SET_PHOTO_DEALY: { /* 显示PhotoDelay菜单 */
 
-            Log.d(TAG, "[%s:%d] +++++>>> enter Set Photo Delay Menu now .... ", __FILE__, __LINE__);
+            LOGDBG(TAG, "+++++>>> enter Set Photo Delay Menu now .... ");
 
 			clearArea(0, 16);									/* 清除真个区域 */
 
             if (pNvIconInfo) {
                 dispIconByLoc(pNvIconInfo);
             } else {
-                Log.e(TAG, "[%s: %d] Current Menu[%s] NV Icon not exist", __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGERR(TAG, "Current Menu[%s] NV Icon not exist", getMenuName(cur_menu));
             }
 
             /* 进入设置"Set Photo Delay" */
@@ -5511,13 +5511,13 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 
     #ifdef ENABLE_MENU_AEB	
         case MENU_SET_AEB: {
-            Log.d(TAG, "[%s:%d] +++++>>> enter aeb Menu now .... ", __FILE__, __LINE__);
+            LOGDBG(TAG, "+++++>>> enter aeb Menu now .... ");
             clearArea(0, 16);	
 
             if (pNvIconInfo) {
                 dispIconByLoc(pNvIconInfo);
             } else {
-                Log.e(TAG, "[%s: %d] Current Menu[%s] NV Icon not exist", __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGERR(TAG, "Current Menu[%s] NV Icon not exist", getMenuName(cur_menu));
             }
 
             dispSettingPage(mAebList);
@@ -5532,7 +5532,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             if (pNvIconInfo) {
                 dispIconByLoc(pNvIconInfo);
             } else {
-                Log.e(TAG, "[%s: %d] Current Menu[%s] NV Icon not exist", __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGERR(TAG, "Current Menu[%s] NV Icon not exist", getMenuName(cur_menu));
             }
             /* 显示设置页 */
             dispSettingPage(mSetItemsList);
@@ -5570,7 +5570,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 
 			
         case MENU_CALIBRATION: {
-            Log.d(TAG, "MENU_CALIBRATION GyroCalc delay %d", mGyroCalcDelay);
+            LOGDBG(TAG, "MENU_CALIBRATION GyroCalc delay %d", mGyroCalcDelay);
             if (mGyroCalcDelay >= 0) {
                 dispIconByType(ICON_CALIBRAT_AWAY128_16);
             } else {
@@ -5637,7 +5637,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                     procBackKeyEvent();                 /* 测速完成，由于拔卡或插卡导致冲进进入MENU_SPEE_TEST的情况 */
                 } 
             } else {
-                Log.d(TAG, "[%s: %d] Lost some card, return now.", __FILE__, __LINE__);
+                LOGDBG(TAG, "Lost some card, return now.");
                 procBackKeyEvent();
             }           
             break;
@@ -5653,7 +5653,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                     dispWriteSpeedTest();  
                 } else {
                     if (mSpeedTestUpdateFlag == false) {    /* 未发起测速的情况 */
-                        Log.d(TAG, "[%s: %d] Current speed test flag [%s]", __FILE__, __LINE__, property_get(PROP_SPEED_TEST_COMP_FLAG));
+                        LOGDBG(TAG, "Current speed test flag [%s]", property_get(PROP_SPEED_TEST_COMP_FLAG));
                         /* 来自UI的：提示是否确认测速 */
                         dispTipStorageDevSpeedTest();
                     } else {
@@ -5662,7 +5662,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                 }
 
             } else {
-                Log.d(TAG, "[%s: %d] Lost some card, return now.", __FILE__, __LINE__);
+                LOGDBG(TAG, "Lost some card, return now.");
                 procBackKeyEvent();
             }
             break;            
@@ -5675,7 +5675,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
         }
 
         case MENU_FORMAT_INDICATION: {
-            Log.d(TAG, "[%s: %d] Enter MENU_FOMAT_INDICATION cam state 0x%x", __FILE__, __LINE__, serverState);
+            LOGDBG(TAG, "Enter MENU_FOMAT_INDICATION cam state 0x%x", serverState);
             dispIconByType(ICON_FORMAT_MSG_128_48128_48);    /* 显示是否确认格式化 */
             break;
         }
@@ -5762,7 +5762,7 @@ bool MenuUI::checkStorageSatisfy(int action)
     bool bRet = false;
     VolumeManager* vm = VolumeManager::Instance();
 
-    Log.d(TAG, "checkStorageSatisfy (%d)", vm->getLocalVols().size());
+    LOGDBG(TAG, "checkStorageSatisfy (%d)", vm->getLocalVols().size());
 
     switch (action) {
         case ACTION_PIC: {  /* 拍照,只有大卡存在都可以拍照操作 */
@@ -5772,11 +5772,11 @@ bool MenuUI::checkStorageSatisfy(int action)
         #else
             if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {
         #endif
-                Log.d(TAG, "[%s: %d] mCanTakePicNum = %d", __FILE__, __LINE__, mCanTakePicNum);
+                LOGDBG(TAG, "mCanTakePicNum = %d", mCanTakePicNum);
                 if (mCanTakePicNum > 0) {
                     bRet = true;
                 } else {
-                    Log.e(TAG, "[%s: %d] Disk is Full!!!!", __FILE__, __LINE__);
+                    LOGERR(TAG, "Disk is Full!!!!");
                     disp_msg_box(DISP_DISK_FULL);
                 }
             }
@@ -5791,16 +5791,16 @@ bool MenuUI::checkStorageSatisfy(int action)
                     if (vm->getTakeTimelapseCnt() > 0) {
                         bRet = true;
                     } else {
-                        Log.w(TAG, "[%s: %d] Can't take timelapse, disk is full", __FILE__, __LINE__);
+                        LOGWARN(TAG, "Can't take timelapse, disk is full");
                         bRet = false;
                         disp_msg_box(DISP_DISK_FULL);
                     }             
                 } else {
-                    Log.d(TAG, "[%s: %d] Take Video Remain Info [%d]s", __FILE__, __LINE__, vm->getRecLeftSec());
+                    LOGDBG(TAG, "Take Video Remain Info [%d]s", vm->getRecLeftSec());
                     if (vm->getRecLeftSec() > 0) {
                         bRet = true;
                     } else {
-                        Log.e(TAG, "[%s: %d] Disk is Full!!!", __FILE__, __LINE__);
+                        LOGERR(TAG, "Disk is Full!!!");
                         disp_msg_box(DISP_DISK_FULL);
                     }                
                 }
@@ -5812,11 +5812,11 @@ bool MenuUI::checkStorageSatisfy(int action)
 
         case ACTION_LIVE: {
             if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {
-                Log.d(TAG, "[%s: %d] Take Live Recod Remain Info [%d]s", __FILE__, __LINE__, vm->getLiveRecLeftSec());
+                LOGDBG(TAG, "Take Live Recod Remain Info [%d]s", vm->getLiveRecLeftSec());
                 if (vm->getLiveRecLeftSec() > 0) {
                     bRet = true;
                 } else {
-                    Log.e(TAG, "[%s: %d] Disk is Full!!!", __FILE__, __LINE__);
+                    LOGERR(TAG, "Disk is Full!!!");
                     disp_msg_box(DISP_DISK_FULL);
                 }                
             } else {
@@ -5866,12 +5866,12 @@ void MenuUI::procSetMenuKeyEvent()
     vector<struct stSetItem*>* pVectorList = static_cast<vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
 
     if ((pVectorList == NULL) && (iItemIndex < 0 || iItemIndex > mMenuInfos[cur_menu].mSelectInfo.total)) {
-        Log.e(TAG, "[%s:%d] Invalid index val[%d] in menu[%s]", iItemIndex, getMenuName(cur_menu));
+        LOGERR(TAG, "Invalid index val[%d] in menu[%s]", iItemIndex, getMenuName(cur_menu));
     } else {
         /* 得到该项的当前值 */
         pCurItem = (*pVectorList).at(iItemIndex);
         iVal = pCurItem->iCurVal;
-        Log.d(TAG, "Current selected item name [%s], cur val[%d]", pCurItem->pItemName, iVal);
+        LOGDBG(TAG, "Current selected item name [%s], cur val[%d]", pCurItem->pItemName, iVal);
 
         if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_DHCP)) {
             iVal = ((~iVal) & 0x00000001);
@@ -6055,7 +6055,7 @@ bool MenuUI::checkIsTakeTimelpaseInCustomer()
 *************************************************************************/
 void MenuUI::procPowerKeyEvent()
 {
-	Log.d(TAG, "[%s: %d] procPowerKeyEvent Menu(%s) select %d\n", __FILE__, __LINE__, getMenuName(cur_menu), getCurMenuCurSelectIndex());
+	LOGDBG(TAG, "procPowerKeyEvent Menu(%s) select %d\n", getMenuName(cur_menu), getCurMenuCurSelectIndex());
     uint64_t serverState = getServerState();
 
     ProtoManager* pm = ProtoManager::Instance();
@@ -6072,7 +6072,7 @@ void MenuUI::procPowerKeyEvent()
                         mWhoReqEnterPrew = UI_REQ_PREVIEW;
                         setCurMenu(MENU_PIC_INFO);  /* 设置并显示当前菜单 */
                     } else {
-                        Log.e(TAG, "[%s: %d] Select takepic, Request start preview Failed.", __FILE__, __LINE__);
+                        LOGERR(TAG, "Select takepic, Request start preview Failed.");
                     }
                     break;
                 }
@@ -6082,7 +6082,7 @@ void MenuUI::procPowerKeyEvent()
                         mWhoReqEnterPrew = UI_REQ_PREVIEW;
                         setCurMenu(MENU_VIDEO_INFO);    /* 设置并显示当前菜单 */
                     } else {
-                        Log.e(TAG, "[%s: %d] Select takeVideo, Request start preview Failed.", __FILE__, __LINE__);
+                        LOGERR(TAG, "Select takeVideo, Request start preview Failed.");
                     }
                     break;
                 }
@@ -6092,7 +6092,7 @@ void MenuUI::procPowerKeyEvent()
                         mWhoReqEnterPrew = UI_REQ_PREVIEW;
                         setCurMenu(MENU_LIVE_INFO);	            /* 设置并显示当前菜单 */
                     } else {
-                        Log.e(TAG, "[%s: %d] Select takeLive, Request start preview Failed.", __FILE__, __LINE__);
+                        LOGERR(TAG, "Select takeLive, Request start preview Failed.");
                     }
                     break;
                 }
@@ -6122,7 +6122,7 @@ void MenuUI::procPowerKeyEvent()
                         system("setprop ctl.start dnsmasq");
                         oled_disp_type(ENTER_UDISK_MODE);
                     } else {
-                        Log.w(TAG, "[%s: %d] Server Not Allow enter Udisk mode", __FILE__, __LINE__);
+                        LOGWARN(TAG, "Server Not Allow enter Udisk mode");
                     }
                     break;
                 }
@@ -6148,7 +6148,7 @@ void MenuUI::procPowerKeyEvent()
              */
             if (true == checkIsTakeTimelpaseInCustomer()) { /* 判断Customer中保存的是否为timelapse挡位 */
                 
-                Log.d(TAG, "[%s: %d] >>>>>>>> enter Timelapse Mode int Takepic Customer", __FILE__, __LINE__);
+                LOGDBG(TAG, ">>>>>>>> enter Timelapse Mode int Takepic Customer");
                 int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
                 PicVideoCfg* pTmpCfg = mPicAllItemsList.at(item);   
                 Json::Value* picJsonCmd = pTmpCfg->jsonCmd.get();
@@ -6164,7 +6164,7 @@ void MenuUI::procPowerKeyEvent()
                         oled_disp_type(CAPTURE);
                     } 
                 } else {
-                    Log.d(TAG, "[%s: %d] Can't Satisfy Take Video Condition", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Can't Satisfy Take Video Condition");
                 }
             }
             break;
@@ -6184,7 +6184,7 @@ void MenuUI::procPowerKeyEvent()
             /* 获取MENU_SET_PHOTO_DELAY的Select_info.select的全局索引值,用该值来更新 */
             iIndex = getMenuSelectIndex(MENU_SET_PHOTO_DEALY);
 
-            Log.d(TAG, "[%s: %d] set photo delay index[%d]", __FILE__, __LINE__, iIndex);
+            LOGDBG(TAG, "set photo delay index[%d]", iIndex);
             updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_PHDEALY, iIndex);
 
             mProCfg->set_val(KEY_PH_DELAY, iIndex);
@@ -6199,7 +6199,7 @@ void MenuUI::procPowerKeyEvent()
             /* 获取MENU_SET_PHOTO_DELAY的Select_info.select的全局索引值,用该值来更新 */
             iIndex = getMenuSelectIndex(MENU_SET_AEB);
 
-            Log.d(TAG, "[%s: %d] set aeb index[%d]", __FILE__, __LINE__, iIndex);
+            LOGDBG(TAG, "set aeb index[%d]", iIndex);
 
             updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_AEB, iIndex);
 
@@ -6229,10 +6229,10 @@ void MenuUI::procPowerKeyEvent()
                 if (pm->sendGyroCalcReq()) {
                     dispIconByType(ICON_GYRO_CALIBRATING128_48);
                 } else {
-                    Log.e(TAG, "[%s: %d] Request Server Gyro Calc Failed", __FILE__, __LINE__);
+                    LOGERR(TAG, "Request Server Gyro Calc Failed");
                 }
             } else {
-                Log.d(TAG, "gyro start Server State 0x%x", serverState);
+                LOGDBG(TAG, "gyro start Server State 0x%x", serverState);
             }
             break;
         }
@@ -6248,22 +6248,22 @@ void MenuUI::procPowerKeyEvent()
                 VolumeManager* vm = VolumeManager::Instance();
 
                 if (mSpeedTestUpdateFlag == false) {
-                    Log.d(TAG, "[%s: %d] Enter MENU_SPEED_TEST Speed Testing ", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Enter MENU_SPEED_TEST Speed Testing ");
 
                     if ((isSatisfySpeedTestCond() == COND_ALL_CARD_EXIST) && vm->checkLocalVolumeExist()) {
                         clearArea();
                         dispWriteSpeedTest();      
                         pm->sendSpeedTestReq(vm->getLocalVolMountPath());
                     } else {
-                        Log.d(TAG, "[%s: %d] Card removed ??? ", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Card removed ??? ");
                         procBackKeyEvent();
                     }
                 } else {    /* 测速结果已经更新(Server将不在测速状态),此时按按确认键 */
-                    Log.d(TAG, "[%s: %d] Speed Test Result is updated !!!", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Speed Test Result is updated !!!");
                     procBackKeyEvent();
                 }
             } else {
-                Log.d(TAG, "[%s: %d] Server Not Allow Speed test Operation", __FILE__, __LINE__);
+                LOGDBG(TAG, "Server Not Allow Speed test Operation");
             }
             break;
         }
@@ -6273,7 +6273,7 @@ void MenuUI::procPowerKeyEvent()
             if (checkServerInIdle(serverState)) {
                 restore_all();
             } else {
-                Log.e(TAG, "menu reset indication Server State 0x%x", serverState);
+                LOGERR(TAG, "menu reset indication Server State 0x%x", serverState);
             }
             break;
         }
@@ -6286,10 +6286,10 @@ void MenuUI::procPowerKeyEvent()
                         startFormatDevice();            /* 进行设备格式化 */
                         im->setEnableReport(true);
                     } else {
-                        Log.d(TAG, "[%s: %d] Notify Server Enter STATE_FORMATING Failed", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Notify Server Enter STATE_FORMATING Failed");
                     }
                 } else {
-                    Log.d(TAG, "[%s: %d] State Not Allow (0x%x)", __FILE__, __LINE__, serverState);
+                    LOGDBG(TAG, "State Not Allow (0x%x)", serverState);
                 }
             } else {    /* 格式化完成后设置为true */
                 /* 此时屏幕显示的格式化的结果,再次按下确认键应该返回上一级菜单 */
@@ -6314,7 +6314,7 @@ void MenuUI::procPowerKeyEvent()
             /* 选中的项是TF卡 */
             if (!strncmp(gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName, "mSD", strlen("mSD"))) {
                 
-                Log.d(TAG, "[%s: %d] You selected [%s] Card!!", 
+                LOGDBG(TAG, "You selected [%s] Card!!", 
                         __FILE__, __LINE__, gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName);                
                 
                 setCurMenu(MENU_TF_FORMAT_SELECT);      /* 进入格式化模式选择菜单 */
@@ -6343,13 +6343,13 @@ void MenuUI::procPowerKeyEvent()
         case MENU_STORAGE: {    /* 存储菜单 */
 
             int iIndex = getMenuSelectIndex(MENU_STORAGE);
-            Log.d(TAG, "[%s: %d] Menu Storage current select val[%d]", __FILE__, __LINE__, iIndex);
+            LOGDBG(TAG, "Menu Storage current select val[%d]", iIndex);
             SettingItem* pTmpSetItem = mStorageList.at(iIndex);
             if (pTmpSetItem) {
                 if (!strcmp(pTmpSetItem->pItemName, SET_ITEM_NAME_STORAGESPACE)) {
                     setCurMenu(MENU_SHOW_SPACE);    /* 为了节省查询TF容量的时间过长,可在进入MENU_SHOW_SPACE时打开模组的电 - 2018年8月9日 */
                 } else if (!strcmp(pTmpSetItem->pItemName, SET_ITEM_NAME_TESTSPEED)) {                    
-                    Log.d(TAG, "[%s: %d] Enter Test Write Speed", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Enter Test Write Speed");
                     /*
                      * 检查是否满足测试条件：所有的卡都存在，否则提示卡不足
                      */
@@ -6360,10 +6360,10 @@ void MenuUI::procPowerKeyEvent()
                             property_set(PROP_SPEED_TEST_COMP_FLAG, "false");
                             setCurMenu(MENU_SET_TEST_SPEED);
                         } else {
-                            Log.e(TAG, "[%s: %d] Current is Test Speed state ...", __FILE__, __LINE__);
+                            LOGERR(TAG, "Current is Test Speed state ...");
                         }
                     } else if (iCond == COND_NEED_SD_CARD) {
-                        Log.d(TAG, "[%s: %d] Maybe SD Card Lost, Please check ", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Maybe SD Card Lost, Please check ");
                         /*
                          * 1.如果从来没有查询过卡所有卡的状态，提示先查询系统中卡的状态
                          * 2.如果卡的数目不够，提示需要1张大卡加6张小卡
@@ -6371,7 +6371,7 @@ void MenuUI::procPowerKeyEvent()
                         disp_msg_box(DISP_NEED_SDCARD);
                       
                     } else {
-                        Log.d(TAG, "[%s: %d] Maybe TF Card Lost or Query First, Please check ", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Maybe TF Card Lost or Query First, Please check ");
                         disp_msg_box(DISP_NEED_QUERY_TFCARD);
                     }
                 }
@@ -6440,7 +6440,7 @@ void MenuUI::procSettingKeyEvent()
         case MENU_TOP: {	/* 如果当前处于主界面 */
             #if 0
             if (getCurMenuCurSelectIndex() == MAINMENU_WIFI) {	/* 主界面,当前选中的是WIFI项,按下设置键将启动二维码扫描功能 */
-                Log.d(TAG, "wif state %d ap %d", mProCfg->get_val(KEY_WIFI_ON));
+                LOGDBG(TAG, "wif state %d ap %d", mProCfg->get_val(KEY_WIFI_ON));
                 
                 #if 0
                 if (/*mProCfg->get_val(KEY_WIFI_ON) == 0 &&*/ get_setting_select(SET_WIFI_AP) == 0) {
@@ -6569,7 +6569,7 @@ void MenuUI::exit_sys_err()
     uint64_t serverState = getServerState();
     if (cur_menu == MENU_SYS_ERR || ((MENU_LOW_BAT == cur_menu) && checkStateEqual(serverState, STATE_IDLE))) {
 
-        Log.d(TAG, "exit_sys_err ( %d 0x%x )", cur_menu, serverState);
+        LOGDBG(TAG, "exit_sys_err ( %d 0x%x )", cur_menu, serverState);
 
         if (mProCfg->get_val(KEY_LIGHT_ON) == 1) {
             setLightDirect(front_light);
@@ -6611,7 +6611,7 @@ int MenuUI::oled_disp_battery()
 {
 
 #ifdef DEBUG_BATTERY
-    Log.d(TAG, "mBatInterface->isSuc()  %d "
+    LOGDBG(TAG, "mBatInterface->isSuc()  %d "
                   "m_bat_info_->bCharge %d "
                   "m_bat_info_->battery_level %d",
                 mBatInterface->isSuc(), m_bat_info_->bCharge, m_bat_info_->battery_level);
@@ -6666,10 +6666,10 @@ bool MenuUI::checkStateEqual(uint64_t state)
     
     ProtoManager* pm = ProtoManager::Instance();
     if (pm->getServerState(&serverState)) {
-        Log.d(TAG, "[%s: %d] Server State: 0x%x", __FILE__, __LINE__, serverState);
+        LOGDBG(TAG, "Server State: 0x%x", serverState);
         bResult = (serverState == state) ? true : false;
     } else {
-        Log.e(TAG, "[%s: %d] checkStateEqual -> Get Server State Failed, please check reason!", __FILE__, __LINE__);
+        LOGERR(TAG, "checkStateEqual -> Get Server State Failed, please check reason!");
     }
     return bResult;
 }
@@ -6690,10 +6690,10 @@ bool MenuUI::checkServerStateIn(uint64_t state)
     
     ProtoManager* pm = ProtoManager::Instance();
     if (pm->getServerState(&serverState)) {
-        Log.d(TAG, "[%s: %d] Server State: 0x%x", __FILE__, __LINE__, serverState);
+        LOGDBG(TAG, "Server State: 0x%x", serverState);
         bResult = ((serverState & state) == state) ? true : false;
     } else {
-        Log.e(TAG, "[%s: %d] checkServerStateIn -> Get Server State Failed, please check reason!", __FILE__, __LINE__);
+        LOGERR(TAG, "checkServerStateIn -> Get Server State Failed, please check reason!");
     }
     return bResult;    
 }
@@ -6763,7 +6763,7 @@ bool MenuUI::addState(uint64_t state)
     if (pm->setServerState(state)) {
         bResult = true;
     } else {
-        Log.e(TAG, "[%s: %d] addState -> set Server State Failed, please check reason!", __FILE__, __LINE__);
+        LOGERR(TAG, "addState -> set Server State Failed, please check reason!");
     }
     return bResult;  
 }
@@ -6776,7 +6776,7 @@ bool MenuUI::rmState(uint64_t state)
     if (pm->rmServerState(state)) {
         bResult = true;
     } else {
-        Log.e(TAG, "[%s: %d] rmState -> set Server State Failed, please check reason!", __FILE__, __LINE__);
+        LOGERR(TAG, "rmState -> set Server State Failed, please check reason!");
     }
     return bResult;  
 }
@@ -6804,7 +6804,7 @@ uint64_t MenuUI::getServerState()
         strState += serverState;
         property_set(PROP_SERVER_STATE, strState.c_str());
     } else {
-        Log.e(TAG, "[%s: %d] getServerState -> Get Server State Failed, please check reason!", __FILE__, __LINE__);
+        LOGERR(TAG, "getServerState -> Get Server State Failed, please check reason!");
     }
     return serverState;    
 }
@@ -6841,10 +6841,10 @@ bool MenuUI::checkInLive()
     
     ProtoManager* pm = ProtoManager::Instance();
     if (pm->getServerState(&serverState)) {
-        Log.d(TAG, "[%s: %d] Server State: 0x%x", __FILE__, __LINE__, serverState);
+        LOGDBG(TAG, "Server State: 0x%x", serverState);
         bResult = ((serverState & STATE_LIVE) == STATE_LIVE || (serverState & STATE_LIVE_CONNECTING) == STATE_LIVE_CONNECTING) ? true : false;
     } else {
-        Log.e(TAG, "[%s: %d] checkServerStateIn -> Get Server State Failed, please check reason!", __FILE__, __LINE__);
+        LOGERR(TAG, "checkServerStateIn -> Get Server State Failed, please check reason!");
     }
     return bResult;      
 }
@@ -6877,7 +6877,7 @@ void MenuUI::disp_tl_count(int count)
     uint64_t serverState =  getServerState();
 
     if (count < 0) {
-        Log.e(TAG, "error tl count %d", tl_count);
+        LOGERR(TAG, "error tl count %d", tl_count);
     } else if (count == 0) {
         clearReady();
         char buf[32];
@@ -6899,7 +6899,7 @@ void MenuUI::disp_tl_count(int count)
             setLight(LIGHT_OFF);
             msg_util::sleep_ms(INTERVAL_5HZ / 2);
         } else {
-            Log.e(TAG, "tl count error state 0x%x", serverState);
+            LOGERR(TAG, "tl count error state 0x%x", serverState);
         }
     }
 }
@@ -6943,7 +6943,7 @@ void MenuUI::minus_cam_state(u64 state)
                 break;
         }
     } else {
-        Log.w(TAG," minus error Server State 0x%x state 0x%x", getServerState(), state);
+        LOGWARN(TAG," minus error Server State 0x%x state 0x%x", getServerState(), state);
     }
 }
 
@@ -6956,7 +6956,7 @@ void MenuUI::disp_err_code(int code, int back_menu)
 
     memset(err_code, 0, sizeof(err_code));
 
-    Log.d(TAG, "[%s: %d] disp err code[%d] cur menu[%s], cam state[0x%x]", __FILE__, __LINE__, code, getMenuName(cur_menu), serverState);
+    LOGDBG(TAG, "disp err code[%d] cur menu[%s], cam state[0x%x]", code, getMenuName(cur_menu), serverState);
 
     set_back_menu(MENU_SYS_ERR, back_menu);
 
@@ -6964,7 +6964,7 @@ void MenuUI::disp_err_code(int code, int back_menu)
     if (mTakeVideInTimelapseMode == true) {     /* 拍摄timelapse有错误时，返回PIC菜单页 */
         set_back_menu(MENU_SYS_ERR, MENU_PIC_INFO);
         mTakeVideInTimelapseMode = false;
-        Log.d(TAG, "[%s: %d] Exit Timelapse Mode now...", __FILE__, __LINE__);
+        LOGDBG(TAG, "Exit Timelapse Mode now...");
     }
 
     if (true == mAgingMode) {
@@ -6978,14 +6978,14 @@ void MenuUI::disp_err_code(int code, int back_menu)
     if (checkServerStateIn(serverState, STATE_PREVIEW)) {
         syncQueryTfCard(); 
     } else {
-        Log.d(TAG, "[%s: %d] Error Occurred, but Server not in Preview state, skip Query TF Card", __FILE__, __LINE__);
+        LOGDBG(TAG, "Error Occurred, but Server not in Preview state, skip Query TF Card");
     }
 
     for (u32 i = 0; i < sizeof(mErrDetails) / sizeof(mErrDetails[0]); i++) {
         if (mErrDetails[i].code == code) {
             if (mErrDetails[i].icon != -1) {
                 setLightDirect(BACK_RED | FRONT_RED);
-                Log.d(TAG, "disp error code (%d %d %d)", i, mErrDetails[i].icon, code);
+                LOGDBG(TAG, "disp error code (%d %d %d)", i, mErrDetails[i].icon, code);
                 dispIconByType(mErrDetails[i].icon);
                 bFound = true;
             } else {
@@ -7004,7 +7004,7 @@ void MenuUI::disp_err_code(int code, int back_menu)
             clearArea();
             dispStr((const u8 *)err_code, 16, 16);
         }
-        Log.d(TAG, "disp err code %s\n", err_code);
+        LOGDBG(TAG, "disp err code %s\n", err_code);
     }
 	
     reset_last_info();
@@ -7031,7 +7031,7 @@ void MenuUI::disp_sys_err(int type, int back_menu)
 {
     uint64_t serverState = getServerState();
 
-    Log.d(TAG, "---> disp_sys_err cur menu %d"
+    LOGDBG(TAG, "---> disp_sys_err cur menu %d"
                   " state 0x%x back_menu %d type %d",
           cur_menu,
           serverState,
@@ -7039,7 +7039,7 @@ void MenuUI::disp_sys_err(int type, int back_menu)
           type);
 	
     if (cur_menu == -1 && checkServerStateIn(serverState, STATE_IDLE)) {
-        Log.e(TAG, " ---> met error at the beginning");
+        LOGERR(TAG, " ---> met error at the beginning");
     }
 	
     if (cur_menu != MENU_SYS_ERR) {
@@ -7097,7 +7097,7 @@ bool MenuUI::checkServerIsBusy()
             break;
         }
     }
-    Log.d(TAG, "[%s: %d] Server Busy state[%s]", __FILE__, __LINE__, (bRet == true) ? "true": "false");
+    LOGDBG(TAG, "Server Busy state[%s]", (bRet == true) ? "true": "false");
     return bRet;
 }
 
@@ -7171,7 +7171,7 @@ int MenuUI::get_error_back_menu(int force_menu)
         }
     }
 			
-    Log.d(TAG, "[%s: %d] get_error_back_menu state 0x%x back_menu %d", __FILE__, __LINE__, serverState, back_menu);
+    LOGDBG(TAG, "get_error_back_menu state 0x%x back_menu %d", serverState, back_menu);
     return back_menu;
 }
 
@@ -7182,22 +7182,22 @@ int MenuUI::oled_disp_err(sp<struct _err_type_info_> &mErr)
     int err_code = mErr->err_code;
 
     /* STATE_IDLE */
-    Log.d(TAG, "oled_disp_err type %d err_code %d cur_menu %d Server State 0x%x", type, err_code, cur_menu, getServerState());
+    LOGDBG(TAG, "oled_disp_err type %d err_code %d cur_menu %d Server State 0x%x", type, err_code, cur_menu, getServerState());
 
     if (mClientTakeVideoUpdate == true) {
-        Log.d(TAG, "[%s: %d] Client Control TakeVideo Abort", __FILE__, __LINE__);
+        LOGDBG(TAG, "Client Control TakeVideo Abort");
         mClientTakeVideoUpdate = false;
         mControlVideoJsonCmd.clear();
     }
 
     if (mClientTakeLiveUpdate == true) {
-        Log.d(TAG, "[%s: %d] Client Control TakeLive Abort", __FILE__, __LINE__);
+        LOGDBG(TAG, "Client Control TakeLive Abort");
         mClientTakeLiveUpdate = false;
         mControlLiveJsonCmd.clear();
     }
 
     if (mClientTakePicUpdate == true) {
-        Log.d(TAG, "[%s: %d] Client Control TakePicture Abort", __FILE__, __LINE__);
+        LOGDBG(TAG, "Client Control TakePicture Abort");
         mClientTakePicUpdate = false;
         mControlPicJsonCmd.clear();
     } 
@@ -7289,7 +7289,7 @@ int MenuUI::oled_disp_err(sp<struct _err_type_info_> &mErr)
                 break;
 			
             default:
-                Log.d(TAG, "bad type %d code %d", type, err_code);
+                LOGDBG(TAG, "bad type %d code %d", type, err_code);
                 err_code = -1;
                 break;
         }
@@ -7346,7 +7346,7 @@ int MenuUI::convIndex2CapDelay(int iIndex)
     int iSize = sizeof(iDelayArray) / sizeof(iDelayArray[0]);
 
     if (iIndex < 0 || iIndex > iSize - 1) {
-        Log.e(TAG, "[%s: %d] Invalid index gived [%d]", __FILE__, __LINE__, iIndex);
+        LOGERR(TAG, "Invalid index gived [%d]", iIndex);
         return 5;   /* 默认为5s */
     } else {
         return iDelayArray[iIndex];
@@ -7380,7 +7380,7 @@ int MenuUI::convIndex2AebNum(int iIndex)
     int iSize = sizeof(iAebNumArry) / sizeof(iAebNumArry[0]);   
 
     if (iIndex < 0 || iIndex > iSize - 1) {
-        Log.e(TAG, "[%s: %d] Invalid index gived [%d]", __FILE__, __LINE__, iIndex);
+        LOGERR(TAG, "Invalid index gived [%d]", iIndex);
         return 5;   /* 默认为5s */
     } else {
         return iAebNumArry[iIndex];
@@ -7400,7 +7400,7 @@ int MenuUI::getTakepicCustomerDelay()
         if ((*pJsonVal).isMember("parameters")) {
             if ((*pJsonVal)["parameters"].isMember("delay")) {
                 iDelay = ((*pJsonVal)["parameters"]["delay"]).asInt();
-                Log.d(TAG, "[%s: %d] getTakepicCustomerDelay iDelay = %d", __FILE__, __LINE__, iDelay);
+                LOGDBG(TAG, "getTakepicCustomerDelay iDelay = %d", iDelay);
                 return iDelay;
             } else {
                 return 0;
@@ -7418,7 +7418,7 @@ int MenuUI::getTakepicCustomerDelay()
 int MenuUI::oled_disp_type(int type)
 {
     uint64_t serverState = getServerState();
-    Log.d(TAG, "oled_disp_type (%d %s 0x%x)\n", type, getMenuName(cur_menu), serverState);
+    LOGDBG(TAG, "oled_disp_type (%d %s 0x%x)\n", type, getMenuName(cur_menu), serverState);
     
     VolumeManager* vm = VolumeManager::Instance();
 
@@ -7433,7 +7433,7 @@ int MenuUI::oled_disp_type(int type)
         }
 			
         case START_RECING: {
-            Log.d(TAG, "[%s: %d] Start Recording ...", __FILE__, __LINE__);
+            LOGDBG(TAG, "Start Recording ...");
             break;
         }
 
@@ -7444,7 +7444,7 @@ int MenuUI::oled_disp_type(int type)
 		 */
         case START_REC_SUC:	 { /* 发送显示录像成功 */
 
-            Log.d(TAG, "[%s: %d] >>>>>>> Start Recording Success........", __FILE__, __LINE__);
+            LOGDBG(TAG, ">>>>>>> Start Recording Success........");
 
             if (takeVideoIsAgeingMode()) {  /* 老化模式 */
                 set_update_mid(INTERVAL_0HZ);                    
@@ -7458,7 +7458,7 @@ int MenuUI::oled_disp_type(int type)
                     set_update_mid(INTERVAL_0HZ);
                 }
                 setCurMenu(MENU_VIDEO_INFO);
-                Log.d(TAG, "[%s: %d] Enter Start Record Success, Current Menu[%s], state[0x%x]", __FILE__, __LINE__, getMenuName(cur_menu), serverState);
+                LOGDBG(TAG, "Enter Start Record Success, Current Menu[%s], state[0x%x]", getMenuName(cur_menu), serverState);
             }
             break;
         }
@@ -7545,12 +7545,12 @@ int MenuUI::oled_disp_type(int type)
                     updateBottomSpace(true, false);
 
                 } else {                /* 正常的录像结束 */
-                    Log.e(TAG, "[%s: %d] Stop Rec Suc, Menu:State(%s: 0x%x)", getMenuName(cur_menu), serverState);
+                    LOGERR(TAG, "Stop Rec Suc, Menu:State(%s: 0x%x)", getMenuName(cur_menu), serverState);
                     syncQueryTfCard();  /* 发送查询容量命令 */
                     setCurMenu(MENU_VIDEO_INFO);
                 }
             } else {
-                Log.e(TAG, "[%s: %d] Stop Rec Suc, but cur_menu not MENU_VIDEO_INFO, (%s: 0x%x)", getMenuName(cur_menu), serverState);
+                LOGERR(TAG, "Stop Rec Suc, but cur_menu not MENU_VIDEO_INFO, (%s: 0x%x)", getMenuName(cur_menu), serverState);
             }
             tl_count = -1;
             break;
@@ -7580,7 +7580,7 @@ int MenuUI::oled_disp_type(int type)
             }
             #endif
 
-            Log.d(TAG, "[%s: %d] STOP_REC_FAIL ...", __FILE__, __LINE__);
+            LOGDBG(TAG, "STOP_REC_FAIL ...");
             break;
         }
 
@@ -7596,14 +7596,14 @@ int MenuUI::oled_disp_type(int type)
                 * - 识别二维码的请求
                 */
             if (mClientTakePicUpdate == true) {   
-                Log.d(TAG, "+++++++++++++++>>>> CAPTURE Come from Client");
+                LOGDBG(TAG, "+++++++++++++++>>>> CAPTURE Come from Client");
                 mNeedSendAction = false;
             } else {
 
                 mNeedSendAction = true;
                 int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
                 int iDelay = convIndex2CapDelay(mProCfg->get_val(KEY_PH_DELAY));
-                Log.d(TAG, "[%s: %d] get delay val: %d", __FILE__, __LINE__, iDelay);
+                LOGDBG(TAG, "get delay val: %d", iDelay);
 
                 struct stPicVideoCfg* pPicVidCfg = mPicAllItemsList.at(item);
                 if (pPicVidCfg) {
@@ -7613,7 +7613,7 @@ int MenuUI::oled_disp_type(int type)
                         setTakePicDelay(getTakepicCustomerDelay());
                     }
                 } else {
-                    Log.e(TAG, "[%s: %d] Invalid item[%d] for capture", __FILE__, __LINE__, item);
+                    LOGERR(TAG, "Invalid item[%d] for capture", item);
                     setTakePicDelay(iDelay);
                 }			
             }
@@ -7631,12 +7631,12 @@ int MenuUI::oled_disp_type(int type)
             VolumeManager* vm = VolumeManager::Instance();
             if (cur_menu == MENU_PIC_INFO) {
                 if (mClientTakePicUpdate == true) {
-                    Log.d(TAG, "[%s: %d] Client control Take picture suc", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Client control Take picture suc");
                     mClientTakePicUpdate = false;
                     // dispBottomInfo();   /* 重新显示之前的挡位信息 */
                     setCurMenu(MENU_PIC_INFO);
                 } else {
-                    Log.d(TAG, ">>> CAPTURE_SUC remain pic %d", mCanTakePicNum);
+                    LOGDBG(TAG, ">>> CAPTURE_SUC remain pic %d", mCanTakePicNum);
                     if (mCanTakePicNum > 0) {       /* 为了防止拍照完成后进入挡位切换而产生的卡顿问题 */
                         /* 同步数据到磁盘 - 为了防止卡住,将剩余张数转换为空间设置回卷管理器中 */
                         mCanTakePicNum--;
@@ -7650,7 +7650,7 @@ int MenuUI::oled_disp_type(int type)
                 dispReady();
             } else {
                 mClientTakePicUpdate = false;
-                Log.e(TAG, "[%s: %d] ---> error capture suc cur_menu %s ", getMenuName(cur_menu));
+                LOGERR(TAG, "---> error capture suc cur_menu %s ", getMenuName(cur_menu));
             }
             play_sound(SND_COMPLE);
             break;
@@ -7679,7 +7679,7 @@ int MenuUI::oled_disp_type(int type)
          * 2.断开后再次连上
          */
         case START_LIVE_SUC: {  /* 启动直播成功，可能是重连成功 */
-            Log.e(TAG, "---> START_LIVE_SUC, Current Server State 0x%x", serverState);
+            LOGERR(TAG, "---> START_LIVE_SUC, Current Server State 0x%x", serverState);
             vm->incOrClearLiveRecSec(true);     /* 重置已经录像的时间为0 */
             set_update_mid(INTERVAL_0HZ);
             if (cur_menu != MENU_LIVE_INFO) {
@@ -7712,10 +7712,10 @@ int MenuUI::oled_disp_type(int type)
                 if (cur_menu == MENU_LIVE_INFO) {
                     dispConnecting();
                 } else {
-                    Log.e(TAG, "[%s: %d] Server in STATE_LIVE_CONNECTING state, but current menu[%s]", __FILE__, __LINE__, getMenuName(cur_menu));
+                    LOGERR(TAG, "Server in STATE_LIVE_CONNECTING state, but current menu[%s]", getMenuName(cur_menu));
                 }
             }
-            Log.d(TAG, "[%s: %d] Server state[0x%x], disp type: START_LIVE_CONNECTING", __FILE__, __LINE__, serverState);
+            LOGDBG(TAG, "Server state[0x%x], disp type: START_LIVE_CONNECTING", serverState);
             break;
         }
 			
@@ -7765,7 +7765,7 @@ int MenuUI::oled_disp_type(int type)
                 play_sound(SND_SHUTTER);
                 dispProcessing();
             } else {
-                Log.e(TAG, "[%s: %d] Error PIC_ORG_FINISH notify, but UI not MENU_PIC_INFO", __FILE__, __LINE__);
+                LOGERR(TAG, "Error PIC_ORG_FINISH notify, but UI not MENU_PIC_INFO");
             }
             break;
         }
@@ -7788,7 +7788,7 @@ int MenuUI::oled_disp_type(int type)
 
             init_cfg_select();
 
-            Log.d(TAG, "RESET_ALL_CFG cur_menu is %d", cur_menu);
+            LOGDBG(TAG, "RESET_ALL_CFG cur_menu is %d", cur_menu);
 
             if (cur_menu == MENU_TOP) {
                 setCurMenu(cur_menu);
@@ -7814,7 +7814,7 @@ int MenuUI::oled_disp_type(int type)
          */
         case START_PREVIEW_SUC: {		/* 启动预览成功 */
 
-            Log.d(TAG, "---------> PREVIEW SUCCESS");                  
+            LOGDBG(TAG, "---------> PREVIEW SUCCESS");                  
 
             /* 同步方式查询TF卡信息,然后更新底部空间 */
             syncQueryTfCard();
@@ -7823,7 +7823,7 @@ int MenuUI::oled_disp_type(int type)
                 /* 客户端在非预览状态下直接启动直播,然后断开客户端,此时相机处于直播状态(0x10),然后客户端再连接上相机,会启动预览
                  * 客户端在非预览状态下直接启动录像,然后断开客户端,此时相机处于直播状态(0x01),然后客户端再连接上相机,会启动预览
                  */
-                Log.d(TAG, "[%s: %d] UI get Start Privew Success, Current menu(%s), state(0x%x)", __FILE__, __LINE__, getMenuName(cur_menu), serverState);
+                LOGDBG(TAG, "UI get Start Privew Success, Current menu(%s), state(0x%x)", getMenuName(cur_menu), serverState);
                 if (checkStateEqual(serverState, STATE_PREVIEW)) {
                     setCurMenu(MENU_PIC_INFO);
                 }
@@ -7836,7 +7836,7 @@ int MenuUI::oled_disp_type(int type)
         }
 			
         case START_PREVIEW_FAIL: {	/* 启动预览失败 */
-            Log.d(TAG, "[%s: %d] START_PREVIEW_FAIL cur_menu [%s]", __FILE__, __LINE__, getMenuName(cur_menu));
+            LOGDBG(TAG, "START_PREVIEW_FAIL cur_menu [%s]", getMenuName(cur_menu));
             mWhoReqEnterPrew = APP_REQ_PREVIEW;
             disp_sys_err(type, MENU_TOP);
             break;
@@ -7853,7 +7853,7 @@ int MenuUI::oled_disp_type(int type)
         }
 			
         case STOP_PREVIEW_FAIL:	{	    /* 停止预览失败 */
-            Log.d(TAG, "STOP_PREVIEW_FAIL fail cur_menu %d %d", cur_menu, serverState);
+            LOGDBG(TAG, "STOP_PREVIEW_FAIL fail cur_menu %d %d", cur_menu, serverState);
             disp_sys_err(type);
             break;
         }
@@ -7865,7 +7865,7 @@ int MenuUI::oled_disp_type(int type)
 /*********************************	陀螺仪相关状态 START ********************************************/
 			
         case START_CALIBRATIONING: {    /* 客户端发起的拼接校正，屏幕直接从此处开始运行 */
-            Log.d(TAG, "cap delay %d cur_menu %d", mGyroCalcDelay, cur_menu);            
+            LOGDBG(TAG, "cap delay %d cur_menu %d", mGyroCalcDelay, cur_menu);            
             if (mGyroCalcDelay <= 0) {
                 setGyroCalcDelay(5);
             }
@@ -7899,7 +7899,7 @@ int MenuUI::oled_disp_type(int type)
             if (!check_state_in(STATE_RECORD)) {
                 //disp video menu before add state_record
                 setCurMenu(MENU_VIDEO_INFO);
-                Log.d(TAG," set_update_mid a");
+                LOGDBG(TAG," set_update_mid a");
                 set_update_mid();
             }
             break;
@@ -7907,7 +7907,7 @@ int MenuUI::oled_disp_type(int type)
 			
         case SYNC_PIC_CAPTURE_AND_PREVIEW: {
             if (!check_state_in(STATE_TAKE_CAPTURE_IN_PROCESS)) {
-                Log.d(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
+                LOGDBG(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
                 //disp video menu before add state_record
                 setCurMenu(MENU_PIC_INFO);
                 send_update_light(MENU_PIC_INFO, STATE_TAKE_CAPTURE_IN_PROCESS, INTERVAL_1HZ);
@@ -7917,7 +7917,7 @@ int MenuUI::oled_disp_type(int type)
 			
         case SYNC_PIC_STITCH_AND_PREVIEW: {
             if (!check_state_in(STATE_PIC_STITCHING)) {
-                Log.d(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
+                LOGDBG(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
                 //disp video menu before add state_record
                 setCurMenu(MENU_PIC_INFO);
                 send_update_light(MENU_PIC_INFO, STATE_PIC_STITCHING, INTERVAL_5HZ);
@@ -7927,14 +7927,14 @@ int MenuUI::oled_disp_type(int type)
 			
         case SYNC_LIVE_AND_PREVIEW: {
 
-            Log.d(TAG, "SYNC_LIVE_AND_PREVIEW for state 0x%x", getServerState());
+            LOGDBG(TAG, "SYNC_LIVE_AND_PREVIEW for state 0x%x", getServerState());
 
 			// not sync in state_live and state_live_connecting
             if (!check_state_in(STATE_LIVE)) {
                 //must before add live_state for keeping state live_connecting avoiding recalculate time 170804
                 set_update_mid();
                 setCurMenu(MENU_LIVE_INFO);
-                Log.d(TAG," set_update_mid b");
+                LOGDBG(TAG," set_update_mid b");
             }
             break;
         }
@@ -7954,13 +7954,13 @@ int MenuUI::oled_disp_type(int type)
         }
 		
         case START_QR_SUC: {
-            Log.d(TAG,"start qr cur_menu %d", cur_menu);
+            LOGDBG(TAG,"start qr cur_menu %d", cur_menu);
             setCurMenu(MENU_QR_SCAN);
             break;
         }
 			
         case START_QR_FAIL: {
-            Log.d(TAG, "cur menu %d back menu %d", cur_menu, get_back_menu(cur_menu));
+            LOGDBG(TAG, "cur menu %d back menu %d", cur_menu, get_back_menu(cur_menu));
             disp_sys_err(type, get_back_menu(cur_menu));
             break;
         }
@@ -7996,11 +7996,11 @@ int MenuUI::oled_disp_type(int type)
             break;
 			
         case CAPTURE_ORG_SUC:
-            Log.d(TAG, "rec capture org suc");
+            LOGDBG(TAG, "rec capture org suc");
             break;
 		
         case CALIBRATION_ORG_SUC:
-            Log.d(TAG,"rec calibration org suc");
+            LOGDBG(TAG,"rec calibration org suc");
             break;
 
         /* 根据Customer参数重新修改配置: 比如：Origin, RTS, 剩余空间 */
@@ -8014,13 +8014,13 @@ int MenuUI::oled_disp_type(int type)
                         PicVideoCfg* curCfg = mPicAllItemsList.at(iIndex);
                         if (curCfg) {
                             if (!strcmp(curCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {
-                                Log.d(TAG, "[%s: %d]-->> update customer arguments now...", __FILE__, __LINE__);
+                                LOGDBG(TAG, "[%s: %d]-->> update customer arguments now...");
                                 /* 更新底部空间及右侧 - 2018年8月7日 */
                                 dispBottomInfo(false, true); 
                             }
                         }
 
-                    Log.d(TAG, "[%s: %d]", __FILE__, __LINE__);
+                    LOGDBG(TAG, "[%s: %d]");
                     break;
                 }
 
@@ -8033,12 +8033,12 @@ int MenuUI::oled_disp_type(int type)
                         PicVideoCfg* curCfg = mVidAllItemsList.at(iIndex);
                         if (curCfg) {
                             if (!strcmp(curCfg->pItemName, TAKE_VID_MOD_CUSTOMER)) {
-                                Log.d(TAG, "update Video customer arguments now...");
+                                LOGDBG(TAG, "update Video customer arguments now...");
                                 /* 更新底部空间及右侧 - 2018年8月7日 */
                                 dispBottomInfo(false, true);                                
                             }
                         }
-                    Log.d(TAG, "[%s: %d]", __FILE__, __LINE__);
+                    LOGDBG(TAG, "[%s: %d]");
                     break;
                 }
 
@@ -8050,7 +8050,7 @@ int MenuUI::oled_disp_type(int type)
                     PicVideoCfg* curCfg = mLiveAllItemsList.at(iIndex);
                     if (curCfg) {
                         if (!strcmp(curCfg->pItemName, TAKE_LIVE_MODE_CUSTOMER)) {
-                            Log.d(TAG, "[%s: %d] update LIVE customer arguments now.", __FILE__, __LINE__);
+                            LOGDBG(TAG, "update LIVE customer arguments now.");
                             dispBottomInfo(false, true);
                         }
                     }
@@ -8058,7 +8058,7 @@ int MenuUI::oled_disp_type(int type)
                 }     
 
                 default:    /* TODO: 2018年8月3日 */
-                    Log.d(TAG, "What's menu used Customer ????");
+                    LOGDBG(TAG, "What's menu used Customer ????");
                     break;
             }
             break;
@@ -8066,7 +8066,7 @@ int MenuUI::oled_disp_type(int type)
 
         case SET_SYS_SETTING:
         case STITCH_PROGRESS: {
-            Log.d(TAG, "do nothing for %d", type);
+            LOGDBG(TAG, "do nothing for %d", type);
             break;
         }
 		
@@ -8074,7 +8074,7 @@ int MenuUI::oled_disp_type(int type)
          * 更新timelapse值
          */
         case TIMELPASE_COUNT: { 
-            Log.d(TAG, "[%s: %d]>>>>>>>>>> tl_count %d", __FILE__, __LINE__, tl_count);
+            LOGDBG(TAG, "[%s: %d]>>>>>>>>>> tl_count %d", tl_count);
             disp_tl_count(tl_count);    /* 显示timelpase拍摄值以及剩余可拍的张数 */
 
             if (vm->getTakeTimelapseCnt() > 0) {
@@ -8084,7 +8084,7 @@ int MenuUI::oled_disp_type(int type)
                 ProtoManager* pm = ProtoManager::Instance();
                 pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
             } else {
-                Log.d(TAG, "[%s:%d] Disk is Full, Stop Timelapse take", __FILE__, __LINE__);
+                LOGDBG(TAG, "Disk is Full, Stop Timelapse take");
             }
                 
             break;
@@ -8142,21 +8142,21 @@ int MenuUI::oled_disp_type(int type)
 
 
         case START_BLC: {
-            Log.d(TAG, "[%s: %d] Enter BLC Calc now ...", __FILE__, __LINE__);
+            LOGDBG(TAG, "Enter BLC Calc now ...");
             setAllLightOnOffForce(0);
             setCurMenu(MENU_CALC_BLC);
             break;
         }
 
         case STOP_BLC: {
-            Log.d(TAG, "[%s: %d] Exit BLC Calc now ...", __FILE__, __LINE__);
+            LOGDBG(TAG, "Exit BLC Calc now ...");
             setAllLightOnOffForce(1);
             procBackKeyEvent();
             break;
         }
 
         case START_BPC: {
-            Log.d(TAG, "[%s: %d] Enter BPC Calc now ...", __FILE__, __LINE__);
+            LOGDBG(TAG, "Enter BPC Calc now ...");
             setAllLightOnOffForce(0);
             setCurMenu(MENU_CALC_BPC);
             break;
@@ -8164,7 +8164,7 @@ int MenuUI::oled_disp_type(int type)
 
 
         case STOP_BPC: {
-            Log.d(TAG, "[%s: %d] Exit BPC Calc now ...", __FILE__, __LINE__);
+            LOGDBG(TAG, "Exit BPC Calc now ...");
             setAllLightOnOffForce(1);
             procBackKeyEvent();
             break;
@@ -8183,7 +8183,7 @@ int MenuUI::oled_disp_type(int type)
 
             if (cur_menu == MENU_UDISK_MODE && (true == pm->sendSwitchUdiskModeReq(false))) {
 
-                Log.d(TAG, "[%s: %d] Exit Udisk Mode, Current Menu[%s]",  __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGDBG(TAG, "Exit Udisk Mode, Current Menu[%s]",  __FILE__, __LINE__, getMenuName(cur_menu));
                 dispQuitUdiskMode();
 
                 VolumeManager* vm = VolumeManager::Instance();
@@ -8195,7 +8195,7 @@ int MenuUI::oled_disp_type(int type)
                 in->setEnableReport(true);
 
             } else {
-                Log.e(TAG, "[%s: %d] Not in MENU_UDISK_MODE && Request Server quit Udisk Mode failed [%s]", 
+                LOGERR(TAG, "Not in MENU_UDISK_MODE && Request Server quit Udisk Mode failed [%s]", 
                                 __FILE__, __LINE__, getMenuName(cur_menu));
             }
             break;
@@ -8216,10 +8216,10 @@ int MenuUI::getCurOneGroupPicSize()
     if (pTmpCfg) {
         if (!strcmp(pTmpCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {  /* take picture consutomer */
 
-            Log.d(TAG, "mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act %d", mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act);
+            LOGDBG(TAG, "mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act %d", mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act);
             iSize = mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act;
         } else {
-            Log.d(TAG, "[%s: %d] Take pic non Customer Mode, One Group size: %d MB", __FILE__, __LINE__, pTmpCfg->pStAction->size_per_act);
+            LOGDBG(TAG, "Take pic non Customer Mode, One Group size: %d MB", pTmpCfg->pStAction->size_per_act);
             iSize = pTmpCfg->pStAction->size_per_act;
         }
     }    
@@ -8231,11 +8231,11 @@ void MenuUI::dispSetItem(struct stSetItem* pItem, bool iSelected)
 {
     /* 根据设置项当前的值来选择显示的图标及位置 */
     if (pItem->iCurVal < 0 || pItem->iCurVal > pItem->iItemMaxVal) {
-        Log.e(TAG, "[%s:%d] Invalid setting item [%s], curVal[%d]", __FILE__, __LINE__, pItem->pItemName, pItem->iCurVal);
+        LOGERR(TAG, "Invalid setting item [%s], curVal[%d]", pItem->pItemName, pItem->iCurVal);
     } else {
 
     #ifdef ENABLE_DEBUG_SET_PAGE
-        Log.d(TAG, "[%s:%d] dispSetItem item name [%s], curVal[%d] selected[%s]", __FILE__, __LINE__, 
+        LOGDBG(TAG, "dispSetItem item name [%s], curVal[%d] selected[%s]", 
                         pItem->pItemName, pItem->iCurVal, (iSelected == true) ? "yes": "no");
     #endif
 
@@ -8278,7 +8278,7 @@ void MenuUI::disp_ageing()
 
 void MenuUI::disp_dev_msg_box(int bAdd, int type, bool bChange)
 {
-    Log.d(TAG, "bAdd %d type %d", bAdd, type);
+    LOGDBG(TAG, "bAdd %d type %d", bAdd, type);
 
 	switch (bAdd) {
         //add
@@ -8300,7 +8300,7 @@ void MenuUI::disp_dev_msg_box(int bAdd, int type, bool bChange)
             break;
 			
         default:
-            Log.w(TAG, "strange bAdd %d type %d\n", bAdd, type);
+            LOGWARN(TAG, "strange bAdd %d type %d\n", bAdd, type);
             break;
     }
 }
@@ -8309,7 +8309,7 @@ void MenuUI::disp_dev_msg_box(int bAdd, int type, bool bChange)
 
 void MenuUI::flick_light()
 {
-	// Log.d(TAG, "last_light 0x%x fli_light 0x%x", last_light, fli_light);
+	// LOGDBG(TAG, "last_light 0x%x fli_light 0x%x", last_light, fli_light);
 	
     if ((last_light & 0xf8) != fli_light) {
         setLight(fli_light);
@@ -8343,7 +8343,7 @@ void MenuUI::setLightDirect(u8 val)
 {
 
 #ifdef ENABLE_DEBUG_LIGHT
-    Log.d(TAG, "[%s:%d] last_light 0x%x val 0x%x", __FILE__, __LINE__, last_light, val);
+    LOGDBG(TAG, "last_light 0x%x val 0x%x", last_light, val);
 #endif
 
     if (last_light != val) {
@@ -8355,7 +8355,7 @@ void MenuUI::setLightDirect(u8 val)
 void MenuUI::setLight(u8 val)
 {
 #ifdef ENABLE_DEBUG_LIGHT
-    Log.d(TAG, "[%s:%d] setLight 0x%x  front_light 0x%x", __FILE__, __LINE__, val, front_light);
+    LOGDBG(TAG, "setLight 0x%x  front_light 0x%x", val, front_light);
 #endif
 
     if (mProCfg->get_val(KEY_LIGHT_ON) == 1) {
@@ -8391,7 +8391,7 @@ bool MenuUI::check_rec_tl()
 *************************************************************************/
 void MenuUI::setTakePicDelay(int iDelay)
 {
-    Log.d(TAG, ">>>>>>>>>>> setTakePicDelay %d", iDelay);
+    LOGDBG(TAG, ">>>>>>>>>>> setTakePicDelay %d", iDelay);
     mTakePicDelay = iDelay;
 }
 
@@ -8410,13 +8410,13 @@ const char* MenuUI::getPicVidCfgNameByIndex(vector<struct stPicVideoCfg*>& mList
 {
 
     if (iIndex > mList.size() - 1) {
-        Log.e(TAG, "[%s: %d] Invalid Index[%d], please check", __FILE__, __LINE__, iIndex);
+        LOGERR(TAG, "Invalid Index[%d], please check", iIndex);
     } else {
         struct stPicVideoCfg* pTmpCfg = mList.at(iIndex);
         if (pTmpCfg) {
             return pTmpCfg->pItemName;
         } else {
-            Log.e(TAG, "[%s: %d] Invalid Index[%d], please check", __FILE__, __LINE__, iIndex);
+            LOGERR(TAG, "Invalid Index[%d], please check", iIndex);
         }
     }
     return NULL;
@@ -8500,7 +8500,7 @@ int MenuUI::read_tmp(double *int_tmp, double *tmp)
 
 void MenuUI::deinit()
 {
-    Log.d(TAG, "deinit\n");
+    LOGDBG(TAG, "deinit\n");
 	
     setLightDirect(LIGHT_OFF);
 
@@ -8508,7 +8508,7 @@ void MenuUI::deinit()
 
     sendExit();
 
-    Log.d(TAG, "deinit2");
+    LOGDBG(TAG, "deinit2");
 }
 
 
@@ -8547,14 +8547,14 @@ void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
                 || START_LOW_BAT_FAIL == disp_type->type 
                 || disp_type->type == RESET_ALL 
                 || disp_type->type == START_FORCE_IDLE)) {
-		        Log.d(TAG, "MENU_LOW_BAT not allow (0x%x %d)", serverState, disp_type->type);
+		        LOGDBG(TAG, "MENU_LOW_BAT not allow (0x%x %d)", serverState, disp_type->type);
 		    return;
 		    }
 		
 		default: {
 			// get http req before getting low bat protect in flask 170922
 			if (checkServerStateIn(serverState, STATE_LOW_BAT)) {				
-				Log.d(TAG, "STATE_LOW_BAT not allow (0x%u %d)", serverState, disp_type->type);
+				LOGDBG(TAG, "STATE_LOW_BAT not allow (0x%u %d)", serverState, disp_type->type);
 			} else if (disp_type->type != RESET_ALL) {
 				exit_sys_err();
 			}
@@ -8566,11 +8566,11 @@ void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
 	if (disp_type->qr_type != -1) {
 		add_qr_res(disp_type->qr_type, disp_type->jsonArg, disp_type->control_act, serverState);
 	} else if (disp_type->tl_count != -1) {         /* 设置Timelapse值 */
-        // Log.d(TAG, "[%s: %d] handleDispTypeMsg set timelapse value %d", __FILE__, __LINE__, disp_type->tl_count);
+        // LOGDBG(TAG, "handleDispTypeMsg set timelapse value %d", disp_type->tl_count);
 		set_tl_count(disp_type->tl_count);
 	} else if (disp_type->mSysSetting != nullptr) { /* 系统设置不为空 */
 
-        Log.d(TAG, "[%s: %d] update System setting!!!!", __FILE__, __LINE__);
+        LOGDBG(TAG, "update System setting!!!!");
 		updateSysSetting(disp_type->mSysSetting);       /* 更新设置(来自客户端) */
 
     #ifdef ENABLE_MENU_STITCH_BOX        
@@ -8581,7 +8581,7 @@ void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
 	} 
 
 
-    Log.d(TAG, "[%s: %d] --> handleDispTypeMsg, disp type(%s)", __FILE__, __LINE__, getDispType(disp_type->type));
+    LOGDBG(TAG, "--> handleDispTypeMsg, disp type(%s)", getDispType(disp_type->type));
 	
     oled_disp_type(disp_type->type);
 }
@@ -8603,7 +8603,7 @@ void MenuUI::handleDispErrMsg(sp<ERR_TYPE_INFO>& mErrInfo)
         /* Fix BUG */
 		case MENU_SPEED_TEST:
         case MENU_SET_TEST_SPEED: {
-            Log.d(TAG, "[%s: %d] Speed test, don't deal err msg!!!", __FILE__, __LINE__);
+            LOGDBG(TAG, "Speed test, don't deal err msg!!!");
             return;
         }
 
@@ -8631,7 +8631,7 @@ void MenuUI::handleDispErrMsg(sp<ERR_TYPE_INFO>& mErrInfo)
 void MenuUI::handleKeyMsg(int iKey)
 {
     if (cur_menu == -1) {
-        Log.d(TAG, "[%s: %d] Menu System not Inited Yet!!!!", __FILE__, __LINE__);
+        LOGDBG(TAG, "Menu System not Inited Yet!!!!");
         return;
     }
 
@@ -8668,7 +8668,7 @@ void MenuUI::handleKeyMsg(int iKey)
             break;
         }
     } else {
-        Log.d(TAG, "[%s: %d] cur menu[%s] not support cur key[%d]", __FILE__, __LINE__, getMenuName(cur_menu), iKey);
+        LOGDBG(TAG, "cur menu[%s] not support cur key[%d]", getMenuName(cur_menu), iKey);
         exit_sys_err();
     }
 }
@@ -8687,14 +8687,14 @@ void MenuUI::handleKeyMsg(int iKey)
 *************************************************************************/
 void MenuUI::handleLongKeyMsg(int key)
 {
-    Log.d(TAG, "[%s: %d]long press key 0x%x", __FILE__, __LINE__, key);
+    LOGDBG(TAG, "[%s: %d]long press key 0x%x", key);
     VolumeManager* vm = VolumeManager::Instance();
     bool bNeedShutdown = false;
     uint64_t serverState = getServerState();
 
     if (key == OLED_KEY_POWER) {
 
-        Log.d(TAG, "[%s: %d] Are you want Power off Machine ...", __FILE__, __LINE__);
+        LOGDBG(TAG, "Are you want Power off Machine ...");
         
         /* 如果是在主菜单或设置菜单，卸载卡后关机（IDLE状态）
             * 如果是在录像状态，停止录像
@@ -8705,7 +8705,7 @@ void MenuUI::handleLongKeyMsg(int key)
         
         /* 显示文案 */
         if (checkServerStateIn(serverState, STATE_RECORD)) {
-            Log.d(TAG, "[%s: %d] Current Menu[%s], state[0x%x]", __FILE__, __LINE__, getMenuName(cur_menu), serverState);
+            LOGDBG(TAG, "Current Menu[%s], state[0x%x]", getMenuName(cur_menu), serverState);
             sendRpc(ACTION_VIDEO);  /* 录像/停止录像 */
         } else if (checkServerStateIn(serverState, STATE_RECORD) && checkisLiveRecord()) {    /* 直播存片 */
             sendRpc(ACTION_LIVE);
@@ -8719,7 +8719,7 @@ void MenuUI::handleLongKeyMsg(int key)
 
         /* shutdown 关机 */
         if (bNeedShutdown == true) {
-            Log.d(TAG, "[%s: %d] >>>>>>>>>>>>>>>>>>> Shutdown now", __FILE__, __LINE__);
+            LOGDBG(TAG, ">>>>>>>>>>>>>>>>>>> Shutdown now");
             
             /* 关掉OLED显示，避免屏幕上显示东西 */
             mOLEDModule->display_onoff(0);
@@ -8747,7 +8747,7 @@ void MenuUI::handleUpdateIp(const char* ipAddr)
  */
 void MenuUI::handleorSetWifiConfig(sp<WifiConfig> &mConfig)
 {
-	Log.d(TAG, ">>>> handleConfigWifiMsg");
+	LOGDBG(TAG, ">>>> handleConfigWifiMsg");
     sp<ARMessage> msg;
 	const char* pWifName = NULL;
 	const char* pWifPasswd = NULL;
@@ -8803,10 +8803,10 @@ void MenuUI::handleorSetWifiConfig(sp<WifiConfig> &mConfig)
 			strncpy(mConfig->cPasswd, pWifPasswd, (strlen(pWifPasswd) > DEFAULT_NAME_LEN) ? DEFAULT_NAME_LEN: strlen(pWifPasswd));
 		}
 	} else {
-		Log.d(TAG, "Not supported auth mode in current");
+		LOGDBG(TAG, "Not supported auth mode in current");
 	}
 
-	Log.d(TAG, "Send our configure to NetManager");
+	LOGDBG(TAG, "Send our configure to NetManager");
 
 	msg = (sp<ARMessage>)(new ARMessage(NETM_CONFIG_WIFI_AP));
     msg->set<sp<WifiConfig>>("wifi_config", mConfig);
@@ -8841,7 +8841,7 @@ void MenuUI::handleUpdateSysInfo(sp<SYS_INFO> &mSysInfo)
                 SWITCH_DEF_ERROR(i);
             }
             snprintf(buf, sizeof(buf), "%s%s%s", sys_key[i],val, new_line);
-            Log.d(TAG, " write sys %s", buf);
+            LOGDBG(TAG, " write sys %s", buf);
             len = strlen(buf);
             write_len = write(fd, buf, len);
             CHECK_EQ(write_len,len);
@@ -8850,7 +8850,7 @@ void MenuUI::handleUpdateSysInfo(sp<SYS_INFO> &mSysInfo)
         memcpy(mReadSys.get(),mSysInfo.get(),sizeof(SYS_INFO));
     }
 #else
-    Log.d(TAG, "close write sn");
+    LOGDBG(TAG, "close write sn");
 #endif
 }
 
@@ -8871,13 +8871,13 @@ void MenuUI::handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo)
     snprintf(mVerInfo->c_ver, sizeof(mVerInfo->c_ver), "%s", mSyncInfo->c_v);
     snprintf(mVerInfo->h_ver, sizeof(mVerInfo->h_ver), "%s", mSyncInfo->h_v);
 
-    Log.d(TAG, "[%s: %d] sync state 0x%x va:%s vc %s vh %s",
+    LOGDBG(TAG, "sync state 0x%x va:%s vc %s vh %s",
           __FILE__, __LINE__, mSyncInfo->state, mSyncInfo->a_v, mSyncInfo->c_v, mSyncInfo->h_v);
 
-    Log.d(TAG, "[%s: %d] SET SYNC INFO: get state[%d]", __FILE__, __LINE__, state);
+    LOGDBG(TAG, "SET SYNC INFO: get state[%d]", state);
 
     if (state == STATE_IDLE) {	            /* 如果相机处于Idle状态: 显示主菜单 */
-		Log.d(TAG, "handleSetSyncInfo oled_reset_disp Server State 0x%x, cur_menu %d", getServerState(), cur_menu);
+		LOGDBG(TAG, "handleSetSyncInfo oled_reset_disp Server State 0x%x, cur_menu %d", getServerState(), cur_menu);
         mCamState = STATE_IDLE;
         setCurMenu(MENU_TOP);	/* 初始化显示为顶级菜单 */
     } else if ((state & STATE_RECORD) == STATE_RECORD) {    /* 录像状态 */
@@ -8990,7 +8990,7 @@ void MenuUI::handleUpdateDevInfo(int iAction, int iType, vector<Volume*>& mList)
     int type = (VOLUME_SUBSYS_SD == iType) ? SET_STORAGE_SD: SET_STORAGE_USB;
 
 #if 0
-    Log.d(TAG, "[%s: %d] handleUpdateDevInfo -> Current Menu[%s], Server State[%d]",
+    LOGDBG(TAG, "handleUpdateDevInfo -> Current Menu[%s], Server State[%d]",
                 __FILE__, __LINE__, getMenuName(cur_menu), getServerState());
 #endif
 
@@ -9026,7 +9026,7 @@ void MenuUI::handleUpdateDevInfo(int iAction, int iType, vector<Volume*>& mList)
  */
 void MenuUI::handleTfStateChanged(vector<sp<Volume>>& mTfChangeList)
 {
-    Log.d(TAG, "[%s: %d] Tf Card state Changed, Insert/Removed.....", __FILE__, __LINE__);
+    LOGDBG(TAG, "Tf Card state Changed, Insert/Removed.....");
     VolumeManager* vm = VolumeManager::Instance();
     int iAction = 0;
 
@@ -9057,7 +9057,7 @@ void MenuUI::handleSppedTest(vector<sp<Volume>>& mSpeedTestList)
     testFailedList.clear();
     int iLocalTestFlag = 0;
 
-    Log.d(TAG, "[%s: %d] Speed Test Handler", __FILE__, __LINE__);
+    LOGDBG(TAG, "Speed Test Handler");
     {
         for (u32 i = 0; i < mSpeedTestList.size(); i++) {
             tmpResultVol = mSpeedTestList.at(i);
@@ -9100,7 +9100,7 @@ void MenuUI::handleSppedTest(vector<sp<Volume>>& mSpeedTestList)
         strcat(cMsg, cTmp);
     }
         
-    Log.d(TAG, "[%s: %d] cMsg Content: %s", __FILE__, __LINE__, cMsg);
+    LOGDBG(TAG, "cMsg Content: %s", cMsg);
     switch (i) {
         case 1:
             xStarPos = 46;
@@ -9125,7 +9125,7 @@ void MenuUI::handleSppedTest(vector<sp<Volume>>& mSpeedTestList)
     }
 
     if (iLocalTestFlag == 0) {  /* 大卡不通过 */
-        Log.d(TAG, "[%s: %d] Local SD speed test failed", __FILE__, __LINE__);
+        LOGDBG(TAG, "Local SD speed test failed");
         if (testFailedList.size() == 0) {   /* 大卡速度不够，小卡速度通过 */
             dispStr((const u8*)"SD/USB write", 28, 16, false, 128);
             dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
@@ -9135,7 +9135,7 @@ void MenuUI::handleSppedTest(vector<sp<Volume>>& mSpeedTestList)
             dispStr((const u8*)"speed are insufficient.", 6, 40, false, 128);
         }
     } else {    /* 大卡通过 */
-        Log.d(TAG, "[%s: %d] Local SD speed test Success", __FILE__, __LINE__);
+        LOGDBG(TAG, "Local SD speed test Success");
         if (testFailedList.size() == 0) {   /* 所有卡速OK */
             dispStr((const u8*)"All storage", 32, 8, false, 128);
             dispStr((const u8*)"devices write", 28, 24, false, 128);
@@ -9186,7 +9186,7 @@ void MenuUI::handleUpdateMid()
                     }
                 } else {
                     /* TODO: 发送停止录像的消息 */
-                    Log.d(TAG, "[%s: %d] Recording Left time is zero now!!", __FILE__, __LINE__);
+                    LOGDBG(TAG, "Recording Left time is zero now!!");
                 }
             }
         }
@@ -9222,7 +9222,7 @@ void MenuUI::handleUpdateMid()
 
     } else if (checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) { /* 直播连接状态: 只闪灯 */
 
-        Log.d(TAG, "cancel send msg　in state STATE_LIVE_CONNECTING");
+        LOGDBG(TAG, "cancel send msg　in state STATE_LIVE_CONNECTING");
         if (checkisLiveRecord()) {
             send_update_mid_msg(INTERVAL_1HZ);
             
@@ -9246,7 +9246,7 @@ void MenuUI::handleUpdateMid()
             setLight();
         }
     } else {
-        Log.d(TAG, "[%s: %d] Current Menu[%s], Current State[0x%x]", __FILE__, __LINE__, getMenuName(cur_menu), serverState);
+        LOGDBG(TAG, "Current Menu[%s], Current State[0x%x]", getMenuName(cur_menu), serverState);
         setLight();
     }
 }
@@ -9273,7 +9273,7 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     mBatInterface->read_tmp(&dInterTmp, &dExternTmp);
 
     #ifdef ENABLE_SHOW_BATTERY_TMP
-    Log.d(TAG, "[%s: %d] Read Battery Tmp: interTmp[%f], externTmp[%f]", __FILE__, __LINE__, dInterTmp, dExternTmp);
+    LOGDBG(TAG, "Read Battery Tmp: interTmp[%f], externTmp[%f]", dInterTmp, dExternTmp);
     #endif
 
     if (bUpdate || bUpload) {   /* 电池电量需要更新或者需要上报 */
@@ -9281,7 +9281,7 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
         oled_disp_battery();	/* 显示电池及电量信息 */
 
         if (false == pm->sendUpdateBatteryInfo(m_bat_info_.get())) {
-            Log.e(TAG, "[%s: %d] ---> Update Battery Info Failed, please check h_log", __FILE__, __LINE__);
+            LOGERR(TAG, "---> Update Battery Info Failed, please check h_log");
         }
     }
 
@@ -9289,7 +9289,7 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
 
 #ifdef OPEN_BAT_LOW
         if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
-            // Log.d(TAG, "[%s: %d ] bat low menu[%s] %d state 0x%x", __FILE__, __LINE__, getMenuName(cur_menu), serverState);
+            // LOGDBG(TAG, "[%s: %d ] bat low menu[%s] %d state 0x%x", getMenuName(cur_menu), serverState);
             if ((checkServerStateIn(serverState, STATE_RECORD) || bStiching)) {
                 setCurMenu(MENU_LOW_BAT, MENU_TOP);
                 addState(STATE_LOW_BAT);
@@ -9348,7 +9348,7 @@ void MenuUI::handleDispLightMsg(int menu, int state, int interval)
 			} else if (checkServerStateIn(serverState, STATE_PIC_STITCHING)) {
 				send_update_light(menu, state, INTERVAL_5HZ, true);
 			} else {
-				Log.d(TAG, "update pic light error state 0x%x", serverState);
+				LOGDBG(TAG, "update pic light error state 0x%x", serverState);
 				setLight();
 			}
 			break;
@@ -9372,7 +9372,7 @@ void MenuUI::handleDispLightMsg(int menu, int state, int interval)
 				}
                 mGyroCalcDelay--;
 			} else {
-				Log.e(TAG, "update calibration light error state 0x%x", getServerState());
+				LOGERR(TAG, "update calibration light error state 0x%x", getServerState());
 				setLight();
 			}
 			break;
@@ -9398,7 +9398,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
     uint32_t what = msg->what();
 
 #ifdef DEBUG_UI_MSG	
-    Log.d(TAG, "UI Core get msg: what[%d]", what);
+    LOGDBG(TAG, "UI Core get msg: what[%d]", what);
 #endif
 
     if (UI_EXIT == what) {  /* 退出消息循环 */
@@ -9413,7 +9413,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                     sp<DISP_TYPE> disp_type;
                     CHECK_EQ(msg->find<sp<DISP_TYPE>>("disp_type", &disp_type), true);
 					
-                    Log.d(TAG, "UI_MSG_DISP_TYPE (%d %d %d %s)",
+                    LOGDBG(TAG, "UI_MSG_DISP_TYPE (%d %d %d %s)",
 								disp_type->qr_type,         // 2 
 								disp_type->type,            // 1
 								disp_type->tl_count,        // -1
@@ -9457,7 +9457,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 				CHECK_EQ(msg->find<sp<DEV_IP_INFO>>("info", &tmpIpInfo), true);
 
                 #ifdef ENABLE_DEBUG_NET
-				Log.d(TAG, "UI_MSG_UPDATE_IP dev[%s], ip[%s]", tmpIpInfo->cDevName, tmpIpInfo->ipAddr);
+				LOGDBG(TAG, "UI_MSG_UPDATE_IP dev[%s], ip[%s]", tmpIpInfo->cDevName, tmpIpInfo->ipAddr);
                 #endif
 				handleUpdateIp(tmpIpInfo->ipAddr);
                	break;
@@ -9498,7 +9498,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 if (i < 3) {
                     mGpsState = iQueryResult;
                 } else {
-                    Log.e(TAG, "[%s: %d] Query Gps State failed, what's wrong", __FILE__, __LINE__);
+                    LOGERR(TAG, "Query Gps State failed, what's wrong");
                    mGpsState = 0;
                 }
                 break;
@@ -9602,7 +9602,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 if (cur_menu == MENU_DISP_MSG_BOX) {    /* 如果当前处于消息框菜单中,执行返回 */
                     procBackKeyEvent();
                 } else {
-                    Log.d(TAG, "[%s: %d] Warnning Cler MsgBox cur_menu [%s]", __FILE__, __LINE__, getMenuName(cur_menu));
+                    LOGDBG(TAG, "Warnning Cler MsgBox cur_menu [%s]", getMenuName(cur_menu));
                 }
                 break;
             }
@@ -9626,17 +9626,17 @@ void MenuUI::updateTfStorageInfo(bool bResult, vector<sp<Volume>>& mList)
 {
     VolumeManager* vm = VolumeManager::Instance();
  
-    Log.d(TAG, "[%s: %d] updateTfStorageInfo <<<<<<<<<<<<", __FILE__, __LINE__);
+    LOGDBG(TAG, "updateTfStorageInfo <<<<<<<<<<<<");
 
     if (bResult) {
         if (vm) {
-            Log.d(TAG, "[%s: %d] >>>>>>>>>>>> calling vm->updateRemoteTfsInfo", __FILE__, __LINE__);
+            LOGDBG(TAG, ">>>>>>>>>>>> calling vm->updateRemoteTfsInfo");
             vm->updateRemoteTfsInfo(mList);
         } else {
-            Log.e(TAG, "[%s: %d] Volume Manager Not init, What's wrong!!", __FILE__, __LINE__);
+            LOGERR(TAG, "Volume Manager Not init, What's wrong!!");
         }
     } else {
-        Log.d(TAG, "[%s: %d] Query TF Card Failed ....", __FILE__, __LINE__);
+        LOGDBG(TAG, "Query TF Card Failed ....");
     }
 
     if (mSysncQueryTfReq == true && mAsyncQueryTfReq == false) {    /* 同步 */
@@ -9647,7 +9647,7 @@ void MenuUI::updateTfStorageInfo(bool bResult, vector<sp<Volume>>& mList)
         mAsyncQueryTfReq = false;
 
 #ifdef ENABLE_DEBUG_MODE    
-    Log.d(TAG, "[%s: %d] SEND UI_MSG_QUERY_TF_RES MSG NOW ......", __FILE__, __LINE__);
+    LOGDBG(TAG, "SEND UI_MSG_QUERY_TF_RES MSG NOW ......");
 #endif
         /* 发送异步消息通知UI线程TF查询的结果 */
         sp<ARMessage> msg = obtainMessage(UI_MSG_QUERY_TF_RES);
@@ -9754,7 +9754,7 @@ void MenuUI::send_update_mid_msg(int interval)
         bSendUpdateMid = true;
         send_delay_msg(UI_UPDATE_MID, interval);
     } else {
-        Log.d(TAG, "set_update_mid true (%d)", cur_menu);
+        LOGDBG(TAG, "set_update_mid true (%d)", cur_menu);
     }
 }
 
@@ -9808,7 +9808,7 @@ void MenuUI::send_update_light(int menu, int state, int interval, bool bLight, i
 {
 
 #if 0
-	Log.d(TAG, "send_update_light　(%d [%s] [%d] interval[%d] speaker[%d] sound_id %d) ", 
+	LOGDBG(TAG, "send_update_light　(%d [%s] [%d] interval[%d] speaker[%d] sound_id %d) ", 
 					bSendUpdate, 
 					getMenuName(menu),
 					state,
@@ -10028,7 +10028,7 @@ void MenuUI::dispLiveReady()
 
     PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(item);
 
-    Log.d(TAG, "[%s: %d] dispLiveReady: select item [%s]", __FILE__, __LINE__, pTmpCfg->pItemName);    
+    LOGDBG(TAG, "dispLiveReady: select item [%s]", pTmpCfg->pItemName);    
     
     iRet = check_live_save((pTmpCfg->jsonCmd).get());
     switch (iRet) {
@@ -10042,20 +10042,20 @@ void MenuUI::dispLiveReady()
             if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* 大卡,小卡都在 */
 
                 #ifdef ENABLE_DEBUG_MODE
-                Log.d(TAG, "[%s: %d] ^++^ All Card is Exist ....", __FILE__, __LINE__);        
+                LOGDBG(TAG, "^++^ All Card is Exist ....");        
                 #endif
                 dispIconByType(ICON_CAMERA_READY_20_16_76_32);
             } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
 
                 #ifdef ENABLE_DEBUG_MODE
-                Log.d(TAG, "[%s: %d] Warnning Need TF Card ....", __FILE__, __LINE__);
+                LOGDBG(TAG, "Warnning Need TF Card ....");
                 #endif
                 dispIconByLoc(&needTfCardIconInfo);
 
             } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
 
                 #ifdef ENABLE_DEBUG_MODE
-                Log.d(TAG, "[%s: %d] Warnning SD Card or TF Card Lost!!!", __FILE__, __LINE__);
+                LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
                 #endif
                 dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
             }
@@ -10080,20 +10080,20 @@ void MenuUI::dispReady(bool bDispReady)
             if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* 大卡,小卡都在 */
 
                 #ifdef ENABLE_DEBUG_MODE
-                Log.d(TAG, "[%s: %d] ^++^ All Card is Exist ....", __FILE__, __LINE__);        
+                LOGDBG(TAG, "^++^ All Card is Exist ....");        
                 #endif
                 dispIconByType(ICON_CAMERA_READY_20_16_76_32);
             } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
 
                 #ifdef ENABLE_DEBUG_MODE
-                Log.d(TAG, "[%s: %d] Warnning Need TF Card ....", __FILE__, __LINE__);
+                LOGDBG(TAG, "Warnning Need TF Card ....");
                 #endif
                 dispIconByLoc(&needTfCardIconInfo);
 
             } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
 
                 #ifdef ENABLE_DEBUG_MODE
-                Log.d(TAG, "[%s: %d] Warnning SD Card or TF Card Lost!!!", __FILE__, __LINE__);
+                LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
                 #endif
                 dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
             }            
@@ -10108,7 +10108,7 @@ void MenuUI::dispReady(bool bDispReady)
 
             PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(item);
 
-            Log.d(TAG, "[%s: %d] dispReady: select item [%s]", __FILE__, __LINE__, pTmpCfg->pItemName);    
+            LOGDBG(TAG, "dispReady: select item [%s]", pTmpCfg->pItemName);    
             
             iRet = check_live_save((pTmpCfg->jsonCmd).get());
             switch (iRet) {
@@ -10122,20 +10122,20 @@ void MenuUI::dispReady(bool bDispReady)
                     if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* 大卡,小卡都在 */
 
                         #ifdef ENABLE_DEBUG_MODE
-                        Log.d(TAG, "[%s: %d] ^++^ All Card is Exist ....", __FILE__, __LINE__);        
+                        LOGDBG(TAG, "^++^ All Card is Exist ....");        
                         #endif
                         dispIconByType(ICON_CAMERA_READY_20_16_76_32);
                     } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
 
                         #ifdef ENABLE_DEBUG_MODE
-                        Log.d(TAG, "[%s: %d] Warnning Need TF Card ....", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Warnning Need TF Card ....");
                         #endif
                         dispIconByLoc(&needTfCardIconInfo);
 
                     } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
 
                         #ifdef ENABLE_DEBUG_MODE
-                        Log.d(TAG, "[%s: %d] Warnning SD Card or TF Card Lost!!!", __FILE__, __LINE__);
+                        LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
                         #endif
                         dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
                     }

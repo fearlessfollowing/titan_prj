@@ -1,15 +1,13 @@
-//
-// Created by vans on 16-12-7.
-//
 #include <common/include_common.h>
 #include <sys/types.h>			/* See NOTES */
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <errno.h>
 
+#include <log/log_wrapper.h>
 
 #define TAG "util_test"
 
-#include <errno.h>
 
 #if 1
 int exec_sh(const char *str)
@@ -18,7 +16,7 @@ int exec_sh(const char *str)
     int iRet = -1;
 
     if (-1 == status) {
-        Log.e(TAG, "system %s error\n", str);
+        LOGERR(TAG, "system %s error\n", str);
     } else {
     
         // printf("exit status value = [0x%x]\n", status);
@@ -26,10 +24,10 @@ int exec_sh(const char *str)
             if (0 == WEXITSTATUS(status)) {
                 iRet = 0;
             } else {
-                Log.e(TAG,"%s fail script exit code: %d\n", str,WEXITSTATUS(status));
+                LOGERR(TAG, "%s fail script exit code: %d\n", str,WEXITSTATUS(status));
             }
         } else {
-            Log.e(TAG,"exit status %s error  = [%d]\n",str, WEXITSTATUS(status));
+            LOGERR(TAG, "exit status %s error  = [%d]\n",str, WEXITSTATUS(status));
         }
     }
     return iRet;
@@ -101,7 +99,7 @@ int move_cmd(const char *src,const char *dest)
 
     ret = exec_sh(cmd);
     if (ret != 0) {
-        Log.e(TAG,"move cmd %s error\n",cmd);
+        LOGERR(TAG,"move cmd %s error\n",cmd);
     }
     return exec_sh(cmd);
 }
@@ -129,26 +127,6 @@ bool check_dev_speed_good(const char *path)
     return ret;
 }
 
-//bool write_sdcard_suc(const char *path)
-//{
-//    bool ret = false;
-//    char buf[1024];
-//
-//    snprintf(buf,sizeof(buf),"touch %s%s",path,SDCARD_TEST_SUC);
-//    if(!check_path_exist(buf))
-//    {
-//        if (exec_sh(buf) != 0)
-//        {
-//            ret = false;
-//        }
-//    }
-//    if(!ret)
-//    {
-//        Log.d(TAG,"write sd %s fail\n",buf);
-//    }
-//    return ret;
-//}
-
 
 int ins_rm_file(const char *name)
 {
@@ -158,7 +136,7 @@ int ins_rm_file(const char *name)
         snprintf(cmd, sizeof(cmd),"rm -rf %s", name);
         ret = exec_sh(cmd);
         if (ret != 0) {
-            Log.e(TAG,"rm file %s error\n",name);
+            LOGERR(TAG, "rm file %s error",name);
         }
     }
     return ret;
@@ -181,7 +159,7 @@ int create_socket(const char *name, int type, mode_t perm)
 
     fd = socket(PF_UNIX, type, 0);
     if (fd < 0) {
-        Log.e("Failed to open socket '%s': %s\n", name, strerror(errno));
+        LOGERR("Failed to open socket '%s': %s\n", name, strerror(errno));
         return -1;
     }
 
@@ -191,19 +169,19 @@ int create_socket(const char *name, int type, mode_t perm)
 
     ret = unlink(addr.sun_path);
     if (ret != 0 && errno != ENOENT) {
-        Log.e("Failed to unlink old socket '%s': %s\n", name, strerror(errno));
+        LOGERR("Failed to unlink old socket '%s': %s", name, strerror(errno));
         goto out_close;
     }
 
     ret = bind(fd, (struct sockaddr *) &addr, sizeof (addr));
     if (ret) {
-        Log.e("Failed to bind socket '%s': %s\n", name, strerror(errno));
+        LOGERR("Failed to bind socket '%s': %s", name, strerror(errno));
         goto out_unlink;
     }
 
     chmod(addr.sun_path, perm);
 
-    Log.i("Created socket '%s' with mode '%o', user '%d', group '%d'\n", addr.sun_path, perm);
+    LOGINFO("Created socket '%s' with mode '%o', user '%d', group '%d'", addr.sun_path, perm);
 
     return fd;
 

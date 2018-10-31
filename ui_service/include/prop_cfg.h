@@ -121,9 +121,42 @@
 #define PROP_SD_RESET_GPIO          "sys.sd_reset_gpio"
 
 
+
+/******************************************************************************************************
+ * 模组及HUB涉及的属性
+ ******************************************************************************************************/
+#define PROP_MODULE_HUB_NUM			"sys.hub_reset_num"
+#define PROP_HUB_RESET_GPIO1		"sys.hub_reset_gpio1"
+#define PROP_HUB_RESET_GPIO2		"sys.hub_reset_gpio2"
+#define PROP_HUB_RESET_DURATION		"sys.hub_reset_duration"
+#define PROP_HUB_RESET_LEVEL		"sys.hub_reset_level"
 /*
- * WIFI固件路径
+ * 高电平/低电平有效
  */
+#define PROP_HUB_RESET_LEVEL		"sys.hub_reset_level"
+
+
+#define PROP_MODULE_NUM				"sys.module_num"
+#define PROP_MODULE_PWR_ON			"sys.module_pwr_on"
+#define PROP_MODULE_PWR_INTERVAL 	"sys.module_pwr_interval"
+
+
+#define PROP_MODULE_PWR_CTL_1		"sys.module_pwr_ctl_1"
+#define PROP_MODULE_PWR_CTL_2		"sys.module_pwr_ctl_2"
+#define PROP_MODULE_PWR_CTL_3		"sys.module_pwr_ctl_3"
+#define PROP_MODULE_PWR_CTL_4		"sys.module_pwr_ctl_4"
+#define PROP_MODULE_PWR_CTL_5		"sys.module_pwr_ctl_5"
+#define PROP_MODULE_PWR_CTL_6		"sys.module_pwr_ctl_6"
+#define PROP_MODULE_PWR_CTL_7		"sys.module_pwr_ctl_7"
+#define PROP_MODULE_PWR_CTL_8		"sys.module_pwr_ctl_8"
+
+#define PROP_MODULE_PWR_SEQ			"sys.module_pwr_seq"
+
+
+
+/******************************************************************************************************
+ * WIFI固件路径
+ ******************************************************************************************************/
 #define BCMDHD_DRIVER_PATH 		    "/home/nvidia/insta360/wifi/bcmdhd.ko"
 #define WIFI_RAND_NUM_CFG 		    "/home/nvidia/insta360/etc/.wifi_rand_sn"
 #define SYS_TMP 				    "/home/nvidia/insta360/etc/sys_tmp"
@@ -135,6 +168,7 @@
 const char *rom_ver_file = "/home/nvidia/insta360/etc/pro_version";
 const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #endif
+
 
 #define JSON_CFG_FILE_PATH          "/home/nvidia/insta360/etc/"
 

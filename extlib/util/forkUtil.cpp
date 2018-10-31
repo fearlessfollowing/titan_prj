@@ -3,12 +3,13 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
-#include <log/stlog.h>
+// #include <log/stlog.h>
 #include <poll.h>
 #include <sys/wait.h>
 #include <signal.h>
 #include <errno.h>
 #include <pthread.h>
+#include <log/log_wrapper.h>
 
 #undef  TAG
 #define TAG "forkUtil"
@@ -27,7 +28,7 @@ static void child(int argc, char* argv[])
     argv_child[argc] = NULL;
 
     if (execvp(argv_child[0], argv_child)) {
-        Log.e(TAG, "executing %s failed: %s\n", argv_child[0], strerror(errno));
+        LOGERR(TAG, "executing %s failed: %s\n", argv_child[0], strerror(errno));
     }
 }
 
@@ -49,7 +50,7 @@ static int parent(const char *tag, int parent_read, pid_t pid, int *chld_sts)
     while (!found_child) {
 		
         if (TEMP_FAILURE_RETRY(poll(poll_fds, ARRAY_SIZE(poll_fds), -1)) < 0) {
-            Log.e(TAG, "poll failed");
+            LOGERR(TAG, "poll failed");
             rc = -1;
             goto err_poll;
         }
@@ -57,7 +58,7 @@ static int parent(const char *tag, int parent_read, pid_t pid, int *chld_sts)
         if (poll_fds[0].revents & POLLIN) {
             sz = read(parent_read, &buffer[0], sizeof(buffer) - 1);
             buffer[sz -1] = '\0';
-            Log.d(TAG, "[%s: %d] Parent Read data: %s", __FILE__, __LINE__, buffer);
+            LOGDBG(TAG, "[%s: %d] Parent Read data: %s", __FILE__, __LINE__, buffer);
         }
 
         if (poll_fds[0].revents & POLLHUP) {	/* 对方描述符挂起 */
@@ -65,7 +66,7 @@ static int parent(const char *tag, int parent_read, pid_t pid, int *chld_sts)
             ret = waitpid(pid, &status, WNOHANG);	/* WNOHANG非阻塞模式 */
             if (ret < 0) {
                 rc = errno;
-                Log.e(TAG, "logwrap", "waitpid failed with %s\n", strerror(errno));
+                LOGERR(TAG, "logwrap", "waitpid failed with %s\n", strerror(errno));
                 goto err_waitpid;
             }
             if (ret > 0) {
@@ -85,13 +86,13 @@ static int parent(const char *tag, int parent_read, pid_t pid, int *chld_sts)
 
     if (WIFEXITED(status)) {
         if (WEXITSTATUS(status)) {
-            Log.d(TAG, "[%s: %d] child terminated by exit(%d)", __FILE__, __LINE__, WEXITSTATUS(status));
+            LOGDBG(TAG, "child terminated by exit(%d)", WEXITSTATUS(status));
         }
     } else {
         if (WIFSIGNALED(status)) {
-            Log.d(TAG, "[%s: %d] child terminated by signal %d", __FILE__, __LINE__, WTERMSIG(status));
+            LOGDBG(TAG, "child terminated by signal %d", WTERMSIG(status));
         } else if (WIFSTOPPED(status)) {
-            Log.d(TAG, "[%s: %d] child stoped by signal %d", __FILE__, __LINE__, WSTOPSIG(status));
+            LOGDBG(TAG, "child stoped by signal %d", WSTOPSIG(status));
         }
     }
 
@@ -114,14 +115,14 @@ int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit)
 
     rc = pthread_mutex_lock(&fd_mutex);
     if (rc) {
-        Log.e(TAG, "failed to lock signal_fd mutex");
+        LOGERR(TAG, "failed to lock signal_fd mutex");
         goto err_lock;
     }   
 
     /* Use ptty instead of socketpair so that STDOUT is not buffered */
     parent_ptty = open("/dev/ptmx", O_RDWR);
     if (parent_ptty < 0) {
-        Log.e(TAG, "Cannot create parent ptty");
+        LOGERR(TAG, "Cannot create parent ptty");
         rc = -1;
         goto err_open;
     } 
@@ -129,14 +130,14 @@ int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit)
     char child_devname[64];
     if (grantpt(parent_ptty) || unlockpt(parent_ptty) ||
             ptsname_r(parent_ptty, child_devname, sizeof(child_devname)) != 0) {
-        Log.e(TAG, "Problem with /dev/ptmx");
+        LOGERR(TAG, "Problem with /dev/ptmx");
         rc = -1;
         goto err_ptty;
     }    
 
     child_ptty = open(child_devname, O_RDWR);
     if (child_ptty < 0) {
-        Log.e(TAG, "Cannot open child_ptty");
+        LOGERR(TAG, "Cannot open child_ptty");
         rc = -1;
         goto err_child_ptty;
     } 
@@ -155,7 +156,7 @@ int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit)
     pid = fork();
     if (pid < 0) {
         close(child_ptty);
-        Log.e(TAG, "Failed to fork");
+        LOGERR(TAG, "Failed to fork");
         rc = -1;
         goto err_fork;
     } else if (pid == 0) {

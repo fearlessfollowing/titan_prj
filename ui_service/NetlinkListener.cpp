@@ -6,8 +6,6 @@
 
 #include <unistd.h>
 
-#include <log/stlog.h>
-
 #include <sys/NetlinkEvent.h>
 
 #undef  TAG

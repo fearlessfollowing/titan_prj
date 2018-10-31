@@ -1,14 +1,10 @@
-
 #include <common/include_common.h>
-#include <update/dbg_util.h>
 #include <hw/battery_interface.h>
 
 #define TAG "update_util"
 
 
-#define ENABLE_BAT_CHECK
 
-//#define ENABLE_DUMP
 static bool check_path_access(const char *path,int mode)
 {
     bool bRet = false;
@@ -20,13 +16,6 @@ static bool check_path_access(const char *path,int mode)
     return bRet;
 }
 
-
-#if 0
-bool check_path_exist(const char *path)
-{
-    return check_path_access(path, F_OK);
-}
-#endif
 
 int create_dir(const char *path)
 {
@@ -58,45 +47,6 @@ bool check_path_rwx(const char *path)
 {
     return check_path_access(path, R_OK|X_OK|W_OK);
 }
-
-#if 0
-int exec_sh(const char *str)
-{
-    int status = system(str);
-    int iRet = -1;
-
-    if (-1 == status) {
-	#ifdef __ANDROID__
-        Log.e(TAG,"system %s error",str);
-	#else
-	DBG_ERR("system %s error", str);
-	#endif
-
-    } else {
-       // printf("exit status value = [0x%x]\n", status);
-        if (WIFEXITED(status)) {
-            if (0 == WEXITSTATUS(status)) {
-//                printf("%s suc.\n",str);
-                iRet = 0;
-            } else {
-		#ifdef __ANDROID__
-                Log.e(TAG,"%s fail script exit code: %d\n", str,WEXITSTATUS(status));
-		#else
-		DBG_ERR("%s fail script exit code: %d\n", str, WEXITSTATUS(status));
-		#endif
-            }
-        } else {
-	    #ifdef __ANDROID__
-            Log.e(TAG,"exit status %s error  = [%d]\n",str, WEXITSTATUS(status));
-	    # else
-	    DBG_ERR("exit status %s error = [%d]\n", str, WEXITSTATUS(status));
-	    #endif
-        }
-    }
-
-    return iRet;
-}
-#endif
 
 
 void str_trim(char* pStr) 
@@ -158,19 +108,9 @@ int update_path(const char *src, const char *dest)
     int max = 3;
 
     if (!check_path_r(src)) {
-#ifdef __ANDROID__
-        Log.e(TAG,"update_path no read access path %s\n",src);
-#else
-        DBG_ERR("no read access path %s\n",src);
-#endif
         goto EXIT;
     } else {
         if (chmod_path_777(src) != 0) {
-#ifdef __ANDROID__
-            Log.e(TAG, "chmod path 777 %s\n", src);
-#else
-            DBG_ERR( "chmod path 777 %s\n", src);
-#endif
             goto EXIT;
         }
     }
@@ -197,12 +137,6 @@ int update_sd_item(const char *src, const char *dest)
     int max = 3;
 
     if (!check_path_r(src)) {
-
-	#ifdef __ANDROID__
-        Log.e(TAG, "no read access file %s\n", src);
-	#else
-        DBG_ERR("update_sd_item no read access file %s\n", src);
-	#endif
         goto EXIT;
     }
 
@@ -228,21 +162,9 @@ int update_item(const char *src, const char *dest)
     int max = 3;
 
     if (!check_path_r(src)) {
-	#ifdef __ANDROID__
-        Log.e(TAG, "update_item no read access file %s\n", src);
-	#else
-        DBG_ERR("no read access file %s\n",src);
-	#endif
         goto EXIT;
     } else {
-        if (chmod_777(src) != 0) {
-		#ifdef __ANDROID__
-            Log.e(TAG, "chmod item 777 %s\n", src);
-		#else
-            DBG_ERR("chmod item 777 %s\n", src);
-		#endif
-            goto EXIT;
-        }
+        goto EXIT;
     }
     snprintf(buf, sizeof(buf), "cp -pR %s %s", src, dest);
 
@@ -296,25 +218,11 @@ int rm_file(const char *name)
         snprintf(cmd, sizeof(cmd),"rm -rf %s", name);
         ret = exec_sh(cmd);
         if (ret != 0) {
-        #ifdef __ANDROID__
-            Log.e(TAG,"rm file %s error\n",name);
-		#else
-            DBG_ERR("rm file %s error\n",name);
-		#endif
         }
     }
     return ret;
 }
 
-void MyPrintf(const char *cmd, ...)
-{
-    printf("%s %s ", __DATE__, __TIME__);
-    va_list args;       //定义一个va_list类型的变量，用来储存单个参数
-    va_start(args,cmd); //使args指向可变参数的第一个参数
-    vprintf(cmd,args);  //必须用vprintf等带V的
-    va_end(args);       //结束可变参数的获取
-    printf("\n");
-}
 
 int tar_zip(const char *zip_name, const char* dest_path)
 {
@@ -323,7 +231,6 @@ int tar_zip(const char *zip_name, const char* dest_path)
     char cmd[512];
 
     snprintf(cmd,sizeof(cmd),"unzip -o -q %s -d %s", zip_name, dest_path);
-
     iRet = exec_sh(cmd);
     if (iRet == 0) {
         msg_util::sleep_ms(10);
@@ -331,11 +238,6 @@ int tar_zip(const char *zip_name, const char* dest_path)
     return iRet;
 }
 
-
-
-/*
- * gen_file - 
- */
 bool gen_file(const char *name, u32 file_size, FILE *fp_read)
 {
     u32 gen_file_size = 0;
@@ -356,17 +258,11 @@ bool gen_file(const char *name, u32 file_size, FILE *fp_read)
         max_read_size = file_size;
         fseek(fp_write, 0L, SEEK_SET);
         memset(buf, 0, sizeof(buf));
-        
         if (max_read_size > sizeof(buf)) {
             u32 read_bytes = sizeof(buf);
             while ((read_len = fread(buf, 1, read_bytes, fp_read)) > 0) {
                 write_len = fwrite(buf, 1, read_len, fp_write);
                 if (write_len != read_len) {
-				#ifdef __ANDROID__
-                    Log.e(TAG, "1 write %s  mismatch(%d %d)\n", name, write_len, read_len);
-				#else
-                    DBG_ERR("1 write %s  mismatch(%d %d)\n", name,write_len, read_len);
-				#endif
                     // force to zero while fwrite error
                     goto EXIT;
                 } else {
@@ -383,21 +279,11 @@ bool gen_file(const char *name, u32 file_size, FILE *fp_read)
         } else {
             read_len = fread(buf, 1, max_read_size, fp_read);
             if (read_len != max_read_size) {
-			#ifdef __ANDROID__
-                Log.e(TAG,"2read %s len mismatch(%d %d)\n",name,read_len,max_read_size);
-			#else
-                DBG_ERR("2read %s len mismatch(%d %d)\n",name,read_len,max_read_size);
-			#endif
                 goto EXIT;
             }
 			
             write_len = fwrite(buf, 1, read_len, fp_write);
             if (write_len != read_len) {
-            #ifdef __ANDROID__
-                Log.e(TAG,"2write %s mismatch(%d %d)\n",name, write_len, read_len);
-			#else
-                DBG_ERR("2write %s mismatch(%d %d)\n",name, write_len, read_len);
-			#endif
                 // force to zero while fwrite error
                 goto EXIT;
             } else {
@@ -406,11 +292,6 @@ bool gen_file(const char *name, u32 file_size, FILE *fp_read)
         }
 
         if (gen_file_size != file_size) {
-		#ifdef __ANDROID__
-            Log.e(TAG, "gen %s file size mismatch(%d %d)\n", name, gen_file_size, file_size);
-		#else
-            DBG_ERR("gen %s file size mismatch(%d %d)\n", name, gen_file_size, file_size);
-		#endif
         } else {
             bRet = true;
             // confirm data written to file
@@ -466,31 +347,26 @@ int update_test_itself()
     return ret;
 }
 
-
-
+#define ENABLE_BAT_CHECK
 bool is_bat_enough()
 {
-
+#ifdef __ANDROID__
 #ifdef ENABLE_BAT_CHECK
-
     bool ret = false;
     sp<battery_interface> mBat = sp<battery_interface>(new battery_interface());
     if (mBat == nullptr) {
-        Log.e(TAG,"bat creat error\n");
     } else {
         if (mBat->is_enough() == 0) {
             ret = true;
         }
-    }
-	
-    if (!ret) {
-        Log.e(TAG,"is_bat_enough false\n");
-    }
+    }	
     return ret;
 	
 #else
-    Log.e(TAG, "disable bat check\n");
     return true;
 #endif
 
+#else
+    return true;
+#endif
 }

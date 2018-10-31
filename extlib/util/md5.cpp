@@ -8,7 +8,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <log/stlog.h>
+#include <log/log_wrapper.h>
+
 
 #define READ_DATA_SIZE	1024
 //b"\xe4\xaf\x85\x98`U\xfc\x91\x85-\xc1p\xac\xbe\xf1y\x84\r\x8b`\xbal\xec4\x04K'\xd4\x7f\xf5\xfe\x06"
@@ -298,7 +299,7 @@ bool check_file_key_md5(const char *file_path)
 //    printf("file size %d left size %d\n",file_size,left_size);
     fd = open(file_path, O_RDONLY);
     if (-1 == fd) {
-        Log.e(TAG, "open [%s] failed", file_path);
+        LOGERR(TAG, "open [%s] failed", file_path);
         return false;
     }
 
@@ -314,7 +315,7 @@ bool check_file_key_md5(const char *file_path)
             MD5Update(&md5, data, ret);
             left_size -= ret;
         } else {
-            Log.e(TAG, "err read size %d\n",ret);
+            LOGERR(TAG, "err read size %d\n",ret);
             goto EXIT;
         }
     }
@@ -324,7 +325,7 @@ bool check_file_key_md5(const char *file_path)
 
 
     if (ret != MD5_STR_LEN) {
-        Log.e(TAG, "read mismatch(%d %d)\n", MD5_STR_LEN, ret);
+        LOGERR(TAG, "read mismatch(%d %d)\n", MD5_STR_LEN, ret);
         goto EXIT;
     }
     close(fd);
@@ -342,7 +343,7 @@ bool check_file_key_md5(const char *file_path)
     if(strcmp(md5_check, md5_str) == 0) {
         bRet = true;
     } else {
-		Log.e(TAG, "mismatch read md5 check(%s %s)", md5_check, md5_str);
+		LOGERR(TAG, "mismatch read md5 check(%s %s)", md5_check, md5_str);
 	}
 
 EXIT:

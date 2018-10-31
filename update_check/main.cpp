@@ -22,6 +22,7 @@
 ** V3.0			skymixos	2018年09月08日			将提取pro2_update.zip及解压pro2_update.zip的任务
 **													交由update_check处理，并将升级包存放于/mnt/update/下
 ** V3.1			skymixos    2018年10月29日			更改挂载检测时间
+** V3.2			skymixos	2018年10月31日			使用新的日志系统
 ******************************************************************************************************/
 
 
@@ -51,20 +52,20 @@
 #include <sys/stat.h>
 #include <sys/ins_types.h>
 #include <util/msg_util.h>
+
 #include <common/sp.h>
 #include <sys/sig_util.h>
 #include <update/update_util.h>
-#include <update/dbg_util.h>
-#include <log/stlog.h>
 #include <update/update_oled.h>
 #include <util/md5.h>
-#include <log/arlog.h>
 #include <system_properties.h>
 #include <string>
 
 #include <sys/types.h>
 #include <dirent.h>
 #include <prop_cfg.h>
+
+#include <log/log_wrapper.h>
 
 #include <sys/Process.h>
 #include <sys/NetlinkManager.h>
@@ -86,11 +87,13 @@ using namespace std;
 /*
  * 升级程序的日志文件路径
  */
-#define UPDATE_LOG_PATH 		"/home/nvidia/insta360/log/uc_log" 
+#define UPDATE_LOG_PATH 		"/home/nvidia/insta360/log" 
+#define UPDATE_LOG_NAME			"uc_log"
+
 #define UPDATE_APP_ZIP 			"update_app.zip"
 #define UPDATE_APP_DEST_PATH	"/usr/local/bin"
 #define UPDATE_DEST_BASE_DIR	"/mnt/update/"
-#define UPDAE_CHECK_VER			"V3.1"
+#define UPDAE_CHECK_VER			"V3.2"
 #define TMP_UNZIP_PATH			"/tmp/update"	/* 解压升级包的目标路径 */
 #define PRO_UPDATE_ZIP			"pro2_update.zip"
 
@@ -105,7 +108,6 @@ enum {
 	ERROR_UNZIP_UPDATE_APP = -7,
 	ERROR_GET_PRO2_UPDAET_ZIP = -8,
 	ERROR_UNZIP_PRO2_UPDATE = -9,
-	
 };
 
 extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit);
@@ -157,7 +159,7 @@ static bool conv_str2ver(const char* str_ver, SYS_VERSION* pVer)
         return false;
     }
     pVer->major_ver = atoi(major);
-	Log.d(TAG, "board major: %d", pVer->major_ver);
+	LOGDBG(TAG, "board major: %d", pVer->major_ver);
 
     phead = pmajor_end + 1;
     pminor_end = strstr(phead, ".");
@@ -170,7 +172,7 @@ static bool conv_str2ver(const char* str_ver, SYS_VERSION* pVer)
         return false;
     }
     pVer->minor_ver = atoi(minor);
-	Log.d(TAG, "board minor: %d", pVer->minor_ver);
+	LOGDBG(TAG, "board minor: %d", pVer->minor_ver);
 
 
     phead = pminor_end + 1;
@@ -179,7 +181,7 @@ static bool conv_str2ver(const char* str_ver, SYS_VERSION* pVer)
         return false;
     }
     pVer->release_ver = atoi(release);
-	Log.d(TAG, "board release: %d", pVer->release_ver);
+	LOGDBG(TAG, "board release: %d", pVer->release_ver);
 
     return true;
 }
@@ -188,30 +190,30 @@ static bool conv_str2ver(const char* str_ver, SYS_VERSION* pVer)
 static bool isNeedUpdate(SYS_VERSION* old_ver, SYS_VERSION* cur_ver)
 {
 	bool isUpdate = false;
-	Log.d(TAG, "board version [%d.%d.%d]", old_ver->major_ver, old_ver->minor_ver, old_ver->release_ver);
-	Log.d(TAG, "image version [%d.%d.%d]", cur_ver->major_ver, cur_ver->minor_ver, cur_ver->release_ver);
+	LOGDBG(TAG, "board version [%d.%d.%d]", old_ver->major_ver, old_ver->minor_ver, old_ver->release_ver);
+	LOGDBG(TAG, "image version [%d.%d.%d]", cur_ver->major_ver, cur_ver->minor_ver, cur_ver->release_ver);
 	
 	if (cur_ver->major_ver > old_ver->major_ver) {	/* 主版本号更新,不用比较次版本号和修订版本号 */
-		Log.d(TAG, "new major version found, update!");
+		LOGDBG(TAG, "new major version found, update!");
 		isUpdate = true;
 	} else if (cur_ver->major_ver == old_ver->major_ver) {	/* 主版本一致需要比较次版本号 */
 		if (cur_ver->minor_ver > old_ver->minor_ver) {	/* 次版本号更新,不用比较修订版本号 */
-			Log.d(TAG, "major is equal, but minor is new, update!");
+			LOGDBG(TAG, "major is equal, but minor is new, update!");
 			isUpdate = true;
 		} else if (cur_ver->minor_ver == old_ver->minor_ver) {	/* 主,次版本号一致,比较修订版本号 */
 			if (cur_ver->release_ver > old_ver->release_ver) {
-				Log.d(TAG, "new release version found, update!");
+				LOGDBG(TAG, "new release version found, update!");
 				isUpdate = true;
 			} else {
-				Log.d(TAG, "old relase version, just pass!");
+				LOGDBG(TAG, "old relase version, just pass!");
 				isUpdate = false;
 			}
 		} else {
-			Log.d(TAG, "cur minor is oleder than board, jost pass!");
+			LOGDBG(TAG, "cur minor is oleder than board, jost pass!");
 			isUpdate = false;
 		}	
 	} else {
-		Log.d(TAG, "cur major is older than board, just pass!");
+		LOGDBG(TAG, "cur major is older than board, just pass!");
 		isUpdate = false;
 	}
 	return isUpdate;
@@ -243,11 +245,11 @@ static bool upateVerCheck(SYS_VERSION* pVer)
 	if ((pSysVer = property_get(PROP_SYS_FIRM_VER)) ) {
 		/* 将属性字符串转换为SYS_VERSION结果进行比较 */
 		sprintf(ver_str, "%s", pSysVer);
-		Log.d(TAG, "version_check: version str[%s]", pSysVer);
+		LOGDBG(TAG, "version_check: version str[%s]", pSysVer);
 		conv_str2ver(pSysVer, &old_ver);
 		return isNeedUpdate(&old_ver, pVer);
 	} else {
-		Log.d(TAG, "version file not exist, maybe first update!");
+		LOGDBG(TAG, "version file not exist, maybe first update!");
 	}
     return bRet;
 }
@@ -275,7 +277,7 @@ static void setLastFirmVer2Prop(const char* ver_path)
 			pret = fgets(sys_ver, sizeof(sys_ver), fp);
 			if (pret) {
 				str_trim(sys_ver);
-				Log.d(TAG, "get sys_ver [%s]", sys_ver);
+				LOGDBG(TAG, "get sys_ver [%s]", sys_ver);
 				property_set(PROP_SYS_FIRM_VER, sys_ver);
 			}
 			fclose(fp);
@@ -297,25 +299,25 @@ static int copyUpdateFile2Memory(const char* dstFile, const char* srcFile)
     args[2] = srcFile;
 	args[3] = dstFile;
 
-	Log.d(TAG, "[%s: %d] Copy Cmd [%s %s %s %s]", __FILE__, __LINE__, args[0], args[1], args[2], args[3]);
+	LOGDBG(TAG, "Copy Cmd [%s %s %s %s]", args[0], args[1], args[2], args[3]);
 
     iRet = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
     if (iRet != 0) {
-        Log.e(TAG, "copyUpdateFile2Memory failed due to logwrap error");
+        LOGERR(TAG, "copyUpdateFile2Memory failed due to logwrap error");
         return -1;
     }
 
     if (!WIFEXITED(status)) {
-        Log.e(TAG, "mocopyUpdateFile2Memoryunt sub process did not exit properly");
+        LOGERR(TAG, "mocopyUpdateFile2Memoryunt sub process did not exit properly");
         return -1;
     }
 
     status = WEXITSTATUS(status);
     if (status == 0) {
-        Log.d(TAG, ">>>> copyUpdateFile2Memory OK");
+        LOGDBG(TAG, ">>>> copyUpdateFile2Memory OK");
         return 0;
     } else {
-        Log.e(TAG, ">>> copyUpdateFile2Memory failed (unknown exit code %d)", status);
+        LOGERR(TAG, ">>> copyUpdateFile2Memory failed (unknown exit code %d)", status);
         return -1;
     }
 }
@@ -332,14 +334,14 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 
 	uReadLen = fread(buf, 1, HEADER_CONENT_LEN, fp);
 	if (uReadLen != HEADER_CONENT_LEN) {
-		Log.e(TAG, "[%s: %d] get_unzip_update_app: header len mismatch(%d %d)", __FILE__, __LINE__, uReadLen, HEADER_CONENT_LEN);
+		LOGERR(TAG, "get_unzip_update_app: header len mismatch(%d %d)", uReadLen, HEADER_CONENT_LEN);
 		return ERROR_GET_PRO2_UPDAET_ZIP;
 	}
 
 
 	uHeadLen = bytes_to_int(buf);
 	if (uHeadLen != sizeof(UPDATE_HEADER)) {
-		Log.e(TAG, "[%s: %d] get_unzip_update_app: header content len mismatch1(%u %zd)", __FILE__, __LINE__, uHeadLen, sizeof(UPDATE_HEADER));
+		LOGERR(TAG, "get_unzip_update_app: header content len mismatch1(%u %zd)", uHeadLen, sizeof(UPDATE_HEADER));
 		return ERROR_GET_PRO2_UPDAET_ZIP;
 	}
 
@@ -347,7 +349,7 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 	memset(buf, 0, sizeof(buf));
 	uHeadLen = fread(buf, 1, uHeadLen, fp);
 	if (uHeadLen != uHeadLen) {
-		Log.e(TAG, "[%s: %d]get_unzip_update_app: header content len mismatch2(%d %d)", __FILE__, __LINE__, uHeadLen, uHeadLen);
+		LOGERR(TAG, "get_unzip_update_app: header content len mismatch2(%d %d)", uHeadLen, uHeadLen);
 		return ERROR_GET_PRO2_UPDAET_ZIP;
 	}	
 
@@ -356,7 +358,7 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 	#if 0
 	/* 检查头部 */
 	if (!check_header_match(&gstHeader)) {
-		Log.e(TAG, "get_unzip_update_app: check header match failed...");
+		LOGERR(TAG, "get_unzip_update_app: check header match failed...");
 		return ERROR_GET_PRO2_UPDAET_ZIP;
 	}	
 	#endif
@@ -370,14 +372,14 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 	/* 提取升级压缩包:    pro2_update.zip */
 	if (gen_file(pPro2UpdatePackagePath, iPro2updateZipLen, fp)) {	/* 从Insta360_Pro2_Update.bin中提取pro2_update.zip */
 		if (tar_zip(pPro2UpdatePackagePath, UPDATE_DEST_BASE_DIR) == 0) {	/* 解压压缩包到TMP_UNZIP_PATH目录中 */
-			Log.d(TAG, "[%s: %d] unzip pro2_update.zip to [%s] success...", __FILE__, __LINE__, pPro2UpdatePackagePath);
+			LOGDBG(TAG, "unzip pro2_update.zip to [%s] success...", pPro2UpdatePackagePath);
 			return ERROR_SUCCESS;
 		} else {
-			Log.e(TAG, "[%s: %d] unzip pro_update.zip to [%s] failed...", __FILE__, __LINE__, pPro2UpdatePackagePath);
+			LOGERR(TAG, "unzip pro_update.zip to [%s] failed...", pPro2UpdatePackagePath);
 			return ERROR_UNZIP_PRO2_UPDATE;
 		}
 	} else {
-		Log.e(TAG, "get update_app.zip %s fail", pPro2UpdatePackagePath);
+		LOGERR(TAG, "get update_app.zip %s fail", pPro2UpdatePackagePath);
 		return ERROR_GET_PRO2_UPDAET_ZIP;
 	}	
 }
@@ -403,15 +405,15 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
 	SYS_VERSION* pVer = NULL;
 		
     if (!check_file_key_md5(pUpdateFilePathName)) {		/* 文件的MD5值进行校验: 校验失败返回-1 */
-        Log.e(TAG, "[%s: %d] Update File[%s] MD5 Check Error", __FILE__, __LINE__, pUpdateFilePathName);
+        LOGERR(TAG, "Update File[%s] MD5 Check Error", pUpdateFilePathName);
 		return ERROR_MD5_CHECK;
     }
 
-	Log.d(TAG, "[%s: %d] Update File[%s] MD5 Check Success", __FILE__, __LINE__, pUpdateFilePathName);
+	LOGDBG(TAG, "Update File[%s] MD5 Check Success", pUpdateFilePathName);
 	
     fp = fopen(pUpdateFilePathName, "rb");	
     if (!fp) {	/* 文件打开失败返回-1 */
-        Log.e(TAG, "[%s: %d] Open Update File[%s] fail", __FILE__, __LINE__, pUpdateFilePathName);
+        LOGERR(TAG, "Open Update File[%s] fail", pUpdateFilePathName);
         return ERROR_OPEN_UPDATE_FILE;
     }
 
@@ -421,14 +423,14 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
 	/* 读取文件的PF_KEY */
     uReadLen = fread(buf, 1, strlen(key), fp);
     if (uReadLen != strlen(key)) {
-        Log.e(TAG, "[%s: %d] Read key len mismatch(%u %zd)", __FILE__, __LINE__, uReadLen, strlen(key));
+        LOGERR(TAG, "Read key len mismatch(%u %zd)", uReadLen, strlen(key));
 		fclose(fp);
 		return ERROR_READ_LEN;
     }
 
 	
     if (strcmp((const char *)buf, key) != 0) {
-        Log.e(TAG, "[%s: %d] key mismatch(%s %s)", __FILE__, __LINE__, key, buf);
+        LOGERR(TAG, "key mismatch(%s %s)", key, buf);
 		fclose(fp);
 		return ERROR_KEY_MISMATCH;
     }
@@ -438,20 +440,20 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
     memset(buf, 0, sizeof(buf));
     uReadLen = fread(buf, 1, sizeof(SYS_VERSION), fp);
     if (uReadLen != sizeof(SYS_VERSION)) {
-        Log.e(TAG, "[%s: %d] read version len mismatch(%u 1)", uReadLen);
+        LOGERR(TAG, "read version len mismatch(%u 1)", uReadLen);
         fclose(fp);
 		return ERROR_READ_LEN;
     }
 
 	pVer = (SYS_VERSION*)buf;
-	Log.d(TAG, "image version: [%d.%d.%d]", pVer->major_ver, pVer->minor_ver, pVer->release_ver);
+	LOGDBG(TAG, "image version: [%d.%d.%d]", pVer->major_ver, pVer->minor_ver, pVer->release_ver);
 	
 	sprintf(ver_str, "%d.%d.%d", pVer->major_ver, pVer->minor_ver, pVer->release_ver);
 	property_set(PROP_SYS_IMAGE_VER, ver_str);
 
 
 	if (upateVerCheck(pVer) == false) {
-		Log.d(TAG, "[%s: %d] Need not Update version", __FILE__, __LINE__);
+		LOGDBG(TAG, "Need not Update version");
 		fclose(fp);
 		return ERROR_LOW_VERSION;
 	}
@@ -461,7 +463,7 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
     memset(buf, 0, sizeof(buf));
     uReadLen = fread(buf, 1, UPDATE_APP_CONTENT_LEN, fp);
     if (uReadLen != UPDATE_APP_CONTENT_LEN) {
-        Log.e(TAG, "[%s: %d] update app len mismatch(%d %d)", __FILE__, __LINE__, uReadLen, UPDATE_APP_CONTENT_LEN);
+        LOGERR(TAG, "update app len mismatch(%d %d)", uReadLen, UPDATE_APP_CONTENT_LEN);
 		return ERROR_READ_LEN;
     }
 	iPro2UpdateOffset += uReadLen;	/* UPDATE_APP_CONTENT_LEN */
@@ -474,31 +476,31 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
 
 	iPro2UpdateOffset += iUpdateAppLen;	/* 得到pro2_update HEAD_LEN在文件中的偏移 */
 
-	Log.d(TAG, "[%s: %d] update_app.zip full path: %s", pUpdateAppPathName);
+	LOGDBG(TAG, "update_app.zip full path: %s", pUpdateAppPathName);
 	
 	/* 提取/mnt/update/update_app.zip */
     if (gen_file(pUpdateAppPathName, iUpdateAppLen, fp)) {
 		
 		/* 将/mnt/update/update_app.zip直接解压到/usr/local/bin/目录下 */
         if (tar_zip(pUpdateAppPathName, UPDATE_APP_DEST_PATH) == 0) {	/* 直接将其解压到/usr/local/bin目录下 */
-			Log.d(TAG, "[%s: %d] unzip update_app to [%s] Success", __FILE__, __LINE__, UPDATE_APP_DEST_PATH);
+			LOGDBG(TAG, "unzip update_app to [%s] Success", UPDATE_APP_DEST_PATH);
 			
 			int iErr = getPro2UpdatePackage(fp, iPro2UpdateOffset);
 			if (iErr == ERROR_SUCCESS) {
-				Log.d(TAG, "[%s: %d] Congratulations, get Pro2_update Success", __FILE__, __LINE__);
+				LOGDBG(TAG, "Congratulations, get Pro2_update Success");
 			} else {
-				Log.d(TAG, "[%s: %d] get Pro2_update Failed", __FILE__, __LINE__);
+				LOGDBG(TAG, "get Pro2_update Failed");
 			}
 			fclose(fp);
 			return iErr;
 
         } else {	/* 解压update_app.zip文件出错 */
-			Log.e(TAG, "[%s: %d] unzip update_app.zip failed...", __FILE__, __LINE__);
+			LOGERR(TAG, "unzip update_app.zip failed...");
             fclose(fp);
 			return ERROR_UNZIP_UPDATE_APP;
         }
     } else {	/* 提取update_app.zip文件出错 */
-		Log.e(TAG, "[%s: %d] extrac update_app.zip failed...", __FILE__, __LINE__);
+		LOGERR(TAG, "extrac update_app.zip failed...");
         fclose(fp);
 		return ERROR_GET_UPDATE_APP_ZIP;
     }
@@ -514,12 +516,12 @@ static int exportGpio(int iGpio)
 	char gpioPath[512] = {0};
 	sprintf(gpioPath, "/sys/class/gpio/gpio%d", iGpio);
 
-	Log.d(TAG, "check gpio path: %s", gpioPath);
+	LOGDBG(TAG, "check gpio path: %s", gpioPath);
 
 	if (access(gpioPath, F_OK)) {	/* Not export */
 		char cmd[512] = {0};
 		sprintf(cmd, "echo %d > /sys/class/gpio/export", iGpio);
-		Log.d(TAG, "export cmd: %s", cmd);
+		LOGDBG(TAG, "export cmd: %s", cmd);
 		if (system(cmd)) return -1;
 	}
 	return 0;
@@ -538,18 +540,18 @@ static void resetIC(int iGpio)
 
 	std::string sGpioDirectionPath(directionPath);
 	std::string setOutputcmd = "echo out > " + sGpioDirectionPath;
-	Log.d("set output cmd: %s", setOutputcmd.c_str());
+	LOGDBG("set output cmd: %s", setOutputcmd.c_str());
 	system(setOutputcmd.c_str());
 
 	std::string sGpioValPath(valPath);
 	std::string setValCmd = "echo 1 > " + sGpioValPath;
-	Log.d("set val cmd: %s", setValCmd.c_str());
+	LOGDBG("set val cmd: %s", setValCmd.c_str());
 	system(setValCmd.c_str());
 
 	msg_util::sleep_ms(100);
 
 	setValCmd = "echo 0 > " + sGpioValPath;
-	Log.d("set val cmd: %s", setValCmd.c_str());
+	LOGDBG("set val cmd: %s", setValCmd.c_str());
 	system(setValCmd.c_str());
 }
 #endif
@@ -561,7 +563,7 @@ static void resetIC(int iGpio)
  */
 static void resetSdSlot()
 {
-	Log.d(TAG, "[%s: %d] Reset SD Slot First", __FILE__, __LINE__);
+	LOGDBG(TAG, "Reset SD Slot First");
 
 #ifdef HW_PLATFORM_TITAN	
 
@@ -572,7 +574,7 @@ static void resetSdSlot()
 	pSdResetProp = property_get(PROP_SD_RESET_GPIO);
 	if (pSdResetProp) {
 		iDefaultSdResetGpio = atoi(pSdResetProp);
-		Log.d(TAG, "[%s: %d] Use Property Sd Reset GPIO: %d", __FILE__, __LINE__, iDefaultSdResetGpio);
+		LOGDBG(TAG, "Use Property Sd Reset GPIO: %d", iDefaultSdResetGpio);
 	}
 
 	/* 检查该GPIO是否已经导出 */
@@ -606,18 +608,17 @@ int main(int argc, char **argv)
 {
 	int iRet = -1;
 	const char* pUcDelayStr = NULL;	
-	long iDelay = 0;
 
     registerSig(default_signal_handler);	/* 注册信号处理函数 */
     signal(SIGPIPE, pipe_signal_handler);
 
-	arlog_configure(true, true, UPDATE_LOG_PATH, false);	/* 配置日志 */
-
 	iRet = __system_properties_init();		/* 属性区域初始化，方便程序使用属性系统 */
 	if (iRet) {
-		Log.e(TAG, "update_check service exit: __system_properties_init() faile, ret = %d", iRet);
+		fprintf(stderr, "update_check service exit: __system_properties_init() faile, ret = %d\n", iRet);
 		return -1;
 	}
+
+    LogWrapper::init(UPDATE_LOG_PATH, UPDATE_LOG_NAME, true);
 
 	property_set(PROP_SYS_UC_VER, UPDAE_CHECK_VER);		/* 将程序的版本更新到属性系统中 */
 
@@ -625,9 +626,9 @@ int main(int argc, char **argv)
 	property_set(PROP_RO_MOUNT_TF, "true");
 
 
-	Log.d(TAG, "\n\n>>>>>>>>>>> Service: update_check starting (Version: %s) ^_^ <<<<<<<<<<", property_get(PROP_SYS_UC_VER));
+	LOGDBG(TAG, "\n\n>>>>>>>>>>> Service: update_check starting (Version: %s) ^_^ <<<<<<<<<<", property_get(PROP_SYS_UC_VER));
 
-	Log.d(TAG, "[%s: %d] get prop: [sys.tf_mount_ro] = %s", __FILE__, __LINE__, property_get(PROP_RO_MOUNT_TF));
+	LOGDBG(TAG, "get prop: [sys.tf_mount_ro] = %s", property_get(PROP_RO_MOUNT_TF));
 
 	/** 复位一下SD卡模块，使得在有SD卡的情况下可以识别到 */
 	resetSdSlot();
@@ -635,7 +636,7 @@ int main(int argc, char **argv)
 	/** 启动卷管理器,用于挂载升级设备 */
     VolumeManager* vm = VolumeManager::Instance();
     if (vm) {
-        Log.d(TAG, "[%s: %d] +++++++++++++ Start Vold(2.5) Manager +++++++++++", __FILE__, __LINE__);
+        LOGDBG(TAG, "+++++++++++++ Start Vold(2.5) Manager +++++++++++");
         vm->start();
     }
 
@@ -646,6 +647,7 @@ int main(int argc, char **argv)
 	 * prop: "ro.delay_uc_time"
 	 */
 	pUcDelayStr = property_get("ro.delay_uc_time");	
+	int iDelay = 0;
 	if (pUcDelayStr != NULL) {
 		iDelay = atol(pUcDelayStr);
 		if (iDelay < 0 || iDelay > 20)
@@ -668,20 +670,20 @@ int main(int argc, char **argv)
 
 		const char* pUpdateFilePathName = updateFilePathName.c_str();
 		
-		Log.d(TAG, "[%s: %d] Update image file path name -> %s", __FILE__, __LINE__, pUpdateFilePathName);
+		LOGDBG(TAG, "Update image file path name -> %s", pUpdateFilePathName);
 
 		if (access(pUpdateFilePathName, F_OK) == 0) {	/* 升级镜像存在 */
 			
 			struct stat fileStat;
 			if (stat(pUpdateFilePathName, &fileStat)) {
-				Log.e(TAG, "[%s: %d] stat file prop failed", __FILE__, __LINE__);
+				LOGERR(TAG, "stat file prop failed");
 				goto err_stat;
 			} else {
 
 				/* 对于值为0的常规文件会直接删除 */
 				if (S_ISREG(fileStat.st_mode) && (fileStat.st_size > 0)) {
 					
-					Log.d(TAG, "[%s: %d] Image is regular file", __FILE__, __LINE__);
+					LOGDBG(TAG, "Image is regular file");
 
 					string dstUpdateFilePath;
 					const char* pImgDstPath = property_get(PROP_UPDATE_IMAG_DST_PATH);
@@ -721,20 +723,17 @@ int main(int argc, char **argv)
 
 							property_set(PROP_RO_MOUNT_TF, "false");	/* 恢复以读写方式挂载 */	
 
-							Log.d(TAG, "[%s: %d] Enter the real update program", __FILE__, __LINE__);
-							
-							arlog_close();	
+							LOGDBG(TAG, "Enter the real update program");							
 							return 0;
 
 						} else {	/* 直接启动APP */
-							Log.d(TAG, "[%s: %d] Skip this version, start app now...", __FILE__, __LINE__);
+							LOGDBG(TAG, "Skip this version, start app now...");
 							goto err_low_ver;
 						}
 					} else {
-						Log.e(TAG, "[%s: %d] Parse update file Failed", __FILE__, __LINE__);
+						LOGERR(TAG, "Parse update file Failed");
 
 						int iType;
-						arlog_close();	
 
 						/* 提示失败的原因，并倒计时重启 */
 						vm->unmountCurLocalVol();
@@ -764,7 +763,7 @@ int main(int argc, char **argv)
 						start_reboot();
 					}
 				} else {
-					Log.d(TAG, "[%s: %d] Update file is Not regular file, delete it", __FILE__, __LINE__);
+					LOGDBG(TAG, "Update file is Not regular file, delete it");
 					string delUpdateFile = "rm ";
 					delUpdateFile += pUpdateFilePathName;
 					system(delUpdateFile.c_str());
@@ -772,12 +771,12 @@ int main(int argc, char **argv)
 				}
 			}
 		} else {	/* 升级文件不存在 */
-			Log.e(TAG, "[%s: %d] Update file [%s] Not exist in current update device", __FILE__, __LINE__, pUpdateFilePathName);
+			LOGERR(TAG, "Update file [%s] Not exist in current update device", pUpdateFilePathName);
 			goto no_update_file;
 		}
 
 	} else {
-		Log.d(TAG, "[%s: %d] Local storage device Not exist or Not Mounted, start app now ...", __FILE__, __LINE__);
+		LOGDBG(TAG, "Local storage device Not exist or Not Mounted, start app now ...");
 		goto no_update_device;
 	}
 
@@ -788,11 +787,9 @@ no_update_file:
 	vm->unmountCurLocalVol();
 
 no_update_device:
-
-	arlog_close();	/* 关闭日志 */	
 	property_set(PROP_RO_MOUNT_TF, "false");	/* 恢复以读写方式挂载 */		
 	property_set(PROP_UC_START_APP, "true");	/* 不需要重启,直接通知init进程启动其他服务 */	
-	property_set(PROP_BOOTAN_NAME, "false");	/* 关闭动画服务 */
+	// property_set(PROP_BOOTAN_NAME, "false");	/* 关闭动画服务 */
 	return 0;
 }
 

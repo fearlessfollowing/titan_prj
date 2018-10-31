@@ -39,13 +39,9 @@
 #include <sys/sig_util.h>
 #include <common/check.h>
 #include <update/update_util.h>
-#include <update/dbg_util.h>
 #include <update/update_oled.h>
 #include <hw/oled_module.h>
 
-#include <util/icon_ascii.h>
-#include <log/arlog.h>
-#include <system_properties.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -56,6 +52,11 @@
 #include <string>
 #include <prop_cfg.h>
 
+#include <util/icon_ascii.h>
+#include <system_properties.h>
+
+
+#include <log/log_wrapper.h>
 
 using namespace std;
 
@@ -179,7 +180,7 @@ static int parse_sections(std::vector<sp<UPDATE_SECTION>>& sections, const char*
 				strcpy(dst_path, ps_end);
 				strcpy(pCur->dst_path, ps_end);
 				
-				Log.d(TAG, "section name [%s], dest name: [%s]", pCur->cname, pCur->dst_path);
+				LOGDBG(TAG, "section name [%s], dest name: [%s]", pCur->cname, pCur->dst_path);
 
 				pCur->mContents.clear();
 
@@ -196,7 +197,7 @@ static int parse_sections(std::vector<sp<UPDATE_SECTION>>& sections, const char*
 				/* 正常的行,将其加入到就近的段中 */
 				pItem = (sp<UPDATE_ITEM_INFO>)(new UPDATE_ITEM_INFO());
 				strcpy(pItem->name, line);
-				Log.d(TAG, "section [%s] add item[%s]", pCur->cname, pItem->name);
+				LOGDBG(TAG, "section [%s] add item[%s]", pCur->cname, pItem->name);
 				pCur->mContents.push_back(pItem);
 			}
 			
@@ -207,7 +208,7 @@ static int parse_sections(std::vector<sp<UPDATE_SECTION>>& sections, const char*
 			iRet = 0;
 		
 		/* 打印解析出的段的个数 */
-		Log.d(TAG, "sections size: %d", sections.size());
+		LOGDBG(TAG, "sections size: %d", sections.size());
 	}
 
 	if (fp)
@@ -236,11 +237,11 @@ static bool check_header_match(UPDATE_HEADER * pstTmp)
         if (pstTmp->mid == get_mid()) {
             bRet = true;
         } else {
-            Log.e(TAG, "header mismatch mid(%d %d)\n", pstTmp->mid, get_mid());
+            LOGERR(TAG, "header mismatch mid(%d %d)\n", pstTmp->mid, get_mid());
             disp_update_error(ERR_APP_HEADER_MID_MISMATCH);
         }
     } else {
-        Log.e(TAG, "header mismatch cid (%d %d) mid(%d %d)\n", pstTmp->cid, get_cid(), pstTmp->mid, get_mid());
+        LOGERR(TAG, "header mismatch cid (%d %d) mid(%d %d)\n", pstTmp->cid, get_cid(), pstTmp->mid, get_mid());
         disp_update_error(ERR_APP_HEADER_CID_MISMATCH);
     }
     return bRet;
@@ -283,17 +284,17 @@ static int section_cp(const char* update_root_path, sp<UPDATE_SECTION> & section
 		sprintf(dst_path, "%s", section->dst_path);
 		//sprintf(dst_path, "%s/%s", section->dst_path, section->mContents.at(i)->name);
 
-		Log.d(TAG, "cp [%s] -> [%s]", src_path, dst_path);
+		LOGDBG(TAG, "cp [%s] -> [%s]", src_path, dst_path);
 
 		if (access(src_path, F_OK) != 0) {
-			Log.e(TAG, "Warnning: src %s not exist, but in bill.list...", src_path);
+			LOGERR(TAG, "Warnning: src %s not exist, but in bill.list...", src_path);
 			continue;
 		}
 
 		/* 将该文件拷贝到section->dst_path下 */
 		snprintf(cmd, sizeof(cmd), "cp -pfR %s %s", src_path, dst_path);
 		if (exec_sh(cmd) != 0) {
-			Log.e(TAG, "section_cp cmd %s error", cmd);
+			LOGERR(TAG, "section_cp cmd %s error", cmd);
 			iRet = -1;
 		} else {	/* 拷贝成功,确保文件具备执行权限 */
 			if (flag & CP_FLAG_ADD_X) {
@@ -331,15 +332,15 @@ static int update_firmware(const char* update_root_path, sp<UPDATE_SECTION> & se
 	 */
 	for (u32 i = 0; i < section->mContents.size(); i++) {
 
-		Log.d(TAG, "update_firmware: section item[%d] -> [%s]", i, section->mContents.at(i)->name);
+		LOGDBG(TAG, "update_firmware: section item[%d] -> [%s]", i, section->mContents.at(i)->name);
 
 		for (u32 j = 0; j < firm_item_cnt; j++) {
 			
 			memset(src_path, 0, sizeof(src_path));
 			sprintf(src_path, "%s/%s/%s", update_root_path, section->cname, firm_items[j].pname);
-			Log.d(TAG, "update_firmware: item [%s]", src_path);
+			LOGDBG(TAG, "update_firmware: item [%s]", src_path);
 			if (strcmp(firm_items[j].pname, section->mContents.at(i)->name) == 0 && access(src_path, F_OK) == 0) {
-				Log.d(TAG, "item[%s] exist", src_path);
+				LOGDBG(TAG, "item[%s] exist", src_path);
 				firm_items[j].is_exist = 1;	/* 表示确实存在 */
 				iCnt++;
 				break;
@@ -348,13 +349,13 @@ static int update_firmware(const char* update_root_path, sp<UPDATE_SECTION> & se
 	} 
 
 	if (iCnt < firm_item_cnt) {
-		Log.e(TAG, "update_firmware: iCnt[%d], firm_item_cnt[%d],some neccesary file loss...", iCnt, firm_item_cnt);
+		LOGERR(TAG, "update_firmware: iCnt[%d], firm_item_cnt[%d],some neccesary file loss...", iCnt, firm_item_cnt);
 		iRet = ERR_UPAPP_MODUE;
 	} else {
 		/* 2.将固件文件拷贝到目标目录 */
 		iRet = section_cp(update_root_path, section, CP_FLAG_ADD_X);
 		if (iRet) {
-			Log.e(TAG, "update_firmware:  section_cp failed ...");
+			LOGERR(TAG, "update_firmware:  section_cp failed ...");
 			iRet = ERR_UPAPP_MODUE;
 		} else {
 
@@ -368,21 +369,21 @@ static int update_firmware(const char* update_root_path, sp<UPDATE_SECTION> & se
         		iRet = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
 
 				if (iRet != 0) {
-        			Log.e(TAG, "upgrade failed due to logwrap error");
+        			LOGERR(TAG, "upgrade failed due to logwrap error");
         			continue;
     			}
 
 				if (!WIFEXITED(status)) {
-					Log.e(TAG, "upgrade sub process did not exit properly");
+					LOGERR(TAG, "upgrade sub process did not exit properly");
 					return -1;
 				}
 
 				status = WEXITSTATUS(status);
 				if (status == 0) {
-					Log.d(TAG, ">>>> upgrade module OK");
+					LOGDBG(TAG, ">>>> upgrade module OK");
 					break;
 				} else {
-					Log.e(TAG, ">>> upgrade module failed (unknown exit code %d)", status);
+					LOGERR(TAG, ">>> upgrade module failed (unknown exit code %d)", status);
 					continue;
 				}
 			}
@@ -408,7 +409,7 @@ static int update_execute_bin(const char* update_root_path, sp<UPDATE_SECTION> &
 
 	iRet = section_cp(update_root_path, section, CP_FLAG_ADD_X);
 	if (iRet) {
-		Log.e(TAG, "update_execute_bin: failed ...");
+		LOGERR(TAG, "update_execute_bin: failed ...");
 		iRet = ERR_UPAPP_BIN;
 	}
 	return iRet;
@@ -430,7 +431,7 @@ static int update_library(const char* update_root_path, sp<UPDATE_SECTION> & sec
 
 	iRet = section_cp(update_root_path, section, 0);
 	if (iRet) {
-		Log.e(TAG, "update_library: failed ...");
+		LOGERR(TAG, "update_library: failed ...");
 		iRet = ERR_UPAPP_LIB;
 	}
 	return iRet;
@@ -452,7 +453,7 @@ static int update_cfg(const char* update_root_path, sp<UPDATE_SECTION> & section
 
 	iRet = section_cp(update_root_path, section, 0);
 	if (iRet) {
-		Log.e(TAG, "update_cfg: failed ...");
+		LOGERR(TAG, "update_cfg: failed ...");
 		iRet = ERR_UPAPP_CFG;
 	}
 	return iRet;
@@ -473,7 +474,7 @@ static int update_data(const char* update_root_path, sp<UPDATE_SECTION> & sectio
 
 	iRet = section_cp(update_root_path, section, 0);
 	if (iRet) {
-		Log.e(TAG, "update_data: failed ...");
+		LOGERR(TAG, "update_data: failed ...");
 		iRet = ERR_UPAPP_DATA;
 	}
 	return iRet;
@@ -495,7 +496,7 @@ static int update_default(const char* update_root_path, sp<UPDATE_SECTION> & sec
 
 	iRet = section_cp(update_root_path, section, 0);
 	if (iRet) {
-		Log.e(TAG, "update_default: failed ...");
+		LOGERR(TAG, "update_default: failed ...");
 		iRet = ERR_UPAPP_DEFAULT;
 	}
 	return iRet;
@@ -528,7 +529,7 @@ static int update_sections(const char* updat_root_path, std::vector<sp<UPDATE_SE
 		update_step = 1;
 	}
 	
-	Log.d(TAG, "update_step = %d", update_step);
+	LOGDBG(TAG, "update_step = %d", update_step);
 
 	disp_update_icon(start_index);
 
@@ -552,12 +553,12 @@ static int update_sections(const char* updat_root_path, std::vector<sp<UPDATE_SE
 
 		iRet = pfn(updat_root_path, mSection);
 		if (iRet) {	/* 更新某个section失败 */
-			Log.e(TAG, "update section [%s] failed...", mSection->cname);
+			LOGERR(TAG, "update section [%s] failed...", mSection->cname);
 			break;
 		} else {	/* 根据当前section的索引值来更新进度 */
-			Log.d(TAG, "update section [%s] success ...", mSection->cname);
+			LOGDBG(TAG, "update section [%s] success ...", mSection->cname);
 			int index = i / update_step;
-			Log.d(TAG, "index = %d", index);
+			LOGDBG(TAG, "index = %d", index);
 			
 			if (index >= 0 && index <= 5) {
 				disp_update_icon(start_index + index);
@@ -586,22 +587,22 @@ static bool check_require_exist(const char* mount_point, std::vector<sp<UPDATE_S
 
 	/** 检查bill.list文件是否存在,并且解析该文件 */
 	sprintf(bill_path, "%s/%s", mount_point, BILL_REL_PATH);	
-	Log.d(TAG, "bill.list abs path: %s", bill_path);
+	LOGDBG(TAG, "bill.list abs path: %s", bill_path);
 
 	/* 检查bill.list文件是否存在 */
 	if (access(bill_path, F_OK) != 0) {
-		Log.e(TAG, "bill.list not exist, check failed...");
+		LOGERR(TAG, "bill.list not exist, check failed...");
 		return false;
 	}
 
 	/* 解析该配置文件 */
 	iRet = parse_sections(section_list, bill_path);
 	if (iRet) {
-		Log.e(TAG, "parse bill.list failed, please check bill.list...");
+		LOGERR(TAG, "parse bill.list failed, please check bill.list...");
 		return false;
 	}
 
-	Log.d(TAG, "check bill.list success...");
+	LOGDBG(TAG, "check bill.list success...");
     return true;
 }
 
@@ -616,14 +617,14 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 
 	uReadLen = fread(buf, 1, HEADER_CONENT_LEN, fp);
 	if (uReadLen != HEADER_CONENT_LEN) {
-		Log.e(TAG, "[%s: %d] getPro2UpdatePackage: header len mismatch(%d %d)", __FILE__, __LINE__, uReadLen, HEADER_CONENT_LEN);
+		LOGERR(TAG, "[%s: %d] getPro2UpdatePackage: header len mismatch(%d %d)", __FILE__, __LINE__, uReadLen, HEADER_CONENT_LEN);
 		return -1;
 	}
 
 
 	uHeadLen = bytes_to_int(buf);
 	if (uHeadLen != sizeof(UPDATE_HEADER)) {
-		Log.e(TAG, "[%s: %d] get_unzip_update_app: header content len mismatch1(%u %zd)", __FILE__, __LINE__, uHeadLen, sizeof(UPDATE_HEADER));
+		LOGERR(TAG, "[%s: %d] get_unzip_update_app: header content len mismatch1(%u %zd)", __FILE__, __LINE__, uHeadLen, sizeof(UPDATE_HEADER));
 		return -1;
 	}
 
@@ -631,7 +632,7 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 	memset(buf, 0, sizeof(buf));
 	uHeadLen = fread(buf, 1, uHeadLen, fp);
 	if (uHeadLen != uHeadLen) {
-		Log.e(TAG, "[%s: %d]get_unzip_update_app: header content len mismatch2(%d %d)", __FILE__, __LINE__, uHeadLen, uHeadLen);
+		LOGERR(TAG, "[%s: %d]get_unzip_update_app: header content len mismatch2(%d %d)", __FILE__, __LINE__, uHeadLen, uHeadLen);
 		return -1;
 	}	
 
@@ -646,19 +647,19 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 	pro2UpdatePath += PRO_UPDATE_ZIP;
 	const char* pPro2UpdatePackagePath = pro2UpdatePath.c_str();
 
-	Log.d(TAG, "[%s: %d] get pro2_update.zip dest path: %s", __FILE__, __LINE__, pPro2UpdatePackagePath);
+	LOGDBG(TAG, "[%s: %d] get pro2_update.zip dest path: %s", __FILE__, __LINE__, pPro2UpdatePackagePath);
 
 	/* 提取升级压缩包:    pro2_update.zip */
 	if (gen_file(pPro2UpdatePackagePath, iPro2updateZipLen, fp)) {	/* 从Insta360_Pro2_Update.bin中提取pro2_update.zip */
 		if (tar_zip(pPro2UpdatePackagePath, UPDATE_DEST_BASE_DIR) == 0) {	
-			Log.d(TAG, "[%s: %d] unzip pro2_update.zip to [%s] success...", __FILE__, __LINE__, UPDATE_DEST_BASE_DIR);
+			LOGDBG(TAG, "[%s: %d] unzip pro2_update.zip to [%s] success...", __FILE__, __LINE__, UPDATE_DEST_BASE_DIR);
 			return 0;
 		} else {
-			Log.e(TAG, "[%s: %d] unzip pro_update.zip to [%s] failed...", __FILE__, __LINE__, pPro2UpdatePackagePath);
+			LOGERR(TAG, "[%s: %d] unzip pro_update.zip to [%s] failed...", __FILE__, __LINE__, pPro2UpdatePackagePath);
 			return -1;
 		}
 	} else {
-		Log.e(TAG, "get update_app.zip %s fail", pPro2UpdatePackagePath);
+		LOGERR(TAG, "get update_app.zip %s fail", pPro2UpdatePackagePath);
 		return -1;
 	}	
 
@@ -684,7 +685,7 @@ static int pro2Updatecheck(const char* pUpdateFileDir)
     	
     fp = fopen(pUpdateFilePathName, "rb");	
     if (!fp) {	/* 文件打开失败返回-1 */
-        Log.e(TAG, "[%s: %d] Open Update File[%s] fail", __FILE__, __LINE__, pUpdateFilePathName);
+        LOGERR(TAG, "[%s: %d] Open Update File[%s] fail", __FILE__, __LINE__, pUpdateFilePathName);
         return -1;
     }	
 
@@ -694,7 +695,7 @@ static int pro2Updatecheck(const char* pUpdateFileDir)
 	/* 读取文件的PF_KEY */
     uReadLen = fread(buf, 1, strlen(FP_KEY), fp);
     if (uReadLen != strlen(FP_KEY)) {
-        Log.e(TAG, "[%s: %d] Read key len mismatch(%u %zd)", __FILE__, __LINE__, uReadLen, strlen(FP_KEY));
+        LOGERR(TAG, "[%s: %d] Read key len mismatch(%u %zd)", __FILE__, __LINE__, uReadLen, strlen(FP_KEY));
 		fclose(fp);
 		return -1;
     }
@@ -704,7 +705,7 @@ static int pro2Updatecheck(const char* pUpdateFileDir)
 	/* 提取比较版本 */
     uReadLen = fread(buf, 1, sizeof(SYS_VERSION), fp);
     if (uReadLen != sizeof(SYS_VERSION)) {
-        Log.e(TAG, "[%s: %d] read version len mismatch(%u 1)", uReadLen);
+        LOGERR(TAG, "[%s: %d] read version len mismatch(%u 1)", uReadLen);
         fclose(fp);
 		return -1;
     }
@@ -715,7 +716,7 @@ static int pro2Updatecheck(const char* pUpdateFileDir)
     memset(buf, 0, sizeof(buf));
     uReadLen = fread(buf, 1, UPDATE_APP_CONTENT_LEN, fp);
     if (uReadLen != UPDATE_APP_CONTENT_LEN) {
-        Log.e(TAG, "[%s: %d] update app len mismatch(%d %d)", __FILE__, __LINE__, uReadLen, UPDATE_APP_CONTENT_LEN);
+        LOGERR(TAG, "[%s: %d] update app len mismatch(%d %d)", __FILE__, __LINE__, uReadLen, UPDATE_APP_CONTENT_LEN);
 		return -1;
     }
 
@@ -754,21 +755,21 @@ static int installSamba(const char* cmdPath)
 	for (i = 0; i < 3; i++) {
 		int iRet = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
 		if (iRet != 0) {
-			Log.e(TAG, "install samba failed due to logwrap error");
+			LOGERR(TAG, "install samba failed due to logwrap error");
 			continue;
 		}
 
 		if (!WIFEXITED(status)) {
-			Log.e(TAG, "install samba sub process did not exit properly");
+			LOGERR(TAG, "install samba sub process did not exit properly");
 			return -1;
 		}
 
 		status = WEXITSTATUS(status);
 		if (status == 0) {
-			Log.d(TAG, ">>>> install samba OK");
+			LOGDBG(TAG, ">>>> install samba OK");
 			break;
 		} else {
-			Log.e(TAG, ">>> install samba failed (unknown exit code %d)", status);
+			LOGERR(TAG, ">>> install samba failed (unknown exit code %d)", status);
 			continue;
 		}
 	}	
@@ -798,7 +799,7 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 	std::vector<sp<UPDATE_SECTION>> mSections;
 	string updateRootPath = UPDATE_DEST_BASE_DIR;
 
-	Log.d(TAG, "start_update_app: init_oled_module ...\n");
+	LOGDBG(TAG, "start_update_app: init_oled_module ...\n");
 
     init_oled_module();		/* 初始化OLED模块 */
 	
@@ -809,7 +810,7 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 		if (bMode) {	/* 兼容0.2.18及以前的update_check */
 
 			if (pro2Updatecheck(pUpdatePackagePath)) {		/* 提取解压升级包成功 */
-				Log.e(TAG, "start_update_app: get pro2_update form Insta360_Pro_Update.bin failed...");
+				LOGERR(TAG, "start_update_app: get pro2_update form Insta360_Pro_Update.bin failed...");
 				iRet = ERR_UPAPP_GET_APP_TAR;
 				goto err_get_pro2_update;
 			}
@@ -827,7 +828,7 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 			 * 检查是否安装了samba,如果没有安装，执行以下脚本安装samba服务
 			 */
 			if (access(INSTALL_SAMBA_CMD, F_OK) == 0) {
-				Log.d(TAG, "[%s: %d] Execute install samba service now ...........", __FILE__, __LINE__);
+				LOGDBG(TAG, "[%s: %d] Execute install samba service now ...........", __FILE__, __LINE__);
 				chmod(INSTALL_SAMBA_CMD, 0766);
 				installSamba(INSTALL_SAMBA_CMD);
 			}
@@ -837,7 +838,7 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 		}
 
     } else  {	/* 电池电量低 */
-        Log.e(TAG, "battery low, can't update...");
+        LOGERR(TAG, "battery low, can't update...");
         iRet = ERR_UPAPP_BATTERY_LOW;
     }
 
@@ -866,14 +867,14 @@ static void cleanTmpFiles(const char* mount_point)
 	if (update_del_flag == true) {
 		sprintf(image_path, "%s/%s", mount_point, UPDATE_IMAGE_FILE);
 		unlink(image_path);
-		Log.d(TAG, "unlink image file [%s]", image_path);
+		LOGDBG(TAG, "unlink image file [%s]", image_path);
 	}
 
 	/* 删除: rm -rf pro_update.bin   pro_update */
 	sprintf(pro_update_path, "rm -rf %s/%s*", mount_point, PRO2_UPDATE_DIR);
 	system(pro_update_path);
 
-	Log.d(TAG, "[%s: %d] Remove tmp files and dir OK", __FILE__, __LINE__);
+	LOGDBG(TAG, "[%s: %d] Remove tmp files and dir OK", __FILE__, __LINE__);
     arlog_close();
 }
 #endif
@@ -895,14 +896,14 @@ static int update_ver2file(const char* ver)
 	/* 1.创建临时文件,将版本写入临时文件:  .sys_ver_tmp */
 	fd = open(VER_FULL_TMP_PATH, O_CREAT|O_RDWR, 0644);
 	if (fd < 0) {
-		Log.e(TAG, "update_ver2file: create sys version timp file failed ...");
+		LOGERR(TAG, "update_ver2file: create sys version timp file failed ...");
 		goto EXIT;
 	}
 	
 	/* 2.将版本号写入临时文件 */
 	write_cnt = write(fd, ver, strlen(ver));
 	if (write_cnt != strlen(ver)) {
-		Log.e(TAG, "update_ver2file: write cnt[%d] != actual cnt[%d]", write_cnt, strlen(ver));
+		LOGERR(TAG, "update_ver2file: write cnt[%d] != actual cnt[%d]", write_cnt, strlen(ver));
 		close(fd);
 		goto EXIT;
 	}
@@ -913,7 +914,7 @@ static int update_ver2file(const char* ver)
 	iRet = rename(VER_FULL_TMP_PATH, VER_FULL_PATH);
 
 	/* 拷贝一份到/data/pro_version */
-	Log.d(TAG, "update_ver2file: rename result = %d", iRet);
+	LOGDBG(TAG, "update_ver2file: rename result = %d", iRet);
 
 	system("cp /home/nvidia/insta360/etc/.sys_ver /data/pro_version");
 	system("chmod 766 /data/pro_version");
@@ -941,7 +942,7 @@ static void handleUpdateSuc()
 	disp_update_icon(ICON_UPDATE_SUC128_64);
 
 	/* 2.更新系统的版本(/home/nvidia/insta360/etc/.pro_version) */
-	Log.d(TAG, ">>> new image ver: [%s]", property_get(PROP_SYS_IMAGE_VER));
+	LOGDBG(TAG, ">>> new image ver: [%s]", property_get(PROP_SYS_IMAGE_VER));
 
 	update_ver2file(property_get(PROP_SYS_IMAGE_VER));
 
@@ -982,7 +983,7 @@ static void handleBatterLow(void)
 static void handleComUpdateError(int err_type)
 {
 
-	Log.d(TAG, "handleComUpdateError ...");
+	LOGDBG(TAG, "handleComUpdateError ...");
 
 	/* 1.显示升级失败 */
 	disp_update_error(err_type);
@@ -997,7 +998,7 @@ static void handleComUpdateError(int err_type)
 static void handleUpdateModuleFail(int err_type)
 {
 
-	Log.d(TAG, "handleUpdateModuleFail ...");
+	LOGDBG(TAG, "handleUpdateModuleFail ...");
 
 	/* 1.显示升级失败 */
 	disp_update_error(err_type);
@@ -1022,7 +1023,7 @@ static void handleUpdateModuleFail(int err_type)
 static void handleUpdateResult(int ret)
 {
 
-	Log.d(TAG, "handleUpdateResult, ret = %d", ret);
+	LOGDBG(TAG, "handleUpdateResult, ret = %d", ret);
 	
 	system("rm -rf /mnt/update");
 
@@ -1075,19 +1076,17 @@ int main(int argc, char **argv)
 	registerSig(default_signal_handler);
 	signal(SIGPIPE, pipe_signal_handler);
 
-
-	/* 配置日志 */
-    arlog_configure(true, true, UPDATE_APP_LOG_PATH, false);
-
 	iRet = __system_properties_init();		/* 属性区域初始化 */
 	if (iRet) {
-		Log.e(TAG, "update_app service exit: __system_properties_init() faile, ret = %d", iRet);
+		fprintf(stderr, "update_check service init system properties area failed\n");
 		return -1;
 	}
 
+	LogWrapper::init("/home/nvidia/insta360/log", "ua_log", true);
+
 	property_set(PROP_SYS_UA_VER, UAPP_VER);
 
-	Log.d(TAG, ">>> Service: update_app starting(Version: %s) ^_^ !! <<", property_get(PROP_SYS_UA_VER));
+	LOGDBG(TAG, ">>> Service: update_app starting(Version: %s) ^_^ !! <<", property_get(PROP_SYS_UA_VER));
 
 	const char* pUcVer = property_get(PROP_SYS_UC_VER);
 	if (pUcVer == NULL || !strstr(pUcVer, "V3")) {	/* V3版本以下的update_check */
@@ -1099,12 +1098,12 @@ int main(int argc, char **argv)
 
 	/* 为了兼容就的update_check */
 	if (pOldUpdatePackagePath) {
-		Log.d(TAG, "[%s: %d] Used Old update image path [%s]", __FILE__, __LINE__, pOldUpdatePackagePath);
+		LOGDBG(TAG, "[%s: %d] Used Old update image path [%s]", __FILE__, __LINE__, pOldUpdatePackagePath);
 		pUpdatePackagePath = pOldUpdatePackagePath;
 	}
 
 	if (pNewUpdatePackagePath) {
-		Log.d(TAG, "[%s: %d] Use New update image pat [%s]", __FILE__, __LINE__, pNewUpdatePackagePath);
+		LOGDBG(TAG, "[%s: %d] Use New update image pat [%s]", __FILE__, __LINE__, pNewUpdatePackagePath);
 		pUpdatePackagePath = pNewUpdatePackagePath;
 	}
 
@@ -1114,10 +1113,10 @@ int main(int argc, char **argv)
 	sprintf(delete_file_path, "%s/flag_delete", update_image_path);
 	if (access(delete_file_path, F_OK) != 0) {
 		update_del_flag = true;
-		Log.d(TAG, "flag file [%s] not exist, will delete image if update ok", delete_file_path);
+		LOGDBG(TAG, "flag file [%s] not exist, will delete image if update ok", delete_file_path);
 	} else {
 		update_del_flag = false;
-		Log.d(TAG, "flag file [%s] exist", delete_file_path);
+		LOGDBG(TAG, "flag file [%s] exist", delete_file_path);
 
 	}
 #endif	

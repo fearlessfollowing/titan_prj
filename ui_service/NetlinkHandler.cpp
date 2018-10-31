@@ -3,8 +3,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include <log/stlog.h>
-
 #include <sys/NetlinkEvent.h>
 #include <sys/NetlinkHandler.h>
 #include <sys/VolumeManager.h>

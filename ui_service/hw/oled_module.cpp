@@ -4,6 +4,7 @@
 #include <util/icon_ascii.h>
 #include <hw/ins_i2c.h>
 #include <hw/ins_gpio.h>
+#include <log/log_wrapper.h>
 
 
 #define OLED_I2C_BUS		2
@@ -351,7 +352,6 @@ void oled_module::SSD_Set_Charge_Pump(u8 val)
 {
     ssd1306_write_cmd(SSD_SET_CHARGE_PUMP); // Set VCOM Deselect Level
     ssd1306_write_cmd(0x14);
-    Log.d(TAG, "2charge pump val 0x%x", val);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -432,7 +432,7 @@ void oled_module::SSD_Set_Activate_Scroll(void)
 // col:     ( 0 ~ 127 )
 void oled_module::SSD_Set_RAM_Address(u8 pag, u8 col)
 {
-//    Log.d(TAG,"set ram page %d col %d ",pag,col);
+//    LOGDBG(TAG,"set ram page %d col %d ",pag,col);
     SSD_Set_Start_Page(pag);
     SSD_Set_Start_Column(col);
 }
@@ -626,7 +626,7 @@ void oled_module::get_page_info_convert(u8 y,u8 h,sp<PAGE_INFO> &mPageInfo)
     if (mPageInfo->delta_y != 0) {
         mPageInfo->page_num = mPageInfo->dat_page_num + 1;
         if (mPageInfo->page_num  >= 4) {
-            Log.d(TAG, "warning: page occupy more than 4");
+            LOGDBG(TAG, "warning: page occupy more than 4");
         }
     } else {
         mPageInfo->page_num = mPageInfo->dat_page_num;
@@ -647,8 +647,6 @@ void oled_module::get_char_info(u8 c, sp<CHAR_INFO> & mCharInfo, bool high)
         mCharInfo->char_w = 6;
         mCharInfo->pucChar = (const u8 *)&digit_array[high][c - '0'];
     } else if ( c >= 'A' && c <= 'Z') {
-        // mCharInfo->char_w = 8;
-        // mCharInfo->pucChar = (const u8 *)&alpha_bigger[high][c - 'A'];
         tmpCharInfo = &gArryBigAlpha[c - 'A'];
         if (tmpCharInfo) {
             mCharInfo->char_w = tmpCharInfo->char_w;
@@ -662,8 +660,6 @@ void oled_module::get_char_info(u8 c, sp<CHAR_INFO> & mCharInfo, bool high)
             }
         }
     } else if ( c >= 'a' && c <= 'z') {
-        // mCharInfo->char_w = 8;
-        // mCharInfo->pucChar = (const u8 *)&alpha_smaller[high][c - 'a'];
         tmpCharInfo = &gArrySmallAlpha[c - 'a'];
         if (tmpCharInfo) {
             mCharInfo->char_w = tmpCharInfo->char_w;
@@ -687,7 +683,7 @@ void oled_module::get_char_info(u8 c, sp<CHAR_INFO> & mCharInfo, bool high)
         }
 
         if (i == total) {
-            Log.e(TAG, "not found char 0x%x", c);
+            LOGERR(TAG, "not found char 0x%x", c);
             mCharInfo->char_w = 6;
             mCharInfo->pucChar = others_array[0].pucChar[high];
         }
@@ -730,7 +726,7 @@ void oled_module::ssd1306_disp_16_str(const u8 *str,const u8 x, const u8 y, bool
     }
 
     if (y + char_h > ROW_MAX) {
-        Log.d(TAG, "page %d exceed %d\n", y + char_h, ROW_MAX);
+        LOGDBG(TAG, "page %d exceed %d\n", y + char_h, ROW_MAX);
         return;
     }
 
@@ -751,7 +747,7 @@ void oled_module::ssd1306_disp_16_str(const u8 *str,const u8 x, const u8 y, bool
                     col_start++;
                 }
             } else {
-                Log.d(TAG, "***exceed %d\n", col_start + mCharInfo->char_w);
+                LOGDBG(TAG, "***exceed %d\n", col_start + mCharInfo->char_w);
                 goto EXIT;
             }
         }
@@ -778,7 +774,7 @@ void oled_module::ssd1306_disp_16_str(const u8 *str,const u8 x, const u8 y, bool
                 }
                 col_start += mCharInfo->char_w;
             } else {
-                Log.d(TAG,"!!!exceed %d\n",col_start + mCharInfo->char_w);
+                LOGDBG(TAG,"!!!exceed %d\n",col_start + mCharInfo->char_w);
                 goto EXIT;
             }
         }
@@ -802,10 +798,10 @@ void oled_module::clear_icon(const u32 icon_type)
 void oled_module::disp_icon(const u32 icon_type)
 {
     if (icon_type > ICON_MAX) {
-        Log.e(TAG, "disp_icon exceed icon_type %d", icon_type);
+        LOGERR(TAG, "disp_icon exceed icon_type %d", icon_type);
         return;
     } else if (icon_type == 0) {
-        Log.w(TAG, "disp icon 0 happen");
+        LOGWARN(TAG, "disp icon 0 happen");
     }
 
     disp_icon((const struct _icon_info_ *)&oled_icons[icon_type]);

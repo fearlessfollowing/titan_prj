@@ -1,6 +1,3 @@
-//
-// Created by vans on 16-12-7.
-//
 
 #ifndef PROJECT_UTIL_H
 #define PROJECT_UTIL_H
@@ -9,21 +6,22 @@
 extern "C"
 {
 #endif
+
 #ifdef ENABLE_ABORT
 #define SWITCH_DEF_ERROR(item) \
 default: \
-    Log.e(TAG,"%s:%s:%d error item %d",__FILE__,__FUNCTION__,__LINE__,item);\
+    LOGERR(TAG,"%s:%s:%d error item %d",__FILE__,__FUNCTION__,__LINE__,item);\
     abort();
 #else
 #define SWITCH_DEF_ERROR(item) \
 default: \
-    Log.e(TAG,"%s:%s:%d error item %d",__FILE__,__FUNCTION__,__LINE__,item);\
-    Log.d(TAG,"cancel ab");
+    LOGERR(TAG,"error item %d",item);\
+    LOGDBG(TAG,"cancel ab");
 #endif
 
 
 #define ERR_ITEM(item) \
-    Log.e(TAG,"%s:%s:%d error item %d",__FILE__,__FUNCTION__,__LINE__,item);\
+    LOGERR(TAG,"error item %d",item);\
     abort();
 
 

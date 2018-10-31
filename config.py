@@ -29,6 +29,7 @@ LIBLOG          = EXTLIBS + 'liblog'
 LIBSYSUTILS     = EXTLIBS + 'libsysutils'
 LIBUTILS        = EXTLIBS + 'libutils'
 LIBEV           = EXTLIBS + 'libev-master'
+UTIL            = EXTLIBS + 'util'
 
 UI_SERVICE      = SDK_ROOT + 'ui_service'
 UPDATE_CHECK    = SDK_ROOT + 'update_check'

@@ -8,12 +8,11 @@
  */
 
 #include <util/http_util.h>
-#include <log/arlog.h>
 #include <sys/types.h>
-#include <log/stlog.h>
 #include <system_properties.h>
 #include <prop_cfg.h>
 
+#include <log/log_wrapper.h>
 
 
 #ifdef MG_MODULE_LINES
@@ -63,9 +62,9 @@
 #endif
 
 
-#define ERROR(x...)     Log.e("HttpUtil", x)
-#define DEBUG(x...)     Log.d("HttpUtil", x)
-#define INFO(x...)      Log.i("HttpUtil", x)
+#define ERROR(x...)     LOGERR("HttpUtil", x)
+#define DEBUG(x...)     LOGDBG("HttpUtil", x)
+#define INFO(x...)      LOGINFO("HttpUtil", x)
 
 
 /* Amalgamated: #include "mongoose/src/net.h" */

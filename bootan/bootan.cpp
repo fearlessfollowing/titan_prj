@@ -17,7 +17,6 @@
 #include <common/include_common.h>
 #include <common/sp.h>
 #include <common/check.h>
-#include <update/dbg_util.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -30,7 +29,6 @@
 #include <hw/oled_light.h>
 #endif
 
-#include <log/stlog.h>
 #include <prop_cfg.h>
 #include <system_properties.h>
 

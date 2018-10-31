@@ -13,13 +13,14 @@ src += [config.UI_SERVICE + '/hw/battery_interface.cpp']
 src += [config.UI_SERVICE + '/hw/ins_i2c.cpp']
 src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
 
-src += [config.UI_SERVICE + '/util/arlog.c']
-src += [config.UI_SERVICE + '/util/stlog.cpp']
-src += [config.UI_SERVICE + '/util/md5.cpp']
-src += [config.UI_SERVICE + '/util/update_oled.cpp']
-src += [config.UI_SERVICE + '/util/update_util.cpp']
-src += [config.UI_SERVICE + '/util/bytes_int_convert.cpp']
-src += [config.UI_SERVICE + '/util/util.cpp']
+
+src += [config.UTIL + '/Process.cpp']
+src += [config.UTIL + '/forkUtil.cpp']
+src += [config.UTIL + '/md5.cpp']
+src += [config.UTIL + '/update_oled.cpp']
+src += [config.UTIL + '/update_util.cpp']
+src += [config.UTIL + '/bytes_int_convert.cpp']
+src += [config.UTIL + '/util.cpp']
 
 src += [config.UI_SERVICE + '/NetlinkEvent.cpp']
 src += [config.UI_SERVICE + '/NetlinkHandler.cpp']
@@ -28,9 +29,6 @@ src += [config.UI_SERVICE + '/NetlinkManager.cpp']
 src += [config.UI_SERVICE + '/SocketListener.cpp']
 src += [config.UI_SERVICE + '/SocketClient.cpp']
 src += [config.UI_SERVICE + '/VolumeManager.cpp']
-src += [config.UI_SERVICE + '/Process.cpp']
-src += [config.UI_SERVICE + '/forkUtil.cpp']
-
 
 
 src += [config.LIBLOG + '/logd_write.c']
@@ -38,16 +36,11 @@ src += [config.LIBLOG + '/log_event_write.c']
 src += [config.LIBLOG + '/logprint.c']
 src += [config.LIBLOG + '/event_tag_map.c']
 src += [config.LIBLOG + '/log_time.cpp']
+src += [config.LIBLOG + '/log_wrapper.cpp']
+
 
 src += [config.LIBCUTILS + '/system_properties.c']
 
-
-
-#SOURCES += $(LIBCUTILS)/socket_local_server.c
-#SOURCES += $(LIBCUTILS)/socket_local_client.c
-#SOURCES += $(LIBCUTILS)/klog.c
-#SOURCES += $(LIBCUTILS)/uevent.c
-#SOURCES += $(LIBCUTILS)/system_properties.c
 
 
 com_env['CXXFLAGS'] += ' -I' + config.UI_SERVICE + '/include'

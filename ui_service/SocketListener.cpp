@@ -8,7 +8,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <log/stlog.h>
+#include <log/log_wrapper.h>
 
 #include <sys/SocketListener.h>
 #include <sys/SocketClient.h>
@@ -74,32 +74,32 @@ int SocketListener::startListener(int backlog)
 {
 
     if (!mSocketName && mSock == -1) {	
-        Log.e(TAG, "Failed to start unbound listener");
+        LOGERR(TAG, "Failed to start unbound listener");
         errno = EINVAL;
         return -1;
     } else if (mSocketName) {	
         // if ((mSock = android_get_control_socket(mSocketName)) < 0) {
-        //     Log.e(TAG, "Obtaining file descriptor socket '%s' failed: %s", mSocketName, strerror(errno));
+        //     LOGERR(TAG, "Obtaining file descriptor socket '%s' failed: %s", mSocketName, strerror(errno));
         //     return -1;
         // }
-        // Log.i(TAG, "got mSock = %d for %s", mSock, mSocketName);
-        Log.e(TAG, "[%s: %d] Not support get socket from name", __FILE__, __LINE__);
+        // LOGINFO(TAG, "got mSock = %d for %s", mSock, mSocketName);
+        LOGERR(TAG, "[%s: %d] Not support get socket from name", __FILE__, __LINE__);
     }
 
     if (mListen && listen(mSock, backlog) < 0) {	
-        Log.e(TAG, "Unable to listen on socket (%s)", strerror(errno));
+        LOGERR(TAG, "Unable to listen on socket (%s)", strerror(errno));
         return -1;
     } else if (!mListen) {	
         mClients->push_back(new SocketClient(mSock, false, mUseCmdNum));
 	}
 
     if (pipe(mCtrlPipe)) {		
-        Log.e(TAG, "pipe failed (%s)", strerror(errno));
+        LOGERR(TAG, "pipe failed (%s)", strerror(errno));
         return -1;
     }
 
     if (pthread_create(&mThread, NULL, SocketListener::threadStart, this)) {	
-        Log.e(TAG, "pthread_create (%s)", strerror(errno));
+        LOGERR(TAG, "pthread_create (%s)", strerror(errno));
         return -1;
     }
 
@@ -114,13 +114,13 @@ int SocketListener::stopListener()
 
     rc = TEMP_FAILURE_RETRY(write(mCtrlPipe[1], &c, 1));
     if (rc != 1) {
-        Log.e(TAG, "Error writing to control pipe (%s)", strerror(errno));
+        LOGERR(TAG, "Error writing to control pipe (%s)", strerror(errno));
         return -1;
     }
 
     void *ret;
     if (pthread_join(mThread, &ret)) {	
-        Log.e(TAG, "Error joining to listener thread (%s)", strerror(errno));
+        LOGERR(TAG, "Error joining to listener thread (%s)", strerror(errno));
         return -1;
     }
 	
@@ -188,12 +188,10 @@ void SocketListener::runListener()
         }
         pthread_mutex_unlock(&mClientsLock);
 		
-        // Log.i(TAG, "mListen=%d, max=%d, mSocketName=%s", mListen, max, mSocketName);
 		
         if ((rc = select(max + 1, &read_fds, NULL, NULL, NULL)) < 0) {	
             if (errno == EINTR)
                 continue;
-            // Log.e(TAG, "select failed (%s) mListen=%d, max=%d", strerror(errno), mListen, max);
             sleep(1);
             continue;
         } else if (!rc)
@@ -216,11 +214,11 @@ void SocketListener::runListener()
             do {
                 alen = sizeof(addr);
                 c = accept(mSock, &addr, &alen);
-                Log.i(TAG, "%s got %d from accept", mSocketName, c);
+                LOGINFO(TAG, "%s got %d from accept", mSocketName, c);
             } while (c < 0 && errno == EINTR);
 			
             if (c < 0) {
-                Log.e(TAG, "accept failed (%s)", strerror(errno));
+                LOGERR(TAG, "accept failed (%s)", strerror(errno));
                 sleep(1);
                 continue;
             }
@@ -265,7 +263,7 @@ bool SocketListener::release(SocketClient* c, bool wakeup)
     /* if our sockets are connection-based, remove and destroy it */
     if (mListen && c) {
         /* Remove the client from our array */
-        Log.i(TAG, "going to zap %d for %s", c->getSocket(), mSocketName);
+        LOGINFO(TAG, "going to zap %d for %s", c->getSocket(), mSocketName);
         pthread_mutex_lock(&mClientsLock);
         SocketClientCollection::iterator it;
         for (it = mClients->begin(); it != mClients->end(); ++it) {
@@ -314,7 +312,7 @@ void SocketListener::sendBroadcast(int code, const char *msg, bool addErrno)
 		
         // broadcasts are unsolicited and should not include a cmd number
         if (c->sendMsg(code, msg, addErrno, false)) {
-            Log.w(TAG, "Error sending broadcast (%s)", strerror(errno));
+            LOGWARN(TAG, "Error sending broadcast (%s)", strerror(errno));
         }
         c->decRef();
     }

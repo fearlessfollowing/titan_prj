@@ -23,19 +23,16 @@ src += ['NetlinkManager.cpp']
 src += ['SocketListener.cpp']
 src += ['SocketClient.cpp']
 src += ['VolumeManager.cpp']
-src += ['Process.cpp']
-src += ['forkUtil.cpp']
 src += ['ProtoManager.cpp']
 
-src += [config.UI_SERVICE + '/util/arlog.c']
-src += [config.UI_SERVICE + '/util/ARMessage.cpp']
-src += [config.UI_SERVICE + '/util/ARLooper.cpp']
-src += [config.UI_SERVICE + '/util/bytes_int_convert.cpp']
-src += [config.UI_SERVICE + '/util/util.cpp']
-src += [config.UI_SERVICE + '/util/cJSON.c']
-src += [config.UI_SERVICE + '/util/stlog.cpp']
-src += [config.UI_SERVICE + '/util/pro_version.cpp']
-src += [config.UI_SERVICE + '/util/http_util.cpp']
+src += [config.UTIL + '/Process.cpp']
+src += [config.UTIL + '/forkUtil.cpp']
+src += [config.UTIL + '/ARMessage.cpp']
+src += [config.UTIL + '/ARLooper.cpp']
+src += [config.UTIL + '/bytes_int_convert.cpp']
+src += [config.UTIL + '/util.cpp']
+src += [config.UTIL + '/cJSON.c']
+src += [config.UTIL + '/http_util.cpp']
 
 
 src += [config.UI_SERVICE + '/hw/oled_module.cpp']
@@ -49,6 +46,9 @@ src += [config.LIBLOG + '/log_event_write.c']
 src += [config.LIBLOG + '/logprint.c']
 src += [config.LIBLOG + '/event_tag_map.c']
 src += [config.LIBLOG + '/log_time.cpp']
+src += [config.LIBLOG + '/log_wrapper.cpp']
+
+
 src += [config.LIBCUTILS + '/system_properties.c']
 
 

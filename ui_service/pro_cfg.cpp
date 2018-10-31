@@ -17,13 +17,13 @@
 #include <common/include_common.h>
 #include <sys/pro_cfg.h>
 #include <hw/lan.h>
-#include <log/stlog.h>
 #include <util/util.h>
 #include <sys/action_info.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <log/log_wrapper.h>
 
 #include <prop_cfg.h>
 
@@ -348,7 +348,7 @@ void pro_cfg::init()
 {
     CHECK_EQ(sizeof(key) / sizeof(key[0]), KEY_CFG_MAX);
 
-	Log.d(TAG, "pro_cfg::init...");
+	LOGDBG(TAG, "pro_cfg::init...");
 	
     mCurInfo = sp<OLED_CUR_INFO>(new OLED_CUR_INFO());
     memset(mCurInfo.get(), 0, sizeof(OLED_CUR_INFO));
@@ -359,7 +359,7 @@ bool pro_cfg::check_key_valid(u32 key)
     if (key >= 0 && key < sizeof(mCurInfo->cfg_val) / sizeof(mCurInfo->cfg_val[0])) {
         return true;
     } else {
-        Log.e(TAG,"1error key %d", key);
+        LOGERR(TAG,"1error key %d", key);
     }
     return false;
 }
@@ -370,16 +370,16 @@ int pro_cfg::get_val(u32 key)
     if (check_key_valid(key)) {
         return mCurInfo->cfg_val[key];
     } else {
-        Log.e(TAG, "[%s:%d] Invalid Key[%d], please check", __FILE__, __LINE__, key);
+        LOGERR(TAG, "[%s:%d] Invalid Key[%d], please check", __FILE__, __LINE__, key);
     }
     return 0;
 }
 
 void pro_cfg::set_val(u32 key, int val)
 {
-    Log.d(TAG, "set key %d val %d", key, val);
+    LOGDBG(TAG, "set key %d val %d", key, val);
     if (check_key_valid(key)) {
-        Log.d(TAG, "key is valid, cur val = %d", mCurInfo->cfg_val[key]);
+        LOGDBG(TAG, "key is valid, cur val = %d", mCurInfo->cfg_val[key]);
         if (mCurInfo->cfg_val[key] != val) {
             mCurInfo->cfg_val[key] = val;
             update_val(key, val);
@@ -409,7 +409,7 @@ void pro_cfg::update_act_info(int iIndex)
     read_len = read(fd, buf, sizeof(buf));
 
 
-    Log.d(TAG, " update_act_info iIndex %d　"
+    LOGDBG(TAG, " update_act_info iIndex %d　"
                   "read_len %d strlen buf %d", iIndex, read_len, strlen(buf));
 
 
@@ -431,19 +431,19 @@ void pro_cfg::update_act_info(int iIndex)
 		
         switch (iIndex) {
             case KEY_ALL_PIC_DEF:
-                Log.d(TAG, "update KEY_ALL_PIC_DEF save_org %d", mCurInfo->mActInfo[KEY_ALL_PIC_DEF].stOrgInfo.save_org);
+                LOGDBG(TAG, "update KEY_ALL_PIC_DEF save_org %d", mCurInfo->mActInfo[KEY_ALL_PIC_DEF].stOrgInfo.save_org);
                 start = KEY_ALL_PIC_MODE;
                 end = KEY_SD_PIC_MODE;
                 break;
 
             case KEY_SD_PIC_DEF:
-                Log.d(TAG, "update pic save_org %d", mCurInfo->mActInfo[KEY_SD_PIC_DEF].stOrgInfo.save_org);
+                LOGDBG(TAG, "update pic save_org %d", mCurInfo->mActInfo[KEY_SD_PIC_DEF].stOrgInfo.save_org);
                 start = KEY_SD_PIC_MODE;
                 end = KEY_TF_PIC_MODE;
                 break;
 
             case KEY_TF_PIC_DEF:
-                Log.d(TAG, "update pic save_org %d", mCurInfo->mActInfo[KEY_TF_PIC_DEF].stOrgInfo.save_org);
+                LOGDBG(TAG, "update pic save_org %d", mCurInfo->mActInfo[KEY_TF_PIC_DEF].stOrgInfo.save_org);
                 start = KEY_TF_PIC_MODE;
                 end = KEY_ALL_VIDEO_MODE;
                 break;
@@ -451,7 +451,7 @@ void pro_cfg::update_act_info(int iIndex)
 				
             case KEY_ALL_VIDEO_DEF:
                 start = KEY_ALL_VIDEO_MODE;
-                Log.d(TAG, " mCurInfo->mActInfo[KEY_ALL_VIDEO_MODE].stAudInfo.sample_rate  %d",
+                LOGDBG(TAG, " mCurInfo->mActInfo[KEY_ALL_VIDEO_MODE].stAudInfo.sample_rate  %d",
                       mCurInfo->mActInfo[KEY_ALL_VIDEO_DEF].stAudInfo.sample_rate );
                 if (mCurInfo->mActInfo[KEY_ALL_VIDEO_DEF].stAudInfo.sample_rate == 0) {
                     memcpy(&mCurInfo->mActInfo[KEY_ALL_VIDEO_DEF].stAudInfo,&def_aud,sizeof(AUD_INFO));
@@ -462,7 +462,7 @@ void pro_cfg::update_act_info(int iIndex)
 
             case KEY_SD_VIDEO_DEF:
                 start = KEY_SD_VIDEO_MODE;
-                Log.d(TAG, " mCurInfo->mActInfo[KEY_SD_VIDEO_MODE].stAudInfo.sample_rate  %d",
+                LOGDBG(TAG, " mCurInfo->mActInfo[KEY_SD_VIDEO_MODE].stAudInfo.sample_rate  %d",
                       mCurInfo->mActInfo[KEY_SD_VIDEO_DEF].stAudInfo.sample_rate );
                 if (mCurInfo->mActInfo[KEY_SD_VIDEO_DEF].stAudInfo.sample_rate == 0) {
                     memcpy(&mCurInfo->mActInfo[KEY_SD_VIDEO_DEF].stAudInfo, &def_aud, sizeof(AUD_INFO));
@@ -473,7 +473,7 @@ void pro_cfg::update_act_info(int iIndex)
 
             case KEY_TF_VIDEO_DEF:
                 start = KEY_TF_VIDEO_MODE;
-                Log.d(TAG, " mCurInfo->mActInfo[KEY_TF_VIDEO_MODE].stAudInfo.sample_rate  %d",
+                LOGDBG(TAG, " mCurInfo->mActInfo[KEY_TF_VIDEO_MODE].stAudInfo.sample_rate  %d",
                       mCurInfo->mActInfo[KEY_TF_VIDEO_DEF].stAudInfo.sample_rate );
                 if (mCurInfo->mActInfo[KEY_TF_VIDEO_DEF].stAudInfo.sample_rate == 0) {
                     memcpy(&mCurInfo->mActInfo[KEY_TF_VIDEO_DEF].stAudInfo, &def_aud, sizeof(AUD_INFO));
@@ -483,7 +483,7 @@ void pro_cfg::update_act_info(int iIndex)
 
 
             case KEY_ALL_LIVE_DEF:
-                Log.d(TAG," mCurInfo->mActInfo[KEY_ALL_LIVE_DEF].stAudInfo.sample_rate  %d",
+                LOGDBG(TAG," mCurInfo->mActInfo[KEY_ALL_LIVE_DEF].stAudInfo.sample_rate  %d",
                       mCurInfo->mActInfo[KEY_ALL_LIVE_DEF].stAudInfo.sample_rate );
                 if (mCurInfo->mActInfo[KEY_ALL_LIVE_DEF].stAudInfo.sample_rate == 0) {
                     memcpy(&mCurInfo->mActInfo[KEY_ALL_LIVE_DEF].stAudInfo,&def_aud,sizeof(AUD_INFO));
@@ -495,7 +495,7 @@ void pro_cfg::update_act_info(int iIndex)
 
 
             case KEY_SD_LIVE_DEF:
-                Log.d(TAG," mCurInfo->mActInfo[KEY_SD_LIVE_DEF].stAudInfo.sample_rate  %d",
+                LOGDBG(TAG," mCurInfo->mActInfo[KEY_SD_LIVE_DEF].stAudInfo.sample_rate  %d",
                       mCurInfo->mActInfo[KEY_SD_LIVE_DEF].stAudInfo.sample_rate );
                 if (mCurInfo->mActInfo[KEY_SD_LIVE_DEF].stAudInfo.sample_rate == 0) {
                     memcpy(&mCurInfo->mActInfo[KEY_SD_LIVE_DEF].stAudInfo,&def_aud,sizeof(AUD_INFO));
@@ -507,7 +507,7 @@ void pro_cfg::update_act_info(int iIndex)
 
 
             case KEY_TF_LIVE_DEF:
-                Log.d(TAG," mCurInfo->mActInfo[KEY_TF_LIVE_DEF].stAudInfo.sample_rate  %d",
+                LOGDBG(TAG," mCurInfo->mActInfo[KEY_TF_LIVE_DEF].stAudInfo.sample_rate  %d",
                       mCurInfo->mActInfo[KEY_TF_LIVE_DEF].stAudInfo.sample_rate );
                 if (mCurInfo->mActInfo[KEY_TF_LIVE_DEF].stAudInfo.sample_rate == 0) {
                     memcpy(&mCurInfo->mActInfo[KEY_TF_LIVE_DEF].stAudInfo,&def_aud,sizeof(AUD_INFO));
@@ -522,7 +522,7 @@ void pro_cfg::update_act_info(int iIndex)
 
         memset(write_buf, 0, sizeof(write_buf));
 
-        Log.d(TAG, "start is %d end %d", start, end);
+        LOGDBG(TAG, "start is %d end %d", start, end);
 
         for (int type = start; type < end; type++) {
             switch (type) {
@@ -575,7 +575,7 @@ void pro_cfg::update_act_info(int iIndex)
                     memset(val,0,sizeof(val));
                     if (strlen(mCurInfo->mActInfo[KEY_ALL_PIC_DEF].stProp.len_param) > 0) {
                         snprintf(val,max,"%s",mCurInfo->mActInfo[KEY_ALL_PIC_DEF].stProp.len_param);
-                        Log.d(TAG,"val %s\nmCurInfo->mActInfo[KEY_ALL_PIC_DEF].stProp.len_param %s ",
+                        LOGDBG(TAG,"val %s\nmCurInfo->mActInfo[KEY_ALL_PIC_DEF].stProp.len_param %s ",
                               val, mCurInfo->mActInfo[KEY_ALL_PIC_DEF].stProp.len_param);
                     }
                     break;
@@ -636,7 +636,7 @@ void pro_cfg::update_act_info(int iIndex)
                     memset(val, 0, sizeof(val));
                     if (strlen(mCurInfo->mActInfo[KEY_SD_PIC_DEF].stProp.len_param) > 0) {
                         snprintf(val,max,"%s",mCurInfo->mActInfo[KEY_SD_PIC_DEF].stProp.len_param);
-                        Log.d(TAG,"val %s\nmCurInfo->mActInfo[KEY_SD_PIC_DEF].stProp.len_param %s ",
+                        LOGDBG(TAG,"val %s\nmCurInfo->mActInfo[KEY_SD_PIC_DEF].stProp.len_param %s ",
                               val,mCurInfo->mActInfo[KEY_SD_PIC_DEF].stProp.len_param);
                     }
                     break;
@@ -695,7 +695,7 @@ void pro_cfg::update_act_info(int iIndex)
                     memset(val, 0, sizeof(val));
                     if (strlen(mCurInfo->mActInfo[KEY_TF_PIC_DEF].stProp.len_param) > 0) {
                         snprintf(val,max,"%s",mCurInfo->mActInfo[KEY_TF_PIC_DEF].stProp.len_param);
-                        Log.d(TAG,"val %s\nmCurInfo->mActInfo[KEY_TF_PIC_DEF].stProp.len_param %s ",
+                        LOGDBG(TAG,"val %s\nmCurInfo->mActInfo[KEY_TF_PIC_DEF].stProp.len_param %s ",
                               val,mCurInfo->mActInfo[KEY_TF_PIC_DEF].stProp.len_param);
                     }
                     break;
@@ -1254,38 +1254,38 @@ void pro_cfg::update_act_info(int iIndex)
             lseek(fd,val_start_pos,SEEK_SET);
             len = strlen(write_buf);
             write_len = write(fd,write_buf,len);
-            Log.d(TAG,"val_start_pos is %d write len %d len %d", val_start_pos ,write_len,len);
+            LOGDBG(TAG,"val_start_pos is %d write len %d len %d", val_start_pos ,write_len,len);
             if (write_len != len) {
-                Log.w(TAG, "5 write update_act_info mismatch(%d %d)", write_len, len);
+                LOGWARN(TAG, "5 write update_act_info mismatch(%d %d)", write_len, len);
             } else {
                 u32 file_len;
                 if (end != KEY_CFG_MAX) {
                     pStr1 = strstr(buf,key[end]);
                     if (pStr1) {
                         val_end_pos = (pStr1 - buf);
-                        Log.d(TAG,"val_end_pos is %d", val_end_pos);
+                        LOGDBG(TAG,"val_end_pos is %d", val_end_pos);
                         len = (read_len - val_end_pos);
                         write_len = write(fd,&buf[val_end_pos],len);
-                        Log.d(TAG,"val_end_pos is %d write len %d len %d", val_start_pos ,write_len,len);
+                        LOGDBG(TAG,"val_end_pos is %d write len %d len %d", val_start_pos ,write_len,len);
                         if (write_len != len) {
-                            Log.w(TAG, "6 write update_act_info mismatch(%d %d)", write_len, len);
+                            LOGWARN(TAG, "6 write update_act_info mismatch(%d %d)", write_len, len);
                         }
 
                         file_len = val_start_pos +
                                        strlen(write_buf) +
                                        write_len;
 
-                        Log.d(TAG,"a write len %d val_end_pos %d "
+                        LOGDBG(TAG,"a write len %d val_end_pos %d "
                                       "file_len %d read_len %d",
                               write_len, val_end_pos, file_len, read_len);
                     } else {
-                        Log.e(TAG, "end key %s not found", key[end]);
+                        LOGERR(TAG, "end key %s not found", key[end]);
                     }
                 } else {
                     file_len = val_start_pos + strlen(write_buf);
                 }
 
-                Log.d(TAG,"update act info new file len "
+                LOGDBG(TAG,"update act info new file len "
                               "%d org read_len %d\n", file_len, read_len);
                 
                 //new len less so need ftruncate
@@ -1294,7 +1294,7 @@ void pro_cfg::update_act_info(int iIndex)
                 }
             }
         } else {
-            Log.e(TAG, "update act key %s not found", key[start]);
+            LOGERR(TAG, "update act key %s not found", key[start]);
         }
     }
     close(fd);
@@ -1369,13 +1369,13 @@ void pro_cfg::update_wifi_cfg(sp<struct _wifi_config_> &mCfg)
                 break;
         }
         write_len  = write(fd, buf, strlen(buf));
-        Log.d(TAG, "update wifi buf %s", buf);
+        LOGDBG(TAG, "update wifi buf %s", buf);
         if (write_len != strlen(buf)) {
-            Log.e(TAG, "write wifi cfg err (%d %d)", write_len, strlen(buf));
+            LOGERR(TAG, "write wifi cfg err (%d %d)", write_len, strlen(buf));
         }
     }
     close(fd);
-    Log.d(TAG, "update_wifi_cfg ssid %s pwd %s", mCfg->ssid, mCfg->pwd);
+    LOGDBG(TAG, "update_wifi_cfg ssid %s pwd %s", mCfg->ssid, mCfg->pwd);
 }
 
 void pro_cfg::read_wifi_cfg(sp<struct _wifi_config_>& mCfg)
@@ -1399,7 +1399,7 @@ void pro_cfg::read_wifi_cfg(sp<struct _wifi_config_>& mCfg)
                 char *pStr = ::strstr(buf, wifi_key[i]);
                 if (pStr) {
                     pStr += strlen(wifi_key[i]);
-//                Log.d(TAG, " %s is %s len %d atoi(pStr) %d",
+//                LOGDBG(TAG, " %s is %s len %d atoi(pStr) %d",
 //                      key[i], pStr, strlen(pStr),atoi(pStr));
 
                     switch (i) {
@@ -1418,9 +1418,9 @@ void pro_cfg::read_wifi_cfg(sp<struct _wifi_config_>& mCfg)
             }
         }
         close(fd);
-        Log.d(TAG, "ssid %s pwd %s", mCfg->ssid, mCfg->pwd);
+        LOGDBG(TAG, "ssid %s pwd %s", mCfg->ssid, mCfg->pwd);
     } else {
-        Log.e(TAG, "no %s exist", WIFI_CFG_PARAM_PATH);
+        LOGERR(TAG, "no %s exist", WIFI_CFG_PARAM_PATH);
     }
 }
 
@@ -2288,14 +2288,14 @@ void pro_cfg::read_cfg(const char *name)
     }
 
     close(fd);
-	Log.d(TAG, "read_cfg [%s] parse done...", name);
+	LOGDBG(TAG, "read_cfg [%s] parse done...", name);
 	
 }
 
 void pro_cfg::read_def_cfg()
 {
     if (access(DEF_CFG_PARAM_PATH, R_OK | W_OK) == -1) {
-        Log.e(TAG, "%s no r/w access", DEF_CFG_PARAM_PATH);
+        LOGERR(TAG, "%s no r/w access", DEF_CFG_PARAM_PATH);
         create_user_cfg();
     } else {
         read_cfg(DEF_CFG_PARAM_PATH);
@@ -2315,7 +2315,7 @@ void pro_cfg::create_user_cfg()
 {
     char sys_cmd[128];
 
-    Log.e(TAG, "%s no r/w access", USER_CFG_PARAM_PATH);
+    LOGERR(TAG, "%s no r/w access", USER_CFG_PARAM_PATH);
 
 	/* 判断默认的配置参数文件是否存在 */
     if (access(DEF_CFG_PARAM_PATH, F_OK | R_OK | W_OK) == -1) {		/* 不存在,创建def_cfg文件 */
@@ -2352,11 +2352,11 @@ void pro_cfg::read_user_cfg()
 
 	/* 用户配置文件不存在,根据默认配置文件来创建用户配置文件 */
     if (access(USER_CFG_PARAM_PATH, R_OK | W_OK) == -1) {
-		Log.d(TAG, ">> user cfg [%s] not exist, crate now...", USER_CFG_PARAM_PATH);
+		LOGDBG(TAG, ">> user cfg [%s] not exist, crate now...", USER_CFG_PARAM_PATH);
         create_user_cfg();
     }
 
-	Log.d(TAG, "Reading and parse [%s] now", USER_CFG_PARAM_PATH);
+	LOGDBG(TAG, "Reading and parse [%s] now", USER_CFG_PARAM_PATH);
     read_cfg(USER_CFG_PARAM_PATH);	/* 读取用户配置文件 */
 
 #ifdef ENABLE_USER_CFG_SHOW
@@ -2405,7 +2405,7 @@ void pro_cfg::update_val(int type, const char *val)
             len = strlen(val);
             write_len = write(fd, val, len);
             if (write_len != len) {
-                Log.w(TAG, "0write pro_cfg mismatch(%d %d)", write_len, len);
+                LOGWARN(TAG, "0write pro_cfg mismatch(%d %d)", write_len, len);
             }
 
             bFound = true;
@@ -2420,12 +2420,12 @@ void pro_cfg::update_val(int type, const char *val)
     if (!bFound) {	/* 如果没有找到该配置项 */
         snprintf(buf, sizeof(buf), "%s%s%s", key[type], val, new_line);
 
-        Log.w(TAG, " %s not found just write val %s", key[type], buf);
+        LOGWARN(TAG, " %s not found just write val %s", key[type], buf);
         lseek(fd, 0, SEEK_END);
         len = strlen(buf);
         write_len = write(fd, buf, len);
         if (write_len != len) {
-            Log.w(TAG, "2write pro_cfg mismatch(%d %d)", write_len, len);
+            LOGWARN(TAG, "2write pro_cfg mismatch(%d %d)", write_len, len);
         }
     }
     close(fd);
