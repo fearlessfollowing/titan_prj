@@ -113,7 +113,6 @@ static bool resetHub(int iResetGpio, int iResetLevel, int iResetDuration)
 	int iRet = gpio_request(iResetGpio);
 	if (iRet) {
 		fprintf(stderr, "request gpio failed[%d]\n", iResetGpio);
-		// return false;
 	}
 
 	if (RESET_HIGH_LEVEL == iResetLevel) {	/* 高电平复位 */
@@ -367,7 +366,7 @@ int main(int argc, char* argv[])
 	int iRet = -1;
 
 	if (argc < 2) {
-		fprintf(stderr, "Usage: PowerManager <power_on/power_off>\n");
+		fprintf(stderr, "Usage: power_manager <power_on/power_off>\n");
 		return -1;
 	}
     
