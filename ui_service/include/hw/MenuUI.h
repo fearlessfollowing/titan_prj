@@ -399,21 +399,6 @@ enum {
 };
 
 
-/*
- * 声音文件
- */
-static const char *sound_str[] = {
-    "/home/nvidia/insta360/wav/camera_shutter.wav",
-    "/home/nvidia/insta360/wav/completed.wav",
-    "/home/nvidia/insta360/wav/five_s_timer.wav",
-    "/home/nvidia/insta360/wav/qr_code.wav",
-    "/home/nvidia/insta360/wav/start_rec.wav",
-    "/home/nvidia/insta360/wav/stop_rec.wav",
-    "/home/nvidia/insta360/wav/three_s_timer.wav",
-    "/home/nvidia/insta360/wav/one_s_timer.wav"
-};
-
-
 /* Slave Addr: 0x77 Reg Addr: 0x02
  * bit[7] - USB_POWER_EN2
  * bit[6] - USB_POWER_EN1
@@ -628,7 +613,7 @@ private:
     
     void    sound_thread();
     void    play_sound(u32 type);
-    void    send_update_light(int menu, int state,int interval,bool bLight = false,int sound_id = -1);
+    void    send_update_light(int menu, int interval,bool bLight = false,int sound_id = -1);
     void    write_p(int p, int val);
     void    stop_bat_thread();
 
@@ -960,7 +945,7 @@ private:
 	void    handleDispTypeMsg(sp<DISP_TYPE>& disp_type);
 	void    handleDispErrMsg(sp<ERR_TYPE_INFO>& mErrInfo);
 	void    handleLongKeyMsg(int key);
-	void    handleDispLightMsg(int menu, int state, int interval);
+	void    handleDispLightMsg(int menu, int interval);
 	void    handleUpdateMid();
     void    handleUpdateDevInfo(int iAction, int iType, std::vector<Volume*>& mList);
 	void    handleUpdateIp(const char* ipAddr);

@@ -46,15 +46,14 @@ using namespace std;
 #define TAG "inputWatch"
 
 
-static bool bPwrState = false;
 static std::shared_ptr<oled_light> pLed = nullptr;
-
 extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit);
 
 
-
-
 #if 0
+
+static bool bPwrState = false;
+
 void btnCallback(int iEventCode)
 {
     Log.d(TAG, "[%s: %d] ----------- eventCode: 0x%x", __FILE__, __LINE__, iEventCode);

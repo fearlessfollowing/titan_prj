@@ -20,8 +20,6 @@
 
 #include <log/log_wrapper.h>
 
-using namespace std;
-
 #undef  TAG
 #define TAG "oled_light"
 

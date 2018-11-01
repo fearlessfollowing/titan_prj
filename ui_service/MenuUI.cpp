@@ -51,6 +51,7 @@
 #include <hw/lan.h>
 
 #include <hw/MenuUI.h>
+#include <sys/Menu.h>
 #include <hw/InputManager.h>
 #include <util/icon_ascii.h>
 #include <trans/fifo.h>
@@ -58,6 +59,7 @@
 #include <sys/mount.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #include <sys/ProtoManager.h>
 
@@ -193,6 +195,20 @@ static const SYS_READ astSysRead[] = {
 };
 
 
+/*
+ * 声音文件
+ */
+static const char *sound_str[] = {
+    "/home/nvidia/insta360/wav/camera_shutter.wav",
+    "/home/nvidia/insta360/wav/completed.wav",
+    "/home/nvidia/insta360/wav/five_s_timer.wav",
+    "/home/nvidia/insta360/wav/qr_code.wav",
+    "/home/nvidia/insta360/wav/start_rec.wav",
+    "/home/nvidia/insta360/wav/stop_rec.wav",
+    "/home/nvidia/insta360/wav/three_s_timer.wav",
+    "/home/nvidia/insta360/wav/one_s_timer.wav"
+};
+
 
 
 #define INTERVAL_0HZ        0
@@ -211,6 +227,367 @@ typedef struct _rec_info_ {
     int rec_sec;
 } REC_INFO;
 
+
+#define PAGE_MAX (3)
+
+
+
+static MENU_INFO mMenuInfos[] = {
+    {	
+    	-1,					/* back_menu */
+		{-1, 0,	0, MAINMENU_MAX, MAINMENU_MAX, 1}, 
+		{OLED_KEY_UP, OLED_KEY_DOWN,  0, OLED_KEY_SETTING, OLED_KEY_POWER},
+		MENU_TOP,           /* Menu ID: MENU_TOP */
+		NULL,
+        NULL,
+	},	
+	
+    {	
+    	MENU_TOP,
+		{-1, 0, 0, 0, 0, 0}, 
+		{0, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},
+		MENU_PIC_INFO,      /* Menu ID: MENU_PIC_INFO */
+		NULL,
+        NULL,        
+	},
+	
+    {	
+    	MENU_TOP,
+		{-1, 0, 0, 0, 0, 0}, 
+		{0, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},
+		MENU_VIDEO_INFO,    /* Menu ID: MENU_VIDEO_INFO */
+		NULL,
+        NULL,        
+	},
+
+    {	/* MENU_LIVE_INFO */
+    	MENU_TOP,
+		{-1, 0, 0, 0, 0, 0}, 
+		{0, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},		/* DOWN, BACK, SETTING, POWER */
+		MENU_LIVE_INFO,     /* Menu ID: MENU_LIVE_INFO */
+		NULL,
+        NULL,        
+	},
+	
+
+	{	
+    	MENU_TOP,
+		{-1, 0, 0, 0, PAGE_MAX, 5}, /* 项数设置为0，初始化菜单时根据设置项vector的size来决定 */
+		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},		/* UP, DOWN, BACK, POWER */
+		MENU_SYS_SETTING,    /* Menu ID: MENU_SYS_SETTING */
+		NULL,                /* 设置页菜单的私有数据为一个设置项列表 */
+        NULL,        
+	}, 
+	
+    {	
+    	MENU_PIC_INFO,
+		{-1, 0, 0, 0, 0, 1},
+		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},  /* UP, DOWN, BACK, SETTING, POWER */
+        MENU_PIC_SET_DEF,      /* Menu ID: MENU_PIC_SET_DEF */
+        NULL,
+        NULL,        
+	},
+
+    {	
+    	MENU_VIDEO_INFO,
+		{-1, 0, 0, 0, 1, 1},
+		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},		/* UP, DOWN, BACK, SETTING, POWER */
+        MENU_VIDEO_SET_DEF,     /* Menu ID: MENU_VIDEO_SET_DEF */
+        NULL,                   /* TODO */
+        NULL,        
+    },
+    
+    {	/* MENU_LIVE_SET_DEF */
+    	MENU_LIVE_INFO,
+		{-1, 0, 0, 0, 0, 1},
+		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},		/* UP, DOWN, BACK, SETTING, POWER */
+        MENU_LIVE_SET_DEF,      /* Menu ID: MENU_LIVE_SET_DEF */
+        NULL,
+        NULL,        
+    },
+	
+    {	
+    	MENU_TOP,
+		{0},
+		{0},
+        MENU_CALIBRATION,       /* Menu ID: MENU_CALIBRATION */
+        NULL,
+        NULL,
+	},
+	
+    {	
+    	MENU_PIC_INFO,
+		{0},
+		{0, 0, OLED_KEY_BACK, 0, 0},			/* BACK */
+        MENU_QR_SCAN,           /* Menu ID: MENU_QR_SCAN */
+        NULL,
+        NULL,        
+    }, 
+	
+    {	/* MENU_STORAGE */
+    	MENU_SYS_SETTING,
+		{-1, 0, 0, SET_STORAGE_MAX, SET_STORAGE_MAX, 1}, 
+		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
+		MENU_STORAGE,           /* Menu ID: MENU_STORAGE */
+		NULL,
+        NULL,        
+	},
+
+
+    //sys info
+    {	/* MENU_SYS_DEV_INFO */
+    	MENU_SYS_SETTING,
+		{-1, 0, 0, 1, PAGE_MAX, 1}, 
+		{0, 0, OLED_KEY_BACK, 0, 0},
+        MENU_SYS_DEV_INFO,      /* Menu ID: MENU_SYS_DEV_INFO */
+        NULL,
+        NULL,        
+	},
+
+    {	/* MENU_SYS_ERR */
+    	MENU_TOP,
+		{0},
+		{0},
+        MENU_SYS_ERR,
+        NULL,
+        NULL,        
+	},
+
+    {	/* MENU_LOW_BAT */
+    	MENU_TOP,
+    	{0},
+    	{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
+        MENU_LOW_BAT,
+        NULL,
+        NULL,        
+	},
+
+    {	/* MENU_GYRO_START */
+    	MENU_SYS_SETTING,
+		{0},
+		{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
+        MENU_GYRO_START,
+        NULL,
+        NULL,        
+	},
+	
+    {	/* MENU_SPEED_TEST */
+    	MENU_PIC_INFO,
+		{0},
+		{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
+        MENU_SPEED_TEST,
+        NULL,
+        NULL,        
+	},
+	
+    {	/* MENU_RESET_INDICATION STATE_IDLE*/
+    	MENU_SYS_SETTING,
+		{0},
+		{OLED_KEY_UP, 0, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},
+        MENU_RESET_INDICATION,
+        NULL,
+        NULL,        
+	},
+
+#ifdef ENABE_MENU_WIFI_CONNECT	
+    {	/* MENU_WIFI_CONNECT */
+    	MENU_SYS_SETTING,
+		{0},
+		{0},
+        MENU_WIFI_CONNECT,
+        NULL,
+        NULL,        
+	},
+#endif
+		
+    {	/* MENU_AGEING */
+    	MENU_TOP,
+		{0},
+		{0},
+        MENU_AGEING,
+        NULL,
+        NULL,        		
+	},
+	
+#ifdef ENABLE_MENU_LOW_PROTECT	
+    //low bat protect
+	{
+		MENU_TOP,
+		{0},
+		{0},
+        MENU_LOW_PROTECT,
+        NULL,
+        NULL,
+	},
+#endif
+
+    {	/* MENU_NOSIE_SAMPLE */
+    	MENU_SYS_SETTING,
+		{0},
+		{0},
+        MENU_NOSIE_SAMPLE,
+        NULL,
+        NULL,        
+	},
+	
+    {	/* MENU_LIVE_REC_TIME */
+    	MENU_LIVE_INFO,
+		{0},
+		{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},			/* BACK, POWER */
+        MENU_LIVE_REC_TIME,
+        NULL,
+        NULL,        
+
+	},
+
+#ifdef ENABLE_MENU_STITCH_BOX
+    /*
+     * MENU_STITCH_BOX
+     */
+	{
+        MENU_SYS_SETTING,
+        {0},
+        {0, 0, OLED_KEY_BACK, 0 , OLED_KEY_POWER},
+        MENU_STITCH_BOX,
+        NULL,
+        NULL,
+    }
+#endif
+
+    /*
+     * MENU_FORMAT
+     */
+#ifdef ONLY_EXFAT
+    {
+        MENU_STORAGE,
+        {0, 0, 0, 1, 1, 1}, 
+        {0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
+        MENU_FORMAT,
+        NULL,
+        NULL,
+    },
+#else
+    {
+        MENU_SHOW_SPACE,
+        {0, 0, 0, 2, 2, 1}, 
+        {OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},
+        MENU_FORMAT,
+        NULL,
+        NULL,
+    },
+#endif
+
+
+    /*
+     * MENU_FORMAT_INDICATION
+     */
+    {
+        MENU_SHOW_SPACE,
+        {0},
+        {0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
+        MENU_FORMAT_INDICATION,
+        NULL,
+        NULL,
+    },
+
+
+    /*
+     * MENU_SET_PHTO_DELAY
+     */
+    {
+        MENU_SYS_SETTING,
+        {-1 ,0, 0, 8, 3, 3},
+        {OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},
+        MENU_SET_PHOTO_DEALY,
+        NULL,
+        NULL,
+    },
+
+#ifdef ENABLE_MENU_AEB
+    /*
+     * MENU_AEB
+     */
+    {
+        MENU_SYS_SETTING,
+        {-1 ,0, 0, 8, 3, 3},
+        {OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},
+        MENU_SET_AEB,
+        NULL,
+        NULL,
+    },
+#endif
+
+    {	/* MENU_SHOW_SPACE */
+    	MENU_STORAGE,
+		{-1, 0, 0, SET_STORAGE_MAX, SET_STORAGE_MAX, 1}, 
+		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
+		MENU_SHOW_SPACE,           /* Menu ID: MENU_SHOW_SPACE */
+		NULL,
+        NULL,        
+	},
+
+
+    {	/* MENU_SHOW_SPACE SetStorageItem */
+    	MENU_SHOW_SPACE,
+		{-1, 0, 0, SET_STORAGE_MAX, SET_STORAGE_MAX, 1}, 
+		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
+		MENU_TF_FORMAT_SELECT,           /* Menu ID: MENU_TF_FORMAT_SELECT */
+		NULL,
+        NULL,        
+	},
+
+    {	/* MENU_SHOW_SPACE SetStorageItem */
+    	MENU_STORAGE,
+		{-1, 0, 0, 0, 0, 1}, 
+		{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
+		MENU_SET_TEST_SPEED,           /* Menu ID: MENU_TF_FORMAT_SELECT */
+		NULL,
+        NULL,        
+	},
+
+#if 1
+	{	/* MENU_DISP_MSG_BOX */
+    	MENU_TOP,
+		{0},
+		{0},
+        MENU_CALC_BLC,
+        NULL,
+        NULL,        
+	},
+
+	{	/* MENU_DISP_MSG_BOX */
+    	MENU_TOP,
+		{0},
+		{0},
+        MENU_CALC_BPC,
+        NULL,
+        NULL,        
+	},
+#endif
+
+	{	/* MENU_DISP_MSG_BOX */
+    	MENU_TOP,
+		{0},
+#if 0        
+		{0, 0, OLED_KEY_BACK, 0, 0},    /* 支持返回键 */
+#else
+		{0, 0, 0, 0, 0},    /* 支持返回键 */
+#endif
+        MENU_UDISK_MODE,
+        NULL,
+        NULL,        
+	},
+
+
+	{	/* MENU_DISP_MSG_BOX */
+    	MENU_TOP,
+		{0},
+		{0},
+        MENU_DISP_MSG_BOX,
+        NULL,
+        NULL,        
+	},
+};
 
 
 static int main_icons[][MAINMENU_MAX] = {
@@ -693,6 +1070,19 @@ void MenuUI::init()
 
     LOGDBG(TAG, ">>>>>>>> Init MenUI object ok ......");
 }
+
+#if 0
+tegra186-quill-camera-e3333-a00.dtsi:37:			label = "cam0-rst", "cam0-pwdn",
+tegra186-quill-camera-e3326-a00.dtsi:51:			label = "cam0-rst", "cam0-pwdn";
+tegra186-quill-camera-modules.dtsi:47:			label = "cam0-rst", "cam0-pwdn",
+tegra186-quill-camera-plugin-manager.dtsi:172:						label = "cam0-rst", "cam0-pwdn";
+tegra186-quill-camera-plugin-manager.dtsi:399:						label = "cam0-rst", "cam0-pwdn",
+tegra186-quill-camera-plugin-manager.dtsi:437:						label = "cam0-rst", "cam0-pwdn",
+tegra186-quill-camera-plugin-manager.dtsi:1012:						label = "cam0-rst", "cam0-pwdn",
+tegra186-quill-camera-plugin-manager.dtsi:1619:						label = "cam0-pwdn";
+
+    ./flash.sh -r -k kernel-dtb jetson-tx2 mmcblk0p1
+#endif
 
 
 /*************************************************************************
@@ -1411,10 +1801,7 @@ void MenuUI::setMenuCfgInit()
 
 void MenuUI::set_update_mid(int interval)
 {
-    uint64_t serverState = getServerState();
-
     clearIconByType(ICON_CAMERA_WAITING_2016_76X32);
-
     send_update_mid_msg(interval);
 }
 
@@ -1559,7 +1946,7 @@ void MenuUI::commDownKeyProc()
 
     mSelect->last_select = mSelect->select;
     mSelect->select++;
-    if (mSelect->select + (mSelect->cur_page * mSelect->page_max) >= mSelect->total) {
+    if ((u32)(mSelect->select + (mSelect->cur_page * mSelect->page_max)) >= mSelect->total) {
         mSelect->select = 0;
         if (mSelect->page_num > 1) {
             mSelect->cur_page = 0;
@@ -1642,9 +2029,11 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
 
 void MenuUI::printJsonCfg(Json::Value& json)
 {
+    #if 0
     Json::FastWriter weriter;
     string jsonstr = weriter.write(json);
     LOGDBG(TAG, "print json: %s", jsonstr.c_str());
+    #endif
 }
 
 
@@ -1659,11 +2048,8 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
         string cfgItemJsonFilePath;
 
         PicVideoCfg** pSetItems = static_cast<PicVideoCfg**>(pParentMenu->priv);
-
-        Json::Reader reader;
         sp<Json::Value> pRoot;
         bool bParseFileFlag = false;
-
 
         switch (pParentMenu->iMenuId) {
 
@@ -1685,13 +2071,26 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                     LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
                     if (access(path, F_OK) == 0) {
-                        std::ifstream is;  
-                        is.open (path, std::ios::binary); 
+                        std::ifstream ifs;  
+                        ifs.open(path, std::ios::binary); 
+                        
+                        #if 0
+                        Json::Reader reader;
                         if (reader.parse(is, *(pRoot.get()), false)) {
                             LOGDBG(TAG, "parse [%s] success", path);
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         } 
+                        #else 
+                        Json::CharReaderBuilder builder;
+                        builder["collectComments"] = false;
+                        JSONCPP_STRING errs;
+                        if (!parseFromStream(builder, ifs, pRoot.get(), &errs)) {
+                            LOGDBG(TAG, "parse [%s] success", path);
+                            pSetItems[i]->jsonCmd = pRoot;
+                            bParseFileFlag = true;
+                        }                        
+                        #endif
                     }
 
                     if (bParseFileFlag == false) {
@@ -1712,6 +2111,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             pCommJsonCmd = pCmdTakePic_Customer;
                         } 
                         
+                        #if 0
                         if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
                             LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
                             pSetItems[i]->jsonCmd = pRoot;
@@ -1719,6 +2119,20 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             LOGERR(TAG, "Parse Json String Failed!");
                             pSetItems[i]->jsonCmd = NULL;
                         }
+                        #else 
+
+                        Json::CharReaderBuilder builder;
+                        builder["collectComments"] = false;
+                        JSONCPP_STRING errs;
+                        Json::CharReader* reader = builder.newCharReader();
+                        if (reader->parse(pCommJsonCmd, pCommJsonCmd + strlen(pCommJsonCmd), pRoot.get(), &errs)) {
+                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
+                            pSetItems[i]->jsonCmd = pRoot;
+                        } else {
+                            LOGERR(TAG, "Parse Json String Failed!");
+                            pSetItems[i]->jsonCmd = NULL;
+                        }
+                        #endif
                     }
 
                     cfgPicModeItemCurVal(pSetItems[i]);
@@ -1743,15 +2157,31 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                     const char* path = cfgItemJsonFilePath.c_str();
                     LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
+
                     if (access(path, F_OK) == 0) {
-                        std::ifstream is;  
-                        is.open (path, std::ios::binary); 
+                        std::ifstream ifs;  
+                        ifs.open(path, std::ios::binary); 
+                        
+                        #if 0
+                        Json::Reader reader;
                         if (reader.parse(is, *(pRoot.get()), false)) {
                             LOGDBG(TAG, "parse [%s] success", path);
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         } 
+                        #else 
+                        Json::CharReaderBuilder builder;
+                        builder["collectComments"] = false;
+                        JSONCPP_STRING errs;
+                        if (!parseFromStream(builder, ifs, pRoot.get(), &errs)) {
+                            LOGDBG(TAG, "parse [%s] success", path);
+                            pSetItems[i]->jsonCmd = pRoot;
+                            bParseFileFlag = true;
+                        }                        
+                        #endif
                     }
+
+
 
                     if (bParseFileFlag == false) {
                         LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
@@ -1780,6 +2210,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             pCommJsonCmd = pCmdTakeVid_Customer;
                         } 
                         
+                        #if 0
                         if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
                             LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
                             pSetItems[i]->jsonCmd = pRoot;
@@ -1787,6 +2218,21 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             LOGERR(TAG, "Parse Json String Failed!");
                             pSetItems[i]->jsonCmd = NULL;
                         }
+                        #else 
+
+                        Json::CharReaderBuilder builder;
+                        builder["collectComments"] = false;
+                        JSONCPP_STRING errs;
+                        Json::CharReader* reader = builder.newCharReader();
+                        if (reader->parse(pCommJsonCmd, pCommJsonCmd + strlen(pCommJsonCmd), pRoot.get(), &errs)) {
+                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
+                            pSetItems[i]->jsonCmd = pRoot;
+                        } else {
+                            LOGERR(TAG, "Parse Json String Failed!");
+                            pSetItems[i]->jsonCmd = NULL;
+                        }
+                        #endif
+
                     }
 
                     /* ADD: */
@@ -1820,13 +2266,26 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                     LOGDBG(TAG, "TakeLive [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
                     if (access(path, F_OK) == 0) {
-                        std::ifstream is;  
-                        is.open (path, std::ios::binary); 
+                        std::ifstream ifs;  
+                        ifs.open(path, std::ios::binary); 
+                        
+                        #if 0
+                        Json::Reader reader;
                         if (reader.parse(is, *(pRoot.get()), false)) {
                             LOGDBG(TAG, "parse [%s] success", path);
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         } 
+                        #else 
+                        Json::CharReaderBuilder builder;
+                        builder["collectComments"] = false;
+                        JSONCPP_STRING errs;
+                        if (!parseFromStream(builder, ifs, pRoot.get(), &errs)) {
+                            LOGDBG(TAG, "parse [%s] success", path);
+                            pSetItems[i]->jsonCmd = pRoot;
+                            bParseFileFlag = true;
+                        }                        
+                        #endif
                     }
 
                     if (bParseFileFlag == false) {
@@ -1845,15 +2304,30 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             pCommJsonCmd = pCmdLive_Customer;
                         }
                         
+                        #if 0
                         if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
+                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
                             pSetItems[i]->jsonCmd = pRoot;
-
-                            LOGDBG(TAG, "[%s]parse [%s] success",  pSetItems[i]->pItemName, pCommJsonCmd);
-                            printJsonCfg( *((pSetItems[i]->jsonCmd).get()));
                         } else {
                             LOGERR(TAG, "Parse Json String Failed!");
-                            pSetItems[i]->jsonCmd = nullptr;
+                            pSetItems[i]->jsonCmd = NULL;
                         }
+                        #else 
+
+                        Json::CharReaderBuilder builder;
+                        builder["collectComments"] = false;
+                        JSONCPP_STRING errs;
+                        Json::CharReader* reader = builder.newCharReader();
+                        if (reader->parse(pCommJsonCmd, pCommJsonCmd + strlen(pCommJsonCmd), pRoot.get(), &errs)) {
+                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
+                            pSetItems[i]->jsonCmd = pRoot;
+                        } else {
+                            LOGERR(TAG, "Parse Json String Failed!");
+                            pSetItems[i]->jsonCmd = NULL;
+                        }
+                        #endif
+
+
                     }
 
                     /* ADD: */
@@ -2183,7 +2657,6 @@ void MenuUI::setGyroCalcDelay(int iDelay)
  */
 bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 {
-    bool bAllow = true;
     sp<ARMessage> msg = mNotify->dup();
     int iIndex = 0;
 
@@ -2191,7 +2664,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
     struct stPicVideoCfg* pAebPicVidCfg = NULL;
     struct stSetItem* pAebSetItem = NULL;
 
-    VolumeManager* vm = VolumeManager::Instance();
     uint64_t serverState = getServerState();
     ProtoManager* pm = ProtoManager::Instance();
 
@@ -2201,7 +2673,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
             LOGDBG(TAG, "=------------->> sendRpc +++ ACTION_PIC");
             Json::Value* pTakePicJson = NULL;
-            bool bAllow = false;
             
             /* customer和非customer */
             iIndex = getMenuSelectIndex(MENU_PIC_SET_DEF);
@@ -2380,7 +2851,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
         }
 			
         case ACTION_CALIBRATION: {	/* 拼接校正 */
-            bAllow = false;
             if (checkAllowStitchCalc(serverState)) {
                 addState(STATE_CALIBRATING);     /* 避免倒计时，客户端的其他操作，先将状态机设置为START_CALIBRATIONING */
                 setGyroCalcDelay(5);
@@ -2613,16 +3083,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
         SWITCH_DEF_ERROR(option)
     }
 
-#if 0
-	if (bAllow) {
-        LOGDBG(TAG, "-------------> sendRpc use fifo thread, ACTION: %d", option);
-        msg->set<int>("what", OLED_KEY);
-        msg->set<int>("action", option);
-        msg->post();
-    }
-#endif
-
-    return bAllow;
+    return true;
 }
 
 
@@ -2948,7 +3409,6 @@ void MenuUI::procBackKeyEvent()
 {
     uint64_t tmpState = getServerState();
     ProtoManager* pm = ProtoManager::Instance();
-    InputManager* im = InputManager::Instance();
 
     LOGDBG(TAG, "procBackKeyEvent --> Current menu[%s], Current Server state[0x%x]", getMenuName(cur_menu), tmpState);
 
@@ -2995,6 +3455,8 @@ void MenuUI::procBackKeyEvent()
     }
     #ifdef ENABLE_AWB_CALC 
     else if (cur_menu == MENU_SYS_SETTING) {  /* 工厂AWB校正 */
+
+        InputManager* im = InputManager::Instance();
 
         set_cur_menu_from_exit();
 
@@ -3449,11 +3911,20 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
 void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& jsonRoot)
 {
     FILE* fp;
-	Json::FastWriter writer;
     Json::Reader reader;
     sp<Json::Value> pRoot = (sp<Json::Value>) (new Json::Value());
 
-	string jsonstr = writer.write(jsonRoot);
+    std::ostringstream osOutput;  
+
+    std::string resultStr = "";
+    std::string sendStr = "";
+    Json::StreamWriterBuilder builder;
+
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+
+	writer->write(jsonRoot, &osOutput);
+    string jsonstr = osOutput.str();
 
     if (access(filePath, F_OK) == 0) {
         unlink(filePath);
@@ -4126,10 +4597,10 @@ void MenuUI::dispSettingPage(vector<struct stSetItem*>& setItemsList)
     ICON_POS* pIconPos = NULL;
     struct stSetItem* pTempSetItem = NULL;
     SELECT_INFO * mSelect = getCurMenuSelectInfo();
-    const int iIndex = getMenuSelectIndex(cur_menu);    /* 选中项的索引值 */
+    const u32 iIndex = getMenuSelectIndex(cur_menu);    /* 选中项的索引值 */
 
-    int start = mSelect->cur_page * mSelect->page_max;
-    int end = start + mSelect->page_max;
+    u32 start = mSelect->cur_page * mSelect->page_max;
+    u32 end = start + mSelect->page_max;
     
     if (end > mSelect->total)
         end = mSelect->total;
@@ -4521,7 +4992,7 @@ void MenuUI::startFormatDevice()
 int MenuUI::formatDev(const char* pDevNode, const char* pMountPath)
 {
     char buf[1024] = {0};
-    int err_trim = 0;
+    // int err_trim = 0;
     int iErrNo = FORMAT_ERR_SUC;
     int i, iRetry = 3;
 
@@ -4712,10 +5183,10 @@ void MenuUI::dispShowStoragePage(SetStorageItem** storageList)
     struct stStorageItem* pTempStorageItem = NULL;
 
     SELECT_INFO * mSelect = getCurMenuSelectInfo();
-    const int iIndex = getMenuSelectIndex(cur_menu);    /* 选中项的索引值 */
+    const u32 iIndex = getMenuSelectIndex(cur_menu);    /* 选中项的索引值 */
 
-    int start = mSelect->cur_page * mSelect->page_max;
-    int end = start + mSelect->page_max;
+    u32 start = mSelect->cur_page * mSelect->page_max;
+    u32 end = start + mSelect->page_max;
     
     if (end > mSelect->total)
         end = mSelect->total;
@@ -5861,7 +6332,7 @@ bool MenuUI::switchEtherIpMode(int iMode)
 void MenuUI::procSetMenuKeyEvent()
 {
     int iVal = 0;
-    int iItemIndex = getMenuSelectIndex(cur_menu);    /* 得到选中的索引 */
+    u32 iItemIndex = getMenuSelectIndex(cur_menu);    /* 得到选中的索引 */
     struct stSetItem* pCurItem = NULL;
     vector<struct stSetItem*>* pVectorList = static_cast<vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
 
@@ -7872,7 +8343,7 @@ int MenuUI::oled_disp_type(int type)
             /* 一秒之后发送该消息，感觉有点慢 
              * 出现进入菜单一秒后才开始倒计时（默认是屏幕刷新的更快了??） - 2018年8月22日
              */
-            send_update_light(MENU_CALIBRATION, STATE_CALIBRATING, INTERVAL_1HZ);
+            send_update_light(MENU_CALIBRATION, INTERVAL_1HZ);
             if (cur_menu != MENU_CALIBRATION) {
                 setCurMenu(MENU_CALIBRATION);
             }
@@ -7910,7 +8381,7 @@ int MenuUI::oled_disp_type(int type)
                 LOGDBG(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
                 //disp video menu before add state_record
                 setCurMenu(MENU_PIC_INFO);
-                send_update_light(MENU_PIC_INFO, STATE_TAKE_CAPTURE_IN_PROCESS, INTERVAL_1HZ);
+                send_update_light(MENU_PIC_INFO, INTERVAL_1HZ);
             }
             break;
         }
@@ -7920,7 +8391,7 @@ int MenuUI::oled_disp_type(int type)
                 LOGDBG(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
                 //disp video menu before add state_record
                 setCurMenu(MENU_PIC_INFO);
-                send_update_light(MENU_PIC_INFO, STATE_PIC_STITCHING, INTERVAL_5HZ);
+                send_update_light(MENU_PIC_INFO, INTERVAL_5HZ);
             }
             break;
         }
@@ -8409,7 +8880,7 @@ void MenuUI::setTakePicDelay(int iDelay)
 const char* MenuUI::getPicVidCfgNameByIndex(vector<struct stPicVideoCfg*>& mList, int iIndex)
 {
 
-    if (iIndex > mList.size() - 1) {
+    if ((u32)(iIndex) > mList.size() - 1) {
         LOGERR(TAG, "Invalid Index[%d], please check", iIndex);
     } else {
         struct stPicVideoCfg* pTmpCfg = mList.at(iIndex);
@@ -9317,7 +9788,7 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
 ** 调 用: handleMessage
 **
 *************************************************************************/
-void MenuUI::handleDispLightMsg(int menu, int state, int interval)
+void MenuUI::handleDispLightMsg(int menu, int interval)
 {
 	bSendUpdate = false;
     uint64_t serverState = getServerState();
@@ -9341,12 +9812,12 @@ void MenuUI::handleDispLightMsg(int menu, int state, int interval)
 						disp_sec(mTakePicDelay, 52, 24);	/* 显示倒计时的时间 */
 					}
 					/* 倒计时时根据当前cap_dela y的值,只在	CAPTURE中播放一次, fix bug1147 */
-					send_update_light(menu, state, INTERVAL_1HZ, true, SND_ONE_T);
+					send_update_light(menu, INTERVAL_1HZ, true, SND_ONE_T);
 				}
                 mTakePicDelay--;
 
 			} else if (checkServerStateIn(serverState, STATE_PIC_STITCHING)) {
-				send_update_light(menu, state, INTERVAL_5HZ, true);
+				send_update_light(menu, INTERVAL_5HZ, true);
 			} else {
 				LOGDBG(TAG, "update pic light error state 0x%x", serverState);
 				setLight();
@@ -9358,14 +9829,14 @@ void MenuUI::handleDispLightMsg(int menu, int state, int interval)
 		case MENU_CALIBRATION: {
             if (checkServerStateIn(serverState, STATE_CALIBRATING)) {
 				if (mGyroCalcDelay < 0) {
-					send_update_light(menu, state, INTERVAL_5HZ, true);
+					send_update_light(menu, INTERVAL_5HZ, true);
 					if (mGyroCalcDelay == -1) {
 						if (cur_menu == menu) {	/* 当倒计时完成后才会给Camerad发送"校验消息" */
 							disp_calibration_res(2);
 						}
 					}
 				} else {	/* 大于0时,显示倒计时 */
-					send_update_light(menu, state, INTERVAL_1HZ, true, SND_ONE_T);				
+					send_update_light(menu, INTERVAL_1HZ, true, SND_ONE_T);				
 					if (cur_menu == menu) {		/* 在屏幕上显示倒计时 */
 						disp_calibration_res(3, mGyroCalcDelay);
 					}
@@ -9441,7 +9912,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             }
                 
             case UI_MSG_LONG_KEY_EVENT: {	/* 长按键消息处理 */
-                int key;
+                int key = 0;
                 CHECK_EQ(msg->find<int>("long_key", &key), true);
 				handleLongKeyMsg(key);
 				 break;
@@ -9521,7 +9992,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 
 
             case UI_MSG_UPDATE_GPS_STATE: {
-                int iGpstate;
+                int iGpstate = GPS_STATE_NO_DEVICE;
                 CHECK_EQ(msg->find<int>("gps_state", &iGpstate), true);
                 mGpsState = iGpstate;
                 handleGpsState();
@@ -9586,15 +10057,13 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             }
 
             case UI_DISP_LIGHT: {   /* 显示灯状态消息 */
-                int menu;
-                int interval;
-                int state;
+                int menu = -1;
+                int interval = 0;
 
                 CHECK_EQ(msg->find<int>("menu", &menu), true);
                 CHECK_EQ(msg->find<int>("interval", &interval), true);
-                CHECK_EQ(msg->find<int>("state", &state), true);
 
-				handleDispLightMsg(menu, interval, state);
+				handleDispLightMsg(menu, interval);
 				break;
             }
                 			
@@ -9804,7 +10273,7 @@ void MenuUI::sendShutdown()
 }
 
 
-void MenuUI::send_update_light(int menu, int state, int interval, bool bLight, int sound_id)
+void MenuUI::send_update_light(int menu, int interval, bool bLight, int sound_id)
 {
 
 #if 0
@@ -9831,7 +10300,6 @@ void MenuUI::send_update_light(int menu, int state, int interval, bool bLight, i
         bSendUpdate = true;
         sp<ARMessage> msg = obtainMessage(UI_DISP_LIGHT);
         msg->set<int>("menu", menu);
-        msg->set<int>("state", state);
         msg->set<int>("interval", interval);
         msg->postWithDelayMs(interval);
     }
@@ -10157,7 +10625,7 @@ void MenuUI::dispShooting()
 void MenuUI::dispProcessing()
 {
     dispIconByType(ICON_PROCESS_76_3276_32);
-    send_update_light(MENU_PIC_INFO, STATE_PIC_STITCHING, INTERVAL_5HZ);
+    send_update_light(MENU_PIC_INFO, INTERVAL_5HZ);
 }
 
 void MenuUI::clearArea(u8 x, u8 y, u8 w, u8 h)

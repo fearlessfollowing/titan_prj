@@ -32,7 +32,7 @@
 #include <sys/VolumeManager.h>
 
 #include <prop_cfg.h>
-
+#include <sstream>
 #include <json/value.h>
 #include <json/json.h>
 
@@ -41,13 +41,17 @@
 
 using namespace std;
 
+#if 0
 static QR_STRUCT mQRInfo[] = {
 	100, {{7,4,4,3,1,0}, {6,6,5,0,0,1}, {6,6,6}}
 };
+#endif
 
 
 
 static sp<fifo> mpFIFO = nullptr;
+
+#if 0
 static const int qr_array_len = 4;
 
 static const RES_INFO mResInfos[] = {
@@ -84,9 +88,9 @@ static const RES_INFO mResInfos[] = {
 	{1280,{960,960}},
 	{2160,{1080,1080}} //15
 };
+#endif
 
 
-static int reboot_cmd = -1;
 
 
 static sp<fifo> gSysTranObj = NULL;
@@ -109,11 +113,6 @@ sp<fifo>& fifo::getSysTranObj()
 
 void init_fifo()
 {
-    /*
-    CHECK_EQ(mpFIFO, nullptr);
-    mpFIFO = sp<fifo>(new fifo());
-    CHECK_NE(mpFIFO, nullptr);
-    */
     fifo::getSysTranObj();
 }
 
@@ -125,14 +124,6 @@ void fifo::sendUiMessage(sp<ARMessage>& msg)
 
 void start_all()
 {
-
-#if 0
-    if (nullptr != mpFIFO) {
-        mpFIFO->start_all();
-    }
-#ele
-    fifo::getSysTranObj()->start_all();
-#endif
 
 }
 
@@ -251,67 +242,6 @@ void fifo::sendExit()
         }
     }
 }
-
-
-#if 0
-void fifo::send_err_type_code(int type, int code)
-{
-    sp<ERR_TYPE_INFO> mInfo = sp<ERR_TYPE_INFO>(new ERR_TYPE_INFO());
-    sp<ARMessage> msg = obtainMessage(MSG_DISP_ERR_TYPE);
-    mInfo->type = type;
-    mInfo->err_code =code;
-    msg->set<sp<ERR_TYPE_INFO>>("err_type_info", mInfo);
-    msg->post();
-}
-
-
-void fifo::send_wifi_config(const char *ssid, const char *pwd, int open)
-{
-    LOGDBG(TAG, "send wifi config");
-    sp<WIFI_CONFIG> mConfig = sp<WIFI_CONFIG>(new WIFI_CONFIG());
-    sp<ARMessage> msg = obtainMessage(MSG_SET_WIFI_CONFIG);
-    snprintf(mConfig->ssid, sizeof(mConfig->ssid), "%s", ssid);
-    snprintf(mConfig->pwd, sizeof(mConfig->pwd), "%s", pwd);
-//    mConfig->bopen = open;
-    msg->set<sp<WIFI_CONFIG>>("wifi_config", mConfig);
-    msg->post();
-}
-
-void fifo::send_power_off()
-{
-    sp<ARMessage> msg = obtainMessage(MSG_START_POWER_OFF);
-    msg->post();
-}
-
-void fifo::send_sys_info(sp<SYS_INFO> &mSysInfo)
-{
-    sp<ARMessage> msg = obtainMessage(MSG_SET_SYS_INFO);
-    msg->set<sp<SYS_INFO>>("sys_info", mSysInfo);
-    msg->post();
-}
-
-void fifo::send_sync_info(sp<struct _sync_init_info_> &mSyncInfo)
-{
-    sp<ARMessage> msg = obtainMessage(MSG_SET_SYNC_INFO);
-    msg->set<sp<SYNC_INIT_INFO>>("sync_info", mSyncInfo);
-    msg->post();
-}
-
-
-void fifo::send_disp_str_type(sp<DISP_TYPE> &dis_type)
-{
-    sp<ARMessage> msg = obtainMessage(MSG_DISP_STR_TYPE);
-    msg->set<sp<DISP_TYPE>>("disp_type", dis_type);
-    msg->post();
-}
-#endif
-
-
-/*
- * 来自UI，需要往外发送的消息 - 将消息丢入本地消息循环中
- * 来自Web的消息, 将json转换为消息直接丢入UI线程的消息队列中
- */
-
 
 
 /*************************************************************************
@@ -492,70 +422,11 @@ void fifo::handleUiKeyReq(int action, const sp<ARMessage>& msg)
 
 
 
-/*************************************************************************
-** 方法名称: handleUiNotify
-** 方法功能: 处理来自UI线程的消息
-** 入口参数: 
-**		msg - 消息指针
-** 返 回 值: 无 
-** 调     用: 
-** {"name": "camera._calibrationAwb"}
-*************************************************************************/
-void fifo::handleUiNotify(const sp<ARMessage> &msg)
-{
-    int what;
-    CHECK_EQ(msg->find<int>("what", &what), true);
-
-    switch (what) {
-
-		/* msg.what = OLED_KEY
-	 	 * msg.action = int
-	 	 * msg.action_info = sp<ACTION_INFO>	[optional]
-	 	 * {"action":[0/9], "action_info": }
-	 	 */
-	 	 
-        case MenuUI::OLED_KEY: {
-            int action;
-            CHECK_EQ(msg->find<int>("action", &action), true);
-
-			/* {"action": [0/9]} */
-			LOGDBG(TAG, "FIFO RECV OLED ACTION [%s]", getActionName(action));
-            // handleUiKeyReq(action, msg);
-            break;
-        }
-			
-        default:
-            break;
-    }
-}
-
-
-
 void fifo::postTranMessage(sp<ARMessage>& msg)
 {
     msg->setHandler(mHandler);
     msg->post();
 }
-
-
-void fifo::handleSavePathChanged(const sp<ARMessage>& msg)
-{
-    sp<SAVE_PATH> mSavePath;
-    CHECK_EQ(msg->find<sp<SAVE_PATH>>("save_path", &mSavePath), true);
-
-    LOGDBG(TAG, "<<--------------------------- [SavePathChanged Message] %s", mSavePath->path);
-    write_fifo(EVENT_SAVE_PATH, mSavePath->path);   
-}
-
-void fifo::handleUpdateDevList(const sp<ARMessage>& msg)
-{
-    sp<SAVE_PATH> mSavePath;
-    CHECK_EQ(msg->find<sp<SAVE_PATH>>("dev_list", &mSavePath), true);
-
-    LOGDBG(TAG, "<<--------------------------- [UpdateDevList Message] %s", mSavePath->path);
-    write_fifo(EVENT_DEV_NOTIFY, mSavePath->path);   
-}
-
 
 
 #define MESSAGE_NAME(n) case n: return #n
@@ -597,19 +468,7 @@ void fifo::handleMessage(const sp<ARMessage> &msg)
         if (MSG_EXIT == what) {		/* 线程退出消息 */
             mLooper->quit();
             close_write_fd();
-        } else {
-
-            switch (what) {
-
-                /* UI -> FIFO -> OSC */
-                case MSG_UI_KEY: {	/* 来自UI线程的Key */
-                    handleUiNotify(msg);
-                    break;
-                }
-
-                SWITCH_DEF_ERROR(what)
-		    }
-        }
+        } 
     }
 }
 
@@ -1169,275 +1028,6 @@ void fifo::handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode
     
 }
 
-
-
-/*
- * 处理来自HTTP的请求
- */
-void fifo::handleReqFormHttp(sp<DISP_TYPE>& mDispType, cJSON *root, cJSON *subNode)
-{
-    cJSON *child = nullptr;
-
-	LOGDBG(TAG, "rec req type %d", mDispType->type);     // rec req type 6
-	GET_CJSON_OBJ_ITEM_INT(child, subNode, "action", mDispType->qr_type)
-
-	/* 获取"param"子节点 */
-	child = cJSON_GetObjectItem(subNode, "param");
-	CHECK_NE(child, nullptr);
-
-	/* 使用ACTION_INFO结构来存储"param"节点的内容 */
-	sp<ACTION_INFO> mAI = sp<ACTION_INFO>(new ACTION_INFO());
-	memset(mAI.get(), 0, sizeof(ACTION_INFO));
-
-	/* 获取"param"的子节点"origin"(原片相关信息) */
-	cJSON *org = cJSON_GetObjectItem(child, "origin");	
-	if (org) {	/* 原片参数存在 */
-		/* 原片的宽,高,是否存储 */
-		bool bSaveOrg;
-		GET_CJSON_OBJ_ITEM_INT(subNode, org, "width", mAI->stOrgInfo.w)
-		GET_CJSON_OBJ_ITEM_INT(subNode, org, "height", mAI->stOrgInfo.h)
-		GET_CJSON_OBJ_ITEM_INT(subNode, org, "saveOrigin", bSaveOrg)
-		LOGDBG(TAG, "bSave org %d", mAI->stOrgInfo.save_org);
-		if (bSaveOrg) {
-			mAI->stOrgInfo.save_org = SAVE_DEF;
-		} else {
-			mAI->stOrgInfo.save_org= SAVE_OFF;
-		}
-										
-		LOGDBG(TAG, "org %d %d", mAI->stOrgInfo.w, mAI->stOrgInfo.h);
-
-		/* 获取"origin"的子节点"mime" */
-		subNode = cJSON_GetObjectItem(org, "mime");
-		if (subNode) {
-			mAI->stOrgInfo.mime = get_mime_index(subNode->valuestring);
-		}
-
-		LOGDBG(TAG, "qr type %d", mDispType->qr_type);
-		switch (mDispType->qr_type) {
-			case ACTION_PIC:
-				if (mAI->stOrgInfo.w >= 7680) {
-					mAI->size_per_act = 20;
-				} else if (mAI->stOrgInfo.w >= 5760) {
-					mAI->size_per_act = 15;
-				} else {
-					mAI->size_per_act = 10;
-				}
-				break;
-												
-			case ACTION_VIDEO:
-				subNode = cJSON_GetObjectItem(org,"framerate");
-				if (subNode) {
-					mAI->stOrgInfo.stOrgAct.mOrgV.org_fr = get_fr_index(subNode->valueint);
-				}
-
-				subNode = cJSON_GetObjectItem(org, "bitrate");
-				if (subNode) {
-					mAI->stOrgInfo.stOrgAct.mOrgV.org_br = subNode->valueint / 1000;
-				}
-
-				if (mAI->stOrgInfo.save_org != SAVE_OFF) {
-					//exactly should divide 8,but actually less,so divide 10
-					mAI->size_per_act = (mAI->stOrgInfo.stOrgAct.mOrgV.org_br * 6) / 10;
-				} else {
-					// no br ,seems timelapse
-					mAI->size_per_act = 30;
-				}
-
-				subNode = cJSON_GetObjectItem(org, "logMode");
-				if (subNode) {
-					mAI->stOrgInfo.stOrgAct.mOrgV.logMode = subNode->valueint;
-				}
-				break;
-
-			case ACTION_LIVE:
-				subNode = cJSON_GetObjectItem(org,"framerate");
-				if (subNode) {
-					mAI->stOrgInfo.stOrgAct.mOrgV.org_fr = get_fr_index(subNode->valueint);
-				}
-
-				subNode = cJSON_GetObjectItem(org, "bitrate");
-				if (subNode) {
-					mAI->stOrgInfo.stOrgAct.mOrgV.org_br = subNode->valueint / 1000;
-				}
-				subNode = cJSON_GetObjectItem(root, "logMode");
-				if (subNode) {
-					mAI->stOrgInfo.stOrgAct.mOrgL.logMode = subNode->valueint;
-				}
-				break;
-			SWITCH_DEF_ERROR(mDispType->qr_type)
-		}
-	}
-
-	cJSON *sti = cJSON_GetObjectItem(child, "stiching");
-	if (sti) {
-		char sti_mode[32];
-		GET_CJSON_OBJ_ITEM_INT(subNode, sti, "width", mAI->stStiInfo.w)
-		GET_CJSON_OBJ_ITEM_INT(subNode, sti, "height", mAI->stStiInfo.h)
-		LOGDBG(TAG, "stStiInfo.sti_res is (%d %d)", mAI->stStiInfo.w, mAI->stStiInfo.h);
-		GET_CJSON_OBJ_ITEM_STR(subNode, sti, "mode", sti_mode, sizeof(sti_mode));
-		mAI->mode = get_mode_index(sti_mode);
-		
-
-		subNode = cJSON_GetObjectItem(sti, "mime");
-		if (subNode) {
-			mAI->stStiInfo.mime = get_mime_index(subNode->valuestring);
-		}
-
-		subNode = cJSON_GetObjectItem(sti, "map");
-		if (subNode) {
-			mAI->stStiInfo.stich_mode = get_sti_mode(subNode->valuestring);
-		}
-
-		LOGDBG(TAG, " mode (%d %d)", mAI->mode, mAI->stStiInfo.stich_mode);
-		switch (mDispType->qr_type) {
-			case ACTION_PIC:
-				subNode = cJSON_GetObjectItem(sti, "algorithm");
-				if (subNode) {
-					mAI->stStiInfo.stich_mode = STITCH_OPTICAL_FLOW;
-				} else {
-					mAI->stStiInfo.stich_mode = STITCH_NORMAL;
-				}
-
-				// 3d
-				if (mAI->mode == 0) {
-					if (mAI->stStiInfo.w >= 7680) {
-						mAI->size_per_act = 60;
-					} else if (mAI->stStiInfo.w >= 5760) {
-						mAI->size_per_act = 45;
-					} else {
-						mAI->size_per_act = 30;
-					}
-				} else {
-					if (mAI->stStiInfo.w >= 7680) {
-						mAI->size_per_act = 30;
-					} else if (mAI->stStiInfo.w >= 5760) {
-						mAI->size_per_act = 25;
-					} else {
-						mAI->size_per_act = 20;
-					}
-				}
-				break;
-
-			case ACTION_VIDEO:
-				subNode = cJSON_GetObjectItem(sti, "framerate");
-				if (subNode) {
-					mAI->stStiInfo.stStiAct.mStiV.sti_fr = get_fr_index(subNode->valueint);
-				}
-
-				subNode = cJSON_GetObjectItem(sti, "bitrate");
-				if (subNode) {
-					mAI->stStiInfo.stStiAct.mStiV.sti_br = subNode->valueint / 1000;
-				}
-												
-				mAI->stStiInfo.stich_mode = STITCH_NORMAL;
-
-				// exclude timelapse 170831
-				if (mAI->stOrgInfo.save_org != SAVE_OFF) {
-					mAI->size_per_act += mAI->stStiInfo.stStiAct.mStiV.sti_br / 10;
-				}
-				break;
-												
-			case ACTION_LIVE:
-				subNode = cJSON_GetObjectItem(sti, "framerate");
-				if (subNode) {
-					mAI->stStiInfo.stStiAct.mStiL.sti_fr = get_fr_index(subNode->valueint);
-				}
-				subNode = cJSON_GetObjectItem(sti, "bitrate");
-				if (subNode) {
-					mAI->stStiInfo.stStiAct.mStiL.sti_br = subNode->valueint / 1000;
-				}
-				GET_CJSON_OBJ_ITEM_STR(subNode, sti, "_liveUrl", mAI->stStiInfo.stStiAct.mStiL.url,sizeof(mAI->stStiInfo.stStiAct.mStiL.url));
-				GET_CJSON_OBJ_ITEM_STR(subNode, sti, "format", mAI->stStiInfo.stStiAct.mStiL.format,sizeof(mAI->stStiInfo.stStiAct.mStiL.format));
-				GET_CJSON_OBJ_ITEM_INT(subNode, sti, "liveOnHdmi", mAI->stStiInfo.stStiAct.mStiL.hdmi_on)
-				GET_CJSON_OBJ_ITEM_INT(subNode, sti, "fileSave", mAI->stStiInfo.stStiAct.mStiL.file_save)
-				break;
-			SWITCH_DEF_ERROR(mDispType->qr_type)
-		}
-	} else {
-		mAI->stStiInfo.stich_mode = STITCH_OFF;
-	}
-									
-	cJSON *aud = cJSON_GetObjectItem(child, "audio");
-	if (aud) {
-		GET_CJSON_OBJ_ITEM_STR(subNode, aud, "mime", mAI->stAudInfo.mime,sizeof(mAI->stAudInfo.mime))
-		GET_CJSON_OBJ_ITEM_STR(subNode, aud, "sampleFormat", mAI->stAudInfo.sample_fmt,sizeof(mAI->stAudInfo.sample_fmt))
-		GET_CJSON_OBJ_ITEM_STR(subNode, aud, "channelLayout", mAI->stAudInfo.ch_layout,sizeof(mAI->stAudInfo.ch_layout))
-		GET_CJSON_OBJ_ITEM_INT(subNode, aud, "samplerate", mAI->stAudInfo.sample_rate)
-		GET_CJSON_OBJ_ITEM_INT(subNode, aud, "bitrate", mAI->stAudInfo.br)
-	}
-
-	cJSON *del = cJSON_GetObjectItem(child, "delay");
-	if (del) {
-		mAI->delay = del->valueint;
-	}
-									
-	cJSON *tl = cJSON_GetObjectItem(child, "timelapse");
-	if (tl) {
-		GET_CJSON_OBJ_ITEM_INT(subNode, tl, "interval", mAI->stOrgInfo.stOrgAct.mOrgV.tim_lap_int)
-	}
-									
-	cJSON *hdr_j = cJSON_GetObjectItem(child, "hdr");
-	if (hdr_j) {
-		GET_CJSON_OBJ_ITEM_INT(subNode, hdr_j, "count", mAI->stOrgInfo.stOrgAct.mOrgP.hdr_count)
-		GET_CJSON_OBJ_ITEM_INT(subNode, hdr_j, "min_ev", mAI->stOrgInfo.stOrgAct.mOrgP.min_ev)
-		GET_CJSON_OBJ_ITEM_INT(subNode, hdr_j, "max_ev", mAI->stOrgInfo.stOrgAct.mOrgP.max_ev)
-	}
-
-	cJSON *bur = cJSON_GetObjectItem(child, "burst");
-	if (bur) {
-		GET_CJSON_OBJ_ITEM_INT(subNode, bur, "count",mAI->stOrgInfo.stOrgAct.mOrgP.burst_count)
-	}
-
-	cJSON *props = cJSON_GetObjectItem(child, "properties");
-	//set as default
-	mAI->stProp.audio_gain = 96;
-	if (props) {
-		GET_CJSON_OBJ_ITEM_INT(subNode, props, "audio_gain", mAI->stProp.audio_gain);
-		LOGDBG(TAG, "aud_gain %d", mAI->stProp.audio_gain);
-		
-		// {"aaa_mode":2,"ev_bias":0,"wb":0,"long_shutter":1-60(s),"shutter_value":21,"iso_value","value":7,"brightness","value":87,"saturation","value":156,"sharpness","value":4,"contrast","value":143}
-		subNode = cJSON_GetObjectItem(props, "len_param");
-		if (subNode) {
-			LOGDBG(TAG, "found len param %s", cJSON_Print(subNode));
-			snprintf(mAI->stProp.len_param,sizeof(mAI->stProp.len_param),"%s",cJSON_Print(subNode));
-		}
-
-		subNode = cJSON_GetObjectItem(props, "gamma_param");
-		if (subNode) {
-			LOGDBG(TAG, "subNode->valuestring %s", subNode->valuestring);
-			memcpy(mAI->stProp.mGammaData, subNode->valuestring, strlen(subNode->valuestring));
-			LOGDBG(TAG, "mAI->stProp.mGammaData %s", mAI->stProp.mGammaData);
-		}
-	}
-									
-	LOGDBG(TAG, "tl type size (%d %d %d)",
-                                    mAI->stOrgInfo.stOrgAct.mOrgV.tim_lap_int,
-                                    mDispType->type, 
-                                    mAI->size_per_act);
-
-	mDispType->mAct = mAI;
-
-	switch (mDispType->type) {
-		case START_LIVE_SUC:	/* 16, 启动录像成功 */
-			mDispType->control_act = ACTION_LIVE;
-			break;
-										
-		case CAPTURE:			/* 拍照 */
-			mDispType->control_act = ACTION_PIC;
-			break;
-										
-		case START_REC_SUC:		/* 1, 启动录像成功 */
-			mDispType->control_act = ACTION_VIDEO;
-			break;
-											
-		case SET_CUS_PARAM:		/* 46, 设置自定义参数 */
-			mDispType->control_act = CONTROL_SET_CUSTOM;
-			break;
-										
-		SWITCH_DEF_ERROR(mDispType->type);
-	}	   
-}
-
 #endif
 
 
@@ -1561,7 +1151,12 @@ void fifo::handleQueryLeftInfo(Json::Value& queryJson)
 {
     u32 uLeft = 0;
 
-    Json::FastWriter writer;
+    Json::StreamWriterBuilder builder;
+
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+    std::ostringstream osOutput;  
+
     string sendDataStr;
     VolumeManager* vm = VolumeManager::Instance();
 
@@ -1587,7 +1182,9 @@ void fifo::handleQueryLeftInfo(Json::Value& queryJson)
     LOGDBG(TAG, "-------- handleQueryLeftInfo");
 
     rootNode["left"] = uLeft;    
-    sendDataStr = writer.write(rootNode);
+	writer->write(rootNode, &osOutput);
+    sendDataStr = osOutput.str();
+
 
     write_fifo(EVENT_QUERY_LEFT, sendDataStr.c_str());
 }
@@ -1775,7 +1372,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             if ( (jsonData["state"].isNull() == false) && (jsonData["results"].isNull() == false)) {
                 if (!strcmp(jsonData["state"].asCString(), "done")) {
                     if (jsonData["results"]["module"].isArray()) {
-                        for (int i = 0; i < jsonData["results"]["module"].size(); i++) {
+                        for (u32 i = 0; i < jsonData["results"]["module"].size(); i++) {
                             sp<Volume> tmpVol = (sp<Volume>)(new Volume());
                             if (jsonData["results"]["module"][i]["index"].isInt()) {
                                 tmpVol->iIndex = jsonData["results"]["module"][i]["index"].asInt();
@@ -1863,7 +1460,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 
             if (jsonData["module"].isNull() == false) {
                 if (jsonData["module"].isArray()) {
-                    for (int i = 0; i < jsonData["module"].size(); i++) {
+                    for (u32 i = 0; i < jsonData["module"].size(); i++) {
                         tmpVol = (sp<Volume>)(new Volume());
 
                         tmpVol->iType       = VOLUME_TYPE_MODULE;
@@ -1954,7 +1551,6 @@ void fifo::read_fifo_thread()
         } else {
             int msg_what = bytes_to_int(buf);	/* 前4字节代表消息类型: what */
             if (msg_what == CMD_EXIT) {	/* 如果是退出消息 */
-				// LOGDBG(TAG," rec cmd exit");
                 break;
             } else {
 				
@@ -1972,23 +1568,23 @@ void fifo::read_fifo_thread()
                         close_read_fd();
                     }
                 } else {
-                
-                    #if 0
-                    cJSON *root = cJSON_Parse(&buf[FIFO_HEAD_LEN]);
 
-                    cJSON *subNode = 0;
-                    if (!root) {	/* 解析出错 */
-                        LOGERR(TAG, "cJSON parse string error, func(%s), line(%d)");
-                    }
-                    #endif
-					
+                    Json::CharReaderBuilder builder;
+                    builder["collectComments"] = false;
+                    JSONCPP_STRING errs;
                     Json::Value rootJson;
-                    Json::Reader reader;
-                    Json::FastWriter writer;
-	                if (!reader.parse(&buf[FIFO_HEAD_LEN], rootJson, false)) {
-		                LOGERR(TAG, "bad json format!");
-		                continue;
-	                }
+
+                    Json::CharReader* reader = builder.newCharReader();
+                    if (!reader->parse(&buf[FIFO_HEAD_LEN], &buf[FIFO_HEAD_LEN + content_len -1], &rootJson, &errs)) {
+                        LOGERR(TAG, "parse json format failed");
+                        continue;
+                    }
+
+                    // Json::Reader reader;
+	                // if (!reader.parse(&buf[FIFO_HEAD_LEN], rootJson, false)) {
+		            //     LOGERR(TAG, "bad json format!");
+		            //     continue;
+	                // }
                     parseAndDispatchRecMsg(msg_what, rootJson);                  
                 }
             }
@@ -2008,11 +1604,8 @@ void fifo::write_exit_for_read()
 
     int fd = open(FIFO_FROM_CLIENT, O_WRONLY);
     CHECK_NE(fd, -1);
-    int len = write(fd, buf, FIFO_HEAD_LEN);
 
-    //pipe broken
-    CHECK_EQ(len, FIFO_HEAD_LEN);
-
+    write(fd, buf, FIFO_HEAD_LEN);
     close(fd);
 }
 

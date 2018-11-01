@@ -716,13 +716,12 @@ int main(int argc, char **argv)
 					
 					if (i < 3) {	/* 成功提取或者版本低 */
 						if (iError == ERROR_SUCCESS) {
+
 							vm->unmountCurLocalVol();
 							property_set(PROP_SYS_UPDTATE_DIR, UPDATE_DEST_BASE_DIR);
 							property_set(PROP_SYS_UPDATE_IMG_PATH, UPDATE_DEST_BASE_DIR);
 							property_set(PROP_UC_START_UPDATE, "true");	/* 启动update_app服务 */
-
 							property_set(PROP_RO_MOUNT_TF, "false");	/* 恢复以读写方式挂载 */	
-
 							LOGDBG(TAG, "Enter the real update program");							
 							return 0;
 

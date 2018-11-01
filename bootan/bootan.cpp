@@ -22,18 +22,19 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <log/log_wrapper.h>
 #include <hw/oled_module.h>
-
 
 #ifdef BOOTA_USE_LIGHT
 #include <hw/oled_light.h>
 #endif
 
+
 #include <prop_cfg.h>
 #include <system_properties.h>
 
 #undef  TAG
-#define TAG "bootlogo"
+#define TAG "bootan"
 
 
 const u8 bootLogo[] = {
@@ -186,10 +187,7 @@ void BootAnimation::startBootAnimation()
 **
 *************************************************************************/
 int main(int argc, char* argv[])
-{
-
-	const char* pBootAn = NULL;
-	
+{	
 	/* 
 	 * 加入属性系统
 	 * 当动画服务启动后将属性"sys.bootan"设置为true,
@@ -201,10 +199,16 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 	
+	/* 不需要保存日志 */
+	LogWrapper::init("/home/nvidia/insta360/log", "bootan", false);
+
+
+	LOGDBG(TAG, "bootan service start .....");
+
+
 	sp<BootAnimation> gBootAnimation = (sp<BootAnimation>)(new BootAnimation());
 	gBootAnimation->startBootAnimation();
 	
-	property_set(PROP_BOOTAN_NAME, "true");
 
     /* check /etc/resolv.conf */
     if (access(ETC_RESOLV_PATH, F_OK) != 0) {
@@ -215,18 +219,13 @@ int main(int argc, char* argv[])
     system("echo nameserver 114.114.114.114 >> /etc/resolv.conf");
     system("echo nameserver 127.0.0.1 >> /etc/resolv.conf");
 
+	property_set(PROP_BOOTAN_NAME, "true");
 
 	while (1) {
-		pBootAn = property_get(PROP_BOOTAN_NAME);
-		if (pBootAn != NULL && !strncmp(pBootAn, "false", strlen("false"))) {
-			break;
-		} else {
-			sleep(0.5);
-		}
+		msg_util::sleep_ms(10000);
 	}
 
-	fprintf(stdout, "bootan service exit now ^^___^^^\n");	
-	
+	LOGDBG(TAG, "bootan service exit now ^^___^^^");
 	return 0;
 }
 

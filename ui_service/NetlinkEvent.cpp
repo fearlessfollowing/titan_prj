@@ -30,6 +30,7 @@ NetlinkEvent::~NetlinkEvent()
 }
 
 
+#if 0
 static const char*
 has_prefix(const char* str, const char* end, const char* prefix, size_t prefixlen)
 {
@@ -44,23 +45,19 @@ has_prefix(const char* str, const char* end, const char* prefix, size_t prefixle
 
 /* Convenience macro to call has_prefix with a constant string literal  */
 #define HAS_CONST_PREFIX(str,end,prefix)  has_prefix((str),(end),prefix,CONST_STRLEN(prefix))
-
+#endif
 
 
 
 bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size) 
 {
     const char *s = buffer;
-    const char *end;
     const char *pAction = s;        /* Action字段(add, remove, changed) */
-    const char *pArgs   = NULL;     /* 参数字段 */
     const char *pBlockEvt = NULL;   /* 是否为块设备消息 */
     const char *pAt = NULL;
     const char *pSlash = NULL;
     const char *pDevNode = NULL;
     char cBusAddr[512] = {0};
-    int param_idx = 0;
-    int first = 1;
     
 
     if (size == 0)
@@ -71,7 +68,6 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
 #endif
 
     buffer[size-1] = '\0';
-    end = s + size;
 
     /* 对于非"block"的事件，直接丢弃 */
     pBlockEvt = strstr(s, "block");

@@ -146,7 +146,7 @@ typedef struct stVol {
     char            cVolFsType[COM_NAME_MAX_LEN];
 
 	int		        iType;                              /* 用于表示是内部设备还是外部设备 */
-	int		        iIndex;			                    /* 索引号（对于模组上的小卡有用） */
+	u32		        iIndex;			                    /* 索引号（对于模组上的小卡有用） */
     int             iPrio;                              /* 卷的优先级 */
     int             iVolState;                          /* 卷所处的状态: No_Media/Init/Mounted/Formatting */
     int             iVolSlotSwitch;                     /* 是否使能该接口槽 */
@@ -540,7 +540,7 @@ private:
 
     int                     mVolumeManagerWorkMode;                 /* 卷管理器的工作模式: U盘模式;普通模式 */
 
-    int                     mHandledAddUdiskVolCnt;
+    u32                     mHandledAddUdiskVolCnt;
     int                     mHandledRemoveUdiskVolCnt;
 
     u32                     mTaketimelapseCnt;                      /* 可拍timelapse的张数 */
@@ -603,7 +603,7 @@ private:
     bool                    waitHub1RestComplete();
     bool                    waitHub2RestComplete();
 
-    Volume*                 getUdiskVolByIndex(int iIndex);
+    Volume*                 getUdiskVolByIndex(u32 iIndex);
     bool                    checkVolIsMountedByIndex(int iIndex, int iTimeout = 6000);
 
 public:

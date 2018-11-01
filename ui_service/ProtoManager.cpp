@@ -149,7 +149,6 @@ int ProtoManager::sendHttpSyncReq(const std::string &url, Json::Value* pJsonRes,
 }
 
 
-
 void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pEventData)
 {
 	http_message *hm = (struct http_message *)pEventData;
@@ -170,11 +169,24 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
         case MG_EV_HTTP_REPLY: {
 		    // LOGDBG(TAG, "Got reply:\n%.*s\n", (int)hm->body.len, hm->body.p);
             if (mSaveSyncReqRes) {
+                #if 0
                 Json::Reader reader;
                 if (!reader.parse(std::string(hm->body.p, hm->body.len), (*mSaveSyncReqRes), false)) {
                     LOGERR(TAG, "Parse Http Reply Failed!");
                     mSyncReqErrno = PROTO_MANAGER_REQ_PARSE_REPLY_FAIL;
                 }
+                #else 
+
+                Json::CharReaderBuilder builder;
+                builder["collectComments"] = false;
+                JSONCPP_STRING errs;
+                Json::CharReader* reader = builder.newCharReader();
+                if (!reader->parse(hm->body.p, hm->body.p +  hm->body.len, mSaveSyncReqRes, &errs)) {
+                    LOGERR(TAG, "Parse Http Reply Failed!");
+                    mSyncReqErrno = PROTO_MANAGER_REQ_PARSE_REPLY_FAIL;
+                }
+                #endif
+
             } else {
                 LOGERR(TAG, "Invalid mSaveSyncReqRes, maybe client needn't reply results");
             }
@@ -573,7 +585,7 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
     if (jsonData.isMember("state") && jsonData.isMember("results")) {
         if (jsonData["state"] == "done") {
             if (jsonData["results"]["module"].isArray()) {
-                for (int i = 0; i < jsonData["results"]["module"].size(); i++) {
+                for (u32 i = 0; i < jsonData["results"]["module"].size(); i++) {
                     sp<Volume> tmpVol = (sp<Volume>)(new Volume());
                     if (jsonData["results"]["module"][i]["index"].isInt()) {
                         tmpVol->iIndex = jsonData["results"]["module"][i]["index"].asInt();

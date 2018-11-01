@@ -71,9 +71,7 @@ using namespace std;
 
 
 #define ENABLE_MOUNT_TFCARD_RO
-
 #define ENABLE_USB_NEW_UDISK_POWER_ON       /* 新的进入U盘模式的上电方式 */
-
 
 
 
@@ -313,21 +311,25 @@ VolumeManager::VolumeManager() :
                                 mCurrentUsedLocalVol(NULL),
                                 mSavedLocalVol(NULL),
                                 mBsavePathChanged(false),
-                                mModuleVolNum(0),
-                                mReoteRecLiveLeftSize(0),
-                                mHandledAddUdiskVolCnt(0),
-                                mHandledRemoveUdiskVolCnt(0),
-                                mRecLeftSec(0),
-                                mRecSec(0),
-                                mLiveRecLeftSec(0),
-                                mLiveRecSec(0),
-                                mTakePicLeftNum(0),
-                                mTaketimelapseCnt(0),
                                 mNotify(NULL),
                                 mAllowExitUdiskMode(false)                          
 {
 
 	Volume* tmpVol = NULL;
+
+
+    mModuleVolNum = 0;
+    mReoteRecLiveLeftSize = 0;
+    mHandledAddUdiskVolCnt = 0;
+    mHandledRemoveUdiskVolCnt = 0;
+    mRecLeftSec = 0;
+    mRecSec = 0;
+    mLiveRecLeftSec = 0;
+    mLiveRecSec = 0;
+
+    mTakePicLeftNum = 0;
+    mTaketimelapseCnt = 0;
+
 
     mVolumes.clear();
     mLocalVols.clear();
@@ -707,7 +709,7 @@ bool VolumeManager::checkEnterUdiskResult()
 }
 
 
-Volume* VolumeManager::getUdiskVolByIndex(int iIndex)
+Volume* VolumeManager::getUdiskVolByIndex(u32 iIndex)
 {
     Volume* pVol = NULL;
     if (iIndex < 0 || iIndex > mModuleVols.size()) {
@@ -1765,6 +1767,7 @@ bool VolumeManager::changeMountMethod(const char* mode)
             LOGDBG(TAG, "Volume [%s] not mounted???", tmpVol->pMountPath);
         }
     }
+    return true;
 }
 
 

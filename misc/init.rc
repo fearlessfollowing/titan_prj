@@ -1,4 +1,12 @@
-#init.rc for titan
+########################################################################################
+# 项目：                    Titan Project
+# 文件名： init.rc
+# 描述：该脚本文件被monitor读取并解析，并根据该脚本文件来控制各应用的启动顺序及启停应用
+# 作者：Skymixos
+# 日期：2018年11月01日 
+# 版本：V1.0.0
+# 
+#########################################################################################
 
 on init
     mkdir /dev/socket
@@ -7,41 +15,96 @@ on init
 	export PATH /sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin
 #   swapon /swap/sfile
 
-
+# 首先启动的是base类的服务
+# 如果你的服务（应用）希望最先被启动，可将应用放置于该类
 on early-boot
     class_start base
 
-
 on boot
-#   class_start base
+#   class_start core
 
 
-# wifi/4G service must startup as soon as possible
-service wifi /sbin/wpa_supplicant -Dnl80211 -iwlan0 -B -c /mnt/data/wpa_supplicant.conf
-    class other
+# 日志服务器服务(logd)
+# 为了让其他应用的日志存到服务器中，我们必须最先启动该应用
+# 所属的类：base 
+# 服务为关键服务(critical)，当该服务Crash后，monitor会重启该服务
+# 涉及的属性：sys.logd.startup=true，导致bootan服务被启动
+service logd  /usr/local/bin/logd
+    class base
     critical
-    disabled
-		
+
+
+# Adbd服务
+# 方便用户通过adb连接设备
+# 所属的类: base
+service adbd /usr/local/bin/adbd
+	class base
+	critical
+
+
+# 启动动画服务(bootan)
+# 启动动画服务在开机后最先启动，并且只执行一次(oneshot),(尽早的让屏幕显示点什么....)
+# 所属的类：bootan
+# 涉及的属性：sys.bootan=true，导致update_check服务被启动
+service bootan /usr/local/bin/bootanimation
+	class bootan
+	oneshot
+
+
+# 升级检测服务(update_check)
+# 对于只在开机过程中检查是否需要升级的逻辑，必须让升级检测服务尽快的运行：
+#   - 如果确实需要升级，在该服务退出后会启动update_app服务进行升级操作
+#   - 如果不需要升级操作，会进入正常的开机流程启动各应用服务，设置属性sys.uc_start_app=true，触发core类服务被启动
+# 所属的类：update_check
+# 涉及的属性：
+#   - 如果需要升级，设置属性sys.uc_update_app=true,将触发update服务
+service update_check /usr/local/bin/update_check
+    class update_check
+    oneshot
+
+
+# 升级服务(update)
+# 整个升级流程在该服务中完成，升级完成后会自动重启设备
+# 所属的类：update
+service update /usr/local/bin/update_app
+    class update
+    critical
+    oneshot
+
+
+# RTMP服务(crtmpserver)
+# 正常开机后，当属性sys.uc_start_app=true时被触发启动
+# 所属的类：core
+service crtmpserver /usr/local/bin/crtmpserver  /home/nvidia/insta360/etc/crtmpserver.lua
+    class core
+    critical
+
+
+# Camerad服务(相机的核心服务)
+# 正常开机后，当属性sys.uc_start_app=true时被触发启动
+# 所属的类：core
+# 当该后台服务启动后，再启动前台服务（Web Server及UI服务）
+# 涉及的属性：init.svc.camerad = true时，将启动WebServer服务
+service camerad /usr/local/bin/camerad
+    class core
+    critical
+
+
+# WebServer服务
+service web_server /usr/local/bin/python3.6 /usr/local/bin/web_server
+    class main
+    critical
+	onrestart restart ui_service web_osc
+
 
 service hostapd /usr/sbin/hostapd home/nvidia/insta360/etc/.wifi_ap.conf
     class wifi
     critical
-		
-
-# bootanimation service
-service bootan /usr/local/bin/bootanimation
-	class base
-	oneshot
+    disabled
 
 service dnsmasq /usr/sbin/dnsmasq.bin -d
-	class base
+	class core
 	critical
-
-# logd need startup first for other service
-# level: core
-service logd  /usr/local/bin/logd
-    class base
-    critical
 
 
 service file_list /usr/local/bin/mongoose
@@ -51,20 +114,10 @@ service file_list /usr/local/bin/mongoose
 
 
 service pwr_ctl /usr/local/bin/pwr_ctl
-    class base 
+    class power
     critical
+    disabled
 
-# update_check servicer need start after logd is running
-# once startup is over need check update is inneed
-# level: base
-service update_check /usr/local/bin/update_check
-    class update_check
-    critical
-    oneshot
-
-service adbd /usr/local/bin/adbd
-	class base
-	critical
 
 service klogd /usr/local/bin/kern_log
 	class base
@@ -72,45 +125,14 @@ service klogd /usr/local/bin/kern_log
     disabled
 
 
-service vm_clean /usr/local/bin/vm_clean
-	class base
-	critical
+service ui_service /usr/local/bin/ui_service
+    class ui
+    critical
     disabled
 
-
-service update_app /usr/local/bin/update_app
-    class update
-    critical
-    oneshot
-
-
-service camerad /usr/local/bin/camerad
-    class core
-    critical
-
-
-service crtmpserver /usr/local/bin/crtmpserver  /home/nvidia/insta360/etc/crtmpserver.lua
-    class core
-    critical
-
-
-service ui_service /usr/local/bin/ui_service
-    class third
-    critical
-
-
-# web_osc service for http request
-# lelvel: main
-service web_server /usr/local/bin/python3.6 /usr/local/bin/web_server
-    class main
-    critical
-	onrestart restart ui_service web_osc
-
-
 service time_tz /usr/local/bin/time_tz
-	class other
+	class tz
 	oneshot
-
 
 service web_osc /usr/local/bin/python3.6 /usr/local/bin/Pro2_OSC/pro2_osc/
     class osc 
@@ -118,23 +140,41 @@ service web_osc /usr/local/bin/python3.6 /usr/local/bin/Pro2_OSC/pro2_osc/
     disabled
 
 
-# logd is base class service
-# once logd startup then startup update_check servcie now...
+# 触发条件: sys.logd.startup=true
+# logd启动完成后会设置属性sys.logd.startup为true会触发bootan服务被启动
 on property:sys.logd.startup=true
+    class_start bootan
+
+
+# 触发条件: sys.bootan=true
+# 启动动画服务启动完成后会触发升级检测服务被启动
+on property:sys.bootan=true
     class_start update_check
 
 
+# 触发条件：sys.uc_update_app=true
+# update_check启动后，如果检测到需要升级，会设置该属性，导致update服务被启动
 on property:sys.uc_update_app=true
     class_start update
 
 
-# Ensure system first startup update_check,and then start other core services
+# 触发条件：sys.uc_start_app=true
+# update_check启动后，如果检测到不需要升级，会设置该属性，导致core服务被启动
 on property:sys.uc_start_app=true
     class_start core
-    class_start main
+
+
+# 触发条件：init.svc.camerad=running
+# 当camerad启动后，将启动web_server服务（如果web_server服务不处于running状态）
+on property:init.svc.camerad=running
+    start web_server
+
+
+# 触发条件：sys.web_status=true
+# 当WebServer启动后，会导致ui服务重启
+on property:sys.web_status=true
+	restart ui
 
 on property:sys.tz_changed=true
 	start time_tz
 
-on property:sys.web_status=true
-	restart ui_service

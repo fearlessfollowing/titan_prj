@@ -379,7 +379,6 @@ int main(int argc, char* argv[])
 	LogWrapper::init("/home/nvidia/insta360/log", "pwr_manager", false);
 
 	cfgParamInit(&gPwrCtl);
-
 	if (!strcmp(argv[1], POWR_ON)) {
 		powerModule(&gPwrCtl, CMD_POWER_ON);
 	} else if (!strcmp(argv[1], POWER_OFF)) {

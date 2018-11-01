@@ -142,7 +142,13 @@ To build the CBoot binary:
 编译cboot.bin:
 export CROSS_COMPILE=/home/skymixos/work/titan/sdk/prebuilts/gcc/aarch64/install/bin/aarch64-unknown-linux-gnu-
 make -C ./bootloader/partner/t18x/cboot PROJECT=t186 TOOLCHAIN_PREFIX="${CROSS_COMPILE}" DEBUG=2 BUILDROOT="${PWD}"/out NV_BUILD_SYSTEM_TYPE=l4t NOECHO=@
-cp ./out/build-t186/lk.bin  /home/skymixos/work/titan/sdk/64_TX2/Linux_for_Tegra/bootloader/
+cp ./out/build-t186/lk.bin  /home/skymixos/work/titan/sdk/64_TX2/Linux_for_Tegra/bootloader/cboot.bin
 
+
+烧写cboot.bin
+sudo ./flash.sh -k cpu-bootloader jetson-tx2 mmcblk0p1
+
+HDMI:
+tegra186-cvb-prod-p2597-b00-p3310-1000-a00-00.dtsi
 
 修改扩展p10-p15修改的文件：bootloader/partner/common/drivers/gpio/tca9539_gpio.c

@@ -185,13 +185,8 @@ private:
 
     void                parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
     void                handleSetting(sp<struct _disp_type_>& mDispType, Json::Value& reqNode);
-
-    void                handleUiNotify(const sp<ARMessage> &msg);
-    void                send_power_off();
 	
-    void                send_sys_info(sp<struct _sys_info_> &mSysInfo);
-    void                send_sync_info(sp<struct _sync_init_info_> &mSyncInfo);
-
+    
     void                handleStitchProgress(sp<struct _disp_type_>& mDispType, cJSON *subNode);
     void                handleSetting(sp<struct _disp_type_>& mDispType, cJSON *subNode);
     void                handleReqFormHttp(sp<struct _disp_type_>& mDispType, cJSON *root, cJSON *subNode);

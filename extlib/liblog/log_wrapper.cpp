@@ -40,6 +40,9 @@ std::shared_ptr<LogWrapper> LogWrapper::mLogger = nullptr;
 
 LogWrapper::LogWrapper(std::string path, std::string name, bool bSave2File, bool bSendToLogd)
 {
+
+    mSendToLogd = bSendToLogd;
+
     if (true == bSave2File) {
         const char* pLogFileSize = property_get(PROP_MAX_LOG_FILE_SIZE);
         if (pLogFileSize) {
@@ -105,7 +108,7 @@ void LogWrapper::log(unsigned char level, const char* tag, const char* file, int
         char buf[LOG_BUF_SIZE] = {0};
         char file_line[128] = {0};
 
-        snprintf(file_line, 128, "[%s:%d]", file, line);
+        snprintf(file_line, 128, "[%s:%d] ", file, line);
         strcpy(buf, file_line);
         int iLen = strlen(buf);
 

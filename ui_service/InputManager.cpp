@@ -67,7 +67,6 @@ static Mutex    gMonitorState;
 
 InputManager* InputManager::sInstance = NULL;
 
-
 InputManager* InputManager::Instance() 
 {
     AutoMutex _l(gInputManagerMutex);
@@ -82,13 +81,14 @@ void InputManager::setNotifyRecv(sp<ARMessage> notify)
 }
 
 
-InputManager::InputManager(): mEnableReport(true), 
-                              mLongPressReported(false),
-                              mLongPressState(MONITOR_STATE_INIT),
-                              mBtnReportCallback(nullptr),
+InputManager::InputManager(): mBtnReportCallback(nullptr),
                               mNotify(nullptr)
 {
     const char* pRespRate = NULL;
+
+    mLongPressReported = false;                     
+    mEnableReport = true;
+    mLongPressState = MONITOR_STATE_INIT;
 
     pipe(mCtrlPipe);                    /* 控制按键循环线程的管道 */
     pipe(mLongPressMonitorPipe);        /* 用于给长按监听线程通信 */
