@@ -10,6 +10,7 @@ Description:use jsoncpp src , not use dll, but i also provide dll and lib.
  
 #include <stdio.h>
 #include <string>
+#include <memory>
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
@@ -17,8 +18,7 @@ Description:use jsoncpp src , not use dll, but i also provide dll and lib.
 #include <json/value.h>
 #include <json/writer.h>
 #include <json/json.h>
- 
-using namespace std;
+
 
 
 #if 0
@@ -45,206 +45,124 @@ take_pic_customer.json
 8k_30f_3d
 {"name":"camera._startRecording","parameters":{"origin":{"mime":"h264","framerate":30,"bitrate":120000,"saveOrigin":true,"width":3840,"height":2880,"storage_loc":1}}}
 
+
+g++ --std=c++11 test_jsoncpp_lib.cpp -I ../include/ -L ../ -ljsoncpp
+
+
+amixer cset -c tegrasndt186ref name="I2S1 Mux" 20
+amixer cset -c tegrasndt186ref name="MIXER1-1 Mux" 1
+amixer cset -c tegrasndt186ref name="Adder1 RX1" 1
+amixer cset -c tegrasndt186ref name="Mixer Enable" 1
+amixer cset -c tegrasndt186ref name="ADMAIF1 Mux" 11
+amixer cset -c tegrasndt186ref name="x Int Spk Switch" 1
+amixer cset -c tegrasndt186ref name="x Speaker Playback Volume" 100
+amixer cset -c tegrasndt186ref name="x Headphone Jack Switch" 0
+amixer sset -c tegrasndt186ref 'MIXER1-1 Mux' 'ADMAIF1'
+amixer sset -c tegrasndt186ref 'I2S1 Mux' 'MIXER1-1'
+amixer cset -c 1 name="x Speaker Playback Volume" 100  ## reg-01: 8080
+
 #endif
 
-/************************************
-@ Brief:		read file
-@ Author:		woniu201 
-@ Created: 		2017/09/06
-@ Return:		file data  
-************************************/
-char *getfileAll(char *fname)
+
+/*
+ * 1.生成json对象并保存到文件
+ */
+void genDefaultCfg()
 {
-	FILE *fp;
-	char *str;
-	char txt[1000];
-	int filesize;
-	if ((fp=fopen(fname,"r"))==NULL) {
-		printf("open file %s fail \n",fname);
-		return NULL;
-	}
- 
+    Json::Value rootCfg;
+    Json::Value modeSelectCfg;
+    Json::Value sysSetCfg;
+    Json::Value sysWifiCfg;
+
+    modeSelectCfg["pic_mode"] = 0;
+    modeSelectCfg["video_mode"] = 0;
+    modeSelectCfg["live_mode"] = 0;
+
+
+    sysSetCfg["dhcp"]           = 1;
+    sysSetCfg["flicker"]        = 0;
+    sysSetCfg["hdr"]            = 0;
+    sysSetCfg["raw"]            = 0;
+    sysSetCfg["aeb"]            = 0;        // AEB3
+    sysSetCfg["ph_delay"]       = 1;        // 5S
+    sysSetCfg["aeb"]            = 0;        // AEB3
+    sysSetCfg["ph_delay"]       = 1;        // 5S
+    sysSetCfg["speaker"]        = 1;        // Speaker: On
+    sysSetCfg["light_on"]       = 1;        // LED: On
+    sysSetCfg["aud_on"]         = 1;        // Audio: On
+    sysSetCfg["aud_spatial"]    = 1;        // Spatial Audio: On
+    sysSetCfg["flow_state"]     = 1;        // FlowState: Off
+    sysSetCfg["gyro_on"]        = 1;        // Gyro: On
+    sysSetCfg["fan_on"]         = 0;        // Fan: On
+    sysSetCfg["set_logo"]       = 0;        // Logo: On
+    sysSetCfg["video_fragment"] = 0;        // Video Fragment: On
+
+
+	sysWifiCfg["ssid"] = "Insta360";
+	sysWifiCfg["passwd"] = "888888";
+
+    rootCfg["mode_select"] = modeSelectCfg;
+    rootCfg["sys_setting"] = sysSetCfg;
+    rootCfg["wifi_cfg"] = sysWifiCfg;
+
+#if 1
+
+    Json::StreamWriterBuilder builder; 
+    // builder.settings_["indentation"] = ""; 
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter()); 
+    std::ofstream ofs;
+	ofs.open("./def_cfg.json");
+    writer->write(rootCfg, &ofs);
+	ofs.close();
+
+#else 
+    Json::StyledWriter sw;
+	std::cout << sw.write(rootCfg) << std::endl;
+    
+    std::ofstream os;
+	os.open(DEF_CFG_PARAM_FILE);
+	os << sw.write(rootCfg);
+	os.close();
+#endif
+
+}
+
+
+bool loadCfgFormFile(Json::Value& root, const char* pFile)
+{
+    Json::CharReaderBuilder builder;
+    builder["collectComments"] = false;
+    JSONCPP_STRING errs;
+
+    std::ifstream ifs;  
+    ifs.open(pFile, std::ios::binary); 
+
 	/*
-	获取文件的大小
-	ftell函数功能:得到流式文件的当前读写位置,其返回值是当前读写位置偏离文件头部的字节数.
-	*/
-	fseek(fp,0,SEEK_END); 
-	filesize = ftell(fp);
- 
-	str=(char *)malloc(filesize);
-	str[0]=0;
- 
-	rewind(fp);
-	while((fgets(txt,1000,fp))!=NULL){
-		strcat(str,txt);
-	}
-	fclose(fp);
-	return str;
-}
- 
-/************************************
-@ Brief:		write file
-@ Author:		woniu201 
-@ Created: 		2017/09/06
-@ Return:		    
-************************************/
-int writefileAll(char* fname,const char* data)
-{
-	FILE *fp;
-	if ((fp=fopen(fname, "w")) == NULL)
-	{
-		printf("open file %s fail \n", fname);
-		return 1;
-	}
-	
-	fprintf(fp, "%s", data);
-	fclose(fp);
-	
-	return 0;
-}
- 
-/************************************
-@ Brief:		parse json data
-@ Author:		woniu201 
-@ Created: 		2017/09/06
-@ Return:		    
-************************************/
-int parseJSON(const char* jsonstr)
-{
-	Json::Reader reader;
-	Json::Value  resp;
- 
-	if (!reader.parse(jsonstr, resp, false))
-	{
-		printf("bad json format!\n");
-		return 1;
-	}
-	#if 0
-	int result = resp["Result"].asInt();
-	string resultMessage = resp["ResultMessage"].asString();
-	printf("Result=%d; ResultMessage=%s\n", result, resultMessage.c_str());
- 
-	Json::Value & resultValue = resp["ResultValue"];
-	for (int i=0; i<resultValue.size(); i++)
-	{
-		Json::Value subJson = resultValue[i];
-		string cpuRatio = subJson["cpuRatio"].asString();
-		string serverIp = subJson["serverIp"].asString();
-		string conNum = subJson["conNum"].asString();
-		string websocketPort = subJson["websocketPort"].asString();
-		string mqttPort = subJson["mqttPort"].asString();
-		string ts = subJson["TS"].asString();
-		printf("cpuRatio=%s; serverIp=%s; conNum=%s; websocketPort=%s; mqttPort=%s; ts=%s\n",cpuRatio.c_str(), serverIp.c_str(),
-			conNum.c_str(), websocketPort.c_str(), mqttPort.c_str(), ts.c_str());
-	}
-	#else 
-	printf("parser [%s] success", jsonstr);
-	#endif
-
-	return 0;
-}
-
-
-int ReadJsonFromFile(const char* filename)  
-{  
-    Json::Reader reader;// 解析json用Json::Reader   
-    Json::Value root; // Json::Value是一种很重要的类型，可以代表任意类型。如int, string, object, array         
-
-    std::ifstream is;  
-    is.open (filename, std::ios::binary);    
-    if (reader.parse(is, root, false)) {
-
-		printf("Parse file [%s] OK\n", filename);
-		#if 0  
-        std::string code;  
-        if (!root["files"].isNull())  // 访问节点，Access an object value by name, create a null member if it does not exist.  
-            code = root["uploadid"].asString();  
-        
-        code = root.get("uploadid", "null").asString();// 访问节点，Return the member named key if it exist, defaultValue otherwise.    
-
-        int file_size = root["files"].size();  // 得到"files"的数组个数  
-        for(int i = 0; i < file_size; ++i) {  	// 遍历数组  
-            Json::Value val_image = root["files"][i]["images"];  
-            int image_size = val_image.size();  
-            for(int j = 0; j < image_size; ++j)  
-            {  
-                std::string type = val_image[j]["type"].asString();  
-                std::string url  = val_image[j]["url"].asString(); 
-                printf("type : %s, url : %s \n", type.c_str(), url.c_str());
-            }  
-        }  
-		#else
-		Json::FastWriter writer;
-
-		string jsonstr = writer.write(root);
-		printf("%s\n", jsonstr.c_str());		
-		#endif
-
-    }  else {
-		printf("Parse file [%s] failed\n", filename);
-	}
-    is.close();  
-
-    return 0;  
-} 
-
-
-/************************************
-@ Brief:		create json data
-@ Author:		woniu201 
-@ Created: 		2017/09/06
-@ Return:		    
-************************************/
-int createJSON()
-{
-	Json::Value req;
-	req["Result"] = 1;
-	req["ResultMessage"] = "200";
-
-	Json::Value	object1;
-	object1["cpuRatio"] = "4.04";
-	object1["serverIp"] = "42.159.116.104";
-	object1["conNum"] = "1";
-	object1["websocketPort"] = "0";
-	object1["mqttPort"] = "8883";
-	object1["TS"] = "1504665880572";
-	
-    Json::Value	object2;
-	object2["cpuRatio"] = "2.04";
-	object2["serverIp"] = "42.159.122.251";
-	object2["conNum"] = "2";
-	object2["websocketPort"] = "0";
-	object2["mqttPort"] = "8883";
-	object2["TS"] = "1504665896981";
-	
-    Json::Value jarray;
-	jarray.append(object1);
-	jarray.append(object2);
-	
-    req["ResultValue"] = jarray;
-	Json::FastWriter writer;
-
-	string jsonstr = writer.write(req);
-	printf("%s\n", jsonstr.c_str());
-
-	writefileAll("createJson.json", jsonstr.c_str());
-	return 0;
+	 * 成功返回true
+	 */
+    if (parseFromStream(builder, ifs, &root, &errs)) {
+        fprintf(stderr, "parse [%s] success\n", pFile);
+    }  
 }
 
 int main()
 {
-	/*读取Json串，解析Json串*/
-	char* json = "{\"name\": \"camera._takePicture\", \"parameters\": {\"delay\": 0, \"origin\": {\"mime\": \"jpeg\", \"saveOrigin\": true, \"width\": 4000, \"height\": 3000, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
+	Json::Value root;
 
-	//getfileAll("parseJson.json");
-	parseJSON(json);
-
-	ReadJsonFromFile("./take_pic.json");
-	printf("===============================\n");
-
-	/*组装Json串*/
-	createJSON();
-	getchar();
+	printf("jsoncpp test .....\n");
+    // genDefaultCfg();
 	
-    return 1;
+
+	loadCfgFormFile(root, "./def_cfg.json");
+
+	Json::StreamWriterBuilder builder; 
+	// builder.settings_["indentation"] = ""; 
+	std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter()); 
+	writer->write(root, &std::cout);
+
+	if (root["mode_select"].isMember("live_mode")) {
+		printf("live_mode member is exist\n");
+	}
+
+	return 0;
 }

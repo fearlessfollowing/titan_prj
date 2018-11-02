@@ -24,6 +24,8 @@ src += ['SocketListener.cpp']
 src += ['SocketClient.cpp']
 src += ['VolumeManager.cpp']
 src += ['ProtoManager.cpp']
+src += ['CfgManager.cpp']
+
 
 src += [config.UTIL + '/Process.cpp']
 src += [config.UTIL + '/forkUtil.cpp']
@@ -31,7 +33,7 @@ src += [config.UTIL + '/ARMessage.cpp']
 src += [config.UTIL + '/ARLooper.cpp']
 src += [config.UTIL + '/bytes_int_convert.cpp']
 src += [config.UTIL + '/util.cpp']
-src += [config.UTIL + '/cJSON.c']
+#src += [config.UTIL + '/cJSON.c']
 src += [config.UTIL + '/http_util.cpp']
 
 

@@ -1946,43 +1946,6 @@ static ACTION_INFO live4K_30D_HDMI_ActionInfo = {
 };
 
 
-/*
- * Customer
- */
-static ACTION_INFO live_Customer_ActionInfo = {
-	MODE_3D,
-	0,
-	0,
-	{
-		EN_H264,
-		SAVE_OFF,
-		2560,
-		1440,
-		0,		// test
-		{ALL_FR_30, 20}
-	},
-	{
-		EN_H264,
-		STITCH_NORMAL,
-		3840,
-		1920,
-		{
-			{
-				ALL_FR_30,
-				20,
-				HDMI_ON,
-				0,
-				{0},
-				{0}
-			},
-		}
-	},
-	{},
-	{}
-};
-
-
-
 PicVideoCfg live4K_30F_Cfg = {
 	pItemName:			TAKE_LIVE_MODE_4K_30F,		// pItemName
 	iItemMaxVal:		0,							// iItemMaxVal

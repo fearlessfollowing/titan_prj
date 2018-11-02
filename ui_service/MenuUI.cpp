@@ -23,10 +23,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <sys/inotify.h>
 #include <sys/poll.h>
-#include <linux/mtio.h>
-#include <linux/input.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/statfs.h>
@@ -39,8 +36,7 @@
 #include <util/msg_util.h>
 #include <util/bytes_int_convert.h>
 #include <sys/pro_cfg.h>
-#include <sys/pro_uevent.h>
-#include <sys/action_info.h>
+
 #include <util/GitVersion.h>
 #include <system_properties.h>
 #include <prop_cfg.h>
@@ -55,8 +51,6 @@
 #include <hw/InputManager.h>
 #include <util/icon_ascii.h>
 #include <trans/fifo.h>
-#include <sys/Menu.h>
-#include <sys/mount.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -1336,7 +1330,7 @@ void MenuUI::disp_msg_box(int type)
             break;
 		
         case DISP_WIFI_ON:
-            dispStr((const u8 *)"not allowed",0,16);
+            dispStr((const u8 *)"not allowed", 0, 16);
             break;
 		
         case DISP_ADB_OPEN:
@@ -1904,8 +1898,7 @@ void MenuUI::commUpKeyProc()
 
     if (bUpdatePage) {  /* 更新菜单页 */
         if (cur_menu == MENU_SHOW_SPACE) {
-            /* 显示存储的翻页 */
-            dispShowStoragePage(gStorageInfoItems);
+            dispShowStoragePage(gStorageInfoItems);     /* 显示存储的翻页 */
         } else {
             if (mMenuInfos[cur_menu].privList) {
                 vector<struct stSetItem*>* pSetItemLists = static_cast<vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
@@ -2409,10 +2402,6 @@ void MenuUI::sendExit()
 
 int MenuUI::oled_reset_disp(int type)
 {
-    //reset to original
-//    reset_last_info();
-
-
     mCamState = STATE_IDLE;
     
     //keep sys error back to menu top
@@ -2903,59 +2892,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
             return true;
         }
 
-        #if 0
-        case ACTION_SET_OPTION: {
-            msg->set<int>("type", cmd);
-            switch (cmd) {
-                case OPTION_FLICKER:
-                    msg->set<int>("flicker", mProCfg->get_val(KEY_PAL_NTSC));
-                    break;
-
-                case OPTION_LOG_MODE:
-                    msg->set<int>("mode", 1);
-                    msg->set<int>("effect", 0);
-                    break;
-
-                case OPTION_SET_FAN:
-                    msg->set<int>("fan", mProCfg->get_val(KEY_FAN));
-                    break;
-
-                case OPTION_SET_AUD: {
-                    if (mProCfg->get_val(KEY_AUD_ON) == 1) {
-                        if (mProCfg->get_val(KEY_AUD_SPATIAL) == 1) {
-                            msg->set<int>("aud", 2);
-                        } else {
-                            msg->set<int>("aud", 1);
-                        }
-                    } else {
-                        msg->set<int>("aud", 0);
-                    }
-                    break;
-                }
-
-                case OPTION_GYRO_ON:
-                    msg->set<int>("gyro_on", mProCfg->get_val(KEY_GYRO_ON));
-                    break;
-
-                case OPTION_SET_LOGO:
-                    msg->set<int>("logo_on", mProCfg->get_val(KEY_SET_LOGO));
-                    break;
-
-                case OPTION_SET_VID_SEG:
-                    msg->set<int>("video_fragment", mProCfg->get_val(KEY_VID_SEG));
-                    break;
-
-            #ifdef ENABLE_SET_AUDIO_GAIN    
-             case OPTION_SET_AUD_GAIN: {
-                   sp<CAM_PROP> mProp = sp<CAM_PROP>(new CAM_PROP());
-                   memcpy(mProp.get(),pstProp,sizeof(CAM_PROP));
-                   msg->set<sp<CAM_PROP>>("cam_prop", mProp);
-                     break;
-            }
-            #endif
-                SWITCH_DEF_ERROR(cmd);
-            }
-            #else 
         case ACTION_SET_OPTION: {
 
             switch (cmd) {
@@ -3075,9 +3011,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
             #endif
                 SWITCH_DEF_ERROR(cmd);
             }
-
-
-            #endif
             break;
         }
         SWITCH_DEF_ERROR(option)
@@ -3595,7 +3528,6 @@ void MenuUI::update_menu_disp(const int *icon_light, const int *icon_normal)
     SELECT_INFO * mSelect = getCurMenuSelectInfo();
     int last_select = getCurMenuLastSelectIndex();
     if (icon_normal != nullptr) {
-        //sometimes force last_select to -1 to avoid update last select
         if (last_select != -1) {
             dispIconByType(icon_normal[last_select + mSelect->cur_page * mSelect->page_max]);
         }
@@ -3609,7 +3541,6 @@ void MenuUI::update_menu_disp(const ICON_INFO *icon_light,const ICON_INFO *icon_
     int last_select = getCurMenuLastSelectIndex();
 	
     if (icon_normal != nullptr) {
-        //sometimes force last_select to -1 to avoid update last select
         if (last_select != -1) {
             dispIconByLoc(&icon_normal[last_select + mSelect->cur_page * mSelect->page_max]);
         }
@@ -3979,12 +3910,13 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
 
 void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint64_t serverState)
 {
-
+#if 0
     Json::FastWriter writer;
     string actionStr = writer.write(actionJson);
 
     LOGDBG(TAG, "Action Json: %s", actionStr.c_str());
     LOGDBG(TAG, "add_qr_res type (%d %d)", type, control_act);
+#endif
 
     /* 客户端发起的拍照，录像，直播 
      * 拍照过程：1.发送拍照的参数，保存在mControlPicJsonCmd
@@ -4046,7 +3978,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
 
                     /* 将拍照的Customer的模板参数保存为json文件 */
                     LOGDBG(TAG, "Save Take Picture Templet");
-                    LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
+                    // LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
 
                     Json::Value picRoot;
 
@@ -4063,7 +3995,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
                 case ACTION_VIDEO: {     /* 设置录像模式下的Customer */
 
                     LOGDBG(TAG, "Save Take Video Templet");
-                    LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
+                    // LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
 
                     Json::Value vidRoot;
 
@@ -4079,7 +4011,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
 
                 case ACTION_LIVE: {      /* 直播模式下的Customer */
                     LOGDBG(TAG, "Save Take Live Templet");
-                    LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
+                    // LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
 
                     Json::Value liveRoot;
                     liveRoot["name"] = "camera._startLive";
@@ -4646,6 +4578,7 @@ void MenuUI::dispSettingPage(vector<struct stSetItem*>& setItemsList)
 }
 
 
+#if 0
 int MenuUI::exec_sh_new(const char *buf)
 {
     return exec_sh(buf);
@@ -4764,6 +4697,7 @@ ERROR:
     dispIconByType(err_icon);
     msg_util::sleep_ms(3000);
 }
+#endif
 
 
 void MenuUI::dispTipStorageDevSpeedTest() 
@@ -4987,145 +4921,6 @@ void MenuUI::startFormatDevice()
     mFormartState = true;       /* 格式化完成 */
 
 }
-
-
-int MenuUI::formatDev(const char* pDevNode, const char* pMountPath)
-{
-    char buf[1024] = {0};
-    // int err_trim = 0;
-    int iErrNo = FORMAT_ERR_SUC;
-    int i, iRetry = 3;
-
-    /*
-     * 1.卸载本地设备（卸载成功从mLocalStorageList中移除该设备）
-     */
-    #ifdef ENABLE_FORMAT_DEV_USE_SYSTEM_CMD
-    snprintf(buf, sizeof(buf), "umount -f %s", pMountPath);
-    if (exec_sh_new((const char *)buf) != 0) {
-        LOGDBG(TAG, "umount path[%s] failed", pMountPath);
-        iErrNo = FORMAT_ERR_UMOUNT;
-        goto ERROR;
-    }
-    LOGDBG(TAG, "Umount dev [%s] Success !!", pDevNode);
-
-    #else   /* 使用API卸载 */
-
-    for (i = 0; i < iRetry; i++) {
-        LOGDBG(TAG, "umount2 dev[%s], mount pointer[%s]", pDevNode, pMountPath);
-        if (umount2(pMountPath, MNT_FORCE)) {
-            LOGERR(TAG, "umount dev[%s] failed, times[%d]", pDevNode, i);
-            msg_util::sleep_ms(100);
-            continue;
-        } else {
-            break;
-        }
-    }
-
-    if (i >= iRetry) {
-        LOGERR(TAG, "umount dev[%s] failed", pDevNode);
-        iErrNo = FORMAT_ERR_UMOUNT_EXFAT;
-        goto ERROR;
-    } else {    /* 卸载成功(可以考虑直接操作mLocalStorageList,将Volume的状态设置为已卸载状态) */
-        LOGERR(TAG, "umount dev[%s] Suc", pDevNode);
-    }
-
-    #endif
-
-    msg_util::sleep_ms(100);
-
-    memset(buf, 0, sizeof(buf));
-    snprintf(buf, sizeof(buf), "mke2fs -F -t ext4 %s", pDevNode);   
-
-    LOGDBG(TAG, "Format dev[%s] to Ext4", pDevNode); 
-
-    if (exec_sh_new((const char *)buf) != 0) {
-        LOGDBG(TAG, "Format dev[%s] Failed", pDevNode);
-        iErrNo = FORMAT_ERR_FORMAT_EXT4;
-        goto ERROR;
-    }  else {
-        
-        LOGDBG(TAG, "Format dev[%s] to Ext4 Success!!!", pDevNode);
-
-        memset(buf, 0, sizeof(buf));
-        snprintf(buf, sizeof(buf), "mount -t ext4 -o discard %s %s", pDevNode, pMountPath);
-        if (exec_sh_new((const char *)buf) != 0) {
-            LOGDBG(TAG, "Mount dev[%s] -> path[%s] Failed", pDevNode, pMountPath);
-            iErrNo = FORMAT_ERR_MOUNT_EXT4;
-            goto ERROR;
-        } else {    /* 挂载正常 */
-
-            LOGDBG(TAG, "ReMount dev[%s] to [%s] Success!!!", pDevNode, pMountPath);
-
-        #ifdef ENABLE_FS_TRIM            
-            memset(buf, 0, sizeof(buf));
-            snprintf(buf, sizeof(buf), "fstrim %s", pMountPath);
-            if (exec_sh_new((const char *)buf) != 0) {
-                iErrNo = FORMAT_ERR_FSTRIM;
-                goto ERROR;
-            }
-            LOGDBG(TAG, "Fstrim Dev[%s] Success!", pMountPath);
-        #else
-            memset(buf, 0, sizeof(buf));
-            snprintf(buf, sizeof(buf), "e4defrag %s", pMountPath);
-            exec_sh_new((const char *)buf);
-            LOGDBG(TAG, "e4defrag Dev[%s] Success!", pMountPath);
-
-        #endif
-            msg_util::sleep_ms(200);
-
-            memset(buf, 0, sizeof(buf));
-            snprintf(buf, sizeof(buf), "umount -f %s", pMountPath);
-            if (exec_sh_new((const char *)buf) != 0) {
-                iErrNo = FORMAT_ERR_UMOUNT_EXT4;
-                goto ERROR;
-            }
-            
-            LOGDBG(TAG, "umount Dev[%s] Success!", pMountPath);
-
-            msg_util::sleep_ms(500);
-
-            memset(buf, 0, sizeof(buf));
-            snprintf(buf, sizeof(buf), "mkfs.exfat %s", pDevNode);
-            if (exec_sh_new((const char *)buf) != 0) {
-                iErrNo = FORMAT_ERR_FORMAT_EXFAT;
-                goto ERROR;
-            }
-            LOGDBG(TAG, "Format Dev[%s] to Exfat Success!", pDevNode);
-
-            system("killall vold_test");    /* 重启挂载服务 */
-        }
-    }
-
-ERROR:
-    switch (iErrNo) {
-        case FORMAT_ERR_UMOUNT_EXFAT:
-        case FORMAT_ERR_FORMAT_EXT4:
-        case FORMAT_ERR_MOUNT_EXT4:
-        case FORMAT_ERR_UMOUNT_EXT4:
-        case FORMAT_ERR_FORMAT_EXFAT:
-        case FORMAT_ERR_E4DEFRAG:
-            LOGDBG(TAG, "Action[%d] dev[%s], path[%s]", iErrNo, pDevNode, pMountPath);
-            break;
-        
-        case FORMAT_ERR_FSTRIM: {     /* fstrim失败,应该将其重启格式化成exfat格式 */
-
-            LOGDBG(TAG, "Fstrim Failed Now, umount, and format it to exfat");
-            memset(buf, 0, sizeof(buf));
-            snprintf(buf, sizeof(buf), "umount -f %s", pMountPath);
-            exec_sh_new((const char *)buf);
-
-            memset(buf, 0, sizeof(buf));
-            snprintf(buf, sizeof(buf), "mkexfat %s", pDevNode);
-            exec_sh_new((const char *)buf);
-            system("killall vold_test");    /* 重启挂载服务 */            
-            break;  
-        }
-    }
-
-    return iErrNo;
-}
-
-
 
 
 /*
@@ -6486,7 +6281,6 @@ void MenuUI::procSetMenuKeyEvent()
 bool MenuUI::checkIsTakeTimelpaseInCustomer()
 {
     Json::Value* picJsonCmd = NULL;
-    Json::FastWriter writer;
     string cmd;
 
     if (true == mClientTakePicUpdate) {     /* 客户端控制拍照(非timelapse) */
@@ -9349,7 +9143,6 @@ void MenuUI::handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo)
 
     if (state == STATE_IDLE) {	            /* 如果相机处于Idle状态: 显示主菜单 */
 		LOGDBG(TAG, "handleSetSyncInfo oled_reset_disp Server State 0x%x, cur_menu %d", getServerState(), cur_menu);
-        mCamState = STATE_IDLE;
         setCurMenu(MENU_TOP);	/* 初始化显示为顶级菜单 */
     } else if ((state & STATE_RECORD) == STATE_RECORD) {    /* 录像状态 */
         if ((state & STATE_PREVIEW) == STATE_PREVIEW) {
@@ -9903,7 +9696,6 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 				break;
             }
                
-
             case UI_MSG_KEY_EVENT: {	/* 短按键消息处理 */
                 int key = -1;
                 CHECK_EQ(msg->find<int>("oled_key", &key), true);

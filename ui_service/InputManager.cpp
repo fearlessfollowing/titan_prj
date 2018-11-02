@@ -26,7 +26,6 @@
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 #include <util/msg_util.h>
-#include <sys/pro_uevent.h>
 #include <thread>
 #include <vector>
 #include <sys/ins_types.h>
@@ -129,7 +128,7 @@ void InputManager::exit()
 	LOGDBG(TAG, "stop long press monitor mLongPressMonitorPipe[0] %d", mLongPressMonitorPipe[0]);
 
     if (mLongPressMonitorPipe[0] != -1) {
-        writePipe(mLongPressMonitorPipe[1], Pipe_Shutdown);
+        writePipe(mLongPressMonitorPipe[1], CtrlPipe_Shutdown);
         if (mLongPressMonitorThread.joinable()) {
             mLongPressMonitorThread .join();
         }
@@ -144,7 +143,7 @@ void InputManager::exit()
 
 
     if (mCtrlPipe[0] != -1) {
-        writePipe(mCtrlPipe[1], Pipe_Shutdown);
+        writePipe(mCtrlPipe[1], CtrlPipe_Shutdown);
         if (mLooperThread.joinable()) {
             mLooperThread .join();
         }
@@ -439,11 +438,11 @@ int InputManager::inputEventLoop()
 					  "ufds[1].revents 0x%x\n", nfds, pollres, nfds, ufds[1].revents);
 			#endif
 			
-			char c = Pipe_Wakeup;
+			char c = CtrlPipe_Wakeup;
 			read(mCtrlPipe[0], &c, 1);
 
 			
-            if (c == Pipe_Shutdown) {
+            if (c == CtrlPipe_Wakeup) {
 				LOGDBG(TAG, "InputManager Looper recv pipe shutdown.");
 				break;
 			}

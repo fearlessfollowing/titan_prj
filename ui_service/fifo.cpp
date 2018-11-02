@@ -25,7 +25,6 @@
 #include <util/bytes_int_convert.h>
 #include <hw/MenuUI.h>
 
-#include <sys/action_info.h>
 #include <hw/ins_gpio.h>
 
 #include <system_properties.h>
@@ -89,8 +88,6 @@ static const RES_INFO mResInfos[] = {
 	{2160,{1080,1080}} //15
 };
 #endif
-
-
 
 
 static sp<fifo> gSysTranObj = NULL;
@@ -194,7 +191,6 @@ void fifo::init()
 
     LOGDBG(TAG, "fifo::init() ... OK");
 }
-
 
 
 void fifo::start_all()

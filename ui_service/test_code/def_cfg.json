@@ -1,0 +1,31 @@
+{
+	"mode_select" : 
+	{
+		"live_mode" : 0,
+		"pic_mode" : 0,
+		"video_mode" : 0
+	},
+	"sys_setting" : 
+	{
+		"aeb" : 0,
+		"aud_on" : 1,
+		"aud_spatial" : 1,
+		"dhcp" : 1,
+		"fan_on" : 0,
+		"flicker" : 0,
+		"flow_state" : 1,
+		"gyro_on" : 1,
+		"hdr" : 0,
+		"light_on" : 1,
+		"ph_delay" : 1,
+		"raw" : 0,
+		"set_logo" : 0,
+		"speaker" : 1,
+		"video_fragment" : 0
+	},
+	"wifi_cfg" : 
+	{
+		"passwd" : "888888",
+		"ssid" : "Insta360"
+	}
+}

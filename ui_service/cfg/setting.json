@@ -1,4 +1,10 @@
 {
+    "mode_select": {
+        "pic_mode":0,
+        "video_mode":0,
+        "live_mode":0
+    },
+
     "sys_setting": {
         "dhcp":1,
         "flicker":0,
@@ -15,5 +21,10 @@
         "fan_on":1,
         "set_logo":0,
         "video_fragment":0
+    },
+
+    "wifi_cfg": {
+        "ssid":"Insta360",
+        "passwd":"88888888"
     }
 }
