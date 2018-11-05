@@ -5,7 +5,7 @@
 #include <json/value.h>
 #include <json/json.h>
 
-using BtnReportCallback = std::function<void (int iEventCode)>;
+using CfgChangedCallback = std::function<void (int iEventType, std::string key, int iVal)>;
 
 /*
  * 配置项的改变(配置项的名称, 配置项的当前值)
@@ -19,6 +19,13 @@ using BtnReportCallback = std::function<void (int iEventCode)>;
  * 配置文件被加载(所有的配置项的值被改变)
  */
 
+enum {
+    CFG_EVENT_ITEM_CHANGED,
+    CFG_EVENT_RESET_ALL,
+    CFG_EVENT_LOAD,
+    CFG_EVENT_MAX
+};
+
 class CfgManager {
 
 public:
@@ -28,6 +35,7 @@ public:
 
     bool                setKeyVal(std::string key, int iNewVal);
     int                 getKeyVal(std::string key);
+    void                setCallback(CfgChangedCallback callback);
 
     /*
      * 复位所有的配置项
@@ -49,6 +57,7 @@ private:
     static CfgManager*   	sInstance;
     std::mutex              mCfgLock; 
 
+    CfgChangedCallback      mCallback;
     Json::Value             mRootCfg;
 
 };

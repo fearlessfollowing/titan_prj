@@ -158,8 +158,15 @@ bool CfgManager::loadCfgFormFile(Json::Value& root, const char* pFile)
 }
 
 
+void CfgManager::setCallback(CfgChangedCallback callback)
+{
+    mCallback = callback;
+}
+
+
 void CfgManager::init()
 {
+    mCallback = nullptr;
     mRootCfg.clear();
 
     /* 检查用户配置是否存在:
@@ -188,6 +195,10 @@ void CfgManager::init()
     } else {
         LOGDBG(TAG, "Load User Configure Failed , baddly +_+.");
     }
+
+    if (mCallback) {
+        mCallback(CFG_EVENT_LOAD, "load", 0);
+    }        
 }
 
 
@@ -205,6 +216,8 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
     string::size_type idx;
     bool bResult = false;
 
+    std::unique_lock<std::mutex> _l(mCfgLock);
+    
     idx = key.find("mode_select");
     if (idx != string::npos) {  /* 设置的是mode_select_x配置值 */
         if (mRootCfg.isMember("mode_select")) {
@@ -230,6 +243,9 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
 
     if (bResult) {
         syncCfg2File(USER_CFG_PARAM_FILE, mRootCfg);
+        if (mCallback) {
+            mCallback(CFG_EVENT_ITEM_CHANGED, key, iNewVal);
+        }
     }
 
     return bResult;
@@ -243,7 +259,9 @@ int CfgManager::getKeyVal(std::string key)
 {
     int iRet = -1;
     string::size_type idx;
-    
+
+    std::unique_lock<std::mutex> _l(mCfgLock);
+
     idx = key.find("mode_select");
     if (idx != string::npos) {  /* 设置的是mode_select_x配置值 */
         if (mRootCfg.isMember("mode_select")) {
@@ -278,6 +296,33 @@ bool CfgManager::resetAllCfg()
      * - 用户配置项发生改变(userCfgItemChangedListener)
      * - 用户配置文件被复位(userCfgResetListener)
      */
+
+    std::unique_lock<std::mutex> _l(mCfgLock);
+    /*
+     * 避免复位的时候有其他操作，应该加上全局锁
+     */
+    mRootCfg.clear();
+
+    if (access(DEF_CFG_PARAM_FILE, F_OK)) {
+        LOGDBG(TAG, "Default Configure[%s] not exist, Generated Default Configure here", DEF_CFG_PARAM_FILE);
+        genDefaultCfg();
+    }
+
+    /* 拷贝默认配置为用户配置 */
+    char cmd[512] = {0};
+    sprintf(cmd, "cp -p %s %s", DEF_CFG_PARAM_FILE, USER_CFG_PARAM_FILE);
+    system(cmd);
+
+    /* 加载用户配置 */
+    if (loadCfgFormFile(mRootCfg, USER_CFG_PARAM_FILE)) {
+        LOGDBG(TAG, "Load User Configure Success, very happy ^_^.");
+    } else {
+        LOGDBG(TAG, "Load User Configure Failed , baddly +_+.");
+    }
+    
+    if (mCallback) {
+        mCallback(CFG_EVENT_RESET_ALL, "reset", 0);
+    }    
     return true;
 }
 
