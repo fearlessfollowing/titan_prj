@@ -1,12 +1,10 @@
 {
-	"mode_select" : 
-	{
-		"live_mode" : 0,
-		"pic_mode" : 0,
-		"video_mode" : 0
+	"mode_select" : {
+		"mode_select_live" : 0,
+		"mode_select_pic" : 0,
+		"mode_select_video" : 0
 	},
-	"sys_setting" : 
-	{
+	"sys_setting" : {
 		"aeb" : 0,
 		"aud_on" : 1,
 		"aud_spatial" : 1,
@@ -23,9 +21,8 @@
 		"speaker" : 1,
 		"video_fragment" : 0
 	},
-	"wifi_cfg" : 
-	{
-		"passwd" : "888888",
-		"ssid" : "Insta360"
+	"wifi_cfg" : {
+		"wifi_cfg_passwd" : "888888",
+		"wifi_cfg_ssid" : "Insta360"
 	}
 }

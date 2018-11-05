@@ -70,6 +70,18 @@ CfgManager::~CfgManager()
 }
 
 
+void CfgManager::syncCfg2File(const char* pCfgFile, Json::Value& curCfg)
+{
+    Json::StreamWriterBuilder builder; 
+    builder.settings_["indentation"] = ""; 
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter()); 
+    std::ofstream ofs;
+	ofs.open(pCfgFile);
+    writer->write(curCfg, &ofs);
+    ofs.close();
+}
+
+
 void CfgManager::genDefaultCfg()
 {
     Json::Value rootCfg;
@@ -77,9 +89,12 @@ void CfgManager::genDefaultCfg()
     Json::Value sysSetCfg;
     Json::Value sysWifiCfg;
 
-    modeSelectCfg["pic_mode"] = 0;
-    modeSelectCfg["video_mode"] = 0;
-    modeSelectCfg["live_mode"] = 0;
+    modeSelectCfg["mode_select_pic"]    = 0;
+    modeSelectCfg["mode_select_video"]  = 0;
+    modeSelectCfg["mode_select_live"]   = 0;
+
+    sysWifiCfg["wifi_cfg_passwd"]   = "Insta360";
+    sysWifiCfg["wifi_cfg_ssid"]     = "88888888";
 
 
     sysSetCfg["dhcp"]           = 1;
@@ -106,14 +121,7 @@ void CfgManager::genDefaultCfg()
     rootCfg["wifi_cfg"] = sysWifiCfg;
 
 #if 1
-
-    Json::StreamWriterBuilder builder; 
-    builder.settings_["indentation"] = ""; 
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter()); 
-    std::ofstream ofs;
-	ofs.open(DEF_CFG_PARAM_FILE);
-    writer->write(rootCfg, &ofs);
-    ofs.close();
+    syncCfg2File(DEF_CFG_PARAM_FILE, rootCfg);
 #else 
     Json::StyledWriter sw;
 	std::cout << sw.write(rootCfg) << std::endl;
@@ -132,17 +140,21 @@ bool CfgManager::loadCfgFormFile(Json::Value& root, const char* pFile)
     Json::CharReaderBuilder builder;
     builder["collectComments"] = false;
     JSONCPP_STRING errs;
+    bool bResult = false;
 
     std::ifstream ifs;  
     ifs.open(pFile, std::ios::binary); 
 
     if (parseFromStream(builder, ifs, &mRootCfg, &errs)) {
         LOGDBG(TAG, "parse [%s] success", pFile);
-        return true;
+        bResult = true;
     } else {
         LOGDBG(TAG, "parse [%s] failed", pFile);
-        return false;
+        bResult = false;
     }
+
+    ifs.close();
+    return bResult;
 }
 
 
@@ -172,9 +184,9 @@ void CfgManager::init()
     LOGDBG(TAG, "Loading User Configure[%s]", USER_CFG_PARAM_FILE);
     /* 加载用户配置 */
     if (loadCfgFormFile(mRootCfg, USER_CFG_PARAM_FILE)) {
-        LOGDBG(TAG, "Load User Configure Success.");
+        LOGDBG(TAG, "Load User Configure Success, very happy ^_^.");
     } else {
-        LOGDBG(TAG, "Load User Configure Failed +_+.");
+        LOGDBG(TAG, "Load User Configure Failed , baddly +_+.");
     }
 }
 
@@ -185,23 +197,87 @@ void CfgManager::deinit()
 }
 
 
+/*
+ * 设置指定key的值，设置完之后需要同步到配置文件中
+ */
 bool CfgManager::setKeyVal(std::string key, int iNewVal)
 {
-    if (mRootCfg.isMember(key)) {
+    string::size_type idx;
+    bool bResult = false;
 
+    idx = key.find("mode_select");
+    if (idx != string::npos) {  /* 设置的是mode_select_x配置值 */
+        if (mRootCfg.isMember("mode_select")) {
+            if (mRootCfg["mode_select"].isMember(key)) {
+                mRootCfg["mode_select"][key] = iNewVal;
+                bResult = true;
+            }
+        }
     } else {
-        return false;
+        idx = key.find("wifi_cfg");
+        if (idx != string::npos) {  /* 设置的是wifi相关的参数 */
+            LOGDBG(TAG, "Not implement for wifi configure yet!");
+            bResult = true;
+        } else {    /* 普通的设置项 */
+            if (mRootCfg.isMember("sys_setting")) {
+                if (mRootCfg["sys_setting"].isMember(key)) {
+                    mRootCfg["sys_setting"][key] = iNewVal;
+                    bResult = true;
+                }
+            }
+        }
     }
+
+    if (bResult) {
+        syncCfg2File(USER_CFG_PARAM_FILE, mRootCfg);
+    }
+
+    return bResult;
 }
 
+
+/*
+ * 获取指定key的值,直接从内存的mRootCfg中读取
+ */
 int CfgManager::getKeyVal(std::string key)
 {
+    int iRet = -1;
+    string::size_type idx;
+    
+    idx = key.find("mode_select");
+    if (idx != string::npos) {  /* 设置的是mode_select_x配置值 */
+        if (mRootCfg.isMember("mode_select")) {
+            if (mRootCfg["mode_select"].isMember(key)) {
+                iRet = mRootCfg["mode_select"][key].asInt();
+            }
+        }
+    } else {
+        idx = key.find("wifi_cfg");
+        if (idx != string::npos) {  /* 设置的是wifi相关的参数 */
+            LOGDBG(TAG, "Not implement for wifi configure yet!");
+        } else {    /* 普通的设置项 */
+            if (mRootCfg.isMember("sys_setting")) {
+                if (mRootCfg["sys_setting"].isMember(key)) {
+                    iRet = mRootCfg["mode_select"][key].asInt();
+                }
+            }
+        }
+    }
     return true;
 }
 
 
 bool CfgManager::resetAllCfg()
 {
+    /*
+     * 复位所有的配置:
+     * 1.用默认配置参数来覆盖新的配置参数文件
+     * 2.如果有注册的配置文件变化监听器，调用该监听器
+     * 监听器类型：
+     * - 用户配置文件被加载(userCfgLoadListener)
+     * - 用户配置项发生改变(userCfgItemChangedListener)
+     * - 用户配置文件被复位(userCfgResetListener)
+     */
     return true;
 }
 

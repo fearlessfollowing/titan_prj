@@ -5,6 +5,20 @@
 #include <json/value.h>
 #include <json/json.h>
 
+using BtnReportCallback = std::function<void (int iEventCode)>;
+
+/*
+ * 配置项的改变(配置项的名称, 配置项的当前值)
+ */
+
+/*
+ * 配置文件被复位(所有的配置项的值被改变)
+ */
+
+/*
+ * 配置文件被加载(所有的配置项的值被改变)
+ */
+
 class CfgManager {
 
 public:
@@ -29,6 +43,7 @@ private:
     void    init();
     void    deinit();
     void    genDefaultCfg();
+    void    syncCfg2File(const char* pCfgFile, Json::Value& curCfg);
 
 
     static CfgManager*   	sInstance;
