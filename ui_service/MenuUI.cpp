@@ -66,7 +66,7 @@
 using namespace std;
 
 #undef      TAG
-#define     TAG "MenuUI"
+#define     TAG     "MenuUI"
 
 #define ENABLE_LIGHT
 
@@ -213,13 +213,6 @@ static const char *sound_str[] = {
 
 #define FLASH_LIGHT			BACK_BLUE
 #define BAT_INTERVAL		(5000)
-
-
-typedef struct _rec_info_ {
-    int rec_hour;
-    int rec_min;
-    int rec_sec;
-} REC_INFO;
 
 
 #define PAGE_MAX (3)
@@ -875,11 +868,6 @@ void MenuUI::init()
 
     LOGDBG(TAG, "Create System Configure Object...");
     mProCfg = sp<pro_cfg>(new pro_cfg());
-
-
-    mRecInfo = sp<REC_INFO>(new REC_INFO());
-    CHECK_NE(mRecInfo, nullptr);
-    memset(mRecInfo.get(), 0, sizeof(REC_INFO));
 
     LOGDBG(TAG, "Create System Light Manager Object...");
 
@@ -7946,10 +7934,16 @@ int MenuUI::oled_disp_type(int type)
         case START_LIVE_SUC: {  /* 启动直播成功，可能是重连成功 */
             LOGERR(TAG, "---> START_LIVE_SUC, Current Server State 0x%x", serverState);
             vm->incOrClearLiveRecSec(true);     /* 重置已经录像的时间为0 */
+            #if 0
             set_update_mid(INTERVAL_0HZ);
             if (cur_menu != MENU_LIVE_INFO) {
                 setCurMenu(MENU_LIVE_INFO);
             }
+            #else 
+            set_update_mid(INTERVAL_0HZ);
+            setCurMenu(MENU_LIVE_INFO);
+            #endif
+
             break;
         }
 
@@ -8005,12 +7999,7 @@ int MenuUI::oled_disp_type(int type)
                 mClientTakeLiveUpdate = false;
                 mControlLiveJsonCmd.clear();
             }
-            #if 0
-            dispReady();
-            dispBottomInfo(false, false); 
-            #else 
             setCurMenu(MENU_LIVE_INFO);
-            #endif
             break;
         }
 			
@@ -8071,7 +8060,6 @@ int MenuUI::oled_disp_type(int type)
             dispWaiting();		/* 屏幕中间显示"..." */
             break;
         }
-
 
         /*
          * - 客户端发送的预览成功，都应该进入MENU_PIC_INFO菜单
@@ -8173,7 +8161,6 @@ int MenuUI::oled_disp_type(int type)
         case SYNC_PIC_CAPTURE_AND_PREVIEW: {
             if (!check_state_in(STATE_TAKE_CAPTURE_IN_PROCESS)) {
                 LOGDBG(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
-                //disp video menu before add state_record
                 setCurMenu(MENU_PIC_INFO);
                 send_update_light(MENU_PIC_INFO, INTERVAL_1HZ);
             }
@@ -8183,7 +8170,6 @@ int MenuUI::oled_disp_type(int type)
         case SYNC_PIC_STITCH_AND_PREVIEW: {
             if (!check_state_in(STATE_PIC_STITCHING)) {
                 LOGDBG(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
-                //disp video menu before add state_record
                 setCurMenu(MENU_PIC_INFO);
                 send_update_light(MENU_PIC_INFO, INTERVAL_5HZ);
             }
@@ -8686,7 +8672,6 @@ const char* MenuUI::getPicVidCfgNameByIndex(vector<struct stPicVideoCfg*>& mList
     }
     return NULL;
 }
-
 
 
 struct stSetItem* MenuUI::getSetItemByName(vector<struct stSetItem*>& mList, const char* name)

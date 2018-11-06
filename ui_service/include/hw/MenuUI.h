@@ -1048,8 +1048,6 @@ private:
     /*
      * 录像/直播的可存储的剩余时长
      */
-    sp<struct _remain_info_>    mRemainInfo;
-    sp<struct _rec_info_>       mRecInfo;
     sp<oled_light>              mOLEDLight;
 
 

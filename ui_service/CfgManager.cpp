@@ -202,11 +202,11 @@ void CfgManager::deinit()
  */
 bool CfgManager::setKeyVal(std::string key, int iNewVal)
 {
-    string::size_type idx;
+    std::string::size_type idx;
     bool bResult = false;
 
     idx = key.find("mode_select");
-    if (idx != string::npos) {  /* 设置的是mode_select_x配置值 */
+    if (idx != std::string::npos) {  /* 设置的是mode_select_x配置值 */
         if (mRootCfg.isMember("mode_select")) {
             if (mRootCfg["mode_select"].isMember(key)) {
                 mRootCfg["mode_select"][key] = iNewVal;
@@ -215,7 +215,7 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
         }
     } else {
         idx = key.find("wifi_cfg");
-        if (idx != string::npos) {  /* 设置的是wifi相关的参数 */
+        if (idx != std::string::npos) {  /* 设置的是wifi相关的参数 */
             LOGDBG(TAG, "Not implement for wifi configure yet!");
             bResult = true;
         } else {    /* 普通的设置项 */
@@ -242,10 +242,10 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
 int CfgManager::getKeyVal(std::string key)
 {
     int iRet = -1;
-    string::size_type idx;
+    std::string::size_type idx;
     
     idx = key.find("mode_select");
-    if (idx != string::npos) {  /* 设置的是mode_select_x配置值 */
+    if (idx != std::string::npos) {  /* 设置的是mode_select_x配置值 */
         if (mRootCfg.isMember("mode_select")) {
             if (mRootCfg["mode_select"].isMember(key)) {
                 iRet = mRootCfg["mode_select"][key].asInt();
@@ -253,7 +253,7 @@ int CfgManager::getKeyVal(std::string key)
         }
     } else {
         idx = key.find("wifi_cfg");
-        if (idx != string::npos) {  /* 设置的是wifi相关的参数 */
+        if (idx != std::string::npos) {  /* 设置的是wifi相关的参数 */
             LOGDBG(TAG, "Not implement for wifi configure yet!");
         } else {    /* 普通的设置项 */
             if (mRootCfg.isMember("sys_setting")) {
@@ -263,7 +263,7 @@ int CfgManager::getKeyVal(std::string key)
             }
         }
     }
-    return true;
+    return iRet;
 }
 
 
