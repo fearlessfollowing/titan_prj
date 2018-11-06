@@ -132,11 +132,18 @@ COM_FLAGS +=  ' -DENABLE_VOLUME_MANAGER_USE_NETLINK '
 # 进入U盘模式后使能按键事件的接收
 # COMFLAGS += ' -DENBALE_INPUT_EVENT_WHEN_ENTER_UDISK ' 
 
+# LIVE ORGIN模式
+COM_FLAGS += ' -DENABLE_LIVE_ORG_MODE '
+
+# 机身Photo Delay Off
+COM_FLAGS += ' -DENABLE_PHOTO_DELAY_OFF '
+
 
 # 调试Netlink消息
 # COM_FLAGS += ' -DENABLE_DEBUG_NETLINK_MSG '
 
 COM_FLAGS += ' -fexceptions -Wall -Wunused-variable '
+
 
 
 
@@ -214,5 +221,3 @@ elif PLATFORM == 'aarch64':
 #        CFLAGS += ' -O0 -g'
 #    else:
 #        CFLAGS += ' -O2'
-
-

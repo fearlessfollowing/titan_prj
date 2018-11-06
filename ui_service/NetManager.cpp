@@ -1083,11 +1083,7 @@ void NetManager::dispatchIpPolicy(int iPolicy)
     sp<NetDev> tmpEthDev;
     sp<NetDev> tmpWlanDev;
 
-	// const char* pEthIp = NULL;
-	// const char* pWlanIp = NULL;
 	bool bUpdate = false;
-
-
 
 	switch (iPolicy) {
 

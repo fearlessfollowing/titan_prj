@@ -776,8 +776,6 @@ private:
 
     void    dispLeftNum(const char* pBuf);
 
-    void    dispFontByLoc(struct stPicVideoCfg* pCfg, bool bLight);
-
     const char* getDispType(int iType);
 
 

@@ -225,6 +225,11 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define TAKE_LIVE_MODE_4K_30F_HDMI       "live_4k_30f_hdmi"
 #define TAKE_LIVE_MODE_4K_30F_3D         "live_4k_3d"
 #define TAKE_LIVE_MODE_4K_30F_3D_HDMI    "live_4k_3d_hdmi"
+
+#ifdef ENABLE_LIVE_ORG_MODE
+#define TAKE_LIVE_MODE_ORIGIN           "live_origin_mode"
+#endif
+
 #define TAKE_LIVE_MODE_CUSTOMER          "live_customer"
 
 
@@ -277,6 +282,7 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define SET_ITEM_NAME_TESTSPEED     "test_speed"
 
 
+#define SET_ITEM_NAME_OFF           "OFF"
 #define SET_ITEM_NAME_3S            "3S"
 #define SET_ITEM_NAME_5S            "5S"
 #define SET_ITEM_NAME_10S           "10S"

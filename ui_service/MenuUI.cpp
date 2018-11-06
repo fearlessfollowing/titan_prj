@@ -17,6 +17,7 @@
 **                                                      dev_manager.cpp
 ** V3.2         skymixos        2018年09月20日          UI进入需要长时间操作时，禁止InputManager的上报功能
 ** V3.3         skymixos        2018年10月16日          修改WIFI的SSID符合OSC标准
+** V3.4         skymixos        2018年11月6日           Photo Delay支持Off
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -2284,7 +2285,12 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                         } else if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_CUSTOMER)) {
                             pCommJsonCmd = pCmdLive_Customer;
                         }
-                        
+                        #ifdef ENABLE_LIVE_ORG_MODE
+                        else if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_ORIGIN)) {
+                            pCommJsonCmd = pCmdLive_LiveOrigin;
+                        }
+                        #endif
+
                         #if 0
                         if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
                             LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
@@ -2600,20 +2606,32 @@ bool MenuUI::takeVideoIsAgeingMode()
 int MenuUI::check_live_save(Json::Value* liveJson)
 {
     int iRet = LIVE_SAVE_NONE;
+    bool bSaveOrigin = false;
+    bool bSaveFile = false;
 
-    if ((*liveJson)["parameters"]["origin"]["saveOrigin"].asBool() == true 
-        && (*liveJson)["parameters"]["stiching"]["fileSave"].asBool() == true) {
-        // LOGDBG(TAG, ">>>>> LIVE_SAVE_ORIGIN_STICH");
-        iRet = LIVE_SAVE_ORIGIN_STICH;
-    } else if ((*liveJson)["parameters"]["origin"]["saveOrigin"].asBool() == false 
-                && (*liveJson)["parameters"]["stiching"]["fileSave"].asBool() == true) {
-        // LOGDBG(TAG, ">>>>> LIVE_SAVE_STICH");
-        iRet = LIVE_SAVE_STICH;
-    } else if ((*liveJson)["parameters"]["origin"]["saveOrigin"].asBool() == true 
-                && (*liveJson)["parameters"]["stiching"]["fileSave"].asBool() == false) {
-        // LOGDBG(TAG, ">>>>> LIVE_SAVE_ORIGIN");
-        iRet = LIVE_SAVE_ORIGIN;
+    if ((*liveJson)["parameters"]["origin"].isMember("saveOrigin")) {
+        if (true == (*liveJson)["parameters"]["origin"]["saveOrigin"].asBool()) {
+            bSaveOrigin = true;
+        }
     }
+
+    if ((*liveJson)["parameters"].isMember("stiching")) {
+        if ((*liveJson)["parameters"]["stiching"].isMember("fileSave")) {
+            if (true == (*liveJson)["parameters"]["stiching"]["fileSave"].asBool()) {
+                bSaveFile = true;
+            }
+        }
+    }
+
+    if (bSaveOrigin && bSaveFile) 
+        iRet = LIVE_SAVE_ORIGIN_STICH;
+
+    if (!bSaveOrigin && bSaveFile)
+        iRet = LIVE_SAVE_STICH;
+
+    if (bSaveOrigin && !bSaveFile) 
+        iRet = LIVE_SAVE_ORIGIN;
+
     return iRet;
 }
 
@@ -2793,7 +2811,43 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 pTmpPicVidCfg = mLiveAllItemsList.at(iIndex);
                 pTakeLiveJson = pTmpPicVidCfg->jsonCmd.get();
                 LOGDBG(TAG, "Take Live mode [%s]", pTmpPicVidCfg->pItemName);
-                
+
+#ifdef ENABLE_LIVE_ORG_MODE
+                VolumeManager* vm = VolumeManager::Instance();
+                Json::Value tmpCfg;
+                Json::CharReaderBuilder builder;
+                builder["collectComments"] = false;
+                JSONCPP_STRING errs;
+
+                if (!strcmp(pTmpPicVidCfg->pItemName, TAKE_LIVE_MODE_ORIGIN)) {
+
+                    /* 从SD卡或U盘中加载指定的json文件来构造Json::Value对象 */
+                    if (strcmp(vm->getLocalVolMountPath(), "none")) {   /* 本地卷存在 */
+                        std::string manualCfg = vm->getLocalVolMountPath();
+                        manualCfg  += "/auto_cfg.json";
+
+                        LOGDBG(TAG, "--------------> path = %s", manualCfg.c_str());
+                        tmpCfg.clear();
+
+                        if (access(manualCfg.c_str(), F_OK) == 0) {
+                            ifstream ifs;
+                            ifs.open(manualCfg.c_str());
+                            
+                            if (parseFromStream(builder, ifs, &tmpCfg, &errs)) {
+                                LOGDBG(TAG, "parse [%s] success", manualCfg.c_str());
+                                pTakeLiveJson = &tmpCfg; 
+                            } else {
+                                LOGERR(TAG, "---> parse [%s] failed, please check", manualCfg.c_str());
+                            }  
+                            ifs.close();                     
+                        }
+                    } else {
+                        LOGDBG(TAG, "----> Local Volume Not Exist, Use default live arguments");
+                    }
+                }
+#endif  /* ENABLE_LIVE_ORG_MODE */
+
+
                 if (pTakeLiveJson) {
 
                     /* 如果有Custom Param需要设置,先设置它 */
@@ -3829,35 +3883,16 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
 
 void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& jsonRoot)
 {
-    FILE* fp;
-    Json::Reader reader;
+
+    Json::CharReaderBuilder builder;
+    builder["collectComments"] = false;
+    JSONCPP_STRING errs;    
+
     sp<Json::Value> pRoot = (sp<Json::Value>) (new Json::Value());
 
-    std::ostringstream osOutput;  
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-	writer->write(jsonRoot, &osOutput);
-    string jsonstr = osOutput.str();
-
-    if (access(filePath, F_OK) == 0) {
-        unlink(filePath);
-    }
-
-	if ((fp = fopen(filePath, "w")) == NULL) {
-        LOGERR(TAG, "Write Json 2 File ,Open File Error");
-		return;
-	}
-	
-	fprintf(fp, "%s", jsonstr.c_str());
-	fclose(fp);
-
-    if (reader.parse(jsonstr.c_str(), *(pRoot.get()), false)) {
+    string jsonStr = jsonRoot.toStyledString();
+    Json::CharReader* reader = builder.newCharReader();
+    if (reader->parse(jsonStr.data(), jsonStr.data() + jsonStr.size(), pRoot.get(), &errs)) {
         switch (iAction) {
             case ACTION_PIC: {
                 u32 iLen = mPicAllItemsList.size();
@@ -3889,10 +3924,21 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
                 break;
             }
         }             
+
+        if (access(filePath, F_OK) == 0) {
+            unlink(filePath);
+        }
+        
+        ofstream ofs; 
+        ofs.open(filePath);
+        ofs << jsonRoot.toStyledString();
+        ofs.close();
+
         LOGDBG(TAG, "Update Json arguments to Customer mode OK");
     } else {
         LOGERR(TAG, "Update Json arguments to Customer mode failed...");
     }
+
 }
 
 
@@ -5048,73 +5094,40 @@ void MenuUI::disp_org_rts(Json::Value& jsonCmd, int hdmi)
 {
     int org = 0, rts = 0;
 
-    // Json::FastWriter writer;
-    // string jsonstr = writer.write(jsonCmd);
-    // LOGDBG(TAG, "cmd: %s", jsonstr.c_str());
-
     if (jsonCmd.isMember("name")) {
 
         if (!strcmp(jsonCmd["name"].asCString(), "camera._takePicture")) {  /* 拍照 */
-            #if 0
-            if (jsonCmd["parameters"].isMember("origin")) {
+            if (checkHaveGpsSignal()) 
                 org = 1;
-            }
-            #else 
-            if (checkHaveGpsSignal()) {
-                org = 1;
-            } else {
+            else 
                 org = 0;
-            }
 
-            #endif
-            if (jsonCmd["parameters"].isMember("stiching")) {
+            if (jsonCmd["parameters"].isMember("stiching"))
                 rts = 1;      
-            }
 
         } else if (!strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
-            
-            #if 0
-            if (jsonCmd["parameters"].isMember("origin")) {
-                if (jsonCmd["parameters"]["origin"].isMember("saveOrigin")) {
-                    if (true == jsonCmd["parameters"]["origin"]["saveOrigin"].asBool()) {
-                        org = 1;
-                    }
-                }
-            }
-            #else 
-            if (checkHaveGpsSignal()) {
+            if (checkHaveGpsSignal()) 
                 org = 1;
-            } else {
+            else
                 org = 0;
-            }
-            #endif
 
-            if (jsonCmd["parameters"].isMember("stiching")) {
-                rts = 1;     
-            }     
+            if (jsonCmd["parameters"].isMember("stiching"))
+                rts = 1;        
 
         } else if (!strcmp(jsonCmd["name"].asCString(), "camera._startLive")) {
-            #if 0
-            if (jsonCmd["parameters"].isMember("origin")) {
-                if (jsonCmd["parameters"]["origin"].isMember("saveOrigin")) {
-                    if (true == jsonCmd["parameters"]["origin"]["saveOrigin"].asBool()) {
-                        org = 1;
-                    }
-                }
-            }
-            #else
-            if (checkHaveGpsSignal()) {
-                org = 1;
-            } else {
-                org = 0;
-            }
-            #endif
 
-            if (jsonCmd["parameters"]["stiching"].isMember("fileSave")) {
-                if (true == jsonCmd["parameters"]["stiching"]["fileSave"].asBool()) {
-                    rts = 1;
-                }
-            }  
+            if (checkHaveGpsSignal())
+                org = 1;
+            else 
+                org = 0;
+
+            if (jsonCmd["parameters"].isMember("stiching")) {
+                if (jsonCmd["parameters"]["stiching"].isMember("fileSave")) {
+                    if (true == jsonCmd["parameters"]["stiching"]["fileSave"].asBool()) {
+                        rts = 1;
+                    }
+                } 
+            } 
         }
 
     } else {
@@ -5168,14 +5181,6 @@ void MenuUI::disp_org_rts(int org, int rts, int hdmi)
             SWITCH_DEF_ERROR(new_org_rts)
         }
     }
-
-    #if 0
-    if (hdmi == 0)  {
-        clearIconByType(ICON_LIVE_INFO_HDMI_78_48_50_1650_16);
-    } else if (hdmi == 1) {
-        dispIconByType(ICON_LIVE_INFO_HDMI_78_48_50_1650_16);
-    }
-    #endif
 }
 
 
@@ -5186,14 +5191,6 @@ void MenuUI::disp_qr_res(bool high)
     } else {
         dispIconByType(ICON_VINFO_CUSTOMIZE_NORMAL_0_48_78_1678_16);
     }
-}
-
-
-void MenuUI::dispFontByLoc(PicVideoCfg* pCfg, bool bLight)
-{
-    /* 名称: Used/Total - 为了节省绘制空间，单位统一用G */
-    dispStr((const u8 *)pCfg->pNote, pCfg->stPos.xPos, pCfg->stPos.yPos, bLight, pCfg->stPos.iWidth);
-
 }
 
 
@@ -5213,19 +5210,17 @@ void MenuUI::dispPicVidCfg(PicVideoCfg* pCfg, bool bLight)
         LOGERR(TAG, "Can't show bottom Mode!!!!!");
     } else {
         /* 显示图标版本 */
-        #if  1
-        if (bLight) {
-            iconInfo.dat = pCfg->stLightIcon[pCfg->iCurVal];
-        } else {
-            iconInfo.dat = pCfg->stNorIcon[pCfg->iCurVal];
+        if (pCfg->bDispType == true) {  /* 以图标的方式显示 */
+            if (bLight) {
+                iconInfo.dat = pCfg->stLightIcon[pCfg->iCurVal];
+            } else {
+                iconInfo.dat = pCfg->stNorIcon[pCfg->iCurVal];
+            }
+            dispIconByLoc(&iconInfo);
+        } else {                        /* 以文本的方式显示 */
+            dispStr((const u8 *)pCfg->pNote, pCfg->stPos.xPos, pCfg->stPos.yPos, bLight, pCfg->stPos.iWidth);
         }
-        dispIconByLoc(&iconInfo);
-        #else    
-        /* 名称: Used/Total - 为了节省绘制空间，单位统一用G */
-        dispStr((const u8 *)pCfg->pNote, pCfg->stPos.xPos, pCfg->stPos.yPos, bLight, pCfg->stPos.iWidth);
-        #endif
     }
-
 }
 
 
@@ -7577,7 +7572,12 @@ bool MenuUI::syncQueryTfCard()
 
 int MenuUI::convCapDelay2Index(int iDelay) 
 {
+#ifdef ENABLE_PHOTO_DELAY_OFF    
+    int iDelayArray[] = {0, 3, 5, 10, 20, 30, 40, 50, 60};
+#else 
     int iDelayArray[] = {3, 5, 10, 20, 30, 40, 50, 60};
+#endif      
+
     int iSize = sizeof(iDelayArray) / sizeof(iDelayArray[0]);
     int iIndex = 0;
     for (iIndex = 0; iIndex < iSize; iIndex++) {
@@ -7595,7 +7595,12 @@ int MenuUI::convCapDelay2Index(int iDelay)
 
 int MenuUI::convIndex2CapDelay(int iIndex)
 {
+#ifdef ENABLE_PHOTO_DELAY_OFF    
+    int iDelayArray[] = {0, 3, 5, 10, 20, 30, 40, 50, 60};
+#else 
     int iDelayArray[] = {3, 5, 10, 20, 30, 40, 50, 60};
+#endif    
+
     int iSize = sizeof(iDelayArray) / sizeof(iDelayArray[0]);
 
     if (iIndex < 0 || iIndex > iSize - 1) {
@@ -7605,7 +7610,6 @@ int MenuUI::convIndex2CapDelay(int iIndex)
         return iDelayArray[iIndex];
     }
 }
-
 
 int MenuUI::convAebNumber2Index(int iAebNum)
 {

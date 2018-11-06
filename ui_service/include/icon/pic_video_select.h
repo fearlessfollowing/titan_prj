@@ -1086,7 +1086,8 @@ typedef struct stPicVideoCfg {
 	sp<Json::Value>			jsonCmd;
 	const u8 * 				stLightIcon[PIC_VIDEO_LIVE_ITEM_MAX];	/* 选中时的图标列表 */
 	const u8 * 				stNorIcon[PIC_VIDEO_LIVE_ITEM_MAX];		/* 未选中时的图标列表 */
-    const char *              pNote;                                  /* 字符串形式的挡位 */
+    const char *            pNote;                                  /* 字符串形式的挡位 */
+    bool                    bDispType;                              /* 以图标的形式显示: true; 以字符的形式显示: false */
 } PicVideoCfg;
 
 
@@ -1259,6 +1260,7 @@ PicVideoCfg pic8K_3D_OF = {
 		pic8K3DOF_RAW_Nor_78x16,
 	},
     pNote:              "8K|3D|OF",
+    bDispType:          true,
 };
 
 
@@ -1280,6 +1282,7 @@ PicVideoCfg pic8K_3D = {
 		pic8K3DRAWNor_78X16
 	},
     pNote:              "8K|OF",
+    bDispType:          true,
 };
 
 
@@ -1301,6 +1304,7 @@ PicVideoCfg pic8K = {
 		pic8KRAWNor_78X16
 	},
     pNote:              "8K",
+    bDispType:          true,
 };
 
 
@@ -1335,6 +1339,7 @@ PicVideoCfg picAEB = {
 		picAEB9_RAW_Nor_78X16,
 	},
     pNote:              "AEB",
+    bDispType:          true,
 };
 
 
@@ -1355,6 +1360,7 @@ PicVideoCfg picBurst = {
 		picBurstRAWNor_78x16,
 	},
     pNote:              "Burst",
+    bDispType:          true,
 };
 
 
@@ -1373,6 +1379,8 @@ PicVideoCfg picCustomer = {
 		picVidCustmNor_78x16,
 	},
     pNote:              "customize",
+    bDispType:          true,
+
 };
 
 
@@ -1609,7 +1617,7 @@ static PicVideoCfg vid8K_30F_3D_Cfg = {
 		vid_8K30F3D_Nor_78x16,
 	},
     pNote:              "8K|30F|3D",
-
+    bDispType:          true,
 };
 
 static PicVideoCfg vid8K_60F_Cfg = {
@@ -1627,7 +1635,7 @@ static PicVideoCfg vid8K_60F_Cfg = {
 		vid_8K60F_Nor_78x16,
 	},
     pNote:              "8K|60F",
-
+    bDispType:          true,
 };
 
 static PicVideoCfg vid8K_5F_Cfg = {
@@ -1645,6 +1653,7 @@ static PicVideoCfg vid8K_5F_Cfg = {
 		vid_8K5F_Nor_78x16,
 	},
     pNote:              "8K|5F|GSV",
+    bDispType:          true,
 };
 
 static PicVideoCfg vid6K_60F_3D_Cfg = {
@@ -1662,6 +1671,7 @@ static PicVideoCfg vid6K_60F_3D_Cfg = {
 		vid_6K60F3D_Nor_78x16,
 	},
     pNote:              "6K|60F|3D",
+    bDispType:          true,
 };
 
 
@@ -1680,7 +1690,7 @@ static PicVideoCfg vid4K_120F_3D_Cfg = {
 		vid_4K120F3D_Nor_78x16,
 	},
     pNote:              "4K|120F|3D",
-
+    bDispType:          true,
 };
 
 static PicVideoCfg vid4K_30F_RTS_Cfg = {
@@ -1698,7 +1708,7 @@ static PicVideoCfg vid4K_30F_RTS_Cfg = {
 		vid_4K30F_Nor_78x16,
 	},
     pNote:              "4K|30F",
-
+    bDispType:          true,
 };
 
 static PicVideoCfg vid4K_30F_3D_RTS_Cfg = {
@@ -1716,7 +1726,7 @@ static PicVideoCfg vid4K_30F_3D_RTS_Cfg = {
 		vid_4K30F3D_Nor_78x16,
 	},
     pNote:              "4K|30F|3D",
-
+    bDispType:          true,
 };
 
 
@@ -1735,7 +1745,7 @@ static PicVideoCfg vid8K_30F_3D_HDR_Cfg = {
 		vid_8K30F_3D_Hdr_Nor_78x16,
 	},
     pNote:              "8K|30F|3D|HDR",
-
+    bDispType:          true,
 };
 
 
@@ -1754,6 +1764,7 @@ static PicVideoCfg vid8K_30F_HDR_Cfg = {
 		vid_8K30F_Hdr_Nor_78x16,
 	},
     pNote:              "8K|30F|HDR",
+    bDispType:          true,
 };
 
 
@@ -1773,7 +1784,7 @@ static PicVideoCfg vid_Customer_Cfg = {
 		picVidCustmNor_78x16,
 	},
     pNote:              "customize",
-
+    bDispType:          true,
 };
 
 PicVideoCfg* gVidAllModeCfgList[] = {
@@ -1961,7 +1972,7 @@ PicVideoCfg live4K_30F_Cfg = {
 		live4K_30F_Nor_78x16,
 	},
     pNote:              "4K|30F",
-
+    bDispType:          true,
 };
 
 PicVideoCfg live4K_30F_HDMI_Cfg = {
@@ -1979,7 +1990,7 @@ PicVideoCfg live4K_30F_HDMI_Cfg = {
 		live4K_30F_HDMI_Nor_78x16,
 	},
     pNote:              "4K|30F|HDMI",
-
+    bDispType:          true,
 };
 
 
@@ -1998,6 +2009,7 @@ PicVideoCfg live4K_30F_3D_Cfg = {
 		live4K_30F_3D_Nor_78x16,
 	},
     pNote:              "4K|30F|3D",
+    bDispType:          true,
 };
 
 
@@ -2016,8 +2028,11 @@ PicVideoCfg live4K_30F_3D_HDMI_Cfg = {
 		live4K_30F_3D_HDMI_Nor_78x16,
 	},
     pNote:              "4K|30F|3D|HDMI",
-
+    bDispType:          true,
 };
+
+
+
 
 
 PicVideoCfg live_Customer_Cfg = {
@@ -2035,8 +2050,30 @@ PicVideoCfg live_Customer_Cfg = {
 		picVidCustmNor_78x16,
 	},
     pNote:              "customize",
-
+    bDispType:          true,
 };
+
+
+#ifdef ENABLE_LIVE_ORG_MODE
+
+PicVideoCfg live_Origin_Cfg = {
+	pItemName:			TAKE_LIVE_MODE_ORIGIN,		// pItemName
+	iItemMaxVal:		0,								// iItemMaxVal
+	iCurVal:			0,								// iCurVal
+	iRawStorageRatio:	5,								// 5倍
+	stPos:				{0},							// stPos
+	pStAction:			&live4K_30D_HDMI_ActionInfo,	/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+	jsonCmd:			nullptr,
+	stLightIcon:		{	/* 选中时的图标列表 */
+		picVidCustmLight_78x16,
+	},
+	stNorIcon:			{	/* 未选中时的图标列表 */
+		picVidCustmNor_78x16,
+	},
+    pNote:              "Origin",
+    bDispType:          false,      /* 以文本的形式显示该项 */
+};
+#endif
 
 
 PicVideoCfg* gLiveAllModeCfgList[] = {
@@ -2044,6 +2081,11 @@ PicVideoCfg* gLiveAllModeCfgList[] = {
 	&live4K_30F_HDMI_Cfg,
 	&live4K_30F_3D_Cfg,
 	&live4K_30F_3D_HDMI_Cfg,
+
+#ifdef ENABLE_LIVE_ORG_MODE
+    &live_Origin_Cfg,
+#endif
+
 	&live_Customer_Cfg,
 };
 
@@ -2100,6 +2142,9 @@ static const char* pCmdLive_4K30F3D		= "{\"name\":\"camera._startLive\",\"parame
 
 static const char* pCmdLive_4K30F3DHDMI	= "{\"name\":\"camera._startLive\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":30,\"bitrate\":20480,\"saveOrigin\":false,\"width\":1920,\"height\":1440,\"storage_loc\":0},\"stiching\":{\"mode\":\"3d_top_left\",\"height\":3840,\"width\":3840,\"liveOnHdmi\":true,\"fileSave\":false,\"framerate\":30,\"bitrate\":20480,\"mime\":\"h264\"},\"audio\":{\"mime\":\"aac\",\"sampleFormat\":\"s16\",\"samplerate\":48000,\"bitrate\":128,\"channelLayout\":\"stereo\"},\"autoConnect\":{\"enable\":true,\"interval\":1000,\"count\":-1}}}";
 
+#ifdef ENABLE_LIVE_ORG_MODE
+static const char* pCmdLive_LiveOrigin  = "{\"name\": \"camera._startLive\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"width\":1920,\"height\":1440,\"framerate\":30,\"bitrate\":20000, \"liveUrl\":\"rtmp://127.0.0.1/live\"}}}";
+#endif
 
 
 /*
