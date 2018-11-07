@@ -1,8 +1,0 @@
-//
-// Created by vans on 16-12-2.
-//
-
-#ifndef INC_360PRO_SERVICE_EXTERC_MARCO_H
-#define INC_360PRO_SERVICE_EXTERC_MARCO_H
-
-#endif //INC_360PRO_SERVICE_EXTERC_MARCO_H
