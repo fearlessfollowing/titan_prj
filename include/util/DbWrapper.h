@@ -119,7 +119,6 @@ public:
     int                delLineInfoByName(const char* keyName);
 
 
-
     /*
      * 更新一行数据
      * @param 

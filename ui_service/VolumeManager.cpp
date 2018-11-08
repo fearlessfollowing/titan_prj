@@ -352,6 +352,12 @@ VolumeManager::VolumeManager() :
     umount2("/mnt/mSD4", MNT_FORCE);
     umount2("/mnt/mSD5", MNT_FORCE);
     umount2("/mnt/mSD6", MNT_FORCE);
+
+#ifdef HW_FLATFROM_TITAN
+    umount2("/mnt/mSD7", MNT_FORCE);
+    umount2("/mnt/mSD8", MNT_FORCE);
+#endif
+
     umount2("/mnt/sdcard", MNT_FORCE);
     umount2("/mnt/udisk1", MNT_FORCE);
     umount2("/mnt/udisk2", MNT_FORCE);
