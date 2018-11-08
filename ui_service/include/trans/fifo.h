@@ -3,7 +3,6 @@
 
 #include <hw/MenuUI.h>
 #include <common/sp.h>
-#include <util/cJSON.h>
 
 class ARLooper;
 class ARHandler;
@@ -148,8 +147,6 @@ private:
     bool                bExit = false;
     bool                bReadThread = false;
 
-
-
     void                init();
     void                deinit();
     int                 make_fifo();
@@ -186,24 +183,13 @@ private:
     void                parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
     void                handleSetting(sp<struct _disp_type_>& mDispType, Json::Value& reqNode);
 	
+    // void                handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode);
     
-    void                handleStitchProgress(sp<struct _disp_type_>& mDispType, cJSON *subNode);
-    void                handleSetting(sp<struct _disp_type_>& mDispType, cJSON *subNode);
-    void                handleReqFormHttp(sp<struct _disp_type_>& mDispType, cJSON *root, cJSON *subNode);
-    void                handleQrContent(sp<DISP_TYPE>& mDispType, cJSON* root, cJSON *subNode);
-    
-    void                handleUiTakeVidReq(sp<ACTION_INFO>& mActInfo, cJSON *root, cJSON *param);
-    void                handleUiTakePicReq(sp<ACTION_INFO>& mActInfo, cJSON* root, cJSON *param);
-    void                handleUiTakeLiveReq(sp<ACTION_INFO>& mActInfo, cJSON *root, cJSON *param);
-
     void                handleGpsStateChange(Json::Value& queryJson);
 
     void                handleShutdownMachine(Json::Value& jsonData);
 
-
     void                handleQueryLeftInfo(Json::Value& queryJson);
-
-    void                handleUiKeyReq(int action, const sp<ARMessage>& msg);
 
     sp<MenuUI>          mOLEDHandle;
 	

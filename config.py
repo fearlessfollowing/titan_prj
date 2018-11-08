@@ -52,6 +52,8 @@ COM_FLAGS += ' -DHAVE_SYS_UIO_H -DHAVE_PTHREADS -DHAVE_ANDROID_OS '
 #COM_FLAGS += $(EXTRA_INC_PATH)
 
 #------------------------------- 调试模式开关 --------------------------------------------------
+COM_FLAGS += ' -DHW_FLATFROM_TITAN '
+
 COM_FLAGS += ' -DENABLE_DEBUG_MODE '
 
 # 无TF卡也可以拍照开关

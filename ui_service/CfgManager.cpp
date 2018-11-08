@@ -47,7 +47,6 @@ static Mutex    gCfgManagerMutex;
 #define USER_CFG_PARAM_FILE    "/home/nvidia/insta360/etc/user_cfg.json"
 
 
-
 CfgManager* CfgManager::sInstance = NULL;
 
 CfgManager* CfgManager::Instance() 
@@ -96,15 +95,13 @@ void CfgManager::genDefaultCfg()
     sysWifiCfg["wifi_cfg_passwd"]   = "Insta360";
     sysWifiCfg["wifi_cfg_ssid"]     = "88888888";
 
-
-    sysSetCfg["dhcp"]           = 1;
-    sysSetCfg["flicker"]        = 0;
-    sysSetCfg["hdr"]            = 0;
-    sysSetCfg["raw"]            = 0;
-    sysSetCfg["aeb"]            = 0;        // AEB3
-    sysSetCfg["ph_delay"]       = 1;        // 5S
-    sysSetCfg["aeb"]            = 0;        // AEB3
-    sysSetCfg["ph_delay"]       = 1;        // 5S
+    sysSetCfg["key_dhcp"]           = 1;
+    sysSetCfg["key_flicker"]        = 0;
+    sysSetCfg["key_hdr"]            = 0;
+    sysSetCfg["key_raw"]            = 0;
+    sysSetCfg["key_aeb"]            = 0;        // AEB3
+    sysSetCfg["key_ph_delay"]       = 1;        // 5S
+    sysSetCfg["key_aeb"]            = 0;        // AEB3
     sysSetCfg["speaker"]        = 1;        // Speaker: On
     sysSetCfg["light_on"]       = 1;        // LED: On
     sysSetCfg["aud_on"]         = 1;        // Audio: On
@@ -115,23 +112,11 @@ void CfgManager::genDefaultCfg()
     sysSetCfg["set_logo"]       = 0;        // Logo: On
     sysSetCfg["video_fragment"] = 0;        // Video Fragment: On
 
-
     rootCfg["mode_select"] = modeSelectCfg;
     rootCfg["sys_setting"] = sysSetCfg;
     rootCfg["wifi_cfg"] = sysWifiCfg;
 
-#if 1
     syncCfg2File(DEF_CFG_PARAM_FILE, rootCfg);
-#else 
-    Json::StyledWriter sw;
-	std::cout << sw.write(rootCfg) << std::endl;
-    
-    std::ofstream os;
-	os.open(DEF_CFG_PARAM_FILE);
-	os << sw.write(rootCfg);
-	os.close();
-#endif
-
 }
 
 

@@ -18,7 +18,8 @@
 		"ph_delay" : 1,
 		"raw" : 0,
 		"set_logo" : 0,
-		"speaker" : 1,
+        "speaker" : 1,
+        "wifi_on": 0,
 		"video_fragment" : 0
 	},
 	"wifi_cfg" : {

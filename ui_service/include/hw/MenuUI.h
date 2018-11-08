@@ -1,5 +1,5 @@
-#ifndef PROJECT_OLED_WRAPPER_H
-#define PROJECT_OLED_WRAPPER_H
+#ifndef _MENU_UI_H_
+#define _MENU_UI_H_
 
 #include <thread>
 #include <vector>
@@ -9,11 +9,7 @@
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 #include <hw/oled_module.h>
-
-#include <sys/action_info.h>
-
 #include <sys/VolumeManager.h>
-
 #include <sys/Menu.h>
 
 
@@ -99,8 +95,6 @@ typedef enum _type_ {
     START_AP_WIFI_FAIL ,// 94,
     STOP_AP_WIFI_FAIL = 95 ,// 95,
 
-
-
     START_AGEING_FAIL = 97,
     START_AGEING = 98,
     START_FORCE_IDLE = 99,// 99,
@@ -133,44 +127,35 @@ typedef struct _sys_info_ {
     char sn_str[128];			/* SN字符串 */
 } SYS_INFO;
 
-typedef struct oled_coordinate {
-    int x;
-    int y;
-    int w;
-    int h;
-} OLED_COORD;
-
-typedef struct _disp_str_ {
-    int x;
-    int y;
-    u8 str[128];
-    int state;
-} DISP_STR;
-
-typedef struct _disp_bitmap_ {
-    int x;
-    int y;
-    u8 bitmap[128];
-    int state;
-} DISP_BITMAP;
-
-typedef struct _disp_ext_ {
-    int ext_id;
-    int state;
-} DISP_EXT;
-
-typedef struct _remain_info_ {
-    int remain_min;
-    int remain_sec;
-    int remain_hour;
-    int remain_pic_num;
-} REMAIN_INFO;
 
 typedef struct _save_path_ {
     char path[256];
-//    sp<REMAIN_INFO> mRemain;
 } SAVE_PATH;
 
+
+#ifndef INTERVAL_0HZ
+#define INTERVAL_0HZ        0
+#endif
+
+#ifndef INTERVAL_1HZ
+#define INTERVAL_1HZ 	    (1000)
+#endif
+
+#ifndef INTERVAL_5HZ
+#define INTERVAL_5HZ 		(200)
+#endif
+
+#ifndef FLASH_LIGHT
+#define FLASH_LIGHT			BACK_BLUE
+#endif
+
+#ifndef BAT_INTERVAL
+#define BAT_INTERVAL		(5000)
+#endif
+
+#ifndef PAGE_MAX
+#define PAGE_MAX            (3)
+#endif
 
 enum {
     STATE_IDLE                      = 0x00ULL,			/* 空间状态 */
@@ -225,15 +210,12 @@ enum {
     REBOOT_SHUTDOWN,
 };
 
-
 class ARLooper;
 class ARHandler;
 class ARMessage;
 class pro_cfg;
 class oled_module;
 class oled_light;
-class net_manager;
-class dev_manager;
 
 enum {
     OPTION_FLICKER,
@@ -459,6 +441,7 @@ class InputManager;
 class MenuUI {
 public:
 
+    #if 0
     enum {
         OLED_KEY,
         SAVE_PATH_CHANGE,
@@ -467,6 +450,7 @@ public:
         FACTORY_AGEING,
 		UPDATE_STORAGE,
     };
+    #endif
 
     void    postUiMessage(sp<ARMessage>& msg);
 
@@ -690,8 +674,6 @@ private:
     void    flick_light();
 
     void    add_qr_res(int type, Json::Value& actionJson, int control_act, uint64_t serverState);
-
-    void    disp_stitch_progress(sp<struct _stich_progress_> &mProgress);
     
     void    disp_qr_res(bool high = true);
 
@@ -1013,14 +995,7 @@ private:
     u64                         mCamState = 0;
 
     int                         cur_menu = -1;
-    int                         iLastEnterMenu;
-    int                         last_err = -1;
-
-	int                         set_photo_delay_index = 0;
 	
-//option which power key react ,changed by both oled key and ws
-    int                         cur_option = 0;
-
     Json::Value                 mControlPicJsonCmd;         /* 客户端请求的拍照JsonCmd */
     bool                        mClientTakePicUpdate;
 
@@ -1031,15 +1006,7 @@ private:
 
     Json::Value                 mControlLiveJsonCmd;         /* 客户端请求的拍照JsonCmd */
     bool                        mClientTakeLiveUpdate;
-
-
-	//normally changed by up/down/power key in panel
-    int                         org_option = 0;
-    sp<pro_cfg>                 mProCfg;
 	
-	// dev_type : 1 -- usb , 2 -- sd1 (3 --sd2 if exists)
-    std::vector<sp<Volume>>     mSaveList;
-
 	// int save_select;
     sp<oled_module>             mOLEDModule;
 
@@ -1057,30 +1024,22 @@ private:
 
 
     sp<battery_interface>       mBatInterface;
-    sp<struct _action_info_>    mControlAct;
+        
     sp<BAT_INFO>                m_bat_info_;
 
-	
     sp<SYS_INFO>                mReadSys;
     sp<struct _ver_info_>       mVerInfo;
     sp<struct _wifi_config_>    mWifiConfig;
 
     bool                        bDispTop = false;
-    int                         last_down_key = 0;
     int                         tl_count = -1;
-    int                         bat_jump_times = 0;
 	
 	sp<NetManager>              mNetManager;            /* 网络管理器对象强指针 */
 
     int                         mTakePicDelay = 0;      /* 拍照倒计时 */  
 	int	                        mGyroCalcDelay = 0;		/* 陀螺仪校正的倒计时时间(单位为S) */
 	
-    bool                        bLiveSaveOrg = false;
-
     int                         pipe_sound[2];          // 0 -- read , 1 -- write
-
-    // during stiching and not receive stich finish
-    bool                        bStiching = false;
 
     char                        mLocalIpAddr[32];        /* UI本地保存的IP地址 */
 
@@ -1127,7 +1086,6 @@ private:
     
     bool                        mNeedSendAction = true;                         /* 是否需要发真实的请求给Camerad */
     bool                        mCalibrateSrc;
-
 
 
 	sp<InputManager>            mInputManager;                                  /* 按键输入管理器 */

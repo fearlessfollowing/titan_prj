@@ -1,0 +1,16 @@
+1.查看数据库中的所有表
+.table
+
+2.查看指定的表结构
+.schema <table_name>
+
+3.删除指定的表
+drop table if exists <tabname>;
+
+4.往表中插入一行数据
+INSERT INTO Insta360_1000(PATHNAME,FILESIZE,FILEATTR,FILEDATE,FILEWIDHT,FILEHEIGHT,LNG,LAT,ISPROCESS) VALUES ('/mnt/udisk1/PIC20180402/origin_1.jpg', 13324, 1, '2018-11-07 12:24:50', 4000, 3000,0.134,0.23,  false);
+
+
+
+SQLite3可视化工具：
+https://sqlitestudio.pl/index.rvt?act=download

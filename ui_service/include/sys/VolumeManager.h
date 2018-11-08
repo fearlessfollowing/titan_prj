@@ -335,6 +335,49 @@ static Volume gSysVols[] = {
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
     },          
 
+#ifdef HW_FLATFROM_TITAN
+    
+    {   /* mSD7 */
+        .iVolSubsys     = VOLUME_SUBSYS_SD,
+        .pBusAddr       = "usb1-3.1",
+        .pMountPath     = "/mnt/mSD7",
+        .cVolName       = {0},             /* 动态生成 */
+        .cDevNode       = {0},
+        .cVolFsType     = {0},
+
+        .iType          = VOLUME_TYPE_MODULE,
+        .iIndex         = 5,
+        .iPrio          = VOLUME_PRIO_LOW,
+
+        .iVolState      = VOLUME_STATE_INIT,
+        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF5: 默认为使能状态 */           
+        
+        .uTotal         = 0,
+        .uAvail         = 0,
+        .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
+    },
+
+    {   /* mSD8 */
+        .iVolSubsys     = VOLUME_SUBSYS_SD,
+        .pBusAddr       = "usb1-2.4",
+        .pMountPath     = "/mnt/mSD8",
+        .cVolName       = {0},             /* 动态生成 */
+        .cDevNode       = {0},
+        .cVolFsType     = {0},
+
+        .iType          = VOLUME_TYPE_MODULE,
+        .iIndex         = 6,
+        .iPrio          = VOLUME_PRIO_LOW,
+
+        .iVolState      = VOLUME_STATE_INIT,
+        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF6: 默认为使能状态 */           
+        
+        .uTotal         = 0,
+        .uAvail         = 0,
+        .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
+    }, 
+#endif
+
 };
 
 

@@ -444,7 +444,7 @@ void oled_module::fill(const u8 x, const u8 y, const u8 w, const u8 h,const u8 d
 
 void oled_module::ssd1306_fill(const u8 dat)
 {
-    u8 pag, col;
+
 
 #ifdef HORIZONAL_ADDRESS_MODE
     SSD_Set_RAM_Address(0, 0);
@@ -453,6 +453,7 @@ void oled_module::ssd1306_fill(const u8 dat)
     memcpy(ucBufLast, ucBuf, MAX_BUF);
 
 #if 0
+    u8 pag, col;
     for (pag = 0; pag < PAGE_MAX; pag++) {
 
 		#ifndef HORIZONAL_ADDRESS_MODE
@@ -473,7 +474,7 @@ void oled_module::ssd1306_fill(const u8 dat)
         for (column_number = 0; column_number < 128; column_number++) {
             ssd1306_write_dat(dat);
         }
-        memset(&ucBuf[pag * COL_MAX], dat, COL_MAX);
+        memset(&ucBuf[page_number * COL_MAX], dat, COL_MAX);
    }
 
 #endif
@@ -618,8 +619,7 @@ void oled_module::set_buf(const u8 dat,u8 col, u8 page_start, u8 col_w,u8 page_n
 void oled_module::get_page_info_convert(u8 y,u8 h,sp<PAGE_INFO> &mPageInfo)
 {
     mPageInfo->delta_y = y%PAGE_H;
-    u8 delta1 = h%PAGE_H;
-    CHECK_EQ(delta1, 0);
+
     mPageInfo->page_start = y / PAGE_H;
     mPageInfo->dat_page_num = h / PAGE_H;
 

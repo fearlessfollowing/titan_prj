@@ -18,6 +18,7 @@
 ** V3.2         skymixos        2018年09月20日          UI进入需要长时间操作时，禁止InputManager的上报功能
 ** V3.3         skymixos        2018年10月16日          修改WIFI的SSID符合OSC标准
 ** V3.4         skymixos        2018年11月6日           Photo Delay支持Off
+** V3.5         skymixos        2018年11月8日           使用新的配置管理器
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -31,7 +32,6 @@
 #include <common/include_common.h>
 
 #include <sys/net_manager.h>
-
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 #include <util/msg_util.h>
@@ -41,7 +41,6 @@
 #include <util/GitVersion.h>
 #include <system_properties.h>
 #include <prop_cfg.h>
-
 
 #include <hw/battery_interface.h>
 #include <hw/oled_light.h>
@@ -57,14 +56,13 @@
 #include <sstream>
 
 #include <sys/ProtoManager.h>
+#include <sys/CfgManager.h>
 
 #include <sys/Mutex.h>
 #include <icon/setting_menu_icon.h>
 #include <icon/pic_video_select.h>
 
 #include <log/log_wrapper.h>
-
-using namespace std;
 
 #undef      TAG
 #define     TAG     "MenuUI"
@@ -79,8 +77,6 @@ using namespace std;
 #define LONG_PRESS_MSEC     (2000)
 
 #define OPEN_BAT_LOW
-
-#define ONLY_EXFAT
 
 
 #define ERR_MENU_STATE(menu,state) \
@@ -204,22 +200,6 @@ static const char *sound_str[] = {
     "/home/nvidia/insta360/wav/one_s_timer.wav"
 };
 
-
-
-#define INTERVAL_0HZ        0
-
-#define INTERVAL_1HZ 	    (1000)
-
-#define INTERVAL_5HZ 		(200)
-
-#define FLASH_LIGHT			BACK_BLUE
-#define BAT_INTERVAL		(5000)
-
-
-#define PAGE_MAX (3)
-
-
-
 static MENU_INFO mMenuInfos[] = {
     {	
     	-1,					/* back_menu */
@@ -314,7 +294,7 @@ static MENU_INFO mMenuInfos[] = {
 	
     {	/* MENU_STORAGE */
     	MENU_SYS_SETTING,
-		{-1, 0, 0, SET_STORAGE_MAX, SET_STORAGE_MAX, 1}, 
+		{-1, 0, 0, 0, 0, 1}, 
 		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
 		MENU_STORAGE,           /* Menu ID: MENU_STORAGE */
 		NULL,
@@ -507,7 +487,7 @@ static MENU_INFO mMenuInfos[] = {
 
     {	/* MENU_SHOW_SPACE */
     	MENU_STORAGE,
-		{-1, 0, 0, SET_STORAGE_MAX, SET_STORAGE_MAX, 1}, 
+		{-1, 0, 0, 0, 0, 1}, 
 		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
 		MENU_SHOW_SPACE,           /* Menu ID: MENU_SHOW_SPACE */
 		NULL,
@@ -517,7 +497,7 @@ static MENU_INFO mMenuInfos[] = {
 
     {	/* MENU_SHOW_SPACE SetStorageItem */
     	MENU_SHOW_SPACE,
-		{-1, 0, 0, SET_STORAGE_MAX, SET_STORAGE_MAX, 1}, 
+		{-1, 0, 0, 0, 0, 1}, 
 		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
 		MENU_TF_FORMAT_SELECT,           /* Menu ID: MENU_TF_FORMAT_SELECT */
 		NULL,
@@ -725,12 +705,12 @@ static SYS_ERROR mSysErr[] = {
 };
 
 
-class oled_arhandler : public ARHandler {
+class menu_arhandler : public ARHandler {
 public:
-    oled_arhandler(MenuUI *source): mHandler(source) {
+    menu_arhandler(MenuUI *source): mHandler(source) {
     }
 
-    virtual ~oled_arhandler() override {
+    virtual ~menu_arhandler() override {
     }
 
     virtual void handleMessage(const sp<ARMessage> &msg) override {
@@ -760,10 +740,10 @@ void MenuUI::initUiMsgHandler()
 {
     std::promise<bool> pr;
     std::future<bool> reply = pr.get_future();
-    th_msg_ = thread([this, &pr]
+    th_msg_ = std::thread([this, &pr]
                    {
                        mLooper = sp<ARLooper>(new ARLooper());
-                       mHandler = sp<ARHandler>(new oled_arhandler(this));
+                       mHandler = sp<ARHandler>(new menu_arhandler(this));
                        mHandler->registerTo(mLooper);
                        pr.set_value(true);
                        mLooper->run();
@@ -853,22 +833,24 @@ void MenuUI::init()
 {
     LOGDBG(TAG, "MenuUI init objects start ... file[%s], line[%d], date[%s], time[%s]", __DATE__, __TIME__);
 
+    CfgManager* cm = NULL;
+
     CHECK_EQ(sizeof(mMenuInfos) / sizeof(mMenuInfos[0]), MENU_MAX);
     CHECK_EQ(sizeof(astSysRead) / sizeof(astSysRead[0]), SYS_KEY_MAX);
 
-    LOGDBG(TAG, "init UI state: STATE_IDLE");
     
     mGpsState = GPS_STATE_NO_DEVICE;
 
     property_set(PROP_SPEED_TEST_COMP_FLAG, "false");
 
     LOGDBG(TAG, "Create OLED display Object...");
+
 	/* OLED对象： 显示系统 */
     mOLEDModule = sp<oled_module>(new oled_module());
     CHECK_NE(mOLEDModule, nullptr);
 
     LOGDBG(TAG, "Create System Configure Object...");
-    mProCfg = sp<pro_cfg>(new pro_cfg());
+    cm = CfgManager::Instance();     /* 配置管理器初始化 */
 
     LOGDBG(TAG, "Create System Light Manager Object...");
 
@@ -883,7 +865,6 @@ void MenuUI::init()
     CHECK_NE(m_bat_info_, nullptr);
     memset(m_bat_info_.get(), 0, sizeof(BAT_INFO));
     m_bat_info_->battery_level = 1000;
-
 
     LOGDBG(TAG, "Create System Info Object...");
     mReadSys = sp<SYS_INFO>(new SYS_INFO());
@@ -975,8 +956,8 @@ void MenuUI::init()
     mNetManager->startNetManager();
 
     /* 注册以太网卡(eth0) */
-	LOGDBG(TAG, "eth0 get ip mode [%s]", (mProCfg->get_val(KEY_DHCP) == 1) ? "DHCP" : "STATIC" );
-    sp<EtherNetDev> eth0 = (sp<EtherNetDev>)(new EtherNetDev("eth0", mProCfg->get_val(KEY_DHCP)));
+	LOGDBG(TAG, "eth0 get ip mode [%s]", (cm->getKeyVal("dhcp") == 1) ? "DHCP" : "STATIC" );
+    sp<EtherNetDev> eth0 = (sp<EtherNetDev>)(new EtherNetDev("eth0", cm->getKeyVal("dhcp")));
     sp<ARMessage> registerLanMsg = obtainMessage(NETM_REGISTER_NETDEV);
     registerLanMsg->set<sp<NetDev>>("netdev", eth0);
     mNetManager->postNetMessage(registerLanMsg);
@@ -1151,7 +1132,7 @@ void MenuUI::init_cfg_select()
     strcpy(tmpInfo->ipAddr, WLAN0_DEFAULT_IP);
     tmpInfo->iDevType = DEV_WLAN;
 
-	if (mProCfg->get_val(KEY_WIFI_ON) == 1) {
+	if (CfgManager::Instance()->getKeyVal("wifi_on") == 1) {
         iCmd = NETM_STARTUP_NETDEV;
 		disp_wifi(true);
 	} else {
@@ -1160,7 +1141,7 @@ void MenuUI::init_cfg_select()
 	}	
 
     msg = (sp<ARMessage>)(new ARMessage(iCmd));
-    LOGDBG(TAG, "init_cfg_select: wifi state[%d]", mProCfg->get_val(KEY_WIFI_ON));
+    LOGDBG(TAG, "init_cfg_select: wifi state[%d]", CfgManager::Instance()->getKeyVal("wifi_on"));
     msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
     NetManager::getNetManagerInstance()->postNetMessage(msg);
 }
@@ -1192,7 +1173,7 @@ void MenuUI::write_p(int p, int val)
 
 void MenuUI::play_sound(u32 type)
 {
-    if (mProCfg->get_val(KEY_SPEAKER) == 1) {
+    if (CfgManager::Instance()->getKeyVal("speaker") == 1) {
         if (type >= 0 && type <= sizeof(sound_str) / sizeof(sound_str[0])) {
             char cmd[1024];
 
@@ -1213,9 +1194,6 @@ void MenuUI::sound_thread()
 {
 #ifdef ENABLE_SOUND
     while (!bExitSound) {
-        if (mProCfg->get_val(KEY_SPEAKER) == 1) {
-
-        }
         msg_util::sleep_ms(INTERVAL_1HZ);
     }
 #endif
@@ -1224,7 +1202,7 @@ void MenuUI::sound_thread()
 
 void MenuUI::init_sound_thread()
 {
-    th_sound_ = thread([this] { sound_thread(); });
+    th_sound_ = std::thread([this] { sound_thread(); });
 }
 
 
@@ -1237,15 +1215,13 @@ void MenuUI::disp_top_info()
 	/** 显示状态栏之前,进行清除状态栏(避免有些写的字落在该区域) */
     clearArea(0, 0, 128, 16);
 
-    if (mProCfg->get_val(KEY_WIFI_ON)) {
+    if (CfgManager::Instance()->getKeyVal("wifi_on")) {
         dispIconByType(ICON_WIFI_OPEN_0_0_16_16);
     } else {
         dispIconByType(ICON_WIFI_CLOSE_0_0_16_16);
     }
 
 	uiShowStatusbarIp();
-
-    //disp battery icon
     oled_disp_battery();
     
     bDispTop = true;
@@ -1264,10 +1240,11 @@ void MenuUI::disp_msg_box(int type)
         return;
     }
 
+
     if (cur_menu != MENU_DISP_MSG_BOX) {
         //force light back to front or off 170731
         if (cur_menu == MENU_SYS_ERR || ((MENU_LOW_BAT == cur_menu) && checkStateEqual(serverState, STATE_IDLE))) {
-            if (mProCfg->get_val(KEY_LIGHT_ON) == 1) {
+            if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
                 setLightDirect(front_light);
             } else {
                 setLightDirect(LIGHT_OFF);
@@ -1462,67 +1439,69 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
          * 配置值的初始化
          */
         const char* pItemName = pSetItem[i]->pItemName;
+        CfgManager* cm = CfgManager::Instance();
+
 
         if (!strcmp(pItemName, SET_ITEM_NAME_DHCP)) {   /* DHCP */
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_DHCP);
+            pSetItem[i]->iCurVal = cm->getKeyVal("dhcp");
             LOGDBG(TAG, "DHCP Init Val --> [%d]", pSetItem[i]->iCurVal);
             /* 需要开启DHCP?? */
             switchEtherIpMode(pSetItem[i]->iCurVal);
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FREQ)) {            /* FREQ -> 需要通知对方 */
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_PAL_NTSC);
+            pSetItem[i]->iCurVal = cm->getKeyVal("flicker");
             LOGDBG(TAG, "Flick Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_FLICKER);        
         } else if (!strcmp(pItemName, SET_ITEM_NAME_HDR)) {             /* HDR -> 需要通知对方 */
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_HDR);
+            pSetItem[i]->iCurVal = cm->getKeyVal("hdr");
             LOGDBG(TAG, "HDR Init Val --> [%d]", pSetItem[i]->iCurVal);
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_RAW)) {             /* RAW */
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_RAW);
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_RAW)) {             /* RAW raw */
+            pSetItem[i]->iCurVal = cm->getKeyVal("raw");
             LOGDBG(TAG, "Raw Init Val --> [%d]", pSetItem[i]->iCurVal);            
         } else if (!strcmp(pItemName, SET_ITEM_NAME_AEB)) {             /* AEB */
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_AEB);
+            pSetItem[i]->iCurVal = cm->getKeyVal("aeb");
             LOGDBG(TAG, "AEB Init Val --> [%d]", pSetItem[i]->iCurVal);
 
         } else if (!strcmp(pItemName, SET_ITEM_NAME_PHDEALY)) {         /* PHTODELAY */
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_PH_DELAY);
+            pSetItem[i]->iCurVal = cm->getKeyVal("ph_delay");
             LOGDBG(TAG, "PhotoDelay Init Val --> [%d]", pSetItem[i]->iCurVal);
  
         } else if (!strcmp(pItemName, SET_ITEM_NAME_SPEAKER)) {         /* Speaker */
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_SPEAKER);
+            pSetItem[i]->iCurVal = cm->getKeyVal("speaker");
             LOGDBG(TAG, "Speaker Init Val --> [%d]", pSetItem[i]->iCurVal);
             
         } else if (!strcmp(pItemName, SET_ITEM_NAME_LED)) {             /* 开机时根据配置,来决定是否开机后关闭前灯 */     
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_LIGHT_ON);
+            pSetItem[i]->iCurVal = cm->getKeyVal("light_on");
             if (val == 0) {
                 setLightDirect(LIGHT_OFF);
             }
             LOGDBG(TAG, "LedLight Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_AUDIO)) {           /* Audio -> 需要通知对方 */     
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_AUD_ON);
+            pSetItem[i]->iCurVal = cm->getKeyVal("aud_on");
             LOGDBG(TAG, "Audio Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_SPAUDIO)) {         /* Spatital Audio -> 需要通知对方 */          
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_AUD_SPATIAL);
+            pSetItem[i]->iCurVal = cm->getKeyVal("aud_spatial");
             LOGDBG(TAG, "SpatitalAudio Init Val --> [%d]", pSetItem[i]->iCurVal);
            
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FLOWSTATE)) {       /* FlowState -> 需要通知对方 */        
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_FLOWSTATE);
+            pSetItem[i]->iCurVal = cm->getKeyVal("flow_state");
             LOGDBG(TAG, "FlowState Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_GYRO_ONOFF)) {      /* Gyro -> 需要通知对方  */         
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_GYRO_ON);
+            pSetItem[i]->iCurVal = cm->getKeyVal("gyro_on");
             LOGDBG(TAG, "Gyro OnOff Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);          
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FAN)) {             /* Fan -> 需要通知对方  */          
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_FAN);
+            pSetItem[i]->iCurVal = cm->getKeyVal("fan_on");
             LOGDBG(TAG, "Fan Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_SET_FAN);           
         } else if (!strcmp(pItemName, SET_ITEM_NAME_BOOTMLOGO)) {       /* Bottom Logo -> 需要通知对方  */      
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_SET_LOGO);
+            pSetItem[i]->iCurVal = cm->getKeyVal("set_logo");
             LOGDBG(TAG, "BottomLogo Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_SET_LOGO);
         } else if (!strcmp(pItemName, SET_ITEM_NAME_VIDSEG)) {          /* Video Segment -> 需要通知对方  */        
-            pSetItem[i]->iCurVal = mProCfg->get_val(KEY_VID_SEG);
+            pSetItem[i]->iCurVal = cm->getKeyVal("video_fragment");
             LOGDBG(TAG, "VideoSeg Init Val --> [%d]", pSetItem[i]->iCurVal); 
             sendRpc(ACTION_SET_OPTION, OPTION_SET_VID_SEG);
         }
@@ -1658,7 +1637,8 @@ void MenuUI::setMenuCfgInit()
 
 
     /* 使用配置值来初始化首次显示的页面 */
-    updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, mProCfg->get_val(KEY_PH_DELAY));
+    
+    updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, CfgManager::Instance()->getKeyVal("ph_delay"));
 
     LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total,
@@ -1693,7 +1673,8 @@ void MenuUI::setMenuCfgInit()
     mMenuInfos[MENU_SET_AEB].mSelectInfo.page_num = iPageCnt;
 
     /* 使用配置值来初始化首次显示的页面 */
-    updateMenuCurPageAndSelect(MENU_SET_AEB, mProCfg->get_val(KEY_AEB));
+    
+    updateMenuCurPageAndSelect(MENU_SET_AEB, CfgManager::Instance()->getKeyVal("aeb"));
 
 
     LOGDBG(TAG, "Set AEB Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
@@ -1890,7 +1871,7 @@ void MenuUI::commUpKeyProc()
             dispShowStoragePage(gStorageInfoItems);     /* 显示存储的翻页 */
         } else {
             if (mMenuInfos[cur_menu].privList) {
-                vector<struct stSetItem*>* pSetItemLists = static_cast<vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
+                std::vector<struct stSetItem*>* pSetItemLists = static_cast<std::vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
                 dispSettingPage(*pSetItemLists);
             } else {
                 LOGERR(TAG, "Current Menu[%s] havn't privList ????, Please check", getMenuName(cur_menu));
@@ -1956,7 +1937,7 @@ void MenuUI::commDownKeyProc()
             dispShowStoragePage(gStorageInfoItems);
         } else {
             if (mMenuInfos[cur_menu].privList) {
-                vector<struct stSetItem*>* pSetItemLists = static_cast<vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
+                std::vector<struct stSetItem*>* pSetItemLists = static_cast<std::vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
                 dispSettingPage(*pSetItemLists);
             } else {
                 LOGERR(TAG, "Current Menu[%s] havn't privList ????, Please check", getMenuName(cur_menu));
@@ -1972,9 +1953,10 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
 {
     int iRawVal = 0;
     int iAebVal = 0;
+    CfgManager* cm = CfgManager::Instance();
 
-    iRawVal = mProCfg->get_val(KEY_RAW);     /* 0: Off Raw; 1: Open Raw */
-    iAebVal = mProCfg->get_val(KEY_AEB);  
+    iRawVal = cm->getKeyVal("raw");
+    iAebVal = cm->getKeyVal("aeb");
 
     if (pPicCfg) {
         const char* pItemName = pPicCfg->pItemName;
@@ -1982,11 +1964,6 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
         /* Customer模式: 从配置文件中读取保存的customer */
         if (!strcmp(pItemName, TAKE_PIC_MODE_CUSTOMER)) {   /* Customer DO nothing */
             pPicCfg->iCurVal = 0;
-            pPicCfg->pStAction = mProCfg->get_def_info(KEY_ALL_PIC_DEF);
-            if (pPicCfg->pStAction) {   /* 得到保存在配置文件中ACTION_INFO */
-                LOGDBG(TAG, "Get user_cfg PIC ACTION_INFO ......");
-                LOGDBG(TAG, "mode[%d] size_per_act [%d]M", pPicCfg->pStAction->mode, pPicCfg->pStAction->size_per_act);
-            }
         } else if (!strcmp(pItemName, TAKE_PIC_MODE_AEB)) {
             int iIndexBase = 0;
 
@@ -2020,14 +1997,15 @@ void MenuUI::printJsonCfg(Json::Value& json)
 
 
 
-void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPicVideoCfg*>& pItemLists)
+void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct stPicVideoCfg*>& pItemLists)
 {
     if (pParentMenu && !pItemLists.size()) {
         
         int size = pParentMenu->mSelectInfo.total;
         ICON_POS tmPos = {0, 48, 78, 16};
         int iIndex = 0;
-        string cfgItemJsonFilePath;
+        std::string cfgItemJsonFilePath;
+        CfgManager* cm = CfgManager::Instance();
 
         PicVideoCfg** pSetItems = static_cast<PicVideoCfg**>(pParentMenu->priv);
         sp<Json::Value> pRoot;
@@ -2036,7 +2014,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
         switch (pParentMenu->iMenuId) {
 
             case MENU_PIC_SET_DEF: {      /* PIC */
-                iIndex = mProCfg->get_val(KEY_ALL_PIC_DEF);                 /* 当前所中的项 */
+                iIndex = cm->getKeyVal("mode_select_pic");
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
 
                 for (int i = 0; i < size; i++) {
@@ -2056,14 +2034,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                         std::ifstream ifs;  
                         ifs.open(path, std::ios::binary); 
                         
-                        #if 0
-                        Json::Reader reader;
-                        if (reader.parse(is, *(pRoot.get()), false)) {
-                            LOGDBG(TAG, "parse [%s] success", path);
-                            pSetItems[i]->jsonCmd = pRoot;
-                            bParseFileFlag = true;
-                        } 
-                        #else 
                         Json::CharReaderBuilder builder;
                         builder["collectComments"] = false;
                         JSONCPP_STRING errs;
@@ -2072,7 +2042,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         }                        
-                        #endif
                     }
 
                     if (bParseFileFlag == false) {
@@ -2093,16 +2062,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             pCommJsonCmd = pCmdTakePic_Customer;
                         } 
                         
-                        #if 0
-                        if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
-                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
-                            pSetItems[i]->jsonCmd = pRoot;
-                        } else {
-                            LOGERR(TAG, "Parse Json String Failed!");
-                            pSetItems[i]->jsonCmd = NULL;
-                        }
-                        #else 
-
                         Json::CharReaderBuilder builder;
                         builder["collectComments"] = false;
                         JSONCPP_STRING errs;
@@ -2114,7 +2073,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             LOGERR(TAG, "Parse Json String Failed!");
                             pSetItems[i]->jsonCmd = NULL;
                         }
-                        #endif
                     }
 
                     cfgPicModeItemCurVal(pSetItems[i]);
@@ -2124,7 +2082,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
             }
 
             case MENU_VIDEO_SET_DEF: {
-                iIndex = mProCfg->get_val(KEY_ALL_VIDEO_DEF);               /* 当前所中的项 */
+                iIndex = cm->getKeyVal("mode_select_video");
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
                 
                 for (int i = 0; i < size; i++) {
@@ -2143,15 +2101,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                     if (access(path, F_OK) == 0) {
                         std::ifstream ifs;  
                         ifs.open(path, std::ios::binary); 
-                        
-                        #if 0
-                        Json::Reader reader;
-                        if (reader.parse(is, *(pRoot.get()), false)) {
-                            LOGDBG(TAG, "parse [%s] success", path);
-                            pSetItems[i]->jsonCmd = pRoot;
-                            bParseFileFlag = true;
-                        } 
-                        #else 
+                    
                         Json::CharReaderBuilder builder;
                         builder["collectComments"] = false;
                         JSONCPP_STRING errs;
@@ -2160,10 +2110,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         }                        
-                        #endif
                     }
-
-
 
                     if (bParseFileFlag == false) {
                         LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
@@ -2190,17 +2137,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             pCommJsonCmd = pCmdTakeVid_8K30FHDR;
                         } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MOD_CUSTOMER)) {
                             pCommJsonCmd = pCmdTakeVid_Customer;
-                        } 
-                        
-                        #if 0
-                        if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
-                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
-                            pSetItems[i]->jsonCmd = pRoot;
-                        } else {
-                            LOGERR(TAG, "Parse Json String Failed!");
-                            pSetItems[i]->jsonCmd = NULL;
-                        }
-                        #else 
+                        }                     
 
                         Json::CharReaderBuilder builder;
                         builder["collectComments"] = false;
@@ -2213,26 +2150,15 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             LOGERR(TAG, "Parse Json String Failed!");
                             pSetItems[i]->jsonCmd = NULL;
                         }
-                        #endif
-
                     }
 
-                    /* ADD: */
-                    if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MOD_CUSTOMER)) {   /* Customer DO nothing */
-                        pSetItems[i]->iCurVal = 0;
-                        pSetItems[i]->pStAction = mProCfg->get_def_info(KEY_ALL_VIDEO_DEF);
-                        if (pSetItems[i]->pStAction) {   /* 得到保存在配置文件中ACTION_INFO */
-                            LOGDBG(TAG, "Get user_cfg VIDEO ACTION_INFO ......");
-                            LOGDBG(TAG, "mode[%d] size_per_act [%d]M", pSetItems[i]->pStAction->mode, pSetItems[i]->pStAction->size_per_act);
-                        }
-                    } 
                     pItemLists.push_back(pSetItems[i]);
                 }                
                 break;
             }
 
             case MENU_LIVE_SET_DEF: {
-                iIndex = mProCfg->get_val(KEY_ALL_LIVE_DEF); /* 当前所中的项 */
+                iIndex = cm->getKeyVal("mode_select_live");
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
                 for (int i = 0; i < size; i++) {
                     pSetItems[i]->stPos = tmPos;
@@ -2250,15 +2176,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                     if (access(path, F_OK) == 0) {
                         std::ifstream ifs;  
                         ifs.open(path, std::ios::binary); 
-                        
-                        #if 0
-                        Json::Reader reader;
-                        if (reader.parse(is, *(pRoot.get()), false)) {
-                            LOGDBG(TAG, "parse [%s] success", path);
-                            pSetItems[i]->jsonCmd = pRoot;
-                            bParseFileFlag = true;
-                        } 
-                        #else 
+
                         Json::CharReaderBuilder builder;
                         builder["collectComments"] = false;
                         JSONCPP_STRING errs;
@@ -2267,7 +2185,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
                         }                        
-                        #endif
                     }
 
                     if (bParseFileFlag == false) {
@@ -2291,16 +2208,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                         }
                         #endif
 
-                        #if 0
-                        if (reader.parse(pCommJsonCmd, *(pRoot.get()), false)) {
-                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
-                            pSetItems[i]->jsonCmd = pRoot;
-                        } else {
-                            LOGERR(TAG, "Parse Json String Failed!");
-                            pSetItems[i]->jsonCmd = NULL;
-                        }
-                        #else 
-
                         Json::CharReaderBuilder builder;
                         builder["collectComments"] = false;
                         JSONCPP_STRING errs;
@@ -2312,20 +2219,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, vector<struct stPic
                             LOGERR(TAG, "Parse Json String Failed!");
                             pSetItems[i]->jsonCmd = NULL;
                         }
-                        #endif
-
-
                     }
-
-                    /* ADD: */
-                    if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_CUSTOMER)) {   /* Customer DO nothing */
-                        pSetItems[i]->iCurVal = 0;
-                        pSetItems[i]->pStAction = mProCfg->get_def_info(KEY_ALL_LIVE_DEF);
-                        if (pSetItems[i]->pStAction) {   /* 得到保存在配置文件中ACTION_INFO */
-                            LOGDBG(TAG, "Get user_cfg LIVE ACTION_INFO ......");
-                            LOGDBG(TAG, "mode[%d] size_per_act [%d]M", pSetItems[i]->pStAction->mode, pSetItems[i]->pStAction->size_per_act);
-                        }
-                    } 
                     pItemLists.push_back(pSetItems[i]);
                 }                
                 break;
@@ -2402,8 +2296,6 @@ int MenuUI::oled_reset_disp(int type)
     disp_sys_err(type,MENU_TOP);
     
     //fix select if working by controller 0616
-    mControlAct = nullptr;
-    bStiching = false;
 
 //    init_menu_select();
     //reset wifi config
@@ -2480,7 +2372,9 @@ void MenuUI::restore_all()
     im->setEnableReport(false);
 
     dispIconByType(ICON_RESET_SUC_128_48128_48);
-    mProCfg->reset_all();
+
+    CfgManager::Instance()->resetAllCfg();
+
     msg_util::sleep_ms(500);
     init_cfg_select();
     LOGDBG(TAG, "STATE_RESTORE_ALL cur_menu is %d Server state: 0x%x", MENU_TOP, getServerState());
@@ -2661,6 +2555,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
     uint64_t serverState = getServerState();
     ProtoManager* pm = ProtoManager::Instance();
+    CfgManager* cm = CfgManager::Instance();
 
     switch (option) {
 
@@ -2710,7 +2605,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
             #endif
 
                 if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) { /* 非Customer模式根据是否使能RAW来设置origin.mime，Customer模式不用理会该属性 */
-                    if (mProCfg->get_val(KEY_RAW)) {
+                    if (CfgManager::Instance()->getKeyVal("raw")) {
                         (*pTakePicJson)["parameters"]["origin"]["mime"] = "raw+jpeg";
                     } else {
                         (*pTakePicJson)["parameters"]["origin"]["mime"] = "jpeg";
@@ -2830,7 +2725,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                         tmpCfg.clear();
 
                         if (access(manualCfg.c_str(), F_OK) == 0) {
-                            ifstream ifs;
+                            std::ifstream ifs;
                             ifs.open(manualCfg.c_str());
                             
                             if (parseFromStream(builder, ifs, &tmpCfg, &errs)) {
@@ -2943,7 +2838,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
 
                     param["property"] = "flicker";
-                    param["value"] = mProCfg->get_val(KEY_PAL_NTSC);
+                    param["value"] = cm->getKeyVal("flicker");
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param;
 
@@ -2972,7 +2867,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
 
                     param["property"] = "fanless";
-                    param["value"] = (mProCfg->get_val(KEY_FAN) == 1) ? 0 : 1;
+                    param["value"] = (cm->getKeyVal("fan_on") == 1) ? 0 : 1;
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param;
 
@@ -2985,8 +2880,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
                     int iAudioVal = 0;
 
-                    if (mProCfg->get_val(KEY_AUD_ON) == 1) {
-                        if (mProCfg->get_val(KEY_AUD_SPATIAL) == 1) {
+                    if (cm->getKeyVal("aud_on") == 1) {
+                        if (cm->getKeyVal("aud_spatial") == 1) {
                             iAudioVal = 2;
                         } else {
                             iAudioVal = 1;
@@ -3008,7 +2903,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
 
                     param["property"] = "stabilization_cfg";
-                    param["value"] = mProCfg->get_val(KEY_GYRO_ON);
+                    param["value"] = cm->getKeyVal("gyro_on");
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param; 
 
@@ -3020,7 +2915,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
 
                     param["property"] = "logo";
-                    param["value"] = mProCfg->get_val(KEY_SET_LOGO);
+                    param["value"] = cm->getKeyVal("set_logo");
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param; 
                     return pm->sendSetOptionsReq(root);                       
@@ -3032,7 +2927,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
 
                     param["property"] = "video_fragment";
-                    param["value"] = mProCfg->get_val(KEY_VID_SEG);
+                    param["value"] = cm->getKeyVal("video_fragment");
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param; 
                     return pm->sendSetOptionsReq(root);                        
@@ -3272,13 +3167,12 @@ void MenuUI::disp_wifi(bool bState, int disp_main)
 
 
 void MenuUI::handleWifiAction()
-{
-    LOGERR(TAG, " handleWifiAction %d", mProCfg->get_val(KEY_WIFI_ON));
-    
+{    
     const char* pWifiDrvProp = NULL;
     int iCmd = -1;
     bool bShowWifiIcon = false;
     int iSetVal = 0;
+    CfgManager* cm = CfgManager::Instance();
 
     sp<ARMessage> msg;
     sp<DEV_IP_INFO> tmpInfo;
@@ -3300,7 +3194,7 @@ void MenuUI::handleWifiAction()
         /*
          * 检查启动WIFI热点的情况（PROP_WIFI_AP_STATE） 
          */
-        if (mProCfg->get_val(KEY_WIFI_ON) == 1) {
+        if (cm->getKeyVal("wifi_on") == 1) {
             LOGERR(TAG, "set KEY_WIFI_ON -> 0");
             iCmd = NETM_CLOSE_NETDEV;
             bShowWifiIcon = false;
@@ -3320,7 +3214,7 @@ void MenuUI::handleWifiAction()
 
         LOGDBG(TAG, "Current wifi state [%s]", property_get(PROP_WIFI_AP_STATE));
 
-        mProCfg->set_val(KEY_WIFI_ON, iSetVal);
+        cm->setKeyVal("wifi_on", iSetVal);
         disp_wifi(bShowWifiIcon, 1);
     }	
 
@@ -3622,7 +3516,7 @@ void MenuUI::set_mainmenu_item(int item,int val)
 ** 调    用: 
 **
 *********************************************************************************************/
-void MenuUI::updateInnerSetPage(vector<struct stSetItem*>& setItemList, bool bUpdateLast)
+void MenuUI::updateInnerSetPage(std::vector<struct stSetItem*>& setItemList, bool bUpdateLast)
 {
     struct stSetItem* pTmpLastSetItem = NULL;
     struct stSetItem* pTmpCurSetItem = NULL;
@@ -3714,19 +3608,20 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
     iVal = iVal & 0x00000001;
 
     LOGDBG(TAG, "updateSetItemVal Item Name[%s], iVal [%d]", pSetItemName, iVal);
-    
+    CfgManager* cm = CfgManager::Instance();
+
     if (!strcmp(pSetItemName, SET_ITEM_NAME_FREQ)) {
-        mProCfg->set_val(KEY_PAL_NTSC, iVal);
+        cm->setKeyVal("flicker", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_FREQ, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_FLICKER);    
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_SPEAKER)) {
-        mProCfg->set_val(KEY_SPEAKER, iVal);
+        cm->setKeyVal("speaker", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_SPEAKER, iVal);
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_BOOTMLOGO)) {    /* Need Notify Camerad */
-        mProCfg->set_val(KEY_SET_LOGO, iVal);
+        cm->setKeyVal("set_logo", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_BOOTMLOGO, iVal);
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_LED)) {    
-        mProCfg->set_val(KEY_LIGHT_ON, iVal);
+        cm->setKeyVal("light_on", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_LED, iVal);
         if (iVal == 1) {
             setLight();
@@ -3734,28 +3629,27 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
             setLightDirect(LIGHT_OFF);
         }
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_SPAUDIO)) {    /* Need Notify Camerad */
-        mProCfg->set_val(KEY_AUD_SPATIAL, iVal);
+        cm->setKeyVal("aud_spatial", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_SPAUDIO, iVal);
-        if (mProCfg->get_val(KEY_AUD_ON) == 1) {
+        if (cm->getKeyVal("aud_on") == 1) {
             sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
         }           
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_FAN)) {    /* Need Notify Camerad */
-        mProCfg->set_val(KEY_FAN, iVal);
+        cm->setKeyVal("fan_on", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_FAN, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_SET_FAN);
 
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_AUDIO)) {    /* Need Notify Camerad */
-        mProCfg->set_val(KEY_AUD_ON, iVal);
+        cm->setKeyVal("aud_on", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_AUDIO, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_VIDSEG)) {    /* Need Notify Camerad */
-        
-        mProCfg->set_val(KEY_VID_SEG, iVal);
+        cm->setKeyVal("video_fragment", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_VIDSEG, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_SET_VID_SEG);
 
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_GYRO_ONOFF)) {    /* Need Notify Camerad */
-        mProCfg->set_val(KEY_GYRO_ON, iVal);
+        cm->setKeyVal("gyro_on", iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_GYRO_ONOFF, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);            
     } else {
@@ -3890,7 +3784,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
 
     sp<Json::Value> pRoot = (sp<Json::Value>) (new Json::Value());
 
-    string jsonStr = jsonRoot.toStyledString();
+    std::string jsonStr = jsonRoot.toStyledString();
     Json::CharReader* reader = builder.newCharReader();
     if (reader->parse(jsonStr.data(), jsonStr.data() + jsonStr.size(), pRoot.get(), &errs)) {
         switch (iAction) {
@@ -3929,7 +3823,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
             unlink(filePath);
         }
         
-        ofstream ofs; 
+        std::ofstream ofs; 
         ofs.open(filePath);
         ofs << jsonRoot.toStyledString();
         ofs.close();
@@ -4066,6 +3960,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
 void MenuUI::updateMenu()
 {
     int item = getMenuSelectIndex(cur_menu);
+    CfgManager* cm = CfgManager::Instance();
 
     switch (cur_menu) {
         case MENU_TOP: {
@@ -4097,7 +3992,7 @@ void MenuUI::updateMenu()
          */
         case MENU_PIC_SET_DEF: {
             LOGDBG(TAG, "Update SET_PIC_DEF val[%d]", item);
-            mProCfg->set_def_info(KEY_ALL_PIC_DEF, item);   /* 设置当前选中的项到mProcCfg */
+            cm->setKeyVal("mode_select_pic", item);
             updateBottomMode(true);                         /* 高亮显示挡位 */
             updateBottomSpace(true, true);                  /* 更新底部的剩余空间 */
             break;
@@ -4106,14 +4001,14 @@ void MenuUI::updateMenu()
 
         case MENU_VIDEO_SET_DEF: {  
             LOGDBG(TAG, "Update SET_PIC_DEF val[%d]", item);
-            mProCfg->set_def_info(KEY_ALL_VIDEO_DEF, item);   /* 设置当前选中的项到mProcCfg */
+            cm->setKeyVal("mode_select_video", item);
             dispBottomInfo(true, true);   
             break;
         }
 			
 
         case MENU_LIVE_SET_DEF: {
-            mProCfg->set_def_info(KEY_ALL_LIVE_DEF, item);
+            cm->setKeyVal("mode_select_live", item);
             dispReady();
             dispBottomInfo(true, true);
             break;
@@ -4150,7 +4045,7 @@ void MenuUI::updateMenu()
 /*
  * 使用mVolumeList来填充gStorageInfoItems
  */
-void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, vector<Volume*>& mVolumeList)
+void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, std::vector<Volume*>& mVolumeList)
 {
     ICON_POS tmPos;
  
@@ -4193,7 +4088,7 @@ void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, vector<Volume*>& mVolumeList
 void MenuUI::getShowStorageInfo()
 {
     VolumeManager* vm = VolumeManager::Instance();
-    vector<Volume*>& showList = vm->getSysStorageDevList();
+    std::vector<Volume*>& showList = vm->getSysStorageDevList();
 
     mMenuInfos[MENU_SHOW_SPACE].mSelectInfo.total = showList.size();
     mMenuInfos[MENU_SHOW_SPACE].mSelectInfo.select = 0;
@@ -4220,7 +4115,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
     LOGDBG(TAG, "Use New Way Calc Remian Space now ......");
 
     VolumeManager* vm = VolumeManager::Instance();
-
+    CfgManager* cm = CfgManager::Instance();
     {
         mCanTakePicNum = 0;     /* 重新计算之前将可拍照片的张数清0 */
 
@@ -4230,7 +4125,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
         } else {    /* 本地的拍照 - 非Customer模式 */
 
             int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
-            int iRawVal = mProCfg->get_val(KEY_RAW);
+            int iRawVal = cm->getKeyVal("raw");
             
             struct stPicVideoCfg* pPicVidCfg = mPicAllItemsList.at(item);
             int iUnitSize = 30;
@@ -4555,7 +4450,7 @@ struct _select_info_ * MenuUI::getCurMenuSelectInfo()
 ** 调 用: 
 ** 
 *************************************************************************/
-void MenuUI::dispSettingPage(vector<struct stSetItem*>& setItemsList)
+void MenuUI::dispSettingPage(std::vector<struct stSetItem*>& setItemsList)
 {
     int item = 0;
     bool iSelected = false;
@@ -4732,6 +4627,7 @@ ERROR:
     msg_util::sleep_ms(3000);
 }
 #endif
+
 
 
 void MenuUI::dispTipStorageDevSpeedTest() 
@@ -5523,12 +5419,13 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
     
     ICON_INFO* pNvIconInfo = NULL;
     VolumeManager* vm = VolumeManager::Instance();
+    CfgManager* cm = CfgManager::Instance();
 
     pNvIconInfo = static_cast<ICON_INFO*>(mMenuInfos[cur_menu].priv);
     
     switch (cur_menu) {
         case MENU_TOP: {      /* 主菜单 */
-            dispIconByType(main_icons[mProCfg->get_val(KEY_WIFI_ON)][getCurMenuCurSelectIndex()]);
+            dispIconByType(main_icons[cm->getKeyVal("wifi_on")][getCurMenuCurSelectIndex()]);
             break;
         }
 		
@@ -6112,7 +6009,8 @@ void MenuUI::procSetMenuKeyEvent()
     int iVal = 0;
     u32 iItemIndex = getMenuSelectIndex(cur_menu);    /* 得到选中的索引 */
     struct stSetItem* pCurItem = NULL;
-    vector<struct stSetItem*>* pVectorList = static_cast<vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
+    std::vector<struct stSetItem*>* pVectorList = static_cast<std::vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
+    CfgManager* cm = CfgManager::Instance();
 
     if ((pVectorList == NULL) && (iItemIndex < 0 || iItemIndex > mMenuInfos[cur_menu].mSelectInfo.total)) {
         LOGERR(TAG, "Invalid index val[%d] in menu[%s]", iItemIndex, getMenuName(cur_menu));
@@ -6125,14 +6023,15 @@ void MenuUI::procSetMenuKeyEvent()
         if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_DHCP)) {
             iVal = ((~iVal) & 0x00000001);
             if (switchEtherIpMode(iVal)) {
-                mProCfg->set_val(KEY_DHCP, iVal);    /* 写回配置文件 */
+                cm->setKeyVal("dhcp", iVal);
                 pCurItem->iCurVal = iVal;        
                 dispSetItem(pCurItem, true);
             }
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FREQ)) {
             iVal = ((~iVal) & 0x00000001);
-            mProCfg->set_val(KEY_PAL_NTSC, iVal);
+            cm->setKeyVal("flicker", iVal);
+
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);
             sendRpc(ACTION_SET_OPTION, OPTION_FLICKER);
@@ -6142,14 +6041,15 @@ void MenuUI::procSetMenuKeyEvent()
              * TODO: 开启HDR效果
              */
             iVal = ((~iVal) & 0x00000001);
-            mProCfg->set_val(KEY_HDR, iVal);
+            cm->setKeyVal("hdr", iVal);
+
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);
             //sendRpc(ACTION_SET_OPTION, OPTION_HDR);
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_RAW)) {
 
             iVal = ((~iVal) & 0x00000001);
-            mProCfg->set_val(KEY_RAW, iVal);
+            cm->setKeyVal("raw", iVal);
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);
 
@@ -6164,13 +6064,13 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_SPEAKER)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            mProCfg->set_val(KEY_SPEAKER, iVal);
+            cm->setKeyVal("speaker", iVal);
             dispSetItem(pCurItem, true);
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_LED)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            mProCfg->set_val(KEY_LIGHT_ON, iVal);
+            cm->setKeyVal("light_on", iVal);
             if (iVal == 1) {
                 setLight();
             } else {
@@ -6180,7 +6080,8 @@ void MenuUI::procSetMenuKeyEvent()
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_AUDIO)) {
             iVal = ((~iVal) & 0x00000001);
-            mProCfg->set_val(KEY_AUD_ON, iVal);
+            cm->setKeyVal("aud_on", iVal);
+            
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);                    
             sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
@@ -6188,16 +6089,17 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_SPAUDIO)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            mProCfg->set_val(KEY_AUD_SPATIAL, iVal);
+            cm->setKeyVal("aud_spatial", iVal);
+
             dispSetItem(pCurItem, true);    
-            if (mProCfg->get_val(KEY_AUD_ON) == 1) {
+            if (cm->getKeyVal("aud_on") == 1) {
                 sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
             }                
             
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FLOWSTATE)) { /* TODO */
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            mProCfg->set_val(KEY_FLOWSTATE, iVal);
+            cm->setKeyVal("flow_state", iVal);
             dispSetItem(pCurItem, true);    
             //sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
 
@@ -6206,7 +6108,7 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FAN)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            mProCfg->set_val(KEY_FAN, iVal);
+            cm->setKeyVal("fan_on", iVal);
             if (iVal == 0) {
                 disp_msg_box(DISP_ALERT_FAN_OFF);
             } else {
@@ -6220,14 +6122,15 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_BOOTMLOGO)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            mProCfg->set_val(KEY_SET_LOGO, iVal);
+            cm->setKeyVal("set_logo", iVal);
             dispSetItem(pCurItem, true); 
             sendRpc(ACTION_SET_OPTION, OPTION_SET_LOGO);
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_VIDSEG)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            mProCfg->set_val(KEY_VID_SEG, iVal);
+            cm->setKeyVal("video_fragment", iVal);
+
             if (iVal == 0) {
                 disp_msg_box(DISP_VID_SEGMENT);
             } else {
@@ -6246,7 +6149,7 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_GYRO_ONOFF)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            mProCfg->set_val(KEY_GYRO_ON, iVal);
+            cm->setKeyVal("gyro_on", iVal);
             dispSetItem(pCurItem, true); 
             sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);            
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_STITCH_BOX)) {
@@ -6264,7 +6167,7 @@ void MenuUI::procSetMenuKeyEvent()
 bool MenuUI::checkIsTakeTimelpaseInCustomer()
 {
     Json::Value* picJsonCmd = NULL;
-    string cmd;
+    std::string cmd;
 
     if (true == mClientTakePicUpdate) {     /* 客户端控制拍照(非timelapse) */
         return false;
@@ -6308,6 +6211,7 @@ void MenuUI::procPowerKeyEvent()
 
     ProtoManager* pm = ProtoManager::Instance();
     InputManager* im = InputManager::Instance();
+    CfgManager* cm = CfgManager::Instance();
     int iIndex = 0;
 
     switch (cur_menu) {	
@@ -6434,8 +6338,7 @@ void MenuUI::procPowerKeyEvent()
 
             LOGDBG(TAG, "set photo delay index[%d]", iIndex);
             updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_PHDEALY, iIndex);
-
-            mProCfg->set_val(KEY_PH_DELAY, iIndex);
+            cm->setKeyVal("ph_delay", iIndex);
             procBackKeyEvent();
 			break;
         }
@@ -6450,10 +6353,7 @@ void MenuUI::procPowerKeyEvent()
             LOGDBG(TAG, "set aeb index[%d]", iIndex);
 
             updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_AEB, iIndex);
-
-            /* 更新对应的EV值 */
-            mProCfg->set_val(KEY_AEB, iIndex);
-            
+            cm->setKeyVal("aeb", iIndex);            
             procBackKeyEvent();
             break;
         }
@@ -6688,10 +6588,9 @@ void MenuUI::procSettingKeyEvent()
         case MENU_TOP: {	/* 如果当前处于主界面 */
             #if 0
             if (getCurMenuCurSelectIndex() == MAINMENU_WIFI) {	/* 主界面,当前选中的是WIFI项,按下设置键将启动二维码扫描功能 */
-                LOGDBG(TAG, "wif state %d ap %d", mProCfg->get_val(KEY_WIFI_ON));
                 
                 #if 0
-                if (/*mProCfg->get_val(KEY_WIFI_ON) == 0 &&*/ get_setting_select(SET_WIFI_AP) == 0) {
+                if ( get_setting_select(SET_WIFI_AP) == 0) {
                     start_qr_func();
                 }
                 #endif
@@ -6817,9 +6716,8 @@ void MenuUI::exit_sys_err()
     uint64_t serverState = getServerState();
     if (cur_menu == MENU_SYS_ERR || ((MENU_LOW_BAT == cur_menu) && checkStateEqual(serverState, STATE_IDLE))) {
 
-        LOGDBG(TAG, "exit_sys_err ( %d 0x%x )", cur_menu, serverState);
-
-        if (mProCfg->get_val(KEY_LIGHT_ON) == 1) {
+        LOGDBG(TAG, "exit_sys_err ( %d 0x%x )", cur_menu, serverState);        
+        if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
             setLightDirect(front_light);
         } else {
             setLightDirect(LIGHT_OFF);
@@ -7311,7 +7209,7 @@ void MenuUI::disp_sys_err(int type, int back_menu)
 void MenuUI::set_flick_light()
 {
     
-    if (mProCfg->get_val(KEY_LIGHT_ON) == 1) {
+    if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
         switch ((front_light)) {
             case FRONT_RED:
                 fli_light = BACK_RED;
@@ -7859,7 +7757,7 @@ int MenuUI::oled_disp_type(int type)
 
                 mNeedSendAction = true;
                 int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
-                int iDelay = convIndex2CapDelay(mProCfg->get_val(KEY_PH_DELAY));
+                int iDelay = convIndex2CapDelay(CfgManager::Instance()->getKeyVal("ph_delay"));
                 LOGDBG(TAG, "get delay val: %d", iDelay);
 
                 struct stPicVideoCfg* pPicVidCfg = mPicAllItemsList.at(item);
@@ -8042,8 +7940,7 @@ int MenuUI::oled_disp_type(int type)
 
             dispIconByType(ICON_RESET_SUC_128_48128_48);
             msg_util::sleep_ms(500);
-            mProCfg->reset_all(false);
-
+            CfgManager::Instance()->resetAllCfg();
             init_cfg_select();
 
             LOGDBG(TAG, "RESET_ALL_CFG cur_menu is %d", cur_menu);
@@ -8471,8 +8368,8 @@ int MenuUI::getCurOneGroupPicSize()
     if (pTmpCfg) {
         if (!strcmp(pTmpCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {  /* take picture consutomer */
 
-            LOGDBG(TAG, "mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act %d", mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act);
-            iSize = mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act;
+            // LOGDBG(TAG, "mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act %d", mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act);
+            // iSize = mProCfg->get_def_info(KEY_ALL_PIC_DEF)->size_per_act;
         } else {
             LOGDBG(TAG, "Take pic non Customer Mode, One Group size: %d MB", pTmpCfg->pStAction->size_per_act);
             iSize = pTmpCfg->pStAction->size_per_act;
@@ -8536,18 +8433,16 @@ void MenuUI::disp_dev_msg_box(int bAdd, int type, bool bChange)
     LOGDBG(TAG, "bAdd %d type %d", bAdd, type);
 
 	switch (bAdd) {
-        //add
-        case ADD:
-            if (type == SET_STORAGE_SD) {
+        case VOLUME_ACTION_ADD:
+            if (type == VOLUME_SUBSYS_SD) {
                 disp_msg_box(DISP_SDCARD_ATTACH);
             } else {
                 disp_msg_box(DISP_USB_ATTACH);
             }
             break;
 			
-        //delete
-        case REMOVE:
-            if (type == SET_STORAGE_SD) {
+        case VOLUME_ACTION_REMOVE:
+            if (type == VOLUME_SUBSYS_SD) {
                 disp_msg_box(DISP_SDCARD_DETTACH);
             } else {
                 disp_msg_box(DIPS_USB_DETTACH);
@@ -8563,9 +8458,7 @@ void MenuUI::disp_dev_msg_box(int bAdd, int type, bool bChange)
 
 
 void MenuUI::flick_light()
-{
-	// LOGDBG(TAG, "last_light 0x%x fli_light 0x%x", last_light, fli_light);
-	
+{	
     if ((last_light & 0xf8) != fli_light) {
         setLight(fli_light);
     } else {
@@ -8613,7 +8506,7 @@ void MenuUI::setLight(u8 val)
     LOGDBG(TAG, "setLight 0x%x  front_light 0x%x", val, front_light);
 #endif
 
-    if (mProCfg->get_val(KEY_LIGHT_ON) == 1) {
+    if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
         setLightDirect(val | front_light);
     }
 }
@@ -8661,7 +8554,7 @@ void MenuUI::setTakePicDelay(int iDelay)
 ** 调 用: 
 **
 *************************************************************************/
-const char* MenuUI::getPicVidCfgNameByIndex(vector<struct stPicVideoCfg*>& mList, int iIndex)
+const char* MenuUI::getPicVidCfgNameByIndex(std::vector<struct stPicVideoCfg*>& mList, int iIndex)
 {
 
     if ((u32)(iIndex) > mList.size() - 1) {
@@ -8678,7 +8571,7 @@ const char* MenuUI::getPicVidCfgNameByIndex(vector<struct stPicVideoCfg*>& mList
 }
 
 
-struct stSetItem* MenuUI::getSetItemByName(vector<struct stSetItem*>& mList, const char* name)
+struct stSetItem* MenuUI::getSetItemByName(std::vector<struct stSetItem*>& mList, const char* name)
 {
     struct stSetItem* pTmpSetItem = NULL;
 
@@ -8704,7 +8597,7 @@ struct stSetItem* MenuUI::getSetItemByName(vector<struct stSetItem*>& mList, con
 ** 调 用: 
 **
 *************************************************************************/
-struct stPicVideoCfg* MenuUI::getPicVidCfgByName(vector<struct stPicVideoCfg*>& mList, const char* name)
+struct stPicVideoCfg* MenuUI::getPicVidCfgByName(std::vector<struct stPicVideoCfg*>& mList, const char* name)
 {
     struct stPicVideoCfg* pTmpCfg = NULL;
 
@@ -9234,13 +9127,10 @@ void MenuUI::handleGpsState()
     }
 }
 
-void MenuUI::handleUpdateDevInfo(int iAction, int iType, vector<Volume*>& mList)
+void MenuUI::handleUpdateDevInfo(int iAction, int iType, std::vector<Volume*>& mList)
 {
     VolumeManager* vm = VolumeManager::Instance();
     uint64_t serverState = getServerState();
-
-    int action = (iAction == VOLUME_ACTION_ADD)? ADD: REMOVE;
-    int type = (VOLUME_SUBSYS_SD == iType) ? SET_STORAGE_SD: SET_STORAGE_USB;
 
 #if 0
     LOGDBG(TAG, "handleUpdateDevInfo -> Current Menu[%s], Server State[%d]",
@@ -9251,7 +9141,7 @@ void MenuUI::handleUpdateDevInfo(int iAction, int iType, vector<Volume*>& mList)
      * 格式化菜单及U盘菜单不显示设备拔插的消息框
      */
     if (((cur_menu != MENU_UDISK_MODE) && (cur_menu != MENU_FORMAT_INDICATION)) && (!checkServerStateIn(serverState, STATE_QUERY_STORAGE)) ) {
-        disp_dev_msg_box(action, type, false);
+        disp_dev_msg_box(iAction, iType, false);
     }
 
     /* 设置存储设备的路径 */
@@ -9262,7 +9152,7 @@ void MenuUI::handleUpdateDevInfo(int iAction, int iType, vector<Volume*>& mList)
             case MENU_VIDEO_INFO:
             case MENU_PIC_SET_DEF:
             case MENU_VIDEO_SET_DEF: {
-                if (!checkServerIsBusy())  {	           // not statfs while busy ,add 20170804
+                if (!checkServerIsBusy())  {	           
                     updateBottomSpace(true, false);    /* 新的存储设备插入时，不使用缓存 */
                 }
                 break;
@@ -9277,7 +9167,7 @@ void MenuUI::handleUpdateDevInfo(int iAction, int iType, vector<Volume*>& mList)
 /*
  * TF卡的状态发生变化
  */
-void MenuUI::handleTfStateChanged(vector<sp<Volume>>& mTfChangeList)
+void MenuUI::handleTfStateChanged(std::vector<sp<Volume>>& mTfChangeList)
 {
     LOGDBG(TAG, "Tf Card state Changed, Insert/Removed.....");
     VolumeManager* vm = VolumeManager::Instance();
@@ -9294,16 +9184,16 @@ void MenuUI::handleTfStateChanged(vector<sp<Volume>>& mTfChangeList)
         /* 显示消息框:  STATE_IDLE
          * 消息框被清除后会显示进入消息框的菜单(重新进入菜单时，如果时MENU_PIC_INFO, MENU_VIDEO_INFO, MENU_LIVE_INFO 需要重新更新底部空间)
          */
-        disp_dev_msg_box(((iAction == VOLUME_ACTION_ADD)? ADD: REMOVE), SET_STORAGE_SD, false);
+        disp_dev_msg_box(iAction , VOLUME_SUBSYS_SD, false);
     }
 }
 
 
-void MenuUI::handleSppedTest(vector<sp<Volume>>& mSpeedTestList)
+void MenuUI::handleSppedTest(std::vector<sp<Volume>>& mSpeedTestList)
 {
     sp<Volume> tmpLocalVol = NULL;
     sp<Volume> tmpResultVol = NULL;
-    vector<sp<Volume>> testFailedList;
+    std::vector<sp<Volume>> testFailedList;
 
     VolumeManager* vm = VolumeManager::Instance();
 
@@ -9416,7 +9306,7 @@ void MenuUI::handleSppedTest(vector<sp<Volume>>& mSpeedTestList)
 void MenuUI::handleUpdateMid()
 {
     bSendUpdateMid = false;
-    unique_lock<mutex> lock(mutexState);
+    std::unique_lock<std::mutex> lock(mutexState);
     VolumeManager* vm = VolumeManager::Instance();
     ProtoManager* pm  = ProtoManager::Instance();
     uint64_t serverState = getServerState();
@@ -9543,11 +9433,10 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
 #ifdef OPEN_BAT_LOW
         if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
             // LOGDBG(TAG, "[%s: %d ] bat low menu[%s] %d state 0x%x", getMenuName(cur_menu), serverState);
-            if ((checkServerStateIn(serverState, STATE_RECORD) || bStiching)) {
+            if (checkServerStateIn(serverState, STATE_RECORD)) {
                 setCurMenu(MENU_LOW_BAT, MENU_TOP);
                 addState(STATE_LOW_BAT);
                 func_low_bat();
-                bStiching = false;
             }
         }
 #endif
@@ -9575,7 +9464,7 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 	bSendUpdate = false;
     uint64_t serverState = getServerState();
 
-	unique_lock<mutex> lock(mutexState);
+	std::unique_lock<std::mutex> lock(mutexState);
 	switch (menu) {
 		case MENU_PIC_INFO: {
 			if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS)) {
@@ -9662,7 +9551,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             /* 显示指定的页面(状态) */
             case UI_MSG_DISP_TYPE: {  
                 {
-                    unique_lock<mutex> lock(mutexState);
+                    std::unique_lock<std::mutex> lock(mutexState);
                     sp<DISP_TYPE> disp_type;
                     CHECK_EQ(msg->find<sp<DISP_TYPE>>("disp_type", &disp_type), true);
 					
@@ -9678,7 +9567,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             }
 					
             case UI_MSG_DISP_ERR_MSG: {     /* 显示错误消息 */
-                unique_lock<mutex> lock(mutexState);
+                std::unique_lock<std::mutex> lock(mutexState);
                 sp<ERR_TYPE_INFO> mErrInfo;
                 CHECK_EQ(msg->find<sp<ERR_TYPE_INFO>>("err_type_info", &mErrInfo),true);
 				handleDispErrMsg(mErrInfo);
@@ -9784,10 +9673,10 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 			 * 更新存储设备列表(消息来自DevManager线程)
 			 */
             case UI_UPDATE_DEV_INFO: {
-                vector<Volume*> mList;
+                std::vector<Volume*> mList;
                 int iAction = -1;
                 int iType = -1;
-                CHECK_EQ(msg->find<vector<Volume*>>("dev_list", &mList), true);
+                CHECK_EQ(msg->find<std::vector<Volume*>>("dev_list", &mList), true);
                 CHECK_EQ(msg->find<int>("action", &iAction), true);
                 CHECK_EQ(msg->find<int>("type", &iType), true);
 
@@ -9796,16 +9685,16 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             }
 
             case UI_MSG_TF_STATE: {     /* TF卡状态变化: 卡拔出, 卡插入 */
-                vector<sp<Volume>> mTfChangeList;
-                CHECK_EQ(msg->find<vector<sp<Volume>>>("tf_list", &mTfChangeList), true);
+                std::vector<sp<Volume>> mTfChangeList;
+                CHECK_EQ(msg->find<std::vector<sp<Volume>>>("tf_list", &mTfChangeList), true);
                 handleTfStateChanged(mTfChangeList);
                 break;
             }
 
             #if 0
             case UI_MSG_TF_FORMAT_RES: {
-                vector<sp<Volume>> mTfFormatList;
-                CHECK_EQ(msg->find<vector<sp<Volume>>>("tf_list", &mTfFormatList), true);
+                std::vector<sp<Volume>> mTfFormatList;
+                CHECK_EQ(msg->find<std::vector<sp<Volume>>>("tf_list", &mTfFormatList), true);
                 // handleTfFormated(mTfFormatList);       
                 break;         
             }
@@ -9813,8 +9702,8 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 
 
             case UI_MSG_SPEEDTEST_RESULT: {
-                vector<sp<Volume>> mSpeedTestList;
-                CHECK_EQ(msg->find<vector<sp<Volume>>>("speed_test", &mSpeedTestList), true);
+                std::vector<sp<Volume>> mSpeedTestList;
+                CHECK_EQ(msg->find<std::vector<sp<Volume>>>("speed_test", &mSpeedTestList), true);
                 handleSppedTest(mSpeedTestList); 
                 break;
             }
@@ -9832,7 +9721,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 
 
             case UI_READ_BAT: {     /* 读取电池电量消息 */
-                unique_lock<mutex> lock(mutexState);
+                std::unique_lock<std::mutex> lock(mutexState);
                 handleCheckBatteryState();
                 break;
             }
@@ -9872,7 +9761,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
  * bResult - 查询成功返回true;否则返回false
  * mList - 查询成功后会用mList来更新远端存储设备列表
  */
-void MenuUI::updateTfStorageInfo(bool bResult, vector<sp<Volume>>& mList)
+void MenuUI::updateTfStorageInfo(bool bResult, std::vector<sp<Volume>>& mList)
 {
     VolumeManager* vm = VolumeManager::Instance();
  
@@ -9906,7 +9795,7 @@ void MenuUI::updateTfStorageInfo(bool bResult, vector<sp<Volume>>& mList)
 }
 
 
-void MenuUI::sendSpeedTestResult(vector<sp<Volume>>& mChangedList)
+void MenuUI::sendSpeedTestResult(std::vector<sp<Volume>>& mChangedList)
 {
     sp<ARMessage> msg = obtainMessage(UI_MSG_SPEEDTEST_RESULT);
     msg->set<std::vector<sp<Volume>>>("speed_test", mChangedList);
@@ -9914,14 +9803,14 @@ void MenuUI::sendSpeedTestResult(vector<sp<Volume>>& mChangedList)
 }
 
 
-void MenuUI::sendTfStateChanged(vector<sp<Volume>>& mChangedList)
+void MenuUI::sendTfStateChanged(std::vector<sp<Volume>>& mChangedList)
 {
     sp<ARMessage> msg = obtainMessage(UI_MSG_TF_STATE);
     msg->set<std::vector<sp<Volume>>>("tf_list", mChangedList);
     msg->post();   
 }
 
-void MenuUI::notifyTfcardFormatResult(vector<sp<Volume>>& failList)
+void MenuUI::notifyTfcardFormatResult(std::vector<sp<Volume>>& failList)
 {
     sp<ARMessage> msg = obtainMessage(UI_MSG_TF_FORMAT_RES);
     msg->set<std::vector<sp<Volume>>>("tf_list", failList);
@@ -10056,22 +9945,9 @@ void MenuUI::sendShutdown()
 
 void MenuUI::send_update_light(int menu, int interval, bool bLight, int sound_id)
 {
-
-#if 0
-	LOGDBG(TAG, "send_update_light　(%d [%s] [%d] interval[%d] speaker[%d] sound_id %d) ", 
-					bSendUpdate, 
-					getMenuName(menu),
-					state,
-					interval,
-                    mProCfg->get_val(KEY_SPEAKER),
-					sound_id);
-#endif
-	
-    if (sound_id != -1 && mProCfg->get_val(KEY_SPEAKER) == 1) {
+    if (sound_id != -1 && CfgManager::Instance()->getKeyVal("speaker") == 1) {
         flick_light();
         play_sound(sound_id);
-	
-        //force to 0 ,for play sounds cost times
         interval = 0;
     } else if (bLight) {	/* 需要闪灯 */
         flick_light();

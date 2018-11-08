@@ -347,7 +347,7 @@ int _property_set(const char *name, const char *value)
         memcpy(pi->name, name, namelen + 1);
         memcpy(pi->value, value, valuelen + 1);
 
-        pa->toc[pa->count] = (namelen << 24) | (((unsigned) pi) - ((unsigned) pa));
+        pa->toc[pa->count] = (namelen << 24) | (((unsigned long) pi) - ((unsigned long) pa));
 
         pa->count++;
         pa->serial++;

@@ -1,12 +1,10 @@
 #ifndef _MENU_H_
 #define _MENU_H_
 
-#include <hw/dev_manager.h>
 #include <sys/net_manager.h>
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 #include <hw/oled_module.h>
-#include <sys/StorageManager.h>
 #include <sys/action_info.h>
 #include <sys/pro_cfg.h>
 
