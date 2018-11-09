@@ -93,7 +93,7 @@ using namespace std;
 #define UPDATE_APP_ZIP 			"update_app.zip"
 #define UPDATE_APP_DEST_PATH	"/usr/local/bin"
 #define UPDATE_DEST_BASE_DIR	"/mnt/update/"
-#define UPDAE_CHECK_VER			"V3.2"
+#define UPDAE_CHECK_VER			"V3.3"
 #define TMP_UNZIP_PATH			"/tmp/update"	/* 解压升级包的目标路径 */
 #define PRO_UPDATE_ZIP			"pro2_update.zip"
 
@@ -540,18 +540,18 @@ static void resetIC(int iGpio)
 
 	std::string sGpioDirectionPath(directionPath);
 	std::string setOutputcmd = "echo out > " + sGpioDirectionPath;
-	LOGDBG("set output cmd: %s", setOutputcmd.c_str());
+	LOGDBG(TAG, "set output cmd: %s", setOutputcmd.c_str());
 	system(setOutputcmd.c_str());
 
 	std::string sGpioValPath(valPath);
 	std::string setValCmd = "echo 1 > " + sGpioValPath;
-	LOGDBG("set val cmd: %s", setValCmd.c_str());
+	LOGDBG(TAG, "set val cmd: %s", setValCmd.c_str());
 	system(setValCmd.c_str());
 
 	msg_util::sleep_ms(100);
 
 	setValCmd = "echo 0 > " + sGpioValPath;
-	LOGDBG("set val cmd: %s", setValCmd.c_str());
+	LOGDBG(TAG, "set val cmd: %s", setValCmd.c_str());
 	system(setValCmd.c_str());
 }
 #endif
@@ -626,7 +626,7 @@ int main(int argc, char **argv)
 	property_set(PROP_RO_MOUNT_TF, "true");
 
 
-	LOGDBG(TAG, "\n\n>>>>>>>>>>> Service: update_check starting (Version: %s) ^_^ <<<<<<<<<<", property_get(PROP_SYS_UC_VER));
+	LOGDBG(TAG, "\n>>>>>>>>>>> Service: update_check starting (Version: %s) ^_^ <<<<<<<<<<", property_get(PROP_SYS_UC_VER));
 
 	LOGDBG(TAG, "get prop: [sys.tf_mount_ro] = %s", property_get(PROP_RO_MOUNT_TF));
 
@@ -788,7 +788,7 @@ no_update_file:
 no_update_device:
 	property_set(PROP_RO_MOUNT_TF, "false");	/* 恢复以读写方式挂载 */		
 	property_set(PROP_UC_START_APP, "true");	/* 不需要重启,直接通知init进程启动其他服务 */	
-	// property_set(PROP_BOOTAN_NAME, "false");	/* 关闭动画服务 */
+	property_set("ctl.stop", "bootan");			/* 关闭动画服务 */
 	return 0;
 }
 

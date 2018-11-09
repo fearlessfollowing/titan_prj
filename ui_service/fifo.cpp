@@ -46,7 +46,8 @@ static QR_STRUCT mQRInfo[] = {
 };
 #endif
 
-
+#undef  TAG 
+#define TAG "fifo"
 
 static sp<fifo> mpFIFO = nullptr;
 
@@ -119,33 +120,6 @@ void fifo::sendUiMessage(sp<ARMessage>& msg)
     mOLEDHandle->postUiMessage(msg);
 }
 
-void start_all()
-{
-
-}
-
-#if 0
-
-#define GET_CJSON_OBJ_ITEM_STR(child, root, key,str,size) \
-    child = cJSON_GetObjectItem(root,key); \
-    if(child)\
-         snprintf(str,size, "%s",child->valuestring);
-
-#define GET_CJSON_OBJ_ITEM_INT(child, root, key,val) \
-    child = cJSON_GetObjectItem(root,key); \
-    if(child) \
-    {\
-        val = child->valueint;\
-    }
-
-#define GET_CJSON_OBJ_ITEM_DOUBLE(child, root, key,val) \
-    child = cJSON_GetObjectItem(root,key); \
-    if(child) \
-    {\
-        val = child->valuedouble;\
-    }
-#endif
-
 
 class my_handler : public ARHandler {
 public:
@@ -177,15 +151,14 @@ fifo::~fifo()
 
 void fifo::init()
 {
-	
     make_fifo();
+ 
     init_thread();
 
     // //set in the end
-    notify = obtainMessage(MSG_UI_KEY);
+    // notify = obtainMessage(MSG_UI_KEY);
 
-    mOLEDHandle = (sp<MenuUI>)(new MenuUI(notify)); //oled_handler::getSysUiObj(notify);
-    CHECK_NE(mOLEDHandle, nullptr);
+    // mOLEDHandle = (sp<MenuUI>)(new MenuUI(notify)); //oled_handler::getSysUiObj(notify);
 
     th_read_fifo_ = thread([this] { read_fifo_thread(); });
 
@@ -211,7 +184,6 @@ void fifo::stop_all(bool delay)
     }
     mOLEDHandle = nullptr;
 
-    msg_util::sleep_ms(200);
     LOGDBG(TAG, "stop_all3");
 }
 
@@ -1482,6 +1454,8 @@ void fifo::read_fifo_thread()
                     Json::Value rootJson;
 
                     Json::CharReader* reader = builder.newCharReader();
+                    LOGDBG(TAG, "FIFO Recv: %s", &buf[FIFO_HEAD_LEN]);
+
                     if (!reader->parse(&buf[FIFO_HEAD_LEN], &buf[FIFO_HEAD_LEN + content_len -1], &rootJson, &errs)) {
                         LOGERR(TAG, "parse json format failed");
                         continue;
@@ -1544,12 +1518,8 @@ void fifo::close_write_fd()
 int fifo::get_read_fd()
 {
     if (read_fd == -1) {
-//        LOGDBG(TAG, " read_fd fd %d", read_fd);
-//        bRFifoStop = true;
         read_fd = open(FIFO_FROM_CLIENT, O_RDONLY);
         CHECK_NE(read_fd, -1);
-//        bRFifoStop = false;
-//        LOGDBG(TAG, "2 read_fd fd %d", read_fd);
     }
     return read_fd;
 }
@@ -1570,16 +1540,17 @@ int fifo::make_fifo()
 {
     if (access(FIFO_FROM_CLIENT, F_OK) == -1) {
         if (mkfifo(FIFO_FROM_CLIENT, 0777)) {
-            LOGDBG("make fifo:%s fail", FIFO_FROM_CLIENT);
+            LOGDBG(TAG, "make fifo:%s fail", FIFO_FROM_CLIENT);
             return INS_ERR;
         }
     }
 
     if (access(FIFO_TO_CLIENT, F_OK) == -1) {
         if (mkfifo(FIFO_TO_CLIENT, 0777)) {
-            LOGDBG("make fifo:%s fail", FIFO_TO_CLIENT);
+            LOGDBG(TAG, "make fifo:%s fail", FIFO_TO_CLIENT);
             return INS_ERR;
         }
     }
+    LOGDBG(TAG, "---> make fifo ok!!");
     return INS_OK;
 }

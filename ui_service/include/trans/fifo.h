@@ -16,7 +16,6 @@ struct _sys_info_;
 struct _sync_init_info_;
 
 
-#define  TAG "fifo"
 
 #define  FIFO_HEAD_LEN (8)
 #define  FIFO_DATA_LEN_OFF (FIFO_HEAD_LEN - 4)

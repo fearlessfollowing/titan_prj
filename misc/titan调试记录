@@ -152,3 +152,12 @@ HDMI:
 tegra186-cvb-prod-p2597-b00-p3310-1000-a00-00.dtsi
 
 修改扩展p10-p15修改的文件：bootloader/partner/common/drivers/gpio/tca9539_gpio.c
+
+
+1.禁止系统自动睡眠
+2.安装常用工具
+samba
+
+3.移植应用环境
+4.禁止U盘功能
+/opt/nvidia/l4t-usb-device-mode/nv-l4t-usb-device-mode.sh

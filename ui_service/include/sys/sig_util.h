@@ -1,24 +1,30 @@
-#ifndef INC_360PRO_SERVICE_SIG_UTIL_H
-#define INC_360PRO_SERVICE_SIG_UTIL_H
+#ifndef _SIG_UTIL_H_
+#define _SIG_UTIL_H_
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
 
+#include <log/log_wrapper.h>
+
 
 #define __UNUSED (__attribute__((unused)))
 
+#ifndef TAG
+#define TAG "SigUtil"
+#endif
+
+
 static void default_signal_handler(int sig) 
 {
-    //rec 15 when pkill
     if (sig != 15) {
-        printf("other handler sig error sig %d\n",sig);
+        LOGDBG(TAG, "Recv Signal %d, Exit now ...",sig);
     }
     exit(0);
 }
 
 static void pipe_signal_handler(int sig) 
 {
-    printf("ignore pipe signal handler \n");
+    LOGDBG(TAG, "Ignore Pipe Signal....");
 }
 
 static void registerSig(__sighandler_t func) 
@@ -30,4 +36,4 @@ static void registerSig(__sighandler_t func)
     signal(SIGINT, func);
     signal(SIGKILL, func);
 }
-#endif //INC_360PRO_SERVICE_SIG_UTIL_H
+#endif //_SIG_UTIL_H_

@@ -35,6 +35,7 @@
 #include <prop_cfg.h>
 
 #include <log/log_wrapper.h>
+#include <trans/fifo.h>
 
 #include <common/check.h>
 
@@ -46,7 +47,7 @@ void init_fifo();
 void debug_version_info();
 
 
-#define PRO2_VER    "V1.0.4"
+#define PRO2_VER    "V1.1.0"
 
 
 int main(int argc ,char *argv[])
@@ -63,30 +64,15 @@ int main(int argc ,char *argv[])
     }
 
     LogWrapper::init("/home/nvidia/insta360/log", "ui_log", true);
-
-
     property_set(PROP_PRO2_VER, PRO2_VER);
 
-    LOGDBG(TAG, "\n>>>>>>>>>>>>>>>>>>>>>>> Start pro2_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", property_get(PROP_PRO2_VER));
+    LOGDBG(TAG, "\n>>>>>>>>>>>>>>>>>>>>>>> Start ui_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", property_get(PROP_PRO2_VER));
 
-#if 1
-    init_fifo();
-    start_all();
+    // init_fifo();
+    fifo::getSysTranObj();
 
-#else 
-    MidProtoManager* pm = MidProtoManager::Instance();
-    sp<MenuUI> mu = (sp<MenuUI>)(new MenuUI());
-    if (pm) {
-        pm->setRecvUi(mu);
-        pm->start();
-    }
-    if (mu) {
-        mu->start();
-    }
-#endif
-
-    while (1) {
-        msg_util::sleep_ms(5*1000);
+    while (true) {
+        sleep(10);
     }
 
     LOGDBG(TAG, "------- UI Service Exit now --------------");

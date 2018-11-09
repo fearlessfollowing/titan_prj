@@ -124,11 +124,9 @@ service klogd /usr/local/bin/kern_log
 	critical
     disabled
 
-
 service ui_service /usr/local/bin/ui_service
     class ui
     critical
-    disabled
 
 service time_tz /usr/local/bin/time_tz
 	class tz
@@ -173,7 +171,7 @@ on property:init.svc.camerad=running
 # 触发条件：sys.web_status=true
 # 当WebServer启动后，会导致ui服务重启
 on property:sys.web_status=true
-	restart ui
+	restart ui_service
 
 on property:sys.tz_changed=true
 	start time_tz
