@@ -3658,61 +3658,6 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
 }
 
 
-
-#ifdef ENABLE_MENU_STITCH_BOX
-void MenuUI::disp_stitch_progress(sp<struct _stich_progress_> &mProgress)
-{
-    LOGDBG(TAG,"%s %d %d %d %d %f",
-          __FUNCTION__,
-          mProgress->total_cnt,
-          mProgress->successful_cnt,
-          mProgress->failing_cnt,
-          mProgress->task_over,
-          mProgress->runing_task_progress);
-
-    if (cur_menu == MENU_STITCH_BOX) {
-        char buf[32];
-        int x ;
-        int y;
-        y = 24;
-        if (mProgress->task_over) {
-            bStiching = false;
-            dispIconByType(ICON_STITCHING_SUCCESS129_48);
-            x = 17;
-            if (mProgress->successful_cnt > 999) {
-                x -= 6;
-            }
-            snprintf(buf,sizeof(buf),"%d",mProgress->successful_cnt);
-            dispStr((const u8 *)buf,x,y);
-
-            x = 24;
-            y += 16;
-            if (mProgress->failing_cnt > 999) {
-                x -= 6;
-            }
-            snprintf(buf,sizeof(buf),"%d",mProgress->failing_cnt);
-            dispStr((const u8 *)buf,x,y);
-        } else {
-            dispIconByType(ICON_STITCHING_SCHEDULE129_48);
-            x = 65;
-            snprintf(buf,sizeof(buf),"%d/%d",(mProgress->successful_cnt + mProgress->failing_cnt + 1),mProgress->total_cnt);
-            dispStr((const u8 *)buf,x,y);
-
-            x = 16;
-            y += 16;
-            snprintf(buf,sizeof(buf),"(%.2f%%)",mProgress->runing_task_progress);
-            dispStr((const u8 *)buf,x,y);
-
-            bStiching = true;
-        }
-    } else {
-        LOGERR(TAG,"%s cur_menu %d %d", __FUNCTION__,cur_menu,bStiching);
-    }
-}
-#endif
-
-
-
 void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
 {
     CHECK_NE(mSysSetting, nullptr);
@@ -4505,130 +4450,6 @@ void MenuUI::dispSettingPage(std::vector<struct stSetItem*>& setItemsList)
         LOGERR(TAG, "Warnning Invalid Nv Position in Menu[%s]", getMenuName(cur_menu));
     }
 }
-
-
-#if 0
-int MenuUI::exec_sh_new(const char *buf)
-{
-    return exec_sh(buf);
-}
-
-
-//- 格式化exfat: mkexfat /dev/block/mmcblk1p1
-//- 格式化ext4: mke2fs -t ext4 /dev/block/mmcblk1p1
-//- Trim废弃block: fstrim /dev/block/mmcblk1p1
-//mountufsd ${partition} ${path} -o uid=1023,gid=1023,fmask=0700,dmask=0700,force
-void MenuUI::format(const char *src,const char *path,int trim_err_icon,int err_icon,int suc_icon)
-{
-    char buf[1024];
-    int err_trim = 0;
-
-    LOGDBG(TAG," %d src %s path %s cur_menu %d", getMenuSelectIndex(MENU_FORMAT), src, path, cur_menu);
-
-    switch (getMenuSelectIndex(MENU_FORMAT)) {
-        //exfat
-        case 0:
-            snprintf(buf, sizeof(buf), "umount -f %s", path);
-            if (exec_sh_new((const char *)buf) != 0) {
-                goto ERROR;
-            }
-
-            snprintf(buf,sizeof(buf),"mke2fs -F -t ext4 %s",src);
-            if (exec_sh_new((const char *)buf) != 0) {
-                err_trim = 1;
-            }  else {
-                snprintf(buf,sizeof(buf),"mount -t ext4 -o discard %s %s",src,path);
-                //            snprintf(buf,sizeof(buf),"mountufsd %s %s -o uid=1023,gid=1023,fmask=0700,dmask=0700,force",src,path);
-                if (exec_sh_new((const char *)buf) != 0) {
-                    err_trim = 1;
-                }  else {
-                    snprintf(buf,sizeof(buf),"fstrim %s",path);
-                    if (exec_sh_new((const char *)buf) != 0) {
-                        err_trim = 1;
-                    }
-
-                    snprintf(buf,sizeof(buf),"umount -f %s",path);
-                    if (exec_sh_new((const char *)buf) != 0) {
-                        goto ERROR;
-                    }
-                  }
-             }
-
-            snprintf(buf,sizeof(buf),"mkexfat -f %s",src);
-            if (exec_sh_new((const char *)buf) != 0) {
-                goto ERROR;
-            }
-            LOGDBG(TAG,"err_trim %d",err_trim);
-    #ifdef NEW_FORMAT
-            reset_devmanager();
-    #else
-            snprintf(buf,sizeof(buf),"mountufsd %s %s "
-                    "-o uid=1023,gid=1023,fmask=0700,dmask=0700,force",
-                     src,path);
-            if (exec_sh((const char *)buf) != 0) {
-                goto ERROR;
-            }  else {
-                LOGDBG(TAG,"mountufsd suc");
-            }
-    #endif
-
-            if (err_trim) {
-                goto ERROR_TRIM;
-            }
-
-            switch(getMenuSelectIndex(MENU_STORAGE)) {
-                case SET_STORAGE_SD:
-                    dispIconByType(ICON_SDCARD_FORMATTED_SUCCESS128_48);
-                    break;
-
-                case SET_STORAGE_USB:
-                    dispIconByType(ICON_USBHARDDRIVE_FORMATTED_SUCCESS128_48);
-                    break;
-            }
-            msg_util::sleep_ms(3000);
-            break;
-
-        #ifndef ONLY_EXFAT
-        //ext4
-        case 1:
-            snprintf(buf,sizeof(buf),"umount -f %s",path);
-            if (exec_sh((const char *)buf) != 0) {
-                goto ERROR;
-            }
-
-            snprintf(buf,sizeof(buf),"mke2fs -F -t ext4 %s",src);
-            if (exec_sh((const char *)buf) != 0) {
-                goto ERROR;
-            }
-
-            snprintf(buf,sizeof(buf),"mount -t ext4 -o discard %s %s",src,path);
-//            snprintf(buf,sizeof(buf),"mountufsd %s %s -o uid=1023,gid=1023,fmask=0700,dmask=0700,force",src,path);
-            if (exec_sh((const char *)buf) != 0) {
-                goto ERROR;
-            }
-
-            snprintf(buf,sizeof(buf),"fstrim %s",path);
-            if (exec_sh((const char *)buf) != 0) {
-                goto ERROR_TRIM;
-            }
-            dispIconByType(suc_icon);
-            break;
-        #endif
-        SWITCH_DEF_ERROR(getMenuSelectIndex(MENU_FORMAT));
-    }
-
-    return;
-ERROR_TRIM:
-    dispIconByType(trim_err_icon);
-    msg_util::sleep_ms(3000);
-    return;
-ERROR:
-    dispIconByType(err_icon);
-    msg_util::sleep_ms(3000);
-}
-#endif
-
-
 
 void MenuUI::dispTipStorageDevSpeedTest() 
 {
@@ -8965,40 +8786,6 @@ void MenuUI::handleorSetWifiConfig(sp<WifiConfig> &mConfig)
 void MenuUI::handleUpdateSysInfo(sp<SYS_INFO> &mSysInfo)
 {
 
-#if 0
-    {
-        const char *new_line = "\n";
-
-        int fd = open(sys_file_name, O_RDWR | O_CREAT | O_TRUNC);
-        CHECK_NE(fd, -1);
-        char buf[1024];
-        memset(buf, 0, sizeof(buf));
-        unsigned int write_len = 0;
-        unsigned int len = 0;
-        char *val;
-        lseek(fd, 0, SEEK_SET);
-        for (int i = 0; i < SYS_KEY_MAX; i++) {
-            switch (i) {
-                case SYS_KEY_SN:
-                    val = mSysInfo->sn;
-                    break;
-                case SYS_KEY_UUID:
-                    val = mSysInfo->uuid;
-                    break;
-                SWITCH_DEF_ERROR(i);
-            }
-            snprintf(buf, sizeof(buf), "%s%s%s", sys_key[i],val, new_line);
-            LOGDBG(TAG, " write sys %s", buf);
-            len = strlen(buf);
-            write_len = write(fd, buf, len);
-            CHECK_EQ(write_len,len);
-        }
-        close(fd);
-        memcpy(mReadSys.get(),mSysInfo.get(),sizeof(SYS_INFO));
-    }
-#else
-    LOGDBG(TAG, "close write sn");
-#endif
 }
 
 
@@ -9519,6 +9306,7 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 			}
 			break;
         }	
+        
 		default:
 			break;
 	}
@@ -9690,16 +9478,6 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 handleTfStateChanged(mTfChangeList);
                 break;
             }
-
-            #if 0
-            case UI_MSG_TF_FORMAT_RES: {
-                std::vector<sp<Volume>> mTfFormatList;
-                CHECK_EQ(msg->find<std::vector<sp<Volume>>>("tf_list", &mTfFormatList), true);
-                // handleTfFormated(mTfFormatList);       
-                break;         
-            }
-            #endif
-
 
             case UI_MSG_SPEEDTEST_RESULT: {
                 std::vector<sp<Volume>> mSpeedTestList;

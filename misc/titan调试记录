@@ -161,3 +161,18 @@ samba
 3.移植应用环境
 4.禁止U盘功能
 /opt/nvidia/l4t-usb-device-mode/nv-l4t-usb-device-mode.sh
+
+5.支持外设
+
+
+
+TITAN板子
+HDMI在无任何连接的情况下，显示有连接
+Screen 0: minimum 8 x 8, current 1280 x 720, maximum 32767 x 32767
+HDMI-0 connected primary 1280x720+0+0 (normal left inverted right x axis y axis) 890mm x 500mm
+   1280x720      60.00*+  59.94    50.00  
+   720x576       50.00  
+   720x480       59.94  
+   640x480       59.94 
+
+  
