@@ -153,14 +153,16 @@ void fifo::init()
 {
     make_fifo();
  
-    init_thread();
+    // init_thread();
 
     // //set in the end
     // notify = obtainMessage(MSG_UI_KEY);
 
-    // mOLEDHandle = (sp<MenuUI>)(new MenuUI(notify)); //oled_handler::getSysUiObj(notify);
+    mOLEDHandle = (sp<MenuUI>)(new MenuUI()); //oled_handler::getSysUiObj(notify);
 
+    #if 1
     th_read_fifo_ = thread([this] { read_fifo_thread(); });
+    #endif
 
     LOGDBG(TAG, "fifo::init() ... OK");
 }
@@ -265,68 +267,12 @@ void fifo::write_fifo(int iEvent, const char *str)
     } 
 }
 
-#define ACTION_NAME(n) case n: return #n
-const char *getActionName(int iAction)
-{
-    switch (iAction) {
-        ACTION_NAME(ACTION_REQ_SYNC);
-        ACTION_NAME(ACTION_PIC);
-        ACTION_NAME(ACTION_VIDEO);
-        ACTION_NAME(ACTION_LIVE);
-        ACTION_NAME(ACTION_PREVIEW);
-        ACTION_NAME(ACTION_CALIBRATION);
-        ACTION_NAME(ACTION_QR);
-        ACTION_NAME(ACTION_SET_OPTION);
-        ACTION_NAME(ACTION_LOW_BAT);
-        ACTION_NAME(ACTION_SPEED_TEST);
-        ACTION_NAME(ACTION_POWER_OFF);
-        ACTION_NAME(ACTION_GYRO);
-        ACTION_NAME(ACTION_NOISE);
-        ACTION_NAME(ACTION_CUSTOM_PARAM);
-        ACTION_NAME(ACTION_LIVE_ORIGIN);
-        ACTION_NAME(ACTION_AGEING);
-        ACTION_NAME(ACTION_AWB);
-        ACTION_NAME(ACTION_SET_STICH);
-        ACTION_NAME(ACTION_QUERY_STORAGE);
-
-#ifdef ENABLE_MENU_STITCH_BOX
-        ACTION_NAME(MENU_STITCH_BOX);
-#endif
-
-        ACTION_NAME(ACTION_UPDATE_REC_LEFT_SEC);
-        ACTION_NAME(ACTION_UPDATE_LIVE_REC_LEFT_SEC);
-
-    default: return "Unkown Action";
-    }    
-}
 
 
 void fifo::postTranMessage(sp<ARMessage>& msg)
 {
     msg->setHandler(mHandler);
     msg->post();
-}
-
-
-#define MESSAGE_NAME(n) case n: return #n
-const char *getMessageName(int iMessage)
-{
-    switch (iMessage) {
-        MESSAGE_NAME(MSG_UI_KEY);
-        MESSAGE_NAME(MSG_DEV_NOTIFY);
-        MESSAGE_NAME(MSG_DISP_STR_TYPE);
-        MESSAGE_NAME(MSG_DISP_ERR_TYPE);
-        MESSAGE_NAME(MSG_SET_WIFI_CONFIG);
-        MESSAGE_NAME(MSG_SET_SYS_INFO);
-        MESSAGE_NAME(MSG_SET_SYNC_INFO);
-        MESSAGE_NAME(MSG_START_POWER_OFF);
-        MESSAGE_NAME(MSG_SAVE_PATH_CHANGE);
-        MESSAGE_NAME(MSG_UPDATE_CURRENT_SAVE_LIST);
-        MESSAGE_NAME(MSG_TRAN_INNER_UPDATE_TF);
-        MESSAGE_NAME(MSG_EXIT);
-
-    default: return "Unkown Message";
-    }    
 }
 
 
@@ -371,7 +317,6 @@ void fifo::init_thread()
                        pr.set_value(true);
                        mLooper->run();
                    });
-    CHECK_EQ(reply.get(), true);
 }
 
 
@@ -1146,23 +1091,33 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 
 
         case CMD_OLED_SYNC_INIT: {	/* 给UI发送同步信息: state, a_v, h_v, c_v */
+
             sp<SYNC_INIT_INFO> mSyncInfo = sp<SYNC_INIT_INFO>(new SYNC_INIT_INFO());
-            if (jsonData["state"].isNull() == false) {
+            
+            LOGDBG(TAG, "----------> CMD_OLED_SYNC_INIT");
+            LOGDBG(TAG, "state: %d", jsonData["state"].asInt());
+            LOGDBG(TAG, "a_v: %s ", jsonData["a_v"].asCString());
+            LOGDBG(TAG, "h_v: %s ", jsonData["h_v"].asCString());
+            LOGDBG(TAG, "c_v: %s ", jsonData["c_v"].asCString());
+
+
+            if (jsonData.isMember("state")) {
                 mSyncInfo->state = jsonData["state"].asInt();
+            } else {
+                mSyncInfo->state = 0;
             }
             
-            if (jsonData["a_v"].isNull() == false) {
+            if (jsonData.isMember("a_v")) {
                 snprintf(mSyncInfo->a_v, sizeof(mSyncInfo->a_v), "%s", jsonData["a_v"].asCString());
             }            
             
-            if (jsonData["h_v"].isNull() == false) {
+            if (jsonData.isMember("h_v")) {
                 snprintf(mSyncInfo->h_v, sizeof(mSyncInfo->h_v), "%s", jsonData["h_v"].asCString());
             }                
 
-            if (jsonData["c_v"].isNull() == false) {
+            if (jsonData.isMember("c_v")) {
                 snprintf(mSyncInfo->c_v, sizeof(mSyncInfo->c_v), "%s", jsonData["c_v"].asCString());
             }                
-
             mOLEDHandle->send_sync_init_info(mSyncInfo);
             break;
         }    
@@ -1219,25 +1174,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             break;
         }
 
-
-        /* example:
-            {
-                "name": "camera._queryStorage", 
-                "sequence": 39, 
-                "state": "done", 
-                "results": {
-                    "storagePath": "/mnt/sdcard", 
-                    "module": [
-                        {"storage_total": 0, "storage_left": 0, "pro_suc": 0, "index": 1}, 
-                        {"storage_total": 61024, "storage_left": 46182, "pro_suc": 1, "index": 2}, 
-                        {"storage_total": 0, "storage_left": 0, "pro_suc": 0, "index": 3}, 
-                        {"storage_total": 61024, "storage_left": 46402, "pro_suc": 1, "index": 4}, 
-                        {"storage_total": 61024, "storage_left": 46182, "pro_suc": 1, "index": 5}, 
-                        {"storage_total": 61024, "storage_left": 46182, "pro_suc": 1, "index": 6}
-                    ]
-                }
-            }
-        */
+#if 0
         case CMD_WEB_UI_TF_NOTIFY: {    /* 查询TF卡的状态 */
             LOGDBG(TAG, "[%s:%d] get notify form server for TF info");
 
@@ -1274,9 +1211,12 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
                             * 名称: "tf-1","tf-2","tf-3"....
                             */
                             sprintf(tmpVol->cVolName, "mSD%d", tmpVol->iIndex);
+                            #if 0
                             LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d]",
-                                        __FILE__, __LINE__, tmpVol->cVolName, 
+                                        tmpVol->cVolName, 
                                         tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest);
+
+                            #endif
 
                             storageList.push_back(tmpVol);
 
@@ -1293,6 +1233,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             mOLEDHandle->updateTfStorageInfo(bResult, storageList);
             break;
         }
+#endif        
 
 
         case CMD_WEB_UI_TF_FORMAT: {    /* 格式化结果 */
@@ -1302,7 +1243,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             std::vector<sp<Volume>> storageList;
 
             if (jsonData["state"].isNull()) {
-                LOGDBG(TAG, "[%s:%d] CMD_WEB_UI_TF_FORMAT Protocal Err, no 'state'");
+                LOGDBG(TAG, "CMD_WEB_UI_TF_FORMAT Protocal Err, no 'state'");
                 storageList.push_back(tmpVolume); 
             } else {
                 
@@ -1352,7 +1293,7 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
                         */
                         snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
                         LOGDBG(TAG, "mSD card node[%s] info index[%d], speed[%d]",
-                                    __FILE__, __LINE__, tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
+                                     tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
 
                         storageList.push_back(tmpVol);
                     }
@@ -1456,7 +1397,7 @@ void fifo::read_fifo_thread()
                     Json::CharReader* reader = builder.newCharReader();
                     LOGDBG(TAG, "FIFO Recv: %s", &buf[FIFO_HEAD_LEN]);
 
-                    if (!reader->parse(&buf[FIFO_HEAD_LEN], &buf[FIFO_HEAD_LEN + content_len -1], &rootJson, &errs)) {
+                    if (!reader->parse(&buf[FIFO_HEAD_LEN], &buf[FIFO_HEAD_LEN + content_len], &rootJson, &errs)) {
                         LOGERR(TAG, "parse json format failed");
                         continue;
                     }

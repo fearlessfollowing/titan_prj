@@ -19,7 +19,6 @@ ARLooper::ARLooper() : mAsync(mLoop)
 
 ARLooper::~ARLooper()
 {
-    CHECK(!mRunning, "FATAL ERROR: ARLooper should quit before release!");
 }
 
 void ARLooper::run()
@@ -27,22 +26,22 @@ void ARLooper::run()
     mThreadID = this_thread::get_id();
     mRunning = true;
     mLoop.run();
-    for(auto &timerInfoPair : mTimers)
+
+    for (auto &timerInfoPair : mTimers)
         timerInfoPair.first->stop();
+    
     mAsync.stop();
     mRunning = false;
 }
 
 void ARLooper::quit()
 {
-    CHECK_EQ(mThreadID, this_thread::get_id());
     mQuit = true;
     mLoop.break_loop(ev::ALL);
 }
 
 void ARLooper::sendMessageWithDelayMs(const sp<ARMessage> &msg, int ms)
 {
-    CHECK_OP(ms, 0, >=);
     {
         unique_lock<mutex> lock(mMutex);
         mMsgs.push_back(sp<MsgInfo>(new MsgInfo
@@ -65,10 +64,11 @@ void ARLooper::dispatchMessage(const sp<ARMessage> &msg)
 void ARLooper::performAsync(ev::async &watcher, int events)
 {
     sp<MsgInfo> msgInfo;
+
     while (!mQuit) {
         {
             unique_lock<mutex> lock(mMutex);
-            if(mMsgs.empty())
+            if (mMsgs.empty())
                 break;
             msgInfo = mMsgs.front();
             mMsgs.pop_front();
@@ -92,10 +92,11 @@ void ARLooper::performAsync(ev::async &watcher, int events)
 
 void ARLooper::performTimer(ev::timer &watcher, int events)
 {
-    if(mQuit)
+    if (mQuit)
         return;
+
     auto itr = mTimers.find(&watcher);
-    CHECK_NE(itr, mTimers.end());
+
     dispatchMessage((*itr).second.msg);
     mTimers.erase(itr);
 }

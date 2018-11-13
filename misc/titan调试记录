@@ -151,6 +151,7 @@ sudo ./flash.sh -k cpu-bootloader jetson-tx2 mmcblk0p1
 HDMI:
 tegra186-cvb-prod-p2597-b00-p3310-1000-a00-00.dtsi
 
+
 修改扩展p10-p15修改的文件：bootloader/partner/common/drivers/gpio/tca9539_gpio.c
 
 
@@ -175,4 +176,3 @@ HDMI-0 connected primary 1280x720+0+0 (normal left inverted right x axis y axis)
    720x480       59.94  
    640x480       59.94 
 
-  

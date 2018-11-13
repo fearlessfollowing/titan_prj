@@ -71,9 +71,40 @@ inline std::string ToString(const T &a)
     return "unknown_obj";
 }
 
-#define CHECK_EQ(a, b)
-#define CHECK_NE(a, b)
-#define CHECK_OP(a, b, op) 
-#define CHECK(a, ...) 
+#define CHECK_EQ(a, b) \
+    do { \
+    if((a) != (b)) {\
+        fprintf(stderr, "CHECK_EQ(%s, %s) failed<%s, %s>(%s:%s:%d)", \
+            #a, #b, ToString((a)).c_str(), ToString((b)).c_str(),\
+            __FILE__, __FUNCTION__, __LINE__);\
+    }\
+    } while(0)
+
+#define CHECK_NE(a, b) \
+    do { \
+    if((a) == (b)) {\
+        fprintf(stderr, "CHECK_NE(%s, %s) failed<%s, %s>(%s:%s:%d)", \
+            #a, #b, ToString((a)).c_str(), ToString((b)).c_str(),\
+            __FILE__, __FUNCTION__, __LINE__);\
+    }\
+    } while(0)
+
+#define CHECK_OP(a, b, op) \
+    do { \
+    if(!((a) op (b))) {\
+        fprintf(stderr, "CHECK_OP(%s, %s, %s) failed<%s, %s>(%s:%s:%d)", \
+            #a, #b, #op, ToString((a)).c_str(), ToString((b)).c_str(),\
+            __FILE__, __FUNCTION__, __LINE__);\
+    }\
+    } while(0)
+
+#define CHECK(a, ...) \
+    do { \
+    if(!(a)) {\
+        fprintf(stderr, "CHECK(%s) failed: %s.(%s:%s:%d)", \
+            #a, StringFormat(__VA_ARGS__).c_str(), \
+            __FILE__, __FUNCTION__, __LINE__);\
+    }\
+    } while(0)
 
 #endif

@@ -144,7 +144,7 @@ COM_FLAGS += ' -DENABLE_PHOTO_DELAY_OFF '
 # 调试Netlink消息
 # COM_FLAGS += ' -DENABLE_DEBUG_NETLINK_MSG '
 
-COM_FLAGS += ' -fexceptions -Wall -Wunused-variable '
+COM_FLAGS += ' -fexceptions -Wall -Wunused-variable -g '
 
 
 

@@ -137,7 +137,6 @@ BootAnimation::BootAnimation()
 #endif
 	
 	mOLEDModule = (sp<oled_module>) (new oled_module());
-    CHECK_NE(mOLEDModule, nullptr);
 
 }
 

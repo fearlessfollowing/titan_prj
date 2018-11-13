@@ -68,8 +68,7 @@ int main(int argc ,char *argv[])
 
     LOGDBG(TAG, "\n>>>>>>>>>>>>>>>>>>>>>>> Start ui_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", property_get(PROP_PRO2_VER));
 
-    // init_fifo();
-    fifo::getSysTranObj();
+    init_fifo();
 
     while (true) {
         sleep(10);

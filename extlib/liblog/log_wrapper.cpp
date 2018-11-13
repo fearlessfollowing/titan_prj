@@ -135,6 +135,7 @@ void LogWrapper::log(unsigned char level, const char* tag, const char* file, int
 
 		va_start(arg, fmt);
 		vfprintf(mLogFileHandle, fmt, arg);
+		fprintf(mLogFileHandle, "\n");
 		va_end(arg);
 
 		fflush(mLogFileHandle);

@@ -5472,14 +5472,15 @@ static void mg_http_free_proto_data_mp_stream(struct mg_http_multipart_stream *m
 #endif
 
 #if MG_ENABLE_FILESYSTEM
-static void mg_http_free_proto_data_file(struct mg_http_proto_data_file *d) {
-  if (d != NULL) {
-    if (d->fp != NULL) {
-      fclose(d->fp);
+static void mg_http_free_proto_data_file(struct mg_http_proto_data_file *d) 
+{
+    if (d != NULL) {
+        if (d->fp != NULL) {
+            fclose(d->fp);
+        }
+        printf("mg_http_free_proto_data_file path %s\n",d->path);
+        memset(d, 0, sizeof(struct mg_http_proto_data_file));
     }
-    printf("mg_http_free_proto_data_file path %s\n",d->path);
-    memset(d, 0, sizeof(struct mg_http_proto_data_file));
-  }
 }
 #endif
 

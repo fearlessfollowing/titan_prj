@@ -12,5 +12,59 @@ INSERT INTO Insta360_1000(PATHNAME,FILESIZE,FILEATTR,FILEDATE,FILEWIDHT,FILEHEIG
 
 
 
-SQLite3可视化工具：
-https://sqlitestudio.pl/index.rvt?act=download
+
+[71539.533625] tegradc 15210000.nvdisplay: read_edid_into_buffer: extension_blocks = 1, max_ext_blocks = 3
+[71539.559336] tegradc 15210000.nvdisplay: hdmi_recheck_edid: read_edid_into_buffer() returned 256
+[71539.569277] tegradc 15210000.nvdisplay: old edid len = 256
+[71539.574835] tegradc 15210000.nvdisplay: hdmi: No EDID change after HPD bounce, taking no action
+[71539.762084] tegradc 15210000.nvdisplay: hdmi: unplugged
+[71539.767349] tegradc 15210000.nvdisplay: blank - powerdown
+[71543.932833] tegradc 15210000.nvdisplay: blank - powerdown
+[71543.938479] tegradc 15210000.nvdisplay: hdmi: plugged
+[71543.944733] tegradc 15210000.nvdisplay: blank - powerdown
+[71544.813733] tegradc 15210000.nvdisplay: read_edid_into_buffer: extension_blocks = 1, max_ext_blocks = 3
+[71544.840722] tegradc 15210000.nvdisplay: hdmi_recheck_edid: read_edid_into_buffer() returned 256
+[71544.849457] tegradc 15210000.nvdisplay: old edid len = 256
+[71544.855966] tegradc 15210000.nvdisplay: hdmi: No EDID change after HPD bounce, taking no action
+[72252.201639] tegradc 15210000.nvdisplay: hdmi: unplugged
+[72252.206910] tegradc 15210000.nvdisplay: blank - powerdown
+[72254.542814] tegradc 15210000.nvdisplay: blank - powerdown
+[72254.548297] tegradc 15210000.nvdisplay: hdmi: plugged
+[72254.555871] tegradc 15210000.nvdisplay: blank - powerdown
+[72269.405635] tegradc 15210000.nvdisplay: hdmi: unplugged
+[72269.410895] tegradc 15210000.nvdisplay: blank - powerdown
+[72274.986983] tegradc 15210000.nvdisplay: blank - powerdown
+[72274.992699] tegradc 15210000.nvdisplay: hdmi: plugged
+[72274.998973] tegradc 15210000.nvdisplay: blank - powerdown
+[72285.873647] tegradc 15210000.nvdisplay: hdmi: unplugged
+[72285.878909] tegradc 15210000.nvdisplay: blank - powerdown
+[72291.164158] tegradc 15210000.nvdisplay: blank - powerdown
+[72291.170413] tegradc 15210000.nvdisplay: hdmi: plugged
+[72291.176541] tegradc 15210000.nvdisplay: blank - powerdown
+[72299.261628] tegradc 15210000.nvdisplay: hdmi: unplugged
+[72299.266890] tegradc 15210000.nvdisplay: blank - powerdown
+[72301.306858] tegradc 15210000.nvdisplay: blank - powerdown
+[72301.312456] tegradc 15210000.nvdisplay: hdmi: plugged
+[72301.318564] tegradc 15210000.nvdisplay: blank - powerdown
+[72391.593646] tegradc 15210000.nvdisplay: hdmi: unplugged
+[72391.599876] tegradc 15210000.nvdisplay: blank - powerdown
+[72392.862924] tegradc 15210000.nvdisplay: blank - powerdown
+[72392.868484] tegradc 15210000.nvdisplay: hdmi: plugged
+[72392.874776] tegradc 15210000.nvdisplay: blank - powerdown
+[72405.581560] tegradc 15210000.nvdisplay: read_edid_into_buffer: extension_blocks = 1, max_ext_blocks = 3
+[72405.607059] tegradc 15210000.nvdisplay: hdmi_recheck_edid: read_edid_into_buffer() returned 256
+[72405.616825] tegradc 15210000.nvdisplay: old edid len = 256
+[72405.622445] tegradc 15210000.nvdisplay: hdmi: No EDID change after HPD bounce, taking no action
+[72503.769901] tegradc 15210000.nvdisplay: hdmi: unplugged
+[72503.775169] tegradc 15210000.nvdisplay: blank - powerdown
+[72504.918910] tegradc 15210000.nvdisplay: blank - powerdown
+[72504.924388] tegradc 15210000.nvdisplay: hdmi: plugged
+[72504.930415] tegradc 15210000.nvdisplay: blank - powerdown
+[72518.281639] tegradc 15210000.nvdisplay: hdmi: unplugged
+[72518.286894] tegradc 15210000.nvdisplay: blank - powerdown
+[72519.322278] tegradc 15210000.nvdisplay: blank - powerdown
+[72519.329431] tegradc 15210000.nvdisplay: hdmi: plugged
+[72519.335481] tegradc 15210000.nvdisplay: blank - powerdown
+[72519.489627] tegradc 15210000.nvdisplay: hdmi: unplugged
+[72519.494914] tegradc 15210000.nvdisplay: blank - powerdown
+[73205.388516] eqos 2490000.ether_qos eth0: Link is Up - 100Mbps/Full - flow control rx/tx

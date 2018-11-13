@@ -738,6 +738,7 @@ sp<ARMessage> MenuUI::obtainMessage(uint32_t what)
 *************************************************************************/
 void MenuUI::initUiMsgHandler()
 {
+#if 0
     std::promise<bool> pr;
     std::future<bool> reply = pr.get_future();
     th_msg_ = std::thread([this, &pr]
@@ -748,7 +749,18 @@ void MenuUI::initUiMsgHandler()
                        pr.set_value(true);
                        mLooper->run();
                    });
-    CHECK_EQ(reply.get(), true);
+#else 
+    th_msg_ = std::thread([this]()
+                   {
+                       mLooper = sp<ARLooper>(new ARLooper());
+                       mHandler = sp<ARHandler>(new menu_arhandler(this));
+                       mHandler->registerTo(mLooper);
+                       mLooper->run();
+                   });
+
+#endif
+
+
 }
 
 
@@ -831,12 +843,12 @@ void MenuUI::init_menu_select()
 *************************************************************************/
 void MenuUI::init()
 {
-    LOGDBG(TAG, "MenuUI init objects start ... file[%s], line[%d], date[%s], time[%s]", __DATE__, __TIME__);
+    LOGDBG(TAG, "MenuUI init objects start ... ");
 
     CfgManager* cm = NULL;
 
-    CHECK_EQ(sizeof(mMenuInfos) / sizeof(mMenuInfos[0]), MENU_MAX);
-    CHECK_EQ(sizeof(astSysRead) / sizeof(astSysRead[0]), SYS_KEY_MAX);
+    // CHECK_EQ(sizeof(mMenuInfos) / sizeof(mMenuInfos[0]), MENU_MAX);
+    // CHECK_EQ(sizeof(astSysRead) / sizeof(astSysRead[0]), SYS_KEY_MAX);
 
     
     mGpsState = GPS_STATE_NO_DEVICE;
@@ -952,6 +964,9 @@ void MenuUI::init()
      * Wlan0
      */
 
+
+#ifdef ENABLE_NET_MANAGER
+
     mNetManager = NetManager::getNetManagerInstance();
     mNetManager->startNetManager();
 
@@ -1010,6 +1025,7 @@ void MenuUI::init()
 		handleorSetWifiConfig(wifiConfig);
 		mHaveConfigSSID = true;
 	}
+#endif    
 
     LOGDBG(TAG, "---------> Init Input Manager");
     sp<ARMessage> inputNotify = obtainMessage(UI_MSG_KEY_EVENT);
@@ -1057,7 +1073,7 @@ tegra186-quill-camera-plugin-manager.dtsi:1619:						label = "cam0-pwdn";
 ** 调     用: 
 **
 *************************************************************************/
-MenuUI::MenuUI(const sp<ARMessage> &notify): mNotify(notify)
+MenuUI::MenuUI() 
 {
     LOGDBG(TAG, "[%s: %d]>>>>>>> Constructor MenuUI Object");
  
@@ -1140,10 +1156,12 @@ void MenuUI::init_cfg_select()
         iCmd = NETM_CLOSE_NETDEV;
 	}	
 
+    #ifdef ENABLE_NET_MANAGER
     msg = (sp<ARMessage>)(new ARMessage(iCmd));
     LOGDBG(TAG, "init_cfg_select: wifi state[%d]", CfgManager::Instance()->getKeyVal("wifi_on"));
     msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
     NetManager::getNetManagerInstance()->postNetMessage(msg);
+    #endif
 }
 
 
@@ -1446,7 +1464,9 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
             pSetItem[i]->iCurVal = cm->getKeyVal("dhcp");
             LOGDBG(TAG, "DHCP Init Val --> [%d]", pSetItem[i]->iCurVal);
             /* 需要开启DHCP?? */
+        #ifdef ENABLE_NET_MANAGER            
             switchEtherIpMode(pSetItem[i]->iCurVal);
+        #endif
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FREQ)) {            /* FREQ -> 需要通知对方 */
             pSetItem[i]->iCurVal = cm->getKeyVal("flicker");
             LOGDBG(TAG, "Flick Init Val --> [%d]", pSetItem[i]->iCurVal);
@@ -2546,7 +2566,7 @@ void MenuUI::setGyroCalcDelay(int iDelay)
  */
 bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 {
-    sp<ARMessage> msg = mNotify->dup();
+    // sp<ARMessage> msg = mNotify->dup();
     int iIndex = 0;
 
     struct stPicVideoCfg* pTmpPicVidCfg = NULL;
@@ -2588,8 +2608,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 if (pAebSetItem && pAebPicVidCfg) {
                     pTmpAeb = pAebSetItem->stOrigArg[pAebSetItem->iCurVal];
                     memcpy(&(pAebPicVidCfg->pStAction->stOrgInfo.stOrgAct.mOrgP), pTmpAeb, sizeof(PIC_ORG));
-                    LOGDBG(TAG, "Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", 
-                                __FILE__, __LINE__, pTmpAeb->hdr_count, pTmpAeb->min_ev, pTmpAeb->max_ev);
+                    LOGDBG(TAG, "Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", pTmpAeb->hdr_count, pTmpAeb->min_ev, pTmpAeb->max_ev);
 
                     /* 非Customer模式时，需要更新AEB参数 */
                     if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {
@@ -5113,7 +5132,6 @@ void MenuUI::disp_calibration_res(int type, int t)
 #if 0        
             mCamState |= STATE_CALIBRATE_FAIL;
             LOGDBG(TAG,"cal fail state 0x%x", mCamState);
-            CHECK_EQ(mCamState, STATE_CALIBRATE_FAIL);
             dispIconByType(ICON_CALIBRATION_FAILED128_16);
 #endif
             break;
@@ -5800,6 +5818,7 @@ bool MenuUI::checkStorageSatisfy(int action)
     return bRet;
 }
 
+#ifdef ENABLE_NET_MANAGER
 
 bool MenuUI::switchEtherIpMode(int iMode)
 {
@@ -5824,6 +5843,8 @@ bool MenuUI::switchEtherIpMode(int iMode)
     return true;
 }
 
+#endif
+
 
 void MenuUI::procSetMenuKeyEvent()
 {
@@ -5843,11 +5864,14 @@ void MenuUI::procSetMenuKeyEvent()
 
         if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_DHCP)) {
             iVal = ((~iVal) & 0x00000001);
+
+            #ifdef ENABLE_NET_MANAGER
             if (switchEtherIpMode(iVal)) {
                 cm->setKeyVal("dhcp", iVal);
                 pCurItem->iCurVal = iVal;        
                 dispSetItem(pCurItem, true);
             }
+            #endif
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FREQ)) {
             iVal = ((~iVal) & 0x00000001);
@@ -6072,7 +6096,9 @@ void MenuUI::procPowerKeyEvent()
 
 
                 case MAINMENU_WIFI: {    		/* WiFi菜单项用于打开关闭AP */
+                #ifdef ENABLE_NET_MANAGER
                     handleWifiAction();
+                #endif
                     break;
                 }
 				
@@ -6086,8 +6112,11 @@ void MenuUI::procPowerKeyEvent()
                      * - 如果服务器不允许返回False
                      */
                     if (pm->sendSwitchUdiskModeReq(true)) { /* 请求服务器进入U盘模式 */
+
+                    #ifdef ENABLE_NET_MANAGER
                         /* 主动切网卡为直接模式 */
                         switchEtherIpMode(0);
+                    #endif
 
                         /** 重启dnsmasq服务 */
                         system("setprop ctl.stop dnsmasq");
@@ -6283,8 +6312,7 @@ void MenuUI::procPowerKeyEvent()
             /* 选中的项是TF卡 */
             if (!strncmp(gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName, "mSD", strlen("mSD"))) {
                 
-                LOGDBG(TAG, "You selected [%s] Card!!", 
-                        __FILE__, __LINE__, gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName);                
+                LOGDBG(TAG, "You selected [%s] Card!!", gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName);                
                 
                 setCurMenu(MENU_TF_FORMAT_SELECT);      /* 进入格式化模式选择菜单 */
 
@@ -6768,8 +6796,8 @@ uint64_t MenuUI::getServerState()
 
     ProtoManager* pm = ProtoManager::Instance();
     if (pm->getServerState(&serverState)) {
-        strState += serverState;
-        property_set(PROP_SERVER_STATE, strState.c_str());
+        // strState += serverState;
+        // property_set(PROP_SERVER_STATE, strState.c_str());
     } else {
         LOGERR(TAG, "getServerState -> Get Server State Failed, please check reason!");
     }
@@ -8156,7 +8184,7 @@ int MenuUI::oled_disp_type(int type)
 
             if (cur_menu == MENU_UDISK_MODE && (true == pm->sendSwitchUdiskModeReq(false))) {
 
-                LOGDBG(TAG, "Exit Udisk Mode, Current Menu[%s]",  __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGDBG(TAG, "Exit Udisk Mode, Current Menu[%s]", getMenuName(cur_menu));
                 dispQuitUdiskMode();
 
                 VolumeManager* vm = VolumeManager::Instance();
@@ -8168,8 +8196,7 @@ int MenuUI::oled_disp_type(int type)
                 in->setEnableReport(true);
 
             } else {
-                LOGERR(TAG, "Not in MENU_UDISK_MODE && Request Server quit Udisk Mode failed [%s]", 
-                                __FILE__, __LINE__, getMenuName(cur_menu));
+                LOGERR(TAG, "Not in MENU_UDISK_MODE && Request Server quit Udisk Mode failed [%s]", getMenuName(cur_menu));
             }
             break;
         }
@@ -8805,8 +8832,7 @@ void MenuUI::handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo)
     snprintf(mVerInfo->c_ver, sizeof(mVerInfo->c_ver), "%s", mSyncInfo->c_v);
     snprintf(mVerInfo->h_ver, sizeof(mVerInfo->h_ver), "%s", mSyncInfo->h_v);
 
-    LOGDBG(TAG, "sync state 0x%x va:%s vc %s vh %s",
-          __FILE__, __LINE__, mSyncInfo->state, mSyncInfo->a_v, mSyncInfo->c_v, mSyncInfo->h_v);
+    LOGDBG(TAG, "sync state 0x%x va:%s vc %s vh %s", mSyncInfo->state, mSyncInfo->a_v, mSyncInfo->c_v, mSyncInfo->h_v);
 
     LOGDBG(TAG, "SET SYNC INFO: get state[%d]", state);
 
@@ -8920,8 +8946,7 @@ void MenuUI::handleUpdateDevInfo(int iAction, int iType, std::vector<Volume*>& m
     uint64_t serverState = getServerState();
 
 #if 0
-    LOGDBG(TAG, "handleUpdateDevInfo -> Current Menu[%s], Server State[%d]",
-                __FILE__, __LINE__, getMenuName(cur_menu), getServerState());
+    LOGDBG(TAG, "handleUpdateDevInfo -> Current Menu[%s], Server State[%d]", getMenuName(cur_menu), getServerState());
 #endif
 
     /* 设置存储设备列表
@@ -9341,15 +9366,16 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 {
                     std::unique_lock<std::mutex> lock(mutexState);
                     sp<DISP_TYPE> disp_type;
-                    CHECK_EQ(msg->find<sp<DISP_TYPE>>("disp_type", &disp_type), true);
-					
-                    LOGDBG(TAG, "UI_MSG_DISP_TYPE (%d %d %d %s)",
-								disp_type->qr_type,         // 2 
-								disp_type->type,            // 1
-								disp_type->tl_count,        // -1
-								getMenuName(cur_menu));                 
-					
-					handleDispTypeMsg(disp_type);
+                    if (msg->find<sp<DISP_TYPE>>("disp_type", &disp_type)) {
+                        LOGDBG(TAG, "UI_MSG_DISP_TYPE (%d %d %d %s)",
+                                    disp_type->qr_type,         // 2 
+                                    disp_type->type,            // 1
+                                    disp_type->tl_count,        // -1
+                                    getMenuName(cur_menu));                 
+                        
+                        handleDispTypeMsg(disp_type);
+
+                    }
                 }
 				break;
             }
@@ -9357,22 +9383,25 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             case UI_MSG_DISP_ERR_MSG: {     /* 显示错误消息 */
                 std::unique_lock<std::mutex> lock(mutexState);
                 sp<ERR_TYPE_INFO> mErrInfo;
-                CHECK_EQ(msg->find<sp<ERR_TYPE_INFO>>("err_type_info", &mErrInfo),true);
-				handleDispErrMsg(mErrInfo);
+                if (msg->find<sp<ERR_TYPE_INFO>>("err_type_info", &mErrInfo)) {
+    				handleDispErrMsg(mErrInfo);
+                }
 				break;
             }
                
             case UI_MSG_KEY_EVENT: {	/* 短按键消息处理 */
                 int key = -1;
-                CHECK_EQ(msg->find<int>("oled_key", &key), true);
-                handleKeyMsg(key);
+                if (msg->find<int>("oled_key", &key)) {
+                    handleKeyMsg(key);
+                }
 				break;
             }
                 
             case UI_MSG_LONG_KEY_EVENT: {	/* 长按键消息处理 */
                 int key = 0;
-                CHECK_EQ(msg->find<int>("long_key", &key), true);
-				handleLongKeyMsg(key);
+                if (msg->find<int>("long_key", &key)) {
+    				handleLongKeyMsg(key);
+                }
 				 break;
             }
 
@@ -9383,26 +9412,28 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 
             case UI_MSG_UPDATE_IP: {	/* 更新IP */
 				sp<DEV_IP_INFO> tmpIpInfo;
-				CHECK_EQ(msg->find<sp<DEV_IP_INFO>>("info", &tmpIpInfo), true);
-
-                #ifdef ENABLE_DEBUG_NET
-				LOGDBG(TAG, "UI_MSG_UPDATE_IP dev[%s], ip[%s]", tmpIpInfo->cDevName, tmpIpInfo->ipAddr);
-                #endif
-				handleUpdateIp(tmpIpInfo->ipAddr);
-               	break;
+                if (msg->find<sp<DEV_IP_INFO>>("info", &tmpIpInfo)) {
+                    #ifdef ENABLE_DEBUG_NET
+                    LOGDBG(TAG, "UI_MSG_UPDATE_IP dev[%s], ip[%s]", tmpIpInfo->cDevName, tmpIpInfo->ipAddr);
+                    #endif
+                    handleUpdateIp(tmpIpInfo->ipAddr);
+                }
+                break;
             }
 
             case UI_MSG_CONFIG_WIFI:  {	/* 配置WIFI (UI-CORE处理) */
                 sp<WifiConfig> mConfig;
-                CHECK_EQ(msg->find<sp<WifiConfig>>("wifi_config", &mConfig), true);
-                handleorSetWifiConfig(mConfig);
+                if (msg->find<sp<WifiConfig>>("wifi_config", &mConfig)) {
+                    handleorSetWifiConfig(mConfig);
+                }
                 break;
             }
                 
             case UI_MSG_SET_SN: {	/* 设置SN */
                 sp<SYS_INFO> mSysInfo;
-                CHECK_EQ(msg->find<sp<SYS_INFO>>("sys_info", &mSysInfo), true);
-                handleUpdateSysInfo(mSysInfo);
+                if (msg->find<sp<SYS_INFO>>("sys_info", &mSysInfo)) {
+                    handleUpdateSysInfo(mSysInfo);
+                }
                 break;
             }
 
@@ -9410,25 +9441,30 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 			 * 同步初始化
 			 */
             case UI_MSG_SET_SYNC_INFO: {	/* 同步初始化信息(来自control_center) */
+
                 exit_sys_err();
                 sp<SYNC_INIT_INFO> mSyncInfo;
-                CHECK_EQ(msg->find<sp<SYNC_INIT_INFO>>("sync_info", &mSyncInfo), true);
-                handleSetSyncInfo(mSyncInfo);	/* 根据同步系统初始化系统参数及显示 */
-                
-                ProtoManager* pm = ProtoManager::Instance();
-                int iQueryResult = -1, i;
-                for (i = 0; i < 3; i++) {
-                    iQueryResult = pm->sendQueryGpsState();
-                    if (iQueryResult >= 0) {
-                        break;
-                    } 
-                }
 
-                if (i < 3) {
-                    mGpsState = iQueryResult;
+                if (msg->find<sp<SYNC_INIT_INFO>>("sync_info", &mSyncInfo)) {
+                    handleSetSyncInfo(mSyncInfo);	/* 根据同步系统初始化系统参数及显示 */
+                    
+                    ProtoManager* pm = ProtoManager::Instance();
+                    int iQueryResult = -1, i;
+                    for (i = 0; i < 3; i++) {
+                        iQueryResult = pm->sendQueryGpsState();
+                        if (iQueryResult >= 0) {
+                            break;
+                        } 
+                    }
+
+                    if (i < 3) {
+                        mGpsState = iQueryResult;
+                    } else {
+                        LOGERR(TAG, "Query Gps State failed, what's wrong");
+                    mGpsState = 0;
+                    }
                 } else {
-                    LOGERR(TAG, "Query Gps State failed, what's wrong");
-                   mGpsState = 0;
+                    LOGERR(TAG, "---> UI_MSG_SET_SYNC_INFO Message format Invaled");
                 }
                 break;
             }
@@ -9451,9 +9487,10 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 
             case UI_MSG_UPDATE_GPS_STATE: {
                 int iGpstate = GPS_STATE_NO_DEVICE;
-                CHECK_EQ(msg->find<int>("gps_state", &iGpstate), true);
-                mGpsState = iGpstate;
-                handleGpsState();
+                if (msg->find<int>("gps_state", &iGpstate)) {
+                    mGpsState = iGpstate;
+                    handleGpsState();
+                }
                 break;
             }
 
@@ -9464,25 +9501,25 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 std::vector<Volume*> mList;
                 int iAction = -1;
                 int iType = -1;
-                CHECK_EQ(msg->find<std::vector<Volume*>>("dev_list", &mList), true);
-                CHECK_EQ(msg->find<int>("action", &iAction), true);
-                CHECK_EQ(msg->find<int>("type", &iType), true);
-
-                handleUpdateDevInfo(iAction, iType, mList);
+                if (msg->find<std::vector<Volume*>>("dev_list", &mList) && msg->find<int>("action", &iAction) && msg->find<int>("type", &iType)) {
+                    handleUpdateDevInfo(iAction, iType, mList);
+                }
                 break;
             }
 
             case UI_MSG_TF_STATE: {     /* TF卡状态变化: 卡拔出, 卡插入 */
                 std::vector<sp<Volume>> mTfChangeList;
-                CHECK_EQ(msg->find<std::vector<sp<Volume>>>("tf_list", &mTfChangeList), true);
-                handleTfStateChanged(mTfChangeList);
+                if (msg->find<std::vector<sp<Volume>>>("tf_list", &mTfChangeList)) {
+                    handleTfStateChanged(mTfChangeList);
+                }
                 break;
             }
 
             case UI_MSG_SPEEDTEST_RESULT: {
                 std::vector<sp<Volume>> mSpeedTestList;
-                CHECK_EQ(msg->find<std::vector<sp<Volume>>>("speed_test", &mSpeedTestList), true);
-                handleSppedTest(mSpeedTestList); 
+                if (msg->find<std::vector<sp<Volume>>>("speed_test", &mSpeedTestList)) {
+                    handleSppedTest(mSpeedTestList); 
+                }
                 break;
             }
 
@@ -9508,10 +9545,9 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 int menu = -1;
                 int interval = 0;
 
-                CHECK_EQ(msg->find<int>("menu", &menu), true);
-                CHECK_EQ(msg->find<int>("interval", &interval), true);
-
-				handleDispLightMsg(menu, interval);
+                if (msg->find<int>("menu", &menu) && msg->find<int>("interval", &interval)) {
+    				handleDispLightMsg(menu, interval);
+                }
 				break;
             }
                 			
@@ -9534,6 +9570,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
  * 外部消息发送接口
  *************************************************************************************************/
 
+#if 0
 /*
  * 更新TF卡存储信息(需要根据同步或异步做不同的处理))
  * bResult - 查询成功返回true;否则返回false
@@ -9571,6 +9608,7 @@ void MenuUI::updateTfStorageInfo(bool bResult, std::vector<sp<Volume>>& mList)
         msg->post();
     }
 }
+#endif
 
 
 void MenuUI::sendSpeedTestResult(std::vector<sp<Volume>>& mChangedList)
@@ -9610,10 +9648,15 @@ void MenuUI::send_disp_err(sp<struct _err_type_info_> &mErrInfo)
     msg->post();
 }
 
-void MenuUI::send_sync_init_info(sp<SYNC_INIT_INFO> &mSyncInfo)
+void MenuUI::send_sync_init_info(sp<SYNC_INIT_INFO>& syncInfo)
 {
     sp<ARMessage> msg = obtainMessage(UI_MSG_SET_SYNC_INFO);
-    msg->set<sp<SYNC_INIT_INFO>>("sync_info", mSyncInfo);
+    
+    mSyncInitInfo = syncInfo;
+    LOGDBG(TAG, "--->sync object 0x%p", mSyncInitInfo.get());
+    
+    msg->set<sp<SYNC_INIT_INFO>>("sync_info", mSyncInitInfo);
+    
     msg->post();
 }
 
@@ -9658,10 +9701,10 @@ void MenuUI::sendWifiConfig(sp<WifiConfig> &mConfig)
 }
 
 
-void MenuUI::send_sys_info(sp<SYS_INFO> &mSysInfo)
+void MenuUI::send_sys_info(sp<SYS_INFO> sysInfo)
 {
     sp<ARMessage> msg = obtainMessage(UI_MSG_SET_SN);
-    msg->set<sp<SYS_INFO>>("sys_info",mSysInfo);
+    msg->set<sp<SYS_INFO>>("sys_info", sysInfo);
     msg->post();
 }
 

@@ -80,6 +80,25 @@ void CfgManager::syncCfg2File(const char* pCfgFile, Json::Value& curCfg)
     ofs.close();
 }
 
+#if 0
+dhcp:001
+flicker:000
+hdr:000
+raw:000
+aeb:003
+ph_delay:001
+speaker:001
+light_on:001
+aud_on:001
+#0 -- normal 1--spatial
+aud_spatial:001
+flow_state:000
+gyro_on:001
+fan_on:001
+set_logo:000
+video_fragment:000
+wifi_on:000
+#endif
 
 void CfgManager::genDefaultCfg()
 {
@@ -95,22 +114,22 @@ void CfgManager::genDefaultCfg()
     sysWifiCfg["wifi_cfg_passwd"]   = "Insta360";
     sysWifiCfg["wifi_cfg_ssid"]     = "88888888";
 
-    sysSetCfg["key_dhcp"]           = 1;
-    sysSetCfg["key_flicker"]        = 0;
-    sysSetCfg["key_hdr"]            = 0;
-    sysSetCfg["key_raw"]            = 0;
-    sysSetCfg["key_aeb"]            = 0;        // AEB3
-    sysSetCfg["key_ph_delay"]       = 1;        // 5S
-    sysSetCfg["key_aeb"]            = 0;        // AEB3
-    sysSetCfg["speaker"]        = 1;        // Speaker: On
-    sysSetCfg["light_on"]       = 1;        // LED: On
-    sysSetCfg["aud_on"]         = 1;        // Audio: On
-    sysSetCfg["aud_spatial"]    = 1;        // Spatial Audio: On
-    sysSetCfg["flow_state"]     = 1;        // FlowState: Off
-    sysSetCfg["gyro_on"]        = 1;        // Gyro: On
-    sysSetCfg["fan_on"]         = 0;        // Fan: On
-    sysSetCfg["set_logo"]       = 0;        // Logo: On
-    sysSetCfg["video_fragment"] = 0;        // Video Fragment: On
+    sysSetCfg["dhcp"]           = 1;
+    sysSetCfg["flicker"]        = 0;
+    sysSetCfg["hdr"]            = 0;
+    sysSetCfg["raw"]            = 0;
+    sysSetCfg["aeb"]            = 0;        // AEB3
+    sysSetCfg["ph_delay"]       = 1;        // 5S
+    sysSetCfg["speaker"]            = 1;        // Speaker: On
+    sysSetCfg["light_on"]           = 1;        // LED: On
+    sysSetCfg["aud_on"]             = 1;        // Audio: On
+    sysSetCfg["aud_spatial"]        = 1;        // Spatial Audio: On
+    sysSetCfg["flow_state"]         = 1;        // FlowState: Off
+    sysSetCfg["gyro_on"]            = 1;        // Gyro: On
+    sysSetCfg["fan_on"]             = 0;        // Fan: On
+    sysSetCfg["set_logo"]           = 0;        // Logo: On
+    sysSetCfg["video_fragment"]     = 0;        // Video Fragment: On
+    sysSetCfg["wifi_on"]            = 0;
 
     rootCfg["mode_select"] = modeSelectCfg;
     rootCfg["sys_setting"] = sysSetCfg;

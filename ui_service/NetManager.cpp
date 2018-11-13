@@ -974,17 +974,14 @@ sp<NetDev>& NetManager::getNetDevByType(int iType)
 void NetManager::startNetManager()
 {
 	if (gInitNetManagerThread == false) {
-		std::promise<bool> pr;
-		std::future<bool> reply = pr.get_future();
-		mThread = thread([this, &pr]
+		mThread = thread([this]
 					   {
 						   mLooper = sp<ARLooper>(new ARLooper());
 						   mHandler = sp<ARHandler>(new NetManagerHandler(this));
 						   mHandler->registerTo(mLooper);
-						   pr.set_value(true);
 						   mLooper->run();
 					   });
-		CHECK_EQ(reply.get(), true);
+
 		gInitNetManagerThread = true;
 		LOGDBG(TAG, "startNetManager .... success!!!");
 	} else {

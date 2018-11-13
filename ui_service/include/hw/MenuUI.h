@@ -273,7 +273,7 @@ typedef struct _req_sync_ {
     char r_v[128];
     char p_v[128];
     char k_v[128];
-}REQ_SYNC;
+} REQ_SYNC;
 
 enum {
     STI_7680x7680,//= 0,
@@ -441,24 +441,15 @@ class InputManager;
 class MenuUI {
 public:
 
-    #if 0
-    enum {
-        OLED_KEY,
-        SAVE_PATH_CHANGE,
-        UPDATE_BAT,
-        UPDATE_DEV,
-        FACTORY_AGEING,
-		UPDATE_STORAGE,
-    };
-    #endif
 
     void    postUiMessage(sp<ARMessage>& msg);
 
 
-            MenuUI(const sp<ARMessage> &notify);
+            MenuUI();
             ~MenuUI();
 
     void    handleMessage(const sp<ARMessage> &msg);
+
     sp<ARMessage> obtainMessage(uint32_t what);	
 
 
@@ -470,12 +461,12 @@ public:
     void    send_disp_ip(int ip, int net_type = 0);
     void    send_disp_battery(int battery, bool charge);
 
-    void    send_sys_info(sp<SYS_INFO> &mSysInfo);
+    void    send_sys_info(sp<SYS_INFO> mSysInfo);
     void    send_get_key(int key);
     void    send_long_press_key(int key,int64 ts);
     void    send_init_disp();
     void    send_update_dev_list(std::vector<Volume*> &mList);
-    void    send_sync_init_info(sp<SYNC_INIT_INFO> &mSyncInfo);
+    void    send_sync_init_info(sp<SYNC_INIT_INFO>& syncInfo);
 
     void    sendUpdateGpsState(int iState);
     void    sendShutdown();
@@ -1009,6 +1000,8 @@ private:
 	
 	// int save_select;
     sp<oled_module>             mOLEDModule;
+
+    sp<SYNC_INIT_INFO>          mSyncInitInfo;
 
     /*
      * 录像/直播的可存储的剩余时长
