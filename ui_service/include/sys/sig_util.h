@@ -14,14 +14,6 @@
 #endif
 
 
-static void default_signal_handler(int sig) 
-{
-    if (sig != 15) {
-        LOGDBG(TAG, "Recv Signal %d, Exit now ...",sig);
-    }
-    exit(0);
-}
-
 static void pipe_signal_handler(int sig) 
 {
     LOGDBG(TAG, "Ignore Pipe Signal....");

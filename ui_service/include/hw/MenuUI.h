@@ -438,19 +438,18 @@ struct stIconPos;
 
 class InputManager;
 
-class MenuUI {
+class MenuUI: public ARHandler {
+
 public:
-
-
-    void    postUiMessage(sp<ARMessage>& msg);
-
 
             MenuUI();
             ~MenuUI();
 
     void    handleMessage(const sp<ARMessage> &msg);
 
-    sp<ARMessage> obtainMessage(uint32_t what);	
+    void    startUI();
+    void    stopUI();
+
 
 
 /******************************************************************************************************
@@ -476,7 +475,12 @@ public:
     void    notifyTfcardFormatResult(std::vector<sp<Volume>>& failList);
     void    sendSpeedTestResult(std::vector<sp<Volume>>& mChangedList);
 
+
+
 private:
+
+    void    subSysInit();
+    void    subSysDeInit();
 
 
     bool    check_rec_tl();
@@ -590,7 +594,6 @@ private:
     void    play_sound(u32 type);
     void    send_update_light(int menu, int interval,bool bLight = false,int sound_id = -1);
     void    write_p(int p, int val);
-    void    stop_bat_thread();
 
 
 /***************************************** 状态管理(10.08) ***************************************************/
@@ -644,16 +647,6 @@ private:
     void    sendExit();
     void    exitAll();
 
-    void    sys_reboot(int cmd = REBOOT_SHUTDOWN);
-
-	void    disp_cam_param(int higlight);
-
-    int     get_dev_type_index(char *dev_type);
-
-    void    get_save_path_remain();
-
-    void    caculate_rest_info(u64 size = 0);
-    bool    switch_dhcp_mode(int iDHCP);
     void    send_clear_msg_box(int delay = 1000);
     void    send_delay_msg(int msg_id, int delay);
     void    send_bat_low();
@@ -696,7 +689,8 @@ private:
 /******************************************************************************************************
  * 初始化类
  ******************************************************************************************************/
-    void    initUiMsgHandler(); 
+    void    uiSubsysInit(); 
+    void    uiSubsysDeinit();
 
     void    handleGpsState();
     void    drawGpsState();
@@ -968,8 +962,9 @@ private:
 private:
 
 	sp<ARLooper>                mLooper;
-    sp<ARHandler>               mHandler;
-    std::thread                 th_msg_;
+    // sp<ARHandler>               mHandler;
+    
+    std::thread                 mUiMsgThread;
 	
     std::thread                 th_sound_;
 
@@ -981,7 +976,6 @@ private:
     bool                        bExitBat = false;
     bool                        bSendUpdate = false;
     bool                        bSendUpdateMid = false;
-    sp<ARMessage>               mNotify;
 	
     u64                         mCamState = 0;
 
@@ -1037,7 +1031,6 @@ private:
     char                        mLocalIpAddr[32];        /* UI本地保存的IP地址 */
 
     int                         mStoreQueryTfMenu;
-
 
 	/*
 	 * 是否已经配置SSID

@@ -10,8 +10,8 @@
 ** 版     本: V2.0
 ** 日     期: 2016年12月1日
 ** 修改记录:
-** V1.0			Wans			2016-12-01		创建文件
-** V2.0			Skymixos		2018-06-05		添加注释
+** V1.0			Skymixos		2018-06-05		创建文件，添加注释
+** V2.0         Skymixos        2018年11月14日   增加主线程主动退出流程
 ******************************************************************************************************/
 
 #include <util/msg_util.h>
@@ -31,7 +31,6 @@
 #include <prop_cfg.h>
 
 #include <hw/MenuUI.h>
-#include <sys/MidProto.h>
 #include <prop_cfg.h>
 
 #include <log/log_wrapper.h>
@@ -39,22 +38,54 @@
 
 #include <common/check.h>
 
-#undef      TAG
-#define     TAG "uiService"
-
-void start_all();
-void init_fifo();
-void debug_version_info();
-
+#undef  TAG
+#define TAG "uiService"
 
 #define PRO2_VER    "V1.1.0"
+
+
+enum {
+    CtrlPipe_Shutdown = 1,                  
+    CtrlPipe_Wakeup   = 2,                  
+};
+
+
+static int mCtrlPipe[2];    // 0 -- read , 1 -- write
+
+
+static void writePipe(int p, int val)
+{
+    char c = (char)val;
+    int  rc;
+
+    rc = write(p, &c, 1);
+    if (rc != 1) {
+        LOGDBG(TAG, "Error writing to control pipe (%s) val %d", strerror(errno), val);
+        return;
+    }
+}
+
+
+static void signalHandler(int sig) 
+{
+    LOGDBG(TAG, "signalHandler: Recive Signal[%d]", sig);
+
+    if (sig == SIGKILL || sig == SIGTERM || sig == SIGINT || sig == SIGQUIT) {
+        writePipe(mCtrlPipe[1], CtrlPipe_Shutdown);
+    } else {
+        LOGDBG(TAG, "Ignore Signal [%d]", sig);
+    }
+}
 
 
 int main(int argc ,char *argv[])
 {
     int iRet = 0;
+    char c = -1;
 
-    registerSig(default_signal_handler);	
+    pipe(mCtrlPipe);
+
+    registerSig(signalHandler);
     signal(SIGPIPE, pipe_signal_handler);
 
     iRet = __system_properties_init();	/* 属性区域初始化 */
@@ -68,12 +99,19 @@ int main(int argc ,char *argv[])
 
     LOGDBG(TAG, "\n>>>>>>>>>>>>>>>>>>>>>>> Start ui_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", property_get(PROP_PRO2_VER));
 
-    init_fifo();
+    {
+        /* 构造MenuUI对象 */
+        sp<MenuUI> ptrMenu = std::make_shared<MenuUI>();
+        ptrMenu->startUI();
 
-    while (true) {
-        sleep(10);
+        read(mCtrlPipe[0], &c, 1);
+        if (c == CtrlPipe_Shutdown) {
+            LOGDBG(TAG, "Main thread recv Quit Signal, Normal exit now...");
+        }
+        ptrMenu->stopUI();
     }
 
     LOGDBG(TAG, "------- UI Service Exit now --------------");
+    return 0;
     
 }

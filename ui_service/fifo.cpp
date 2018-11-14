@@ -120,24 +120,6 @@ void fifo::sendUiMessage(sp<ARMessage>& msg)
     mOLEDHandle->postUiMessage(msg);
 }
 
-
-class my_handler : public ARHandler {
-public:
-    my_handler(fifo *source) : mHandler(source) {
-    }
-
-    virtual ~my_handler() override {
-    }
-
-    virtual void handleMessage(const sp<ARMessage> &msg) override {
-        mHandler->handleMessage(msg);
-    }
-
-private:
-    fifo *mHandler;
-};
-
-
 fifo::fifo()
 {
     init();
@@ -153,16 +135,10 @@ void fifo::init()
 {
     make_fifo();
  
-    // init_thread();
-
-    // //set in the end
-    // notify = obtainMessage(MSG_UI_KEY);
-
-    mOLEDHandle = (sp<MenuUI>)(new MenuUI()); //oled_handler::getSysUiObj(notify);
-
-    #if 1
+    mOLEDHandle = std::make_shared<MenuUI>();
+    mOLEDHandle->startUI();
+    
     th_read_fifo_ = thread([this] { read_fifo_thread(); });
-    #endif
 
     LOGDBG(TAG, "fifo::init() ... OK");
 }
@@ -200,7 +176,6 @@ void fifo::sendExit()
         bExit = true;
         if (th_msg_.joinable()) {
             if (bWFifoStop) {
-                // unblock fifo write open while fifo read not happen
                 int fd = open(FIFO_TO_CLIENT, O_RDONLY);
                 CHECK_NE(fd, -1);
                 close(fd);
@@ -269,58 +244,6 @@ void fifo::write_fifo(int iEvent, const char *str)
 
 
 
-void fifo::postTranMessage(sp<ARMessage>& msg)
-{
-    msg->setHandler(mHandler);
-    msg->post();
-}
-
-
-/*************************************************************************
-** 方法名称: handleMessage
-** 方法功能: FIFO交互线程消息处理
-** 入口参数: 
-**      msg - 消息指针
-** 返回值: 无
-** 调用:
-** 改动: 让消息循环只处理来自UI线程的消息 - 2018年9月5日
-*************************************************************************/
-void fifo::handleMessage(const sp<ARMessage> &msg)
-{
-    uint32_t what = msg->what();
-
-	{
-        if (MSG_EXIT == what) {		/* 线程退出消息 */
-            mLooper->quit();
-            close_write_fd();
-        } 
-    }
-}
-
-
-/*************************************************************************
-** 方法名称: init_thread
-** 方法功能: 初始化通信线程(FiFo)
-** 入口参数: 
-** 返 回 值: 无 
-** 调 用: 
-**
-*************************************************************************/
-void fifo::init_thread()
-{
-    std::promise<bool> pr;
-    std::future<bool> reply = pr.get_future();
-    th_msg_ = thread([this, &pr] {
-                       mLooper = sp<ARLooper>(new ARLooper());
-                       mHandler = sp<ARHandler>(new my_handler(this));
-                       mHandler->registerTo(mLooper);
-                       pr.set_value(true);
-                       mLooper->run();
-                   });
-}
-
-
-
 #define RECV_MSG(n) case n: return #n
 const char *getRecvMsgName(int iMessage)
 {
@@ -339,113 +262,6 @@ const char *getRecvMsgName(int iMessage)
         RECV_MSG(CMD_WEB_UI_SHUT_DOWN);
 
     default: return "Unkown Message Type";
-    }    
-}
-
-
-#define DISPLAY_TYPE(n) case n: return #n
-const char *getDispType(int iType)
-{
-    switch (iType) {
-        DISPLAY_TYPE(START_RECING);
-        DISPLAY_TYPE(START_REC_SUC);
-        DISPLAY_TYPE(START_REC_FAIL);
-        DISPLAY_TYPE(STOP_RECING);
-        DISPLAY_TYPE(STOP_REC_SUC);
-
-        DISPLAY_TYPE(STOP_REC_FAIL);
-        DISPLAY_TYPE(CAPTURE);
-        DISPLAY_TYPE(CAPTURE_SUC);
-        DISPLAY_TYPE(CAPTURE_FAIL);
-        DISPLAY_TYPE(COMPOSE_PIC);
-
-        DISPLAY_TYPE(COMPOSE_PIC_FAIL);
-        DISPLAY_TYPE(COMPOSE_PIC_SUC);
-        DISPLAY_TYPE(COMPOSE_VIDEO);
-        DISPLAY_TYPE(COMPOSE_VIDEO_FAIL);
-        DISPLAY_TYPE(COMPOSE_VIDEO_SUC);
-
-        DISPLAY_TYPE(STRAT_LIVING);
-        DISPLAY_TYPE(START_LIVE_SUC);
-        DISPLAY_TYPE(START_LIVE_FAIL);
-        DISPLAY_TYPE(STOP_LIVING);
-        DISPLAY_TYPE(STOP_LIVE_SUC);
-
-
-        DISPLAY_TYPE(STOP_LIVE_FAIL);
-        DISPLAY_TYPE(PIC_ORG_FINISH);
-        DISPLAY_TYPE(START_LIVE_CONNECTING);
-        DISPLAY_TYPE(START_CALIBRATIONING);
-        DISPLAY_TYPE(CALIBRATION_SUC);
-
-        DISPLAY_TYPE(CALIBRATION_FAIL);
-        DISPLAY_TYPE(START_PREVIEWING);
-        DISPLAY_TYPE(START_PREVIEW_SUC);
-        DISPLAY_TYPE(START_PREVIEW_FAIL);
-        DISPLAY_TYPE(STOP_PREVIEWING);
-
-        DISPLAY_TYPE(STOP_PREVIEW_SUC);
-        DISPLAY_TYPE(STOP_PREVIEW_FAIL);
-        DISPLAY_TYPE(START_QRING);
-        DISPLAY_TYPE(START_QR_SUC);
-        DISPLAY_TYPE(START_QR_FAIL);
-
-        DISPLAY_TYPE(STOP_QRING);
-        DISPLAY_TYPE(STOP_QR_SUC);
-        DISPLAY_TYPE(STOP_QR_FAIL);
-        DISPLAY_TYPE(QR_FINISH_CORRECT);
-        DISPLAY_TYPE(QR_FINISH_ERROR);
-
-        DISPLAY_TYPE(CAPTURE_ORG_SUC);
-        DISPLAY_TYPE(CALIBRATION_ORG_SUC);
-        DISPLAY_TYPE(SET_CUS_PARAM);
-        DISPLAY_TYPE(QR_FINISH_UNRECOGNIZE);
-        DISPLAY_TYPE(TIMELPASE_COUNT);
-
-        DISPLAY_TYPE(START_NOISE_SUC);
-        DISPLAY_TYPE(START_NOISE_FAIL);
-        DISPLAY_TYPE(START_NOISE);
-        DISPLAY_TYPE(START_LOW_BAT_SUC);
-        DISPLAY_TYPE(START_LOW_BAT_FAIL);
-
-        DISPLAY_TYPE(LIVE_REC_OVER);
-        DISPLAY_TYPE(SET_SYS_SETTING);
-        DISPLAY_TYPE(STITCH_PROGRESS);
-        DISPLAY_TYPE(START_BLC);
-        DISPLAY_TYPE(STOP_BLC);
-
-        DISPLAY_TYPE(START_GYRO);
-        DISPLAY_TYPE(START_GYRO_SUC);
-        DISPLAY_TYPE(START_GYRO_FAIL);
-        DISPLAY_TYPE(SPEED_TEST_SUC);
-        DISPLAY_TYPE(SPEED_TEST_FAIL);
-
-        DISPLAY_TYPE(SPEED_START);
-        DISPLAY_TYPE(SYNC_REC_AND_PREVIEW);
-        DISPLAY_TYPE(SYNC_PIC_CAPTURE_AND_PREVIEW);
-        DISPLAY_TYPE(SYNC_PIC_STITCH_AND_PREVIEW);
-        DISPLAY_TYPE(SYNC_LIVE_AND_PREVIEW);
-
-        DISPLAY_TYPE(SYNC_LIVE_CONNECT_AND_PREVIEW);
-        DISPLAY_TYPE(START_STA_WIFI_FAIL);
-        DISPLAY_TYPE(STOP_STA_WIFI_FAIL);
-        DISPLAY_TYPE(START_AP_WIFI_FAIL);
-        DISPLAY_TYPE(STOP_AP_WIFI_FAIL);
-
-        DISPLAY_TYPE(START_QUERY_STORAGE);
-        DISPLAY_TYPE(START_QUERY_STORAGE_SUC);
-        DISPLAY_TYPE(START_QUERY_STORAGE_FAIL);
-        DISPLAY_TYPE(START_BPC);
-        DISPLAY_TYPE(STOP_BPC);
-
-        DISPLAY_TYPE(ENTER_UDISK_MODE);
-        DISPLAY_TYPE(EXIT_UDISK_MODE);
-        DISPLAY_TYPE(EXIT_UDISK_DONE);
-        DISPLAY_TYPE(RESET_ALL_CFG);
-        DISPLAY_TYPE(MAX_TYPE);
-
-    default: 
-        return "Display Type";
     }    
 }
 
@@ -1009,25 +825,19 @@ void fifo::handleQueryLeftInfo(Json::Value& queryJson)
 	writer->write(rootNode, &osOutput);
     sendDataStr = osOutput.str();
 
-
     write_fifo(EVENT_QUERY_LEFT, sendDataStr.c_str());
 }
 
 
 void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 {
-    // Json::FastWriter writer;
-    // string data = writer.write(jsonData);
-    // LOGDBG(TAG, "=============>> Recv Message type[%s], data[%s]", getRecvMsgName(iMsgType), data.c_str());
 
     switch (iMsgType) {
         case CMD_OLED_DISP_TYPE: {	/* 通信UI线程显示指定UI */
         
             sp<DISP_TYPE> mDispType = (sp<DISP_TYPE>)(new DISP_TYPE());
-            if (jsonData["type"].isNull()) {
-            } else {
+            if (jsonData.isMember("type")) {
                 mDispType->type = jsonData["type"].asInt();
-                LOGDBG(TAG, "----------->> Display Type: %s", getDispType(mDispType->type));                
             }
 
             mDispType->mSysSetting = nullptr;
@@ -1173,68 +983,6 @@ void fifo::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             }
             break;
         }
-
-#if 0
-        case CMD_WEB_UI_TF_NOTIFY: {    /* 查询TF卡的状态 */
-            LOGDBG(TAG, "[%s:%d] get notify form server for TF info");
-
-            bool bResult = false;
-            // char cStoragePath[64] = {0};
-            // int iModuleArray = 0;
-            std::vector<sp<Volume>> storageList;
-            
-            storageList.clear();
-
-            if ( (jsonData["state"].isNull() == false) && (jsonData["results"].isNull() == false)) {
-                if (!strcmp(jsonData["state"].asCString(), "done")) {
-                    if (jsonData["results"]["module"].isArray()) {
-                        for (u32 i = 0; i < jsonData["results"]["module"].size(); i++) {
-                            sp<Volume> tmpVol = (sp<Volume>)(new Volume());
-                            if (jsonData["results"]["module"][i]["index"].isInt()) {
-                                tmpVol->iIndex = jsonData["results"]["module"][i]["index"].asInt();
-                            }
-
-                            if (jsonData["results"]["module"][i]["storage_total"].isInt()) {
-                                tmpVol->uTotal = jsonData["results"]["module"][i]["storage_total"].asInt();
-                            }
-
-                            if (jsonData["results"]["module"][i]["storage_left"].isInt()) {
-                                tmpVol->uAvail = jsonData["results"]["module"][i]["storage_left"].asInt();
-                            }
-
-                            if (jsonData["results"]["module"][i]["pro_suc"].isInt()) {
-                                tmpVol->iSpeedTest = jsonData["results"]["module"][i]["pro_suc"].asInt();
-                            }
-
-                            /* 类型为"SD"
-                            * 外部TF卡的命名规则
-                            * 名称: "tf-1","tf-2","tf-3"....
-                            */
-                            sprintf(tmpVol->cVolName, "mSD%d", tmpVol->iIndex);
-                            #if 0
-                            LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d]",
-                                        tmpVol->cVolName, 
-                                        tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest);
-
-                            #endif
-
-                            storageList.push_back(tmpVol);
-
-                        }
-                        bResult = true; 
-                    } else {
-                        LOGERR(TAG, "module not array, what's wrong");
-                    }
-                }
-            } else {
-                LOGERR(TAG, "state node not exist!");
-            }
-
-            mOLEDHandle->updateTfStorageInfo(bResult, storageList);
-            break;
-        }
-#endif        
-
 
         case CMD_WEB_UI_TF_FORMAT: {    /* 格式化结果 */
             LOGDBG(TAG, "Get Notify(mSD Format Info)");
@@ -1401,12 +1149,6 @@ void fifo::read_fifo_thread()
                         LOGERR(TAG, "parse json format failed");
                         continue;
                     }
-
-                    // Json::Reader reader;
-	                // if (!reader.parse(&buf[FIFO_HEAD_LEN], rootJson, false)) {
-		            //     LOGERR(TAG, "bad json format!");
-		            //     continue;
-	                // }
                     parseAndDispatchRecMsg(msg_what, rootJson);                  
                 }
             }
@@ -1414,7 +1156,6 @@ void fifo::read_fifo_thread()
     }
     close_read_fd();
 }
-
 
 
 void fifo::write_exit_for_read()
@@ -1468,7 +1209,6 @@ int fifo::get_read_fd()
 int fifo::get_write_fd()
 {
     if (write_fd == -1) {
-
         bWFifoStop = true;
         write_fd = open(FIFO_TO_CLIENT, O_WRONLY);
         CHECK_NE(write_fd, -1);
@@ -1479,14 +1219,14 @@ int fifo::get_write_fd()
 
 int fifo::make_fifo()
 {
-    if (access(FIFO_FROM_CLIENT, F_OK) == -1) {
+    if (access(FIFO_FROM_CLIENT, F_OK)) {
         if (mkfifo(FIFO_FROM_CLIENT, 0777)) {
             LOGDBG(TAG, "make fifo:%s fail", FIFO_FROM_CLIENT);
             return INS_ERR;
         }
     }
 
-    if (access(FIFO_TO_CLIENT, F_OK) == -1) {
+    if (access(FIFO_TO_CLIENT, F_OK)) {
         if (mkfifo(FIFO_TO_CLIENT, 0777)) {
             LOGDBG(TAG, "make fifo:%s fail", FIFO_TO_CLIENT);
             return INS_ERR;

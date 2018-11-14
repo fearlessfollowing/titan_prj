@@ -443,7 +443,7 @@ typedef struct stat cs_stat_t;
 #endif
 
 #ifndef MG_ENABLE_FILESYSTEM
-#define MG_ENABLE_FILESYSTEM 1
+#define MG_ENABLE_FILESYSTEM 0          /* 1 -> 0 */
 #endif
 
 #ifndef MG_ENABLE_HTTP_CGI

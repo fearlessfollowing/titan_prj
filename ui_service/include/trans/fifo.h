@@ -149,7 +149,6 @@ private:
     void                init();
     void                deinit();
     int                 make_fifo();
-    void                init_thread();
     void                sendExit();
 
 	int                 get_write_fd();

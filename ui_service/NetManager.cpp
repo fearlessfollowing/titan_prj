@@ -1147,10 +1147,7 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 
 void NetManager::sendIpInfo2Ui()
 {
-
-	
 #ifdef ENABLE_DEBUG_NETM
-
     /* Get Global UI object */
     LOGDBG(TAG, "NetManager: send ip(%s) info to ui", mLastDispIp);
 #endif
@@ -1162,7 +1159,9 @@ void NetManager::sendIpInfo2Ui()
     sp<ARMessage> msg = (sp<ARMessage>)(new ARMessage(4));
     msg->set<sp<DEV_IP_INFO>>("info", pInfo);
 	
+	#if 0
     fifo::getSysTranObj()->sendUiMessage(msg);
+	#endif
 }
 
 

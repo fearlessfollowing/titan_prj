@@ -20,10 +20,13 @@
 
 class ARLooper;
 
-class ARHandler : public std::enable_shared_from_this<ARHandler>
-{
+class ARHandler : public std::enable_shared_from_this<ARHandler> {
 public:
+<<<<<<< HEAD
     explicit ARHandler(const sp<ARLooper> &looper): mLooper(looper)
+=======
+    explicit ARHandler(const sp<ARLooper> &looper) : mLooper(looper)
+>>>>>>> 778269331b4f5537c90fe053075eba37252d2586
     {
     }
 
@@ -31,11 +34,15 @@ public:
 
     virtual ~ARHandler() {}
 
+<<<<<<< HEAD
     /* registerTo - 设置该ARHandler对应的Looper
      * @param
      *  looper - Looper对象
      */
     void registerTo(const sp<ARLooper>& looper) {
+=======
+    void registerTo(const sp<ARLooper> &looper) {
+>>>>>>> 778269331b4f5537c90fe053075eba37252d2586
         mLooper = looper;
     }
 
@@ -43,6 +50,7 @@ public:
         return mLooper;
     }
 
+<<<<<<< HEAD
     /* obtainMessage - 用于构造消息
      * @param
      *   what - 消息的类型值
@@ -50,6 +58,10 @@ public:
      */
     sp<ARMessage> obtainMessage(uint32_t what) {
         sp<ARMessage> msg(new ARMessage(what));
+=======
+    sp<ARMessage> obtainMessage(uint32_t what) {
+        sp<ARMessage> msg = std::make_shared<ARMessage>(what);
+>>>>>>> 778269331b4f5537c90fe053075eba37252d2586
         msg->setHandler(shared_from_this());
         return msg;
     }

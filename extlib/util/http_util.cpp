@@ -2367,7 +2367,7 @@ void mg_mgr_init_opt(struct mg_mgr *m, void *user_data, struct mg_mgr_init_opts 
 #elif defined(__unix__)
     /* Ignore SIGPIPE signal, so if client cancels the request, it
     * won't kill the whole process. */
-    printf("ignore sig pipe\n");
+    // printf("ignore sig pipe\n");
     signal(SIGPIPE, SIG_IGN);
 #endif
 

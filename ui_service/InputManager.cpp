@@ -37,8 +37,6 @@
 
 #include <log/log_wrapper.h>
 
-using namespace std;
-
 #undef  TAG
 #define TAG "InputManager"
 
@@ -92,8 +90,8 @@ InputManager::InputManager(): mBtnReportCallback(nullptr),
     pipe(mCtrlPipe);                    /* 控制按键循环线程的管道 */
     pipe(mLongPressMonitorPipe);        /* 用于给长按监听线程通信 */
 	
-    mLooperThread = thread([this]{ inputEventLoop();});
-    mLongPressMonitorThread = thread([this]{ longPressMonitorLoop();});
+    mLooperThread = std::thread([this]{ inputEventLoop();});
+    mLongPressMonitorThread = std::thread([this]{ longPressMonitorLoop();});
 
     pRespRate = property_get(PROP_KEY_RESPRATE);
     if (pRespRate) {
@@ -458,21 +456,19 @@ int InputManager::inputEventLoop()
                 if (ufds[i].revents & POLLIN) {
 					res = read(ufds[i].fd, &event, sizeof(event));
                     if (res < (int)sizeof(event)) {
-						LOGDBG(TAG, "could not get event\n");
+						LOGDBG(TAG, "could not get event");
 						return -1;
                     } else {
 						
 						#ifdef DEBUG_INPUT_MANAGER
-						LOGDBG(TAG, "get event %04x %04x %08x  "
-										  "new_time %ld \n",
-								  event.type, event.code, event.value,
-								   msg_util::get_cur_time_us());
+						LOGDBG(TAG, "get event %04x %04x %08x new_time %ld",
+								    event.type, event.code, event.value, msg_util::get_cur_time_us());
 	
 						#endif
 
                         if (event.code != 0) {
 
-							unique_lock<mutex> lock(mutexKey);
+							std::unique_lock<std::mutex> lock(mutexKey);
 							key_ts = event.time.tv_sec * 1000000LL + event.time.tv_usec;
 
 							key_interval = key_ts - last_key_ts;
@@ -494,7 +490,7 @@ int InputManager::inputEventLoop()
                                             LOGDBG(TAG, "---> OK report key code [%d]", event.code); 
                                             reportEvent(event.code);
                                         } else {
-											LOGDBG(TAG, "up key mismatch(0x%x ,0x%x)\n", event.code, last_down_key);
+											LOGWARN(TAG, "up key mismatch(0x%x ,0x%x)", event.code, last_down_key);
 										}
 									} else if ((iIntervalMs > 2500) && (iIntervalMs < 6000)) {
 									    if (event.code == last_down_key) {
@@ -506,7 +502,7 @@ int InputManager::inputEventLoop()
                                                 reportLongPressEvent(event.code);
                                             }
                                         } else {
-											LOGDBG(TAG, "up key mismatch(0x%x ,0x%x)\n", event.code, last_down_key);
+											LOGWARN(TAG, "up key mismatch(0x%x ,0x%x)", event.code, last_down_key);
 										}
                                     }
 									last_key_ts = key_ts;
