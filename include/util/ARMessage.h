@@ -66,13 +66,9 @@ public:
     ARMessage &operator=(ARMessage &) = delete;
 
 private:
-    /* data */
-    std::unordered_map<std::string, Any> mFields;
-    wp<ARHandler> mHandler;
-    uint32_t mWhat;
-
-
-
+    std::unordered_map<std::string, Any>    mFields;
+    wp<ARHandler>                           mHandler;
+    uint32_t                                mWhat;
 };
 
 #endif

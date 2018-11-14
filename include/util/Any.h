@@ -56,6 +56,7 @@ struct Any
     }
 
 private:
+
     template<typename U, 
     class = typename std::enable_if<!std::is_same<typename std::decay<U>::type, Any>::value, U>::type> 
     Any(U && value) : m_ptr(new Derived < typename std::decay<U>::type>(std::forward<U>(value))),
@@ -69,8 +70,7 @@ private:
     struct Base;
     typedef std::unique_ptr<Base> BasePtr;
 
-    struct Base
-    {
+    struct Base {
         virtual ~Base() {}
         virtual BasePtr Clone() const = 0;
     };
