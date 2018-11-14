@@ -16,7 +16,6 @@
 #define _PROTO_MANAGER_H_
 
 #include <string>
-#include <string>
 #include <functional>
 #include <system_properties.h>
 #include <sys/VolumeManager.h>
@@ -91,6 +90,21 @@ enum {
     PROTO_MANAGER_REQ_PARSE_REPLY_FAIL = -2,
     PROTO_MANAGER_REQ_CONN_CLOSEED = -3,
 };
+
+enum {
+    MSG_DISP_TYPE  = 0,
+    MSG_QUERY_LEFT_INFO = 34, 
+    MSG_GPS_STATE_CHANGE = 35,
+    MSG_SHUT_DOWN = 36,
+    MSG_SET_SN = 18,
+    MSG_SYNC_INIT = 1,
+    MSG_DISP_TYPE_ERR = 16,
+    MSG_TF_CHANGED = 31,
+    MSG_TF_FORMAT  = 32,
+    MSG_SWITCH_MOUNT_MODE = 37,
+    MSG_TEST_SPEED_RES = 33,
+};
+
 
 /*
  * 传输管理器对象 - 负责提供与服务器交互接口(使用http)
@@ -239,10 +253,17 @@ private:
     static void     onSyncHttpEvent(mg_connection *conn, int iEventType, void *pEventData);
 
 
+    void            handleDispType(Json::Value& jsonData);
     void            handleQueryLeftInfo(Json::Value& queryJson);
     void            handleGpsStateChange(Json::Value& queryJson);
     void            handleShutdownMachine(Json::Value& queryJson);
     void            handleSwitchMountMode(Json::Value& paramJson);
+    void            handleSetSn(Json::Value& jsonData);
+    void            handleSyncInfo(Json::Value& jsonData);
+    void            handleErrInfo(Json::Value& jsonData);
+    void            handleTfCardChanged(Json::Value& jsonData);
+    void            handleTfcardFormatResult(Json::Value& jsonData);
+    void            handleSpeedTestResult(Json::Value& jsonData);
 
 };
 

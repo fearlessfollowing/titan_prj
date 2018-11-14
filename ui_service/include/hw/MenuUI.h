@@ -467,8 +467,6 @@ public:
     void    send_update_dev_list(std::vector<Volume*> &mList);
     void    send_sync_init_info(sp<SYNC_INIT_INFO>& syncInfo);
 
-    void    sendUpdateGpsState(int iState);
-    void    sendShutdown();
 
     void    updateTfStorageInfo(bool bResult, std::vector<sp<Volume>>& mList);
     void    sendTfStateChanged(std::vector<sp<Volume>>& mChangedList);

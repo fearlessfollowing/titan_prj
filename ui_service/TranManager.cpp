@@ -182,8 +182,7 @@ bool TranManager::onDataAvailable(int iFd)
                 if (!reader->parse(&mRecvBuf[RECV_HEAD_LEN], &mRecvBuf[RECV_HEAD_LEN + iContentLen], &rootJson, &errs)) {
                     LOGERR(TAG, "parse json format failed");
                 }
-                ProtoManager* pm = ProtoManager::Instance();
-                bResult = pm->parseAndDispatchRecMsg(iMsgWhat, rootJson); 
+                bResult = ProtoManager::Instance()->parseAndDispatchRecMsg(iMsgWhat, rootJson); 
             }
         }
     }

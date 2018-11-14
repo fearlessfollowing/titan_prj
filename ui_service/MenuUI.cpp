@@ -9145,57 +9145,6 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
  * 外部消息发送接口
  *************************************************************************************************/
 
-
-void MenuUI::sendSpeedTestResult(std::vector<sp<Volume>>& mChangedList)
-{
-    sp<ARMessage> msg = obtainMessage(UI_MSG_SPEEDTEST_RESULT);
-    msg->set<std::vector<sp<Volume>>>("speed_test", mChangedList);
-    msg->post();   
-}
-
-
-void MenuUI::sendTfStateChanged(std::vector<sp<Volume>>& mChangedList)
-{
-    sp<ARMessage> msg = obtainMessage(UI_MSG_TF_STATE);
-    msg->set<std::vector<sp<Volume>>>("tf_list", mChangedList);
-    msg->post();   
-}
-
-void MenuUI::notifyTfcardFormatResult(std::vector<sp<Volume>>& failList)
-{
-    sp<ARMessage> msg = obtainMessage(UI_MSG_TF_FORMAT_RES);
-    msg->set<std::vector<sp<Volume>>>("tf_list", failList);
-    msg->post();     
-}
-
-
-void MenuUI::send_disp_str(sp<DISP_TYPE> &sp_disp)
-{
-    sp<ARMessage> msg = obtainMessage(UI_MSG_DISP_TYPE);
-    msg->set<sp<DISP_TYPE>>("disp_type", sp_disp);
-    msg->post();
-}
-
-void MenuUI::send_disp_err(sp<struct _err_type_info_> &mErrInfo)
-{
-    sp<ARMessage> msg = obtainMessage(UI_MSG_DISP_ERR_MSG);
-    msg->set<sp<ERR_TYPE_INFO>>("err_type_info", mErrInfo);
-    msg->post();
-}
-
-void MenuUI::send_sync_init_info(sp<SYNC_INIT_INFO>& syncInfo)
-{
-    sp<ARMessage> msg = obtainMessage(UI_MSG_SET_SYNC_INFO);
-    
-    mSyncInitInfo = syncInfo;
-    LOGDBG(TAG, "--->sync object 0x%p", mSyncInitInfo.get());
-    
-    msg->set<sp<SYNC_INIT_INFO>>("sync_info", mSyncInitInfo);
-    
-    msg->post();
-}
-
-
 void MenuUI::send_get_key(int key)
 {
     sp<ARMessage> msg = obtainMessage(UI_MSG_KEY_EVENT);
@@ -9276,19 +9225,6 @@ void MenuUI::send_clear_msg_box(int delay)
 {
     sp<ARMessage> msg = obtainMessage(UI_CLEAR_MSG_BOX);
     msg->postWithDelayMs(delay);
-}
-
-void MenuUI::sendUpdateGpsState(int iState)
-{
-    sp<ARMessage> msg = obtainMessage(UI_MSG_UPDATE_GPS_STATE);
-    msg->set<int>("gps_state", iState);    
-    msg->post();
-}
-
-void MenuUI::sendShutdown()
-{
-    sp<ARMessage> msg = obtainMessage(UI_MSG_SHUT_DOWN);
-    msg->post();
 }
 
 

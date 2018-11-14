@@ -1788,19 +1788,41 @@ void ProtoManager::setSyncReqExitFlag(bool bFlag)
     mSyncReqExitFlag = bFlag;
 }
 
-enum {
-    MSG_DISP_TYPE  = 0,
-    MSG_QUERY_LEFT_INFO = 34, 
-    MSG_GPS_STATE_CHANGE = 35,
-    MSG_SHUT_DOWN = 36,
-    MSG_SET_SN = 18,
-    MSG_SYNC_INIT = 1,
-    MSG_DISP_TYPE_ERR = 16,
-    MSG_TF_CHANGED = 31,
-    MSG_TF_FORMAT  = 32,
-    MSG_SWITCH_MOUNT_MODE = 37,
-    MSG_TEST_SPEED_RES = 33,
-};
+
+void ProtoManager::handleDispType(Json::Value& jsonData)
+{
+    sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
+    if (jsonData.isMember("type")) {
+        dispType->type = jsonData["type"].asInt();
+    }
+
+    dispType->mSysSetting = nullptr;
+    dispType->mStichProgress = nullptr;
+    dispType->mAct = nullptr;
+    dispType->control_act = -1;
+    dispType->tl_count  = -1;
+    dispType->qr_type  = -1;
+
+    if (jsonData.isMember("content")) {
+        LOGDBG(TAG, "Qr Function Not implement now ..");
+        // handleQrContent(dispType, root, subNode);
+    } else if (jsonData.isMember("req")) {
+        handleReqFormHttp(dispType, jsonData["req"]);
+    } else if (jsonData.isMember("sys_setting")) {
+        handleSetting(dispType, jsonData["sys_setting"]);
+    } else if (jsonData.isMember("tl_count")) {
+        dispType->tl_count = jsonData["tl_count"].asInt();
+    } else {
+        // LOGERR(TAG, "---------Unkown Error");
+    }
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_DISP_TYPE);
+        msg->set<sp<DISP_TYPE>>("disp_type", dispType);
+        msg->post();
+    }
+}
 
 
 void ProtoManager::handleQueryLeftInfo(Json::Value& queryJson)
@@ -1847,10 +1869,14 @@ void ProtoManager::handleQueryLeftInfo(Json::Value& queryJson)
 
 void ProtoManager::handleGpsStateChange(Json::Value& queryJson)
 {
-    int iGpstate;
     if (queryJson.isMember("state")) {
-        iGpstate = queryJson["state"].asInt();
-        mOLEDHandle->sendUpdateGpsState(iGpstate);
+        int iGpstate = queryJson["state"].asInt();
+        if (mNotify) {
+            sp<ARMessage> msg = mNotify->dup();
+            msg->set<int>("gps_state", iState);    
+            msg->setWhat(UI_MSG_UPDATE_GPS_STATE);
+            msg->post();
+        }
     } 
 }
 
@@ -1858,10 +1884,209 @@ void ProtoManager::handleGpsStateChange(Json::Value& queryJson)
 void ProtoManager::handleShutdownMachine(Json::Value& queryJson)
 {
     LOGDBG(TAG, "Recv Shut down machine message ...");
-    mOLEDHandle->sendShutdown();
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_SHUT_DOWN);
+        msg->post();
+    }
 }
 
 
+void ProtoManager::handleSetSn(Json::Value& jsonData)
+{
+    sp<SYS_INFO> sysInfo = std::make_shared<SYS_INFO>();
+    
+    if (jsonData.isMember("sn") && jsonData["sn"].isString()) {
+        snprintf(sysInfo->sn, sizeof(sysInfo->sn), "%s", jsonData["sn"].asCString());    
+        LOGDBG(TAG, "Recv SN: %s", sysInfo->sn);
+    }
+
+    if (jsonData.isMember("uuid") && jsonData["uuid"].isString()) {
+        snprintf(sysInfo->uuid, sizeof(sysInfo->uuid), "%s", jsonData["uuid"].asCString());    
+        LOGDBG(TAG, "Recv SN: %s", sysInfo->uuid);
+    }
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->set<sp<SYS_INFO>>("sys_info", sysInfo);
+        msg->setWhat(UI_MSG_SET_SN);
+        msg->post();
+    }
+}
+
+void ProtoManager::handleSyncInfo(Json::Value& jsonData)
+{
+    sp<SYNC_INIT_INFO> syncInfo = std::make_shared<SYNC_INIT_INFO>();
+      
+    LOGDBG(TAG, "----------> CMD_OLED_SYNC_INIT");
+    LOGDBG(TAG, "state: %d", jsonData["state"].asInt());
+    LOGDBG(TAG, "a_v: %s ", jsonData["a_v"].asCString());
+    LOGDBG(TAG, "h_v: %s ", jsonData["h_v"].asCString());
+    LOGDBG(TAG, "c_v: %s ", jsonData["c_v"].asCString());
+
+
+    if (jsonData.isMember("state")) {
+        mSyncInfo->state = jsonData["state"].asInt();
+    } else {
+        mSyncInfo->state = 0;
+    }
+    
+    if (jsonData.isMember("a_v")) {
+        snprintf(mSyncInfo->a_v, sizeof(mSyncInfo->a_v), "%s", jsonData["a_v"].asCString());
+    }            
+    
+    if (jsonData.isMember("h_v")) {
+        snprintf(mSyncInfo->h_v, sizeof(mSyncInfo->h_v), "%s", jsonData["h_v"].asCString());
+    }                
+
+    if (jsonData.isMember("c_v")) {
+        snprintf(mSyncInfo->c_v, sizeof(mSyncInfo->c_v), "%s", jsonData["c_v"].asCString());
+    }         
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();    
+        msg->set<sp<SYNC_INIT_INFO>>("sync_info", syncInfo);
+        msg->post();
+    }       
+}
+
+
+void ProtoManager::handleErrInfo(Json::Value& jsonData)
+{
+    sp<ERR_TYPE_INFO> errInfo = std::make_shared<ERR_TYPE_INFO>();
+
+    if (jsonData.isMember("type")) {
+        errInfo->type = jsonData["type"].asInt();
+    }    
+
+    if (jsonData.isMember("err_code")) {
+        errInfo->err_code = jsonData["err_code"].asInt();
+    }    
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_DISP_ERR_MSG);
+        msg->set<sp<ERR_TYPE_INFO>>("err_type_info", errInfo);
+        msg->post();
+
+    }
+}
+
+
+void ProtoManager::handleTfCardChanged(Json::Value& jsonData)
+{
+    LOGDBG(TAG, "[%s:%d] Get Tfcard Changed....");      
+
+    std::vector<sp<Volume>> storageList;   
+    storageList.clear();
+
+    /*  
+        * {'module': {'storage_total': 61024, 'storage_left': 47748, 'pro_suc': 1, 'index': 1}}
+        */
+    if (jsonData.isMember("module")) {
+        sp<Volume> tmpVol = std::make_shared<Volume>();
+
+        if (jsonData["module"]["index"].isInt()) {
+            tmpVol->iIndex = jsonData["module"]["index"].asInt();
+        }
+
+        if (jsonData["module"]["storage_total"].isInt()) {
+            tmpVol->uTotal = jsonData["module"]["storage_total"].asInt();
+        }
+
+        if (jsonData["module"]["storage_left"].isInt()) {
+            tmpVol->uAvail = jsonData["module"]["storage_left"].asInt();
+        }
+
+        snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
+        storageList.push_back(tmpVol);
+
+        if (mNotify) {
+            sp<ARMessage> msg = mNotify->dup();
+            msg->setWhat(UI_MSG_TF_STATE);
+            msg->set<std::vector<sp<Volume>>>("tf_list", storageList);
+            msg->post();   
+        }
+    } else {
+        LOGDBG(TAG, "[%s:%d] get module json node[module] failed");                               
+    }
+}
+
+
+void ProtoManager::handleTfcardFormatResult(Json::Value& jsonData)
+{
+    LOGDBG(TAG, "Get Notify(mSD Format Info)");
+
+    sp<Volume> tmpVolume = std::make_shared<Volume>();
+    std::vector<sp<Volume>> storageList;
+
+    if (jsonData.isMember("state")) {
+        LOGDBG(TAG, "CMD_WEB_UI_TF_FORMAT Protocal Err, no 'state'");
+        storageList.push_back(tmpVolume); 
+    } else {
+        if (!strcmp(jsonData["state"].asCString(), "done")) { /* 格式化成功 */
+            /* do nothind */
+        } else {    /* 格式化失败: TODO - 传递格式化失败的设备号(需要camerad处理) */
+            storageList.push_back(tmpVolume); 
+        }                
+    }
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_TF_FORMAT_RES);
+        msg->set<std::vector<sp<Volume>>>("tf_list", storageList);
+        msg->post();     
+    }
+}
+
+
+void ProtoManager::handleSpeedTestResult(Json::Value& jsonData) 
+{
+    LOGDBG(TAG, "Return Speed Test Result");
+
+    std::vector<sp<Volume>> storageList;
+    sp<Volume> tmpVol = NULL;
+    storageList.clear();
+
+    if (jsonData.isMember("local")) {
+        tmpVol = std::make_shared<Volume>();
+        tmpVol->iType = VOLUME_TYPE_NV;
+        tmpVol->iSpeedTest = jsonData["local"].asInt();
+        LOGDBG(TAG, "Local Device Test Speed Result: %d", tmpVol->iSpeedTest);
+        storageList.push_back(tmpVol);
+    }
+
+    if (jsonData.isMember("module")) {
+        if (jsonData["module"].isArray()) {
+            for (u32 i = 0; i < jsonData["module"].size(); i++) {
+                tmpVol = (sp<Volume>)(new Volume());
+
+                tmpVol->iType       = VOLUME_TYPE_MODULE;
+                tmpVol->iIndex      = jsonData["module"][i]["index"].asInt();
+                tmpVol->iSpeedTest  = jsonData["module"][i]["result"].asInt();
+
+                /* 类型为"SD"
+                * 外部TF卡的命名规则
+                * 名称: "tf-1","tf-2","tf-3"....
+                */
+                snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
+                LOGDBG(TAG, "mSD card node[%s] info index[%d], speed[%d]",
+                                tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
+
+                storageList.push_back(tmpVol);
+            }
+        } else {
+            LOGERR(TAG, "node module not array!!");
+        }
+    }
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_SPEEDTEST_RESULT);
+        msg->set<std::vector<sp<Volume>>>("speed_test", storageList);
+        msg->post();   
+    }
+}
 
 void ProtoManager::handleSwitchMountMode(Json::Value& paramJson)
 {
@@ -1896,33 +2121,7 @@ bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 
     switch (iMsgType) {
         case MSG_DISP_TYPE: {	/* 通信UI线程显示指定UI */
-        
-            sp<DISP_TYPE> mDispType = (sp<DISP_TYPE>)(new DISP_TYPE());
-            if (jsonData.isMember("type")) {
-                mDispType->type = jsonData["type"].asInt();
-            }
-
-            mDispType->mSysSetting = nullptr;
-            mDispType->mStichProgress = nullptr;
-            mDispType->mAct = nullptr;
-            mDispType->control_act = -1;
-            mDispType->tl_count  = -1;
-            mDispType->qr_type  = -1;
-
-            if (jsonData["content"].isNull() == false) {
-                LOGDBG(TAG, "Qr Function Not implement now ..");
-                // handleQrContent(mDispType, root, subNode);
-            } else if (jsonData["req"].isNull() == false) {
-                handleReqFormHttp(mDispType, jsonData["req"]);
-            } else if (jsonData["sys_setting"].isNull() == false) {
-                handleSetting(mDispType, jsonData["sys_setting"]);
-            } else if (jsonData["tl_count"].isNull() == false) {
-                mDispType->tl_count = jsonData["tl_count"].asInt();
-            } else {
-                // LOGERR(TAG, "---------Unkown Error");
-            }
-
-            mOLEDHandle->send_disp_str(mDispType);
+            handleDispType(jsonData);
             break;
         }
 
@@ -1944,180 +2143,37 @@ bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             break;
         }
 
-
         case MSG_SET_SN: {
-            sp<SYS_INFO> mSysInfo = sp<SYS_INFO>(new SYS_INFO());
-            
-            if (jsonData["sn"].isString()) {
-                snprintf(mSysInfo->sn, sizeof(mSysInfo->sn), "%s", jsonData["sn"].asCString());    
-                LOGDBG(TAG, "Recv SN: %s", mSysInfo->sn);
-            }
-
-            if (jsonData["uuid"].isString()) {
-                snprintf(mSysInfo->uuid, sizeof(mSysInfo->uuid), "%s", jsonData["uuid"].asCString());    
-                LOGDBG(TAG, "Recv SN: %s", mSysInfo->uuid);
-            }
-            mOLEDHandle->send_sys_info(mSysInfo);
+            handleSetSn(jsonData);
             break;
         }
 
 
         case MSG_SYNC_INIT: {	/* 给UI发送同步信息: state, a_v, h_v, c_v */
-
-            sp<SYNC_INIT_INFO> mSyncInfo = sp<SYNC_INIT_INFO>(new SYNC_INIT_INFO());
-            
-            LOGDBG(TAG, "----------> CMD_OLED_SYNC_INIT");
-            LOGDBG(TAG, "state: %d", jsonData["state"].asInt());
-            LOGDBG(TAG, "a_v: %s ", jsonData["a_v"].asCString());
-            LOGDBG(TAG, "h_v: %s ", jsonData["h_v"].asCString());
-            LOGDBG(TAG, "c_v: %s ", jsonData["c_v"].asCString());
-
-
-            if (jsonData.isMember("state")) {
-                mSyncInfo->state = jsonData["state"].asInt();
-            } else {
-                mSyncInfo->state = 0;
-            }
-            
-            if (jsonData.isMember("a_v")) {
-                snprintf(mSyncInfo->a_v, sizeof(mSyncInfo->a_v), "%s", jsonData["a_v"].asCString());
-            }            
-            
-            if (jsonData.isMember("h_v")) {
-                snprintf(mSyncInfo->h_v, sizeof(mSyncInfo->h_v), "%s", jsonData["h_v"].asCString());
-            }                
-
-            if (jsonData.isMember("c_v")) {
-                snprintf(mSyncInfo->c_v, sizeof(mSyncInfo->c_v), "%s", jsonData["c_v"].asCString());
-            }                
-            mOLEDHandle->send_sync_init_info(mSyncInfo);
+            handleSyncInfo(jsonData);
             break;
         }    
    
 
         case MSG_DISP_TYPE_ERR: {	/* 给UI发送显示错误信息:  错误类型和错误码 */
-            sp<ERR_TYPE_INFO> mInfo = sp<ERR_TYPE_INFO>(new ERR_TYPE_INFO());
-
-            if (jsonData["type"].isNull() == false) {
-                mInfo->type = jsonData["type"].asInt();
-            }    
-
-            if (jsonData["err_code"].isNull() == false) {
-                mInfo->err_code = jsonData["err_code"].asInt();
-            }    
-            mOLEDHandle->send_disp_err(mInfo);
+            handleErrInfo(jsonData);
             break;
         }
 
         case MSG_TF_CHANGED: {   /* 暂时每次只能解析一张卡的变化 */  
-
-            LOGDBG(TAG, "[%s:%d] Get Tfcard Changed....");      
-
-            std::vector<sp<Volume>> storageList;
-            
-            storageList.clear();
-
-            /*  
-             * {'module': {'storage_total': 61024, 'storage_left': 47748, 'pro_suc': 1, 'index': 1}}
-             */
-            if (jsonData["module"].isNull() == false) {
-                sp<Volume> tmpVol = (sp<Volume>)(new Volume());
-
-                if (jsonData["module"]["index"].isInt()) {
-                    tmpVol->iIndex = jsonData["module"]["index"].asInt();
-                }
-
-                if (jsonData["module"]["storage_total"].isInt()) {
-                    tmpVol->uTotal = jsonData["module"]["storage_total"].asInt();
-                }
-
-                if (jsonData["module"]["storage_left"].isInt()) {
-                    tmpVol->uAvail = jsonData["module"]["storage_left"].asInt();
-                }
-
-                snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
-                storageList.push_back(tmpVol);
-
-                /* 直接将消息丢入UI线程的消息队列中 */
-                mOLEDHandle->sendTfStateChanged(storageList);                
-            } else {
-                LOGDBG(TAG, "[%s:%d] get module json node[module] failed");                               
-            }
+            handleTfCardChanged(jsonData);
             break;
         }
 
         case MSG_TF_FORMAT: {    /* 格式化结果 */
-            LOGDBG(TAG, "Get Notify(mSD Format Info)");
-
-            sp<Volume> tmpVolume = (sp<Volume>)(new Volume());
-            std::vector<sp<Volume>> storageList;
-
-            if (jsonData["state"].isNull()) {
-                LOGDBG(TAG, "CMD_WEB_UI_TF_FORMAT Protocal Err, no 'state'");
-                storageList.push_back(tmpVolume); 
-            } else {
-                
-                if (!strcmp(jsonData["state"].asCString(), "done")) { /* 格式化成功 */
-                    /* do nothind */
-                } else {    /* 格式化失败: TODO - 传递格式化失败的设备号(需要camerad处理) */
-                    storageList.push_back(tmpVolume); 
-                }                
-            }
-            /* 直接将消息丢入UI线程的消息队列中 */
-            mOLEDHandle->notifyTfcardFormatResult(storageList);
+            handleTfcardFormatResult(jsonData);
             break;
-
         }
-
 
         case MSG_TEST_SPEED_RES: {
-
-            LOGDBG(TAG, "Return Speed Test Result");
-
-            std::vector<sp<Volume>> storageList;
-            sp<Volume> tmpVol = NULL;
-
-
-            storageList.clear();
-
-            if (jsonData["local"].isNull() == false) {
-                tmpVol = (sp<Volume>)(new Volume());
-                tmpVol->iType = VOLUME_TYPE_NV;
-                tmpVol->iSpeedTest = jsonData["local"].asInt();
-                LOGDBG(TAG, "Local Device Test Speed Result: %d", tmpVol->iSpeedTest);
-                storageList.push_back(tmpVol);
-            }
-
-            if (jsonData["module"].isNull() == false) {
-                if (jsonData["module"].isArray()) {
-                    for (u32 i = 0; i < jsonData["module"].size(); i++) {
-                        tmpVol = (sp<Volume>)(new Volume());
-
-                        tmpVol->iType       = VOLUME_TYPE_MODULE;
-                        tmpVol->iIndex      = jsonData["module"][i]["index"].asInt();
-                        tmpVol->iSpeedTest  = jsonData["module"][i]["result"].asInt();
-
-                        /* 类型为"SD"
-                        * 外部TF卡的命名规则
-                        * 名称: "tf-1","tf-2","tf-3"....
-                        */
-                        snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
-                        LOGDBG(TAG, "mSD card node[%s] info index[%d], speed[%d]",
-                                     tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
-
-                        storageList.push_back(tmpVol);
-                    }
-
-                } else {
-                    LOGERR(TAG, "node module not array!!");
-                }
-                
-            }
-
-            mOLEDHandle->sendSpeedTestResult(storageList);
+            handleSpeedTestResult(jsonData);
             break;
         }
-
 
         case MSG_SWITCH_MOUNT_MODE: {
             handleSwitchMountMode(jsonData);
