@@ -609,7 +609,6 @@ int main(int argc, char **argv)
 	int iRet = -1;
 	const char* pUcDelayStr = NULL;	
 
-    registerSig(default_signal_handler);	/* 注册信号处理函数 */
     signal(SIGPIPE, pipe_signal_handler);
 
 	iRet = __system_properties_init();		/* 属性区域初始化，方便程序使用属性系统 */

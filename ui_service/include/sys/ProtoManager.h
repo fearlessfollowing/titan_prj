@@ -12,8 +12,8 @@
 ** 修改记录:
 ** V1.0			Skymixos		2018-09-28		创建文件，添加注释
 ******************************************************************************************************/
-#ifndef _TRAN_MANAGER_H_
-#define _TRAN_MANAGER_H_
+#ifndef _PROTO_MANAGER_H_
+#define _PROTO_MANAGER_H_
 
 #include <string>
 #include <string>
@@ -206,6 +206,9 @@ public:
     bool            sendSetOptionsReq(Json::Value& optionsReq);
 
 
+    bool            parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
+
+    void            setNotifyRecv(sp<ARMessage> notify);
 
 private:
 
@@ -223,6 +226,7 @@ private:
 
     std::vector<sp<Volume>> mStorageList;
 
+    sp<ARMessage>           mNotify;
 
                     ProtoManager();
 
@@ -233,7 +237,14 @@ private:
                                     const char* pExtraHeaders, const char* pPostData);
 
     static void     onSyncHttpEvent(mg_connection *conn, int iEventType, void *pEventData);
+
+
+    void            handleQueryLeftInfo(Json::Value& queryJson);
+    void            handleGpsStateChange(Json::Value& queryJson);
+    void            handleShutdownMachine(Json::Value& queryJson);
+    void            handleSwitchMountMode(Json::Value& paramJson);
+
 };
 
 
-#endif /* _TRAN_MANAGER_H_ */
+#endif /* _PROTO_MANAGER_H_ */

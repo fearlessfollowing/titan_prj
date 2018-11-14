@@ -1073,7 +1073,6 @@ int main(int argc, char **argv)
 	const char* pUpdatePackagePath = NULL;
 
 	/* 注册信号处理 */
-	registerSig(default_signal_handler);
 	signal(SIGPIPE, pipe_signal_handler);
 
 	iRet = __system_properties_init();		/* 属性区域初始化 */

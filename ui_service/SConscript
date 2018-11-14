@@ -10,11 +10,10 @@ Import('com_env')
 
 import config
 
-src = ['fifo.cpp']
-src += ['MenuUI.cpp']
+#src = ['fifo.cpp']
+src = ['MenuUI.cpp']
 src += ['InputManager.cpp']
 src += ['NetManager.cpp']
-#src += ['pro_cfg.cpp']
 src += ['main.cpp']
 src += ['NetlinkEvent.cpp']
 src += ['NetlinkHandler.cpp']
@@ -24,6 +23,7 @@ src += ['SocketListener.cpp']
 src += ['SocketClient.cpp']
 src += ['VolumeManager.cpp']
 src += ['ProtoManager.cpp']
+src += ['TranManager.cpp']
 src += ['CfgManager.cpp']
 
 

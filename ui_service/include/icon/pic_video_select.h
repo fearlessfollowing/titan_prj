@@ -1091,6 +1091,8 @@ typedef struct stPicVideoCfg {
 } PicVideoCfg;
 
 
+#ifdef ENABLE_USE_ACTION_INFO
+
 /*
  * 8K|3D|OF ICON_INFO
  */
@@ -1240,7 +1242,7 @@ static ACTION_INFO picCustomerDefault = {
 	}
 };
 
-
+#endif
 
 
 PicVideoCfg pic8K_3D_OF = {
@@ -1249,7 +1251,11 @@ PicVideoCfg pic8K_3D_OF = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
 	stPos:				{0},						// stPos
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction: 			&pic8K3DOFDefault,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction: 			nullptr,					/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		pic8K3DOFLight_78X16,
@@ -1271,7 +1277,13 @@ PicVideoCfg pic8K_3D = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍	
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&pic8K3DDefault,
+#else
+	pStAction:			nullptr,
+#endif
+
 	jsonCmd:			nullptr,	
 	stLightIcon:		{	/* 选中时的图标列表 */
 		pic8K3DLight_78x16,
@@ -1293,7 +1305,13 @@ PicVideoCfg pic8K = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍	
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&pic8KDefault,
+#else 
+	pStAction:			nullptr,
+#endif
+
 	jsonCmd:			nullptr,	
 	stLightIcon:		{	/* 选中时的图标列表 */
 		pic8KLight_78x16,
@@ -1314,7 +1332,13 @@ PicVideoCfg picAEB = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	10,							// 10倍
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&picAebDefault,
+#else
+	pStAction:			nullptr,
+#endif
+
 	jsonCmd:			nullptr,
 		
 	stLightIcon:		{	/* 选中时的图标列表 */
@@ -1349,7 +1373,13 @@ PicVideoCfg picBurst = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	10,							// 10倍	
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&picBurstDefault,
+#else 
+	pStAction:			nullptr,
+#endif
+
 	jsonCmd:			nullptr,	
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picBurstLight_78x16,
@@ -1370,7 +1400,13 @@ PicVideoCfg picCustomer = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&picCustomerDefault,
+#else 
+	pStAction:			nullptr,
+#endif
+
 	jsonCmd:			nullptr,	
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picVidCustmLight_78x16,
@@ -1403,6 +1439,7 @@ PicVideoCfg* gPicAllModeCfgList[] = {
 
 
 
+#ifdef ENABLE_USE_ACTION_INFO
 
 /*
  * VID_8K_30F_3D
@@ -1601,6 +1638,8 @@ static ACTION_INFO vid_Customer_Action = {
 	{}
 };
 
+#endif
+
 
 static PicVideoCfg vid8K_30F_3D_Cfg = {
 	pItemName:			TAKE_VID_MODE_8K_30F_3D,		// pItemName
@@ -1608,7 +1647,13 @@ static PicVideoCfg vid8K_30F_3D_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos: 				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction: 			&vid8K_30F_3D_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction: 			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd: 			nullptr,
 	stLightIcon: 		{	/* 选中时的图标列表 */
 		vid_8K30F3D_Light_78x16,
@@ -1626,7 +1671,13 @@ static PicVideoCfg vid8K_60F_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid8K_60F_Action,				/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	                            /* 选中时的图标列表 */
 		vid_8K60F_Light_78x16,
@@ -1644,7 +1695,13 @@ static PicVideoCfg vid8K_5F_Cfg = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	0,							// 5倍
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid8K_5F_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,					/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	                        /* 选中时的图标列表 */
 		vid_8K5F_Light_78x16,
@@ -1660,9 +1717,15 @@ static PicVideoCfg vid6K_60F_3D_Cfg = {
 	pItemName:			TAKE_VID_MODE_6K_60F_3D,		// pItemName
 	iItemMaxVal:		0,								// iItemMaxVal
 	iCurVal:			0,								// iCurVal
-	iRawStorageRatio:	0,								// 5倍
+	iRawStorageRatio:	0,								
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid6K_60F_3D_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_6K60F3D_Light_78x16,
@@ -1681,7 +1744,13 @@ static PicVideoCfg vid4K_120F_3D_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid4K_120F_3D_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_4K120F3D_Light_78x16,
@@ -1699,7 +1768,13 @@ static PicVideoCfg vid4K_30F_RTS_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid4K_30F_RTS_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_4K30F_Light_78x16,
@@ -1717,7 +1792,13 @@ static PicVideoCfg vid4K_30F_3D_RTS_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid4K_30F_3D_RTS_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,							/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_4K30F3D_Light_78x16,
@@ -1736,7 +1817,13 @@ static PicVideoCfg vid8K_30F_3D_HDR_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid_Customer_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_8K30F_3D_Hdr_Light_78x16,
@@ -1755,7 +1842,13 @@ static PicVideoCfg vid8K_30F_HDR_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid_Customer_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_8K30F_Hdr_Light_78x16,
@@ -1775,7 +1868,13 @@ static PicVideoCfg vid_Customer_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&vid_Customer_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picVidCustmLight_78x16,
@@ -1816,6 +1915,7 @@ PicVideoCfg* gVidAllModeCfgList[] = {
 
 
 
+#ifdef ENABLE_USE_ACTION_INFO
 
 /*
  * 4K_30F
@@ -1956,6 +2056,8 @@ static ACTION_INFO live4K_30D_HDMI_ActionInfo = {
 	{}		// AUD_INFO
 };
 
+#endif
+
 
 PicVideoCfg live4K_30F_Cfg = {
 	pItemName:			TAKE_LIVE_MODE_4K_30F,		// pItemName
@@ -1963,7 +2065,13 @@ PicVideoCfg live4K_30F_Cfg = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&live4K_30F_ActionInfo,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		live4K_30F_Light_78x16,
@@ -1981,7 +2089,13 @@ PicVideoCfg live4K_30F_HDMI_Cfg = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&live4K_30F_HDMI_ActionInfo,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		live4K_30F_HDMI_Light_78x16,
@@ -2000,7 +2114,13 @@ PicVideoCfg live4K_30F_3D_Cfg = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
 	stPos:				{0},						// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&live4K_30D_ActionInfo,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		live4K_30F_3D_Light_78x16,
@@ -2019,7 +2139,13 @@ PicVideoCfg live4K_30F_3D_HDMI_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	5,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&live4K_30D_HDMI_ActionInfo,	/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		live4K_30F_3D_HDMI_Light_78x16,
@@ -2041,7 +2167,13 @@ PicVideoCfg live_Customer_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	5,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&live4K_30D_HDMI_ActionInfo,	/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picVidCustmLight_78x16,
@@ -2062,7 +2194,13 @@ PicVideoCfg live_Origin_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	5,								// 5倍
 	stPos:				{0},							// stPos
+
+#ifdef ENABLE_USE_ACTION_INFO
 	pStAction:			&live4K_30D_HDMI_ActionInfo,	/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#else 
+	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
+#endif
+
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picVidCustmLight_78x16,

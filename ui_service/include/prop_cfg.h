@@ -193,6 +193,8 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define USER_CFG_PARAM_PATH         "/home/nvidia/insta360/etc/user_cfg"
 #define DEF_CFG_PARAM_PATH          "/home/nvidia/insta360/etc/def_cfg"
 #define WIFI_CFG_PARAM_PATH         "/home/nvidia/insta360/etc/wifi_cfg"
+#define DEF_CFG_PARAM_FILE          "/home/nvidia/insta360/etc/def_cfg.json"
+#define USER_CFG_PARAM_FILE         "/home/nvidia/insta360/etc/user_cfg.json"
 
 
 /*

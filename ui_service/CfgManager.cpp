@@ -11,6 +11,7 @@
 ** 日     期: 2018年11月02日
 ** 修改记录:
 ** V1.0			Skymixos		2018年11月02日		创建文件，添加注释
+** V1.1         Skymixos        2018年11月14日      fixup加载配置文件的BUG
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -29,6 +30,7 @@
 #include <json/value.h>
 #include <json/json.h>
 
+#include <prop_cfg.h>
 #include <sys/Mutex.h>
 
 #include <sys/CfgManager.h>
@@ -42,9 +44,6 @@
 
 static Mutex    gCfgManagerMutex;
 
-
-#define DEF_CFG_PARAM_FILE    "/home/nvidia/insta360/etc/def_cfg.json"
-#define USER_CFG_PARAM_FILE    "/home/nvidia/insta360/etc/user_cfg.json"
 
 
 CfgManager* CfgManager::sInstance = NULL;
@@ -72,7 +71,7 @@ CfgManager::~CfgManager()
 void CfgManager::syncCfg2File(const char* pCfgFile, Json::Value& curCfg)
 {
     Json::StreamWriterBuilder builder; 
-    builder.settings_["indentation"] = ""; 
+    // builder.settings_["indentation"] = ""; 
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter()); 
     std::ofstream ofs;
 	ofs.open(pCfgFile);
@@ -80,25 +79,6 @@ void CfgManager::syncCfg2File(const char* pCfgFile, Json::Value& curCfg)
     ofs.close();
 }
 
-#if 0
-dhcp:001
-flicker:000
-hdr:000
-raw:000
-aeb:003
-ph_delay:001
-speaker:001
-light_on:001
-aud_on:001
-#0 -- normal 1--spatial
-aud_spatial:001
-flow_state:000
-gyro_on:001
-fan_on:001
-set_logo:000
-video_fragment:000
-wifi_on:000
-#endif
 
 void CfgManager::genDefaultCfg()
 {
@@ -111,29 +91,29 @@ void CfgManager::genDefaultCfg()
     modeSelectCfg["mode_select_video"]  = 0;
     modeSelectCfg["mode_select_live"]   = 0;
 
-    sysWifiCfg["wifi_cfg_passwd"]   = "Insta360";
-    sysWifiCfg["wifi_cfg_ssid"]     = "88888888";
+    sysWifiCfg["wifi_cfg_passwd"]       = "Insta360";
+    sysWifiCfg["wifi_cfg_ssid"]         = "88888888";
 
-    sysSetCfg["dhcp"]           = 1;
-    sysSetCfg["flicker"]        = 0;
-    sysSetCfg["hdr"]            = 0;
-    sysSetCfg["raw"]            = 0;
-    sysSetCfg["aeb"]            = 0;        // AEB3
-    sysSetCfg["ph_delay"]       = 1;        // 5S
-    sysSetCfg["speaker"]            = 1;        // Speaker: On
-    sysSetCfg["light_on"]           = 1;        // LED: On
-    sysSetCfg["aud_on"]             = 1;        // Audio: On
-    sysSetCfg["aud_spatial"]        = 1;        // Spatial Audio: On
-    sysSetCfg["flow_state"]         = 1;        // FlowState: Off
-    sysSetCfg["gyro_on"]            = 1;        // Gyro: On
-    sysSetCfg["fan_on"]             = 0;        // Fan: On
-    sysSetCfg["set_logo"]           = 0;        // Logo: On
-    sysSetCfg["video_fragment"]     = 0;        // Video Fragment: On
-    sysSetCfg["wifi_on"]            = 0;
+    sysSetCfg["dhcp"]                   = 1;
+    sysSetCfg["flicker"]                = 0;
+    sysSetCfg["hdr"]                    = 0;
+    sysSetCfg["raw"]                    = 0;
+    sysSetCfg["aeb"]                    = 0;        // AEB3
+    sysSetCfg["ph_delay"]               = 1;        // 5S
+    sysSetCfg["speaker"]                = 1;        // Speaker: On
+    sysSetCfg["light_on"]               = 1;        // LED: On
+    sysSetCfg["aud_on"]                 = 1;        // Audio: On
+    sysSetCfg["aud_spatial"]            = 1;        // Spatial Audio: On
+    sysSetCfg["flow_state"]             = 1;        // FlowState: Off
+    sysSetCfg["gyro_on"]                = 1;        // Gyro: On
+    sysSetCfg["fan_on"]                 = 0;        // Fan: On
+    sysSetCfg["set_logo"]               = 0;        // Logo: On
+    sysSetCfg["video_fragment"]         = 0;        // Video Fragment: On
+    sysSetCfg["wifi_on"]                = 0;
 
-    rootCfg["mode_select"] = modeSelectCfg;
-    rootCfg["sys_setting"] = sysSetCfg;
-    rootCfg["wifi_cfg"] = sysWifiCfg;
+    rootCfg["mode_select"]              = modeSelectCfg;
+    rootCfg["sys_setting"]              = sysSetCfg;
+    rootCfg["wifi_cfg"]                 = sysWifiCfg;
 
     syncCfg2File(DEF_CFG_PARAM_FILE, rootCfg);
 }
@@ -156,8 +136,15 @@ bool CfgManager::loadCfgFormFile(Json::Value& root, const char* pFile)
         LOGDBG(TAG, "parse [%s] failed", pFile);
         bResult = false;
     }
-
     ifs.close();
+
+#ifdef ENABLE_DEBUG_CFG_MANAGER
+    Json::FastWriter writer;
+    std::string actionStr = writer.write(mRootCfg);
+
+    LOGDBG(TAG, "Action Json: %s", actionStr.c_str());
+#endif
+
     return bResult;
 }
 
@@ -173,12 +160,6 @@ void CfgManager::init()
     mCallback = nullptr;
     mRootCfg.clear();
 
-    /* 检查用户配置是否存在:
-     *  - 用户的配置存在,加载用户的配置到系统中
-     *  - 如果用户的配置不存在,检查默认的配置文件是否存在；
-     *      如果默认的配置也不存在，生成一份默认的配置，并以该配置来初始化用户配置
-     *      如果默认的配置存在，用默认的配置生成一份初始的用户配置
-     */
     if (access(USER_CFG_PARAM_FILE, F_OK)) {
         LOGDBG(TAG, "User Configure[%s] not exist", USER_CFG_PARAM_FILE);
         if (access(DEF_CFG_PARAM_FILE, F_OK)) {
@@ -193,6 +174,7 @@ void CfgManager::init()
     } 
 
     LOGDBG(TAG, "Loading User Configure[%s]", USER_CFG_PARAM_FILE);
+
     /* 加载用户配置 */
     if (loadCfgFormFile(mRootCfg, USER_CFG_PARAM_FILE)) {
         LOGDBG(TAG, "Load User Configure Success, very happy ^_^.");
@@ -221,9 +203,12 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
 
     std::string::size_type idx;
     std::unique_lock<std::mutex> _l(mCfgLock);
-    
+
+    LOGDBG(TAG, ">>>>>> setKeyVal, key[%s] -> new val[%d]", key.c_str(), iNewVal);
+
     idx = key.find("mode_select");
     if (idx != std::string::npos) {  /* 设置的是mode_select_x配置值 */
+        LOGDBG(TAG, "in mode_select, idx not nopos");
         if (mRootCfg.isMember("mode_select")) {
             if (mRootCfg["mode_select"].isMember(key)) {
                 mRootCfg["mode_select"][key] = iNewVal;
@@ -244,6 +229,12 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
             }
         }
     }
+
+#ifdef ENABLE_DEBUG_CFG_MANAGER
+    Json::FastWriter writer;
+    std::string actionStr = writer.write(mRootCfg);
+    LOGDBG(TAG, "Action Json: %s", actionStr.c_str());
+#endif
 
     if (bResult) {
         syncCfg2File(USER_CFG_PARAM_FILE, mRootCfg);
@@ -280,7 +271,7 @@ int CfgManager::getKeyVal(std::string key)
         } else {    /* 普通的设置项 */
             if (mRootCfg.isMember("sys_setting")) {
                 if (mRootCfg["sys_setting"].isMember(key)) {
-                    iRet = mRootCfg["mode_select"][key].asInt();
+                    iRet = mRootCfg["sys_setting"][key].asInt();
                 }
             }
         }

@@ -6,11 +6,9 @@
 
 class ARLooper;
 
-class ARHandler : public std::enable_shared_from_this<ARHandler>
-{
+class ARHandler : public std::enable_shared_from_this<ARHandler> {
 public:
-    explicit ARHandler(const sp<ARLooper> &looper) : 
-        mLooper(looper)
+    explicit ARHandler(const sp<ARLooper> &looper) : mLooper(looper)
     {
     }
 
@@ -18,19 +16,16 @@ public:
 
     virtual ~ARHandler() {}
 
-    void registerTo(const sp<ARLooper> &looper)
-    {
+    void registerTo(const sp<ARLooper> &looper) {
         mLooper = looper;
     }
 
-    wp<ARLooper> getLooperWp()
-    {
+    wp<ARLooper> getLooperWp() {
         return mLooper;
     }
 
-    sp<ARMessage> obtainMessage(uint32_t what)
-    {
-        sp<ARMessage> msg(new ARMessage(what));
+    sp<ARMessage> obtainMessage(uint32_t what) {
+        sp<ARMessage> msg = std::make_shared<ARMessage>(what);
         msg->setHandler(shared_from_this());
         return msg;
     }

@@ -36,9 +36,6 @@
 #include <util/ARMessage.h>
 #include <util/msg_util.h>
 #include <util/bytes_int_convert.h>
-#include <sys/pro_cfg.h>
-
-#include <util/GitVersion.h>
 #include <system_properties.h>
 #include <prop_cfg.h>
 
@@ -64,6 +61,8 @@
 
 #include <log/log_wrapper.h>
 
+#include "menu_res.h"
+
 #undef      TAG
 #define     TAG     "MenuUI"
 
@@ -73,9 +72,6 @@
 
 #define SN_LEN              (14)
 #define BAT_LOW_VAL         (5)
-#define MAX_ADB_TIMES       (5)
-#define LONG_PRESS_MSEC     (2000)
-
 #define OPEN_BAT_LOW
 
 
@@ -123,8 +119,6 @@ enum {
     UI_MSG_LONG_KEY_EVENT,
     UI_MSG_UPDATE_IP,
     UI_DISP_BATTERY,//5
-    
-    //set config wifi same thread as oled wifi key action
     UI_MSG_CONFIG_WIFI,		        /* 配置WIFI参数 */
 
     UI_MSG_SET_SN,
@@ -145,17 +139,10 @@ enum {
     UI_MSG_SPEEDTEST_RESULT,
     UI_MSG_UPDATE_GPS_STATE,
     UI_MSG_SHUT_DOWN,
+    UI_MSG_COMMON,
     UI_EXIT,                    /* 退出消息循环 */
 };
 
-
-/*
- *  org res start
- */
-enum {
-    UP = 0,
-    DOWN = 1,
-};
 
 enum {
     SYS_KEY_SN,
@@ -200,362 +187,6 @@ static const char *sound_str[] = {
     "/home/nvidia/insta360/wav/one_s_timer.wav"
 };
 
-static MENU_INFO mMenuInfos[] = {
-    {	
-    	-1,					/* back_menu */
-		{-1, 0,	0, MAINMENU_MAX, MAINMENU_MAX, 1}, 
-		{OLED_KEY_UP, OLED_KEY_DOWN,  0, OLED_KEY_SETTING, OLED_KEY_POWER},
-		MENU_TOP,           /* Menu ID: MENU_TOP */
-		NULL,
-        NULL,
-	},	
-	
-    {	
-    	MENU_TOP,
-		{-1, 0, 0, 0, 0, 0}, 
-		{0, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},
-		MENU_PIC_INFO,      /* Menu ID: MENU_PIC_INFO */
-		NULL,
-        NULL,        
-	},
-	
-    {	
-    	MENU_TOP,
-		{-1, 0, 0, 0, 0, 0}, 
-		{0, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},
-		MENU_VIDEO_INFO,    /* Menu ID: MENU_VIDEO_INFO */
-		NULL,
-        NULL,        
-	},
-
-    {	/* MENU_LIVE_INFO */
-    	MENU_TOP,
-		{-1, 0, 0, 0, 0, 0}, 
-		{0, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},		/* DOWN, BACK, SETTING, POWER */
-		MENU_LIVE_INFO,     /* Menu ID: MENU_LIVE_INFO */
-		NULL,
-        NULL,        
-	},
-	
-
-	{	
-    	MENU_TOP,
-		{-1, 0, 0, 0, PAGE_MAX, 5}, /* 项数设置为0，初始化菜单时根据设置项vector的size来决定 */
-		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},		/* UP, DOWN, BACK, POWER */
-		MENU_SYS_SETTING,    /* Menu ID: MENU_SYS_SETTING */
-		NULL,                /* 设置页菜单的私有数据为一个设置项列表 */
-        NULL,        
-	}, 
-	
-    {	
-    	MENU_PIC_INFO,
-		{-1, 0, 0, 0, 0, 1},
-		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},  /* UP, DOWN, BACK, SETTING, POWER */
-        MENU_PIC_SET_DEF,      /* Menu ID: MENU_PIC_SET_DEF */
-        NULL,
-        NULL,        
-	},
-
-    {	
-    	MENU_VIDEO_INFO,
-		{-1, 0, 0, 0, 1, 1},
-		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},		/* UP, DOWN, BACK, SETTING, POWER */
-        MENU_VIDEO_SET_DEF,     /* Menu ID: MENU_VIDEO_SET_DEF */
-        NULL,                   /* TODO */
-        NULL,        
-    },
-    
-    {	/* MENU_LIVE_SET_DEF */
-    	MENU_LIVE_INFO,
-		{-1, 0, 0, 0, 0, 1},
-		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},		/* UP, DOWN, BACK, SETTING, POWER */
-        MENU_LIVE_SET_DEF,      /* Menu ID: MENU_LIVE_SET_DEF */
-        NULL,
-        NULL,        
-    },
-	
-    {	
-    	MENU_TOP,
-		{0},
-		{0},
-        MENU_CALIBRATION,       /* Menu ID: MENU_CALIBRATION */
-        NULL,
-        NULL,
-	},
-	
-    {	
-    	MENU_PIC_INFO,
-		{0},
-		{0, 0, OLED_KEY_BACK, 0, 0},			/* BACK */
-        MENU_QR_SCAN,           /* Menu ID: MENU_QR_SCAN */
-        NULL,
-        NULL,        
-    }, 
-	
-    {	/* MENU_STORAGE */
-    	MENU_SYS_SETTING,
-		{-1, 0, 0, 0, 0, 1}, 
-		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
-		MENU_STORAGE,           /* Menu ID: MENU_STORAGE */
-		NULL,
-        NULL,        
-	},
-
-
-    //sys info
-    {	/* MENU_SYS_DEV_INFO */
-    	MENU_SYS_SETTING,
-		{-1, 0, 0, 1, PAGE_MAX, 1}, 
-		{0, 0, OLED_KEY_BACK, 0, 0},
-        MENU_SYS_DEV_INFO,      /* Menu ID: MENU_SYS_DEV_INFO */
-        NULL,
-        NULL,        
-	},
-
-    {	/* MENU_SYS_ERR */
-    	MENU_TOP,
-		{0},
-		{0},
-        MENU_SYS_ERR,
-        NULL,
-        NULL,        
-	},
-
-    {	/* MENU_LOW_BAT */
-    	MENU_TOP,
-    	{0},
-    	{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
-        MENU_LOW_BAT,
-        NULL,
-        NULL,        
-	},
-
-    {	/* MENU_GYRO_START */
-    	MENU_SYS_SETTING,
-		{0},
-		{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
-        MENU_GYRO_START,
-        NULL,
-        NULL,        
-	},
-	
-    {	/* MENU_SPEED_TEST */
-    	MENU_PIC_INFO,
-		{0},
-		{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
-        MENU_SPEED_TEST,
-        NULL,
-        NULL,        
-	},
-	
-    {	/* MENU_RESET_INDICATION STATE_IDLE*/
-    	MENU_SYS_SETTING,
-		{0},
-		{OLED_KEY_UP, 0, OLED_KEY_BACK, OLED_KEY_SETTING, OLED_KEY_POWER},
-        MENU_RESET_INDICATION,
-        NULL,
-        NULL,        
-	},
-
-#ifdef ENABE_MENU_WIFI_CONNECT	
-    {	/* MENU_WIFI_CONNECT */
-    	MENU_SYS_SETTING,
-		{0},
-		{0},
-        MENU_WIFI_CONNECT,
-        NULL,
-        NULL,        
-	},
-#endif
-		
-    {	/* MENU_AGEING */
-    	MENU_TOP,
-		{0},
-		{0},
-        MENU_AGEING,
-        NULL,
-        NULL,        		
-	},
-	
-#ifdef ENABLE_MENU_LOW_PROTECT	
-    //low bat protect
-	{
-		MENU_TOP,
-		{0},
-		{0},
-        MENU_LOW_PROTECT,
-        NULL,
-        NULL,
-	},
-#endif
-
-    {	/* MENU_NOSIE_SAMPLE */
-    	MENU_SYS_SETTING,
-		{0},
-		{0},
-        MENU_NOSIE_SAMPLE,
-        NULL,
-        NULL,        
-	},
-	
-    {	/* MENU_LIVE_REC_TIME */
-    	MENU_LIVE_INFO,
-		{0},
-		{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},			/* BACK, POWER */
-        MENU_LIVE_REC_TIME,
-        NULL,
-        NULL,        
-
-	},
-
-#ifdef ENABLE_MENU_STITCH_BOX
-    /*
-     * MENU_STITCH_BOX
-     */
-	{
-        MENU_SYS_SETTING,
-        {0},
-        {0, 0, OLED_KEY_BACK, 0 , OLED_KEY_POWER},
-        MENU_STITCH_BOX,
-        NULL,
-        NULL,
-    }
-#endif
-
-    /*
-     * MENU_FORMAT
-     */
-#ifdef ONLY_EXFAT
-    {
-        MENU_STORAGE,
-        {0, 0, 0, 1, 1, 1}, 
-        {0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
-        MENU_FORMAT,
-        NULL,
-        NULL,
-    },
-#else
-    {
-        MENU_SHOW_SPACE,
-        {0, 0, 0, 2, 2, 1}, 
-        {OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},
-        MENU_FORMAT,
-        NULL,
-        NULL,
-    },
-#endif
-
-
-    /*
-     * MENU_FORMAT_INDICATION
-     */
-    {
-        MENU_SHOW_SPACE,
-        {0},
-        {0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},
-        MENU_FORMAT_INDICATION,
-        NULL,
-        NULL,
-    },
-
-
-    /*
-     * MENU_SET_PHTO_DELAY
-     */
-    {
-        MENU_SYS_SETTING,
-        {-1 ,0, 0, 8, 3, 3},
-        {OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},
-        MENU_SET_PHOTO_DEALY,
-        NULL,
-        NULL,
-    },
-
-#ifdef ENABLE_MENU_AEB
-    /*
-     * MENU_AEB
-     */
-    {
-        MENU_SYS_SETTING,
-        {-1 ,0, 0, 8, 3, 3},
-        {OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},
-        MENU_SET_AEB,
-        NULL,
-        NULL,
-    },
-#endif
-
-    {	/* MENU_SHOW_SPACE */
-    	MENU_STORAGE,
-		{-1, 0, 0, 0, 0, 1}, 
-		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
-		MENU_SHOW_SPACE,           /* Menu ID: MENU_SHOW_SPACE */
-		NULL,
-        NULL,        
-	},
-
-
-    {	/* MENU_SHOW_SPACE SetStorageItem */
-    	MENU_SHOW_SPACE,
-		{-1, 0, 0, 0, 0, 1}, 
-		{OLED_KEY_UP, OLED_KEY_DOWN, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
-		MENU_TF_FORMAT_SELECT,           /* Menu ID: MENU_TF_FORMAT_SELECT */
-		NULL,
-        NULL,        
-	},
-
-    {	/* MENU_SHOW_SPACE SetStorageItem */
-    	MENU_STORAGE,
-		{-1, 0, 0, 0, 0, 1}, 
-		{0, 0, OLED_KEY_BACK, 0, OLED_KEY_POWER},	/* BACK */
-		MENU_SET_TEST_SPEED,           /* Menu ID: MENU_TF_FORMAT_SELECT */
-		NULL,
-        NULL,        
-	},
-
-#if 1
-	{	/* MENU_DISP_MSG_BOX */
-    	MENU_TOP,
-		{0},
-		{0},
-        MENU_CALC_BLC,
-        NULL,
-        NULL,        
-	},
-
-	{	/* MENU_DISP_MSG_BOX */
-    	MENU_TOP,
-		{0},
-		{0},
-        MENU_CALC_BPC,
-        NULL,
-        NULL,        
-	},
-#endif
-
-	{	/* MENU_DISP_MSG_BOX */
-    	MENU_TOP,
-		{0},
-#if 0        
-		{0, 0, OLED_KEY_BACK, 0, 0},    /* 支持返回键 */
-#else
-		{0, 0, 0, 0, 0},    /* 支持返回键 */
-#endif
-        MENU_UDISK_MODE,
-        NULL,
-        NULL,        
-	},
-
-
-	{	/* MENU_DISP_MSG_BOX */
-    	MENU_TOP,
-		{0},
-		{0},
-        MENU_DISP_MSG_BOX,
-        NULL,
-        NULL,        
-	},
-};
 
 
 static int main_icons[][MAINMENU_MAX] = {
@@ -705,29 +336,6 @@ static SYS_ERROR mSysErr[] = {
 };
 
 
-class menu_arhandler : public ARHandler {
-public:
-    menu_arhandler(MenuUI *source): mHandler(source) {
-    }
-
-    virtual ~menu_arhandler() override {
-    }
-
-    virtual void handleMessage(const sp<ARMessage> &msg) override {
-        mHandler->handleMessage(msg);
-    }
-	
-private:
-    MenuUI *mHandler;
-};
-
-sp<ARMessage> MenuUI::obtainMessage(uint32_t what)
-{
-    return mHandler->obtainMessage(what);
-}
-
-
-
 /*************************************************************************
 ** 方法名称: initUiMsgHandler
 ** 方法功能: 创建事件处理线程
@@ -736,31 +344,13 @@ sp<ARMessage> MenuUI::obtainMessage(uint32_t what)
 **
 **
 *************************************************************************/
-void MenuUI::initUiMsgHandler()
+void MenuUI::uiSubsysInit()
 {
-#if 0
-    std::promise<bool> pr;
-    std::future<bool> reply = pr.get_future();
-    th_msg_ = std::thread([this, &pr]
-                   {
-                       mLooper = sp<ARLooper>(new ARLooper());
-                       mHandler = sp<ARHandler>(new menu_arhandler(this));
-                       mHandler->registerTo(mLooper);
-                       pr.set_value(true);
-                       mLooper->run();
-                   });
-#else 
-    th_msg_ = std::thread([this]()
-                   {
-                       mLooper = sp<ARLooper>(new ARLooper());
-                       mHandler = sp<ARHandler>(new menu_arhandler(this));
-                       mHandler->registerTo(mLooper);
-                       mLooper->run();
-                   });
-
-#endif
-
-
+    mUiMsgThread = std::thread([this](){
+        mLooper = std::make_shared<ARLooper>(); // sp<ARLooper>(new ARLooper());
+        registerTo(mLooper);
+        mLooper->run();
+    });
 }
 
 
@@ -844,12 +434,6 @@ void MenuUI::init_menu_select()
 void MenuUI::init()
 {
     LOGDBG(TAG, "MenuUI init objects start ... ");
-
-    CfgManager* cm = NULL;
-
-    // CHECK_EQ(sizeof(mMenuInfos) / sizeof(mMenuInfos[0]), MENU_MAX);
-    // CHECK_EQ(sizeof(astSysRead) / sizeof(astSysRead[0]), SYS_KEY_MAX);
-
     
     mGpsState = GPS_STATE_NO_DEVICE;
 
@@ -858,37 +442,39 @@ void MenuUI::init()
     LOGDBG(TAG, "Create OLED display Object...");
 
 	/* OLED对象： 显示系统 */
-    mOLEDModule = sp<oled_module>(new oled_module());
+    mOLEDModule = std::make_shared<oled_module>();
     CHECK_NE(mOLEDModule, nullptr);
 
     LOGDBG(TAG, "Create System Configure Object...");
-    cm = CfgManager::Instance();     /* 配置管理器初始化 */
+    CfgManager::Instance();     /* 配置管理器初始化 */
 
     LOGDBG(TAG, "Create System Light Manager Object...");
 
-    mOLEDLight = sp<oled_light>(new oled_light());
+    mOLEDLight = std::make_shared<oled_light>();
     CHECK_NE(mOLEDLight, nullptr);
 
     LOGDBG(TAG, "Create System Battery Manager Object...");
-    mBatInterface = sp<battery_interface>(new battery_interface());
+    mBatInterface = std::make_shared<battery_interface>();
     CHECK_NE(mBatInterface, nullptr);
 
-    m_bat_info_ = sp<BAT_INFO>(new BAT_INFO());
+    m_bat_info_ = std::make_shared<BAT_INFO>();
     CHECK_NE(m_bat_info_, nullptr);
+
     memset(m_bat_info_.get(), 0, sizeof(BAT_INFO));
     m_bat_info_->battery_level = 1000;
 
     LOGDBG(TAG, "Create System Info Object...");
-    mReadSys = sp<SYS_INFO>(new SYS_INFO());
+    mReadSys = std::make_shared<SYS_INFO>();
     CHECK_NE(mReadSys, nullptr);
 
     LOGDBG(TAG, "Create System Version Object...");
-    mVerInfo = sp<VER_INFO>(new VER_INFO());
+    mVerInfo = std::make_shared<VER_INFO>();
     CHECK_NE(mVerInfo, nullptr);
 
     #ifdef ENABLE_WIFI_STA
-    mWifiConfig = sp<WIFI_CONFIG>(new WIFI_CONFIG());
+    mWifiConfig = std::make_shared<WIFI_CONFIG>();
     CHECK_NE(mWifiConfig, nullptr);	
+
     memset(mWifiConfig.get(), 0, sizeof(WIFI_CONFIG));
     #endif
 
@@ -959,12 +545,61 @@ void MenuUI::init()
     memset(mLocalIpAddr, 0, sizeof(mLocalIpAddr));
     strcpy(mLocalIpAddr, "0.0.0.0");
 
-    /* NetManager Subsystem Init
-     * Eth0
-     * Wlan0
-     */
+    mAgingMode = false;
+
+    LOGDBG(TAG, ">>>>>>>> Init MenUI object ok ......");
+}
 
 
+/*
+ * 1.通信子线程(FIFO)
+ * 2.网络管理子系统
+ * 3.输入管理子系统
+ * 4.卷管理子系统（接受内核消息的监听器）
+ * 5.UI消息处理子线程
+ */
+
+/*************************************************************************
+** 方法名称: MenuUI
+** 方法功能: 构造函数,UI对象
+** 入口参数: 无
+** 返 回 值: 无 
+** 调     用: 
+**
+*************************************************************************/
+MenuUI::MenuUI() 
+{
+    LOGDBG(TAG, "[%s: %d]>>>>>>> Constructor MenuUI Object");
+}
+
+
+/*
+ * 子系统初始化
+ */
+void MenuUI::subSysInit()
+{
+
+    /*******************************************************************************
+     * 协议管理器初始化
+     *******************************************************************************/
+    ProtoManager::Instance()->setNotifyRecv(obtainMessage(UI_MSG_COMMON));
+
+    
+    /*******************************************************************************
+     * 传输子系统初始化
+     *******************************************************************************/
+
+
+
+    /*******************************************************************************
+     * UI子系统初始化
+     *******************************************************************************/
+    uiSubsysInit();
+
+
+    /*******************************************************************************
+     * 网络管理子系统初始化
+     *******************************************************************************/
 #ifdef ENABLE_NET_MANAGER
 
     mNetManager = NetManager::getNetManagerInstance();
@@ -994,7 +629,6 @@ void MenuUI::init()
 	if (!mHaveConfigSSID) {
 
 		const char* pRandSn = NULL;
-
 		pRandSn = property_get(PROP_SYS_AP_PESUDO_SN);
 		if (pRandSn == NULL) {
 			pRandSn = "Tester";
@@ -1025,8 +659,26 @@ void MenuUI::init()
 		handleorSetWifiConfig(wifiConfig);
 		mHaveConfigSSID = true;
 	}
-#endif    
+#endif 
 
+
+
+    /*******************************************************************************
+     * 卷管理子系统初始化
+     *******************************************************************************/
+	/* 设备管理器: 监听设备的动态插拔 */
+    sp<ARMessage> devNotify = obtainMessage(UI_UPDATE_DEV_INFO);
+    VolumeManager* volInstance = VolumeManager::Instance();
+    if (volInstance) {
+        LOGDBG(TAG, "+++++++++ Start Vold(2.5) Manager +++++++++");
+        volInstance->setNotifyRecv(devNotify);
+        volInstance->start();
+    }
+
+
+    /*******************************************************************************
+     * 输入子系统初始化
+     *******************************************************************************/
     LOGDBG(TAG, "---------> Init Input Manager");
     sp<ARMessage> inputNotify = obtainMessage(UI_MSG_KEY_EVENT);
     InputManager* in = InputManager::Instance();
@@ -1034,54 +686,49 @@ void MenuUI::init()
 
 
     /*******************************************************************************
-     * 启动卷管理器
+     * 通信子系统初始化
      *******************************************************************************/
+    // sp<ARMessage> inputNotify = obtainMessage(UI_MSG_COMMON);
+    // InputManager* in = InputManager::Instance();
+    // in->setNotifyRecv(inputNotify);
 
-	/* 设备管理器: 监听设备的动态插拔 */
-    sp<ARMessage> dev_notify = obtainMessage(UI_UPDATE_DEV_INFO);
-    VolumeManager* volInstance = VolumeManager::Instance();
-    if (volInstance) {
-        LOGDBG(TAG, "+++++++++ Start Vold(2.4) Manager +++++++++");
-        volInstance->setNotifyRecv(dev_notify);
-        volInstance->start();
-    }
-
-    mAgingMode = false;
-
-    LOGDBG(TAG, ">>>>>>>> Init MenUI object ok ......");
 }
 
-#if 0
-tegra186-quill-camera-e3333-a00.dtsi:37:			label = "cam0-rst", "cam0-pwdn",
-tegra186-quill-camera-e3326-a00.dtsi:51:			label = "cam0-rst", "cam0-pwdn";
-tegra186-quill-camera-modules.dtsi:47:			label = "cam0-rst", "cam0-pwdn",
-tegra186-quill-camera-plugin-manager.dtsi:172:						label = "cam0-rst", "cam0-pwdn";
-tegra186-quill-camera-plugin-manager.dtsi:399:						label = "cam0-rst", "cam0-pwdn",
-tegra186-quill-camera-plugin-manager.dtsi:437:						label = "cam0-rst", "cam0-pwdn",
-tegra186-quill-camera-plugin-manager.dtsi:1012:						label = "cam0-rst", "cam0-pwdn",
-tegra186-quill-camera-plugin-manager.dtsi:1619:						label = "cam0-pwdn";
 
-    ./flash.sh -r -k kernel-dtb jetson-tx2 mmcblk0p1
-#endif
-
-
-/*************************************************************************
-** 方法名称: MenuUI
-** 方法功能: 构造函数,UI对象
-** 入口参数: 无
-** 返 回 值: 无 
-** 调     用: 
-**
-*************************************************************************/
-MenuUI::MenuUI() 
+void MenuUI::subSysDeInit()
 {
-    LOGDBG(TAG, "[%s: %d]>>>>>>> Constructor MenuUI Object");
- 
-    initUiMsgHandler();	        /* 初始化消息处理线程 */
+
+}
+
+void MenuUI::startUI()
+{
     init();					    /* MenuUI内部成员初始化 */
+    subSysInit();               /* 各个子系统初始化 */    
     send_init_disp();		    /* 给消息处理线程发送初始化显示消息 */
 }
 
+
+/*
+ * 1.停止其他子线程
+ */
+void MenuUI::stopUI()
+{
+    deinit();
+}
+
+
+void MenuUI::deinit()
+{
+    LOGDBG(TAG, "deinit\n");
+	
+    setLightDirect(LIGHT_OFF);
+
+	mNetManager = nullptr;
+
+    sendExit();
+
+    LOGDBG(TAG, "deinit2");
+}
 
 
 /*************************************************************************
@@ -1094,7 +741,7 @@ MenuUI::MenuUI()
 *************************************************************************/
 MenuUI::~MenuUI()
 {
-    deinit();
+    LOGDBG(TAG, "---> Deconstructor MenuUI here");
 }
 
 
@@ -1111,6 +758,8 @@ void MenuUI::send_init_disp()
     sp<ARMessage> msg = obtainMessage(UI_DISP_INIT);
     msg->post();
 }
+
+
 
 /*************************************************************************
 ** 方法名称: init_cfg_select
@@ -1139,6 +788,8 @@ void MenuUI::init_cfg_select()
 
     init_menu_select();     /* 菜单项初始化 */
 
+#ifdef ENABLE_NET_MANAGER
+
     sp<ARMessage> msg;
     sp<DEV_IP_INFO> tmpInfo;
     int iCmd = -1;
@@ -1156,12 +807,12 @@ void MenuUI::init_cfg_select()
         iCmd = NETM_CLOSE_NETDEV;
 	}	
 
-    #ifdef ENABLE_NET_MANAGER
     msg = (sp<ARMessage>)(new ARMessage(iCmd));
     LOGDBG(TAG, "init_cfg_select: wifi state[%d]", CfgManager::Instance()->getKeyVal("wifi_on"));
     msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
     NetManager::getNetManagerInstance()->postNetMessage(msg);
-    #endif
+#endif
+
 }
 
 
@@ -1224,7 +875,6 @@ void MenuUI::init_sound_thread()
 }
 
 
-
 /****************************************************************************************************
  * 菜单类
  ****************************************************************************************************/
@@ -1258,9 +908,7 @@ void MenuUI::disp_msg_box(int type)
         return;
     }
 
-
     if (cur_menu != MENU_DISP_MSG_BOX) {
-        //force light back to front or off 170731
         if (cur_menu == MENU_SYS_ERR || ((MENU_LOW_BAT == cur_menu) && checkStateEqual(serverState, STATE_IDLE))) {
             if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
                 setLightDirect(front_light);
@@ -1463,10 +1111,12 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
         if (!strcmp(pItemName, SET_ITEM_NAME_DHCP)) {   /* DHCP */
             pSetItem[i]->iCurVal = cm->getKeyVal("dhcp");
             LOGDBG(TAG, "DHCP Init Val --> [%d]", pSetItem[i]->iCurVal);
+
             /* 需要开启DHCP?? */
         #ifdef ENABLE_NET_MANAGER            
             switchEtherIpMode(pSetItem[i]->iCurVal);
         #endif
+
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FREQ)) {            /* FREQ -> 需要通知对方 */
             pSetItem[i]->iCurVal = cm->getKeyVal("flicker");
             LOGDBG(TAG, "Flick Init Val --> [%d]", pSetItem[i]->iCurVal);
@@ -2255,8 +1905,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
 }
 
 
-
-
 /*
  * 界面没变,IP地址发生变化
  * IP地址没变,界面发生变化
@@ -2272,35 +1920,17 @@ void MenuUI::uiShowStatusbarIp()
 }
 
 
-
-void MenuUI::stop_bat_thread()
-{
-#if 0
-    LOGDBG(TAG, "sendExit bExitBat %d", bExitBat);
-    if (!bExitBat) {
-        bExitBat = true;
-        if (th_bat_.joinable()) {
-            th_bat_.join();
-        } else {
-            LOGERR(TAG, " th_light_ not joinable ");
-        }
-    }
-    LOGDBG(TAG, "sendExit bExitBat %d over", bExitBat);
-#endif
-}
-
-
 void MenuUI::sendExit()
 {
     LOGDBG(TAG, "sendExit");
 
     if (!bExitMsg) {
         bExitMsg = true;
-        if (th_msg_.joinable()) {
+        if (mUiMsgThread.joinable()) {
             obtainMessage(UI_EXIT)->post();
-            th_msg_.join();
+            mUiMsgThread.join();
         } else {
-            LOGERR(TAG, " th_msg_ not joinable ");
+            LOGERR(TAG, " mUiMsgThread not joinable ");
         }
     }
     LOGDBG(TAG, "sendExit2");
@@ -2566,7 +2196,6 @@ void MenuUI::setGyroCalcDelay(int iDelay)
  */
 bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 {
-    // sp<ARMessage> msg = mNotify->dup();
     int iIndex = 0;
 
     struct stPicVideoCfg* pTmpPicVidCfg = NULL;
@@ -3014,7 +2643,7 @@ void MenuUI::read_ver_info()
 	
     snprintf(mVerInfo->r_v_str, sizeof(mVerInfo->r_v_str), "V: %s", mVerInfo->r_ver);
 	
-    snprintf(mVerInfo->p_ver, sizeof(mVerInfo->p_ver), "%s", GIT_SHA1);
+    snprintf(mVerInfo->p_ver, sizeof(mVerInfo->p_ver), "%s", "V1.1.0");
 
 	/* 内核使用的版本 */
     snprintf(mVerInfo->k_ver, sizeof(mVerInfo->k_ver), "%s", "4.4.38");
@@ -5183,42 +4812,6 @@ bool MenuUI::menuHasStatusbar(int menu)
 
 void MenuUI::func_low_protect()
 {
-#if 0
-    int times = 10;
-    bool bSend = true;
-    bool bCharge;
-    int ret;
-
-    for (int i = 0; i < times; i++) {
-        disp_sec(times - i, 52, 48);
-        msg_util::sleep_ms(1000);
-        ret =get_battery_charging(&bCharge);
-        LOGDBG(TAG,"prot (%d %d)",ret,bCharge);
-        if ( ret == 0 && bCharge)
-        {
-            m_bat_info_->bCharge = bCharge;
-            bSend = false;
-            break;
-        }
-
-    }
-
-    LOGDBG(TAG, "func_low_protect %d", bSend);
-    
-    if (bSend) {
-        sendRpc(ACTION_LOW_PROTECT,REBOOT_SHUTDOWN);
-        set_back_menu(MENU_LOW_PROTECT,MENU_TOP);
-        disp_low_protect();
-        mCamState = STATE_IDLE;
-    } else {
-//        //update bat icon
-        oled_disp_battery();
-
-        // back for battery charge
-        procBackKeyEvent();
-    }
-    LOGDBG(TAG, "func_low_protect %d menu %d state 0x%x", bSend, cur_menu, mCamState);
-#endif
 }
 
 
@@ -5817,6 +5410,7 @@ bool MenuUI::checkStorageSatisfy(int action)
     }
     return bRet;
 }
+
 
 #ifdef ENABLE_NET_MANAGER
 
@@ -6638,7 +6232,6 @@ int MenuUI::oled_disp_battery()
             dispIconByType(icon);
         }
     } else {
-        //disp nothing while no bat
         clearArea(103, 0, 25, 16);
     }
 	
@@ -8117,13 +7710,14 @@ int MenuUI::oled_disp_type(int type)
             }
             break;
 
-        case START_LOW_BAT_FAIL:
+        case START_LOW_BAT_FAIL: {
             if (MENU_LOW_BAT != cur_menu) {
                 setCurMenu(MENU_LOW_BAT);
             } else {
                 setLightDirect(BACK_RED|FRONT_RED);
             }
             break;
+        }
 
 
         case START_NOISE: {
@@ -8327,12 +7921,8 @@ bool MenuUI::is_bat_low()
 
 void MenuUI::func_low_bat()
 {
-    #if 0
-    sendRpc(ACTION_LOW_BAT, REBOOT_SHUTDOWN);
-    #else 
     ProtoManager* pm = ProtoManager::Instance();
     pm->sendLowPowerReq();
-    #endif
 }
 
 void MenuUI::setLightDirect(u8 val)
@@ -8493,18 +8083,7 @@ int MenuUI::read_tmp(double *int_tmp, double *tmp)
 }
 
 
-void MenuUI::deinit()
-{
-    LOGDBG(TAG, "deinit\n");
-	
-    setLightDirect(LIGHT_OFF);
 
-	mNetManager = nullptr;
-
-    sendExit();
-
-    LOGDBG(TAG, "deinit2");
-}
 
 
 /**********************************************************************************************
@@ -8885,10 +8464,6 @@ void MenuUI::handleDispInit()
     read_ver_info();				/* 读取系统的版本信息 */ 
 	
     init_cfg_select();				/* 根据配置初始化选择项 */
-
-	/*
-	 * 显示IP地址
-	 */
 
 	//disp top before check battery 170623 for met enter low power of protect at beginning
     bDispTop = true;				/* 显示顶部标志设置为true */
@@ -9570,46 +9145,6 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
  * 外部消息发送接口
  *************************************************************************************************/
 
-#if 0
-/*
- * 更新TF卡存储信息(需要根据同步或异步做不同的处理))
- * bResult - 查询成功返回true;否则返回false
- * mList - 查询成功后会用mList来更新远端存储设备列表
- */
-void MenuUI::updateTfStorageInfo(bool bResult, std::vector<sp<Volume>>& mList)
-{
-    VolumeManager* vm = VolumeManager::Instance();
- 
-    LOGDBG(TAG, "updateTfStorageInfo <<<<<<<<<<<<");
-
-    if (bResult) {
-        if (vm) {
-            LOGDBG(TAG, ">>>>>>>>>>>> calling vm->updateRemoteTfsInfo");
-            vm->updateRemoteTfsInfo(mList);
-        } else {
-            LOGERR(TAG, "Volume Manager Not init, What's wrong!!");
-        }
-    } else {
-        LOGDBG(TAG, "Query TF Card Failed ....");
-    }
-
-    if (mSysncQueryTfReq == true && mAsyncQueryTfReq == false) {    /* 同步 */
-        mSysncQueryTfReq = false;
-        mAsyncQueryTfReq = false;
-    } else if (mSysncQueryTfReq == false && mAsyncQueryTfReq == true) { /* 异步 */
-        mSysncQueryTfReq = false;
-        mAsyncQueryTfReq = false;
-
-#ifdef ENABLE_DEBUG_MODE    
-    LOGDBG(TAG, "SEND UI_MSG_QUERY_TF_RES MSG NOW ......");
-#endif
-        /* 发送异步消息通知UI线程TF查询的结果 */
-        sp<ARMessage> msg = obtainMessage(UI_MSG_QUERY_TF_RES);
-        msg->post();
-    }
-}
-#endif
-
 
 void MenuUI::sendSpeedTestResult(std::vector<sp<Volume>>& mChangedList)
 {
@@ -9716,13 +9251,6 @@ void MenuUI::send_update_mid_msg(int interval)
     } else {
         LOGDBG(TAG, "set_update_mid true (%d)", cur_menu);
     }
-}
-
-
-void MenuUI::postUiMessage(sp<ARMessage>& msg)
-{
-    msg->setHandler(mHandler);
-    msg->post();
 }
 
 

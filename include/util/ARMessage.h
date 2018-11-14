@@ -7,8 +7,7 @@
 class ARHandler;
 class ARLooper;
 
-class ARMessage : public std::enable_shared_from_this<ARMessage>
-{
+class ARMessage :  public std::enable_shared_from_this<ARMessage>  {
 public:
     friend class ARHandler;
 

@@ -29,27 +29,28 @@ enum {
 class CfgManager {
 
 public:
-	virtual             ~CfgManager();
+	virtual                 ~CfgManager();
 
-    static CfgManager*	Instance();
+    static CfgManager*	    Instance();
 
-    bool                setKeyVal(std::string key, int iNewVal);
-    int                 getKeyVal(std::string key);
-    void                setCallback(CfgChangedCallback callback);
+    bool                    setKeyVal(std::string key, int iNewVal);
+    int                     getKeyVal(std::string key);
+    void                    setCallback(CfgChangedCallback callback);
 
     /*
      * 复位所有的配置项
      */
-    bool                resetAllCfg();
+    bool                    resetAllCfg();
+
 private:
 
-            CfgManager();
+                            CfgManager();
 
-    bool    loadCfgFormFile(Json::Value& root, const char* pFile);
-    void    init();
-    void    deinit();
-    void    genDefaultCfg();
-    void    syncCfg2File(const char* pCfgFile, Json::Value& curCfg);
+    bool                    loadCfgFormFile(Json::Value& root, const char* pFile);
+    void                    init();
+    void                    deinit();
+    void                    genDefaultCfg();
+    void                    syncCfg2File(const char* pCfgFile, Json::Value& curCfg);
 
     static CfgManager*   	sInstance;
     std::mutex              mCfgLock; 

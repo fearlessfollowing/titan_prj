@@ -6,7 +6,6 @@
 #include <util/ARMessage.h>
 #include <hw/oled_module.h>
 #include <sys/action_info.h>
-#include <sys/pro_cfg.h>
 
 
 enum {
