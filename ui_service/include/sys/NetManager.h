@@ -1,5 +1,5 @@
-#ifndef PROJECT_NET_MANAGER_H
-#define PROJECT_NET_MANAGER_H
+#ifndef _NET_MANAGER_H
+#define _NET_MANAGER_H
 
 #include <mutex>
 #include <common/sp.h>
@@ -117,73 +117,67 @@ typedef struct stWifiConfig {
 
 
 class NetDev {
+
 public:
 
-	NetDev(int iType, int iWkMode, int iState, bool activeFlag, std::string ifName, int iMode);
-    ~NetDev();
+	                NetDev(int iType, int iWkMode, int iState, bool activeFlag, std::string ifName, int iMode);
+                    ~NetDev();
 
 	/* 打开/关闭网络设备 */
-    virtual int netdevOpen();
-    virtual int netdevClose();
+    virtual int     netdevOpen();
+    virtual int     netdevClose();
 
-    virtual int processPollEvent(sp<NetDev>& netdev);
+    virtual int     processPollEvent(sp<NetDev>& netdev);
 
 
 	/* 获取/设置保存的链路状态 */
-    int getNetdevSavedLink();
-	void setNetdevSavedLink(int linkState);
+    int             getNetdevSavedLink();
+	void            setNetdevSavedLink(int linkState);
 
 	/* 获取网络设备的链路状态 */
-    int getNetdevLinkFrmPhy();							
+    int             getNetdevLinkFrmPhy();							
 
 
 	/* 获取/设置网卡的激活状态 */
-	bool getNetDevActiveState();
-	int setNetDevActiveState(bool state);
+	bool            getNetDevActiveState();
+	int             setNetDevActiveState(bool state);
 
 
-    const char* getCurIpAddr();
-    const char* getSaveIpAddr();
+    const char*     getCurIpAddr();
+    const char*     getSaveIpAddr();
 
 
 	/* 将当前有效的网卡地址保存起来 */
-    void storeCurIp2Saved();
+    void            storeCurIp2Saved();
 	
 	/* 将保存起来有效的网卡地址恢复到mCurIpAddr及硬件中 */
-    void resumeSavedIp2CurAndPhy(bool bUpPhy);
+    void            resumeSavedIp2CurAndPhy(bool bUpPhy);
 
 
     /* 设置当前的IP地址(除了更新mCurIpAddr,还会将地址更新到网卡硬件中) */
-    void setCurIpAddr(const char* ip, bool bUpPhy);
+    void            setCurIpAddr(const char* ip, bool bUpPhy);
 
 
 	/* 获取/设置Phy IP地址 */
-    const char* getNetDevIpFrmPhy();
+    const char*     getNetDevIpFrmPhy();
 
 
-    bool setNetDevIp2Phy(const char* ip);
+    bool            setNetDevIp2Phy(const char* ip);
 
 	/* 获取网卡的设备名 */
-	std::string& getDevName();
+	std::string&    getDevName();
 
 
-    void getIpByDhcp();
+    void            getIpByDhcp();
 
-    void flushDhcpAddr();
-
-    bool isCachedDhcpAddr();
-
-    const char* getCachedDhcpAddr();
-    void setCachedDhcpAddr(const char* ipAddr);
-
-    int getNetDevType();
+    int             getNetDevType();
 	
-	int getCurGetIpMode();
+	int             getCurGetIpMode();
 	
-	void setCurGetIpMode(int iMode);
+	void            setCurGetIpMode(int iMode);
 
-	void setWiFiWorkMode(int iMode);
-	int  getWiFiWorkMode();	
+	void            setWiFiWorkMode(int iMode);
+	int             getWiFiWorkMode();	
 
 private:
 
@@ -201,8 +195,7 @@ private:
 
     char            mCurIpAddr[IP_ADDR_STR_LEN];
     char            mSaveIpAddr[IP_ADDR_STR_LEN];
-    char            mCachedDhcpAddr[IP_ADDR_STR_LEN];    /* Saved DHCP Ipaddr */
-    bool            mHaveCachedDhcp;
+
 	int 			iGetIpMode; 		/* 1 = DHCP, 0 = Static */
 
     std::string     mDevName;
@@ -212,30 +205,27 @@ private:
 
 class EtherNetDev: public NetDev {
 public:
-    EtherNetDev(std::string ifName, int iMode);
-    ~EtherNetDev();
+            EtherNetDev(std::string ifName, int iMode);
+            ~EtherNetDev();
 
-    int netdevOpen();
-    int netdevClose();
+    int     netdevOpen();
+    int     netdevClose();
 
-    int processPollEvent(sp<NetDev>& etherDev);
+    int     processPollEvent(sp<NetDev>& etherDev);
 	
 };
 
 
 class WiFiNetDev: public NetDev {
 public:
-    WiFiNetDev(int iWorkMode, std::string ifName, int iMode);
-    ~WiFiNetDev();
+            WiFiNetDev(int iWorkMode, std::string ifName, int iMode);
+            ~WiFiNetDev();
 
-    int netdevOpen();			/* 打开WIFI设备 */
-    int netdevClose();			/* 关闭WIFI设备 */
+    int     netdevOpen();			/* 打开WIFI设备 */
+    int     netdevClose();			/* 关闭WIFI设备 */
 
-    int processPollEvent(sp<NetDev>& netdev);
-
+    int     processPollEvent(sp<NetDev>& netdev);
 	/* 设置热点的名称及密码 */
-
-
 
 private:
 	bool	bLoadDrvier;
@@ -249,25 +239,25 @@ private:
 class NetManager {
 
 public:
-    static sp<NetManager> getNetManagerInstance();      	/* Signal Mode */
+    static sp<NetManager>   Instance();      	/* Signal Mode */
 
-	void startNetManager();
-	void stopNetManager();
+	void                    start();
+	void                    stop();
 
-    int registerNetdev(sp<NetDev>& netDev);
-    void unregisterNetDev(sp<NetDev>& netDev);
+    int                     registerNetdev(sp<NetDev>& netDev);
+    void                    unregisterNetDev(sp<NetDev>& netDev);
 
-    int getSysNetdevCnt();
+    int                     getSysNetdevCnt();
 
-    sp<NetDev>& getNetDevByname(const char* devName);
+    sp<NetDev>              getNetDevByname(const char* devName);
 
-    sp<NetDev>& getNetDevByType(int iType);
+    sp<NetDev>              getNetDevByType(int iType);
 
-	sp<ARMessage> obtainMessage(uint32_t what);
+	sp<ARMessage>           obtainMessage(uint32_t what);
 
-	void handleMessage(const sp<ARMessage> &msg);
+	void                    handleMessage(const sp<ARMessage> &msg);
 
-    std::string convWhat2Msg(uint32_t what);
+    void                    setNotifyRecv(sp<ARMessage> notify);
 
     /*
      * - 启动管理器
@@ -278,43 +268,42 @@ public:
      * - 设置指定网卡的状态
      * - 获取指定网卡的状态
      */
-    void postNetMessage(sp<ARMessage>& msg, int interval = 0);
-    ~NetManager();
+    void                    postNetMessage(sp<ARMessage>& msg, int interval = 0);
+    virtual                 ~NetManager();
+                            NetManager();
 
 
 	/*
 	 * 网络管理器负责管理当前有效的IP地址
 	 * 并根据一定的策略,将IP地址发送给UI线程
 	 */
-	void dispatchIpPolicy(int iPolicy);
+	void                    dispatchIpPolicy(int iPolicy);
 
 private:
 
-    NetManager();
 
-    bool checkNetDevHaveRegistered(sp<NetDev> &);
-	void removeNetDev(sp<NetDev> &);
+    bool                    checkNetDevHaveRegistered(sp<NetDev> &);
+	void                    removeNetDev(sp<NetDev> &);
 	
-	//void processEthernetEvent(sp<NetDev>& etherDev);
-    void sendIpInfo2Ui();
+    void                    sendIpInfo2Ui();
 
 
-	void sendNetPollMsg(int iPollInterval = 1);
+	void                    sendNetPollMsg(int iPollInterval = 1);
 
-    int 					mState;
-	bool 					mExit;
+	bool 					mExit   = false;
 
 	sp<ARLooper> 			mLooper;
     sp<ARHandler> 			mHandler;
 
     sp<ARMessage> 			mPollMsg;						/* 轮询消息 */
 
+    sp<ARMessage>           mNotify;
+
     std::thread 			mThread;                    	/* 网络管理器线程 */
-    std::mutex 				mMutex;                      	/* 访问网络设备的互斥锁 */
+    std::mutex 				mDevLock;                      	/* 访问网络设备的互斥锁 */
     std::vector<sp<NetDev>> mDevList;       				/* 网络设备列表 */
 
 	char					mLastDispIp[IP_ADDR_STR_LEN]; 	/* 上次派发的IP地址 */
 };
-
 
 #endif /* PROJECT_NET_MANAGER_H */

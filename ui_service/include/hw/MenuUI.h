@@ -5,7 +5,7 @@
 #include <vector>
 #include <common/sp.h>
 #include <hw/battery_interface.h>
-#include <sys/net_manager.h>
+#include <sys/NetManager.h>
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 #include <hw/oled_module.h>
@@ -202,6 +202,36 @@ enum {
     STATE_TF_FORMATING              = 0x80000000ULL,
 
     STATE_DELETE_FILE               = 0x100000000ULL,  /* 删除文件状态 */
+};
+
+/*
+ * UI线程使用的消息
+ */
+enum {
+    UI_MSG_DISP_TYPE,               // 0
+    UI_MSG_DISP_ERR_MSG,
+    UI_MSG_KEY_EVENT,
+    UI_MSG_LONG_KEY_EVENT,
+    UI_MSG_UPDATE_IP,
+    UI_DISP_BATTERY,                // 5
+    UI_MSG_CONFIG_WIFI,		        /* 配置WIFI参数 */
+
+    UI_MSG_SET_SN,
+    UI_MSG_SET_SYNC_INFO,
+    UI_UPDATE_DEV_INFO,
+    UI_UPDATE_MID,                  // 10
+    UI_CLEAR_MSG_BOX,
+    UI_READ_BAT,                    // 15
+    UI_DISP_LIGHT,
+    UI_DISP_INIT,
+    UI_MSG_QUERY_TF_RES,            /* TF卡状态消息 */
+    UI_MSG_TF_STATE,
+    UI_MSG_TF_FORMAT_RES,
+    UI_MSG_SPEEDTEST_RESULT,
+    UI_MSG_UPDATE_GPS_STATE,
+    UI_MSG_SHUT_DOWN,
+    UI_MSG_COMMON,
+    UI_EXIT,                        /* 退出消息循环 */
 };
 
 
@@ -465,15 +495,6 @@ public:
     void    send_long_press_key(int key,int64 ts);
     void    send_init_disp();
     void    send_update_dev_list(std::vector<Volume*> &mList);
-    void    send_sync_init_info(sp<SYNC_INIT_INFO>& syncInfo);
-
-
-    void    updateTfStorageInfo(bool bResult, std::vector<sp<Volume>>& mList);
-    void    sendTfStateChanged(std::vector<sp<Volume>>& mChangedList);
-    void    notifyTfcardFormatResult(std::vector<sp<Volume>>& failList);
-    void    sendSpeedTestResult(std::vector<sp<Volume>>& mChangedList);
-
-
 
 private:
 
@@ -1019,8 +1040,6 @@ private:
     bool                        bDispTop = false;
     int                         tl_count = -1;
 	
-	sp<NetManager>              mNetManager;            /* 网络管理器对象强指针 */
-
     int                         mTakePicDelay = 0;      /* 拍照倒计时 */  
 	int	                        mGyroCalcDelay = 0;		/* 陀螺仪校正的倒计时时间(单位为S) */
 	

@@ -13,9 +13,12 @@
 ** V1.0			Skymixos		2018-05-04		创建文件，添加注释
 ** V2.0         Skymixos        2018-09-17      长按不松开的情况下上报长按事件
 ** V3.0         Skymixos        2018-09-22      将InputManager设计为单例模式
+** V3.1         Skymixos        2018年11月15日   修改输入监听looper线程未监听控制PIPE的BUG
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
+#include <thread>
+#include <vector>
 #include <sys/ioctl.h>
 #include <sys/inotify.h>
 #include <sys/poll.h>
@@ -26,15 +29,11 @@
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 #include <util/msg_util.h>
-#include <thread>
-#include <vector>
 #include <sys/ins_types.h>
 #include <hw/InputManager.h>
 #include <util/util.h>
-
 #include <prop_cfg.h>
 #include <system_properties.h>
-
 #include <log/log_wrapper.h>
 
 #undef  TAG
@@ -57,20 +56,20 @@ enum {
 #define LONG_PRESS_MSEC     (2000)
 #define SHORT_PRESS_THOR	(100)	        // 100ms
 
-static Mutex    gReportLock;
-static int      gIKeyRespRate = 100;        /* 按键的灵敏度,默认为100ms */
-static Mutex    gInputManagerMutex;
-static Mutex    gMonitorState;
+static int          gIKeyRespRate = 100;        /* 按键的灵敏度,默认为100ms */
+static std::mutex   gInputManagerMutex;
 
 InputManager* InputManager::sInstance = NULL;
 
+
 InputManager* InputManager::Instance() 
 {
-    AutoMutex _l(gInputManagerMutex);
+	std::unique_lock<std::mutex> lock(gInputManagerMutex);    
     if (!sInstance)
         sInstance = new InputManager();
     return sInstance;
 }
+
 
 void InputManager::setNotifyRecv(sp<ARMessage> notify)
 {
@@ -78,8 +77,7 @@ void InputManager::setNotifyRecv(sp<ARMessage> notify)
 }
 
 
-InputManager::InputManager(): mBtnReportCallback(nullptr),
-                              mNotify(nullptr)
+InputManager::InputManager(): mBtnReportCallback(nullptr), mNotify(nullptr)
 {
     const char* pRespRate = NULL;
 
@@ -103,7 +101,6 @@ InputManager::InputManager(): mBtnReportCallback(nullptr),
 InputManager::~InputManager()
 {
     LOGDBG(TAG, "deconstructor InputManager");
-    exit(); 
 }
 
 
@@ -120,7 +117,7 @@ void InputManager::writePipe(int p, int val)
 }
 
 
-void InputManager::exit()
+void InputManager::stop()
 {
 
 	LOGDBG(TAG, "stop long press monitor mLongPressMonitorPipe[0] %d", mLongPressMonitorPipe[0]);
@@ -133,6 +130,7 @@ void InputManager::exit()
 
         close(mLongPressMonitorPipe[0]);
         close(mLongPressMonitorPipe[1]);
+
         mLongPressMonitorPipe[0] = -1;
         mLongPressMonitorPipe[1] = -1;
     }
@@ -314,14 +312,14 @@ void InputManager::setBtnReportCallback(BtnReportCallback callback)
 
 void InputManager::setEnableReport(bool bEnable)
 {
-    AutoMutex _l(gReportLock);
+    std::unique_lock<std::mutex> lock(mReportEnableLock);
     mEnableReport = bEnable;
 }
 
 
 bool InputManager::getReportState()
 {
-    AutoMutex _l(gReportLock);
+    std::unique_lock<std::mutex> lock(mReportEnableLock);
     return mEnableReport;
 }
 
@@ -409,13 +407,12 @@ int InputManager::inputEventLoop()
 	ufds = (pollfd *)calloc(nfds, sizeof(ufds[0]));
 
     if (!scanDir()) {
-        LOGERR(TAG, "no dev input found ");
         LOGERR(TAG, "no dev input found (%s:%s:%d)", __FILE__, __FUNCTION__, __LINE__);
         abort();
     }
 
-    ufds[1].fd = mCtrlPipe[0];
-    ufds[1].events = POLLIN;
+    ufds[nfds++].fd = mCtrlPipe[0];
+    ufds[nfds++].events = POLLIN;
 
     while (true) {
 
@@ -555,13 +552,13 @@ int InputManager::inputEventLoop()
 
 void InputManager::setMonitorState(int iState)
 {
-    AutoMutex _l(gMonitorState);
+	std::unique_lock<std::mutex> lock(mMonitorLock);    
     mLongPressState = iState;
 }
 
 int InputManager::getMonitorState()
 {
-    AutoMutex _l(gMonitorState);
+	std::unique_lock<std::mutex> lock(mMonitorLock);    
     return mLongPressState;
 }
 

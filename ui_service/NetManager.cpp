@@ -13,8 +13,6 @@
 ** V1.0			Wans			2016-12-01		创建文件
 ** V2.0			Skymixos		2018-06-05		添加注释
 ******************************************************************************************************/
-
-
 #include <future>
 #include <vector>
 #include <fcntl.h>
@@ -22,35 +20,24 @@
 #include <errno.h>
 #include <unistd.h>
 #include <common/include_common.h>
-
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
-
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <net/if.h>
 #include <sys/socket.h>
-
 #include <sys/ioctl.h>
-
-#include <sys/net_manager.h>
+#include <sys/NetManager.h>
 #include <util/bytes_int_convert.h>
 #include <string>
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
 #include <prop_cfg.h>
-
-#include <trans/fifo.h>
-
 #include <log/log_wrapper.h>
-
 #include <system_properties.h>
 
-using namespace std;
 
 #undef  TAG
 #define TAG "NetManager"
@@ -59,7 +46,6 @@ using namespace std;
 
 #define NETM_DISPATCH_PRIO	0x10		/* 按优先级的顺序显示IP */
 #define NETM_DISPATCH_POLL	0x11		/* 若有多个IP依次显示 */
-
 
 
 struct ethtool_value {
@@ -73,61 +59,32 @@ enum {
     GET_IP_MAX
 };
 
-static sp<NetManager> gSysNetManager = NULL;
-static bool gInitNetManagerThread = false;
+static sp<NetManager> gSysNetManager = nullptr;
 static std::mutex gSysNetMutex;
 
 
 /*********************************** NetDev **********************************/
-NetDev::NetDev(int iType, int iWkMode, int iState, bool activeFlag, string ifName, int iMode):
-		mDevType(iType),
-		mWorkMode(iWkMode),	
-		mLinkState(iState),
-		mActive(activeFlag),
-        mDevName(ifName),
-        mHaveCachedDhcp(false),
-        iGetIpMode(iMode)
-
+NetDev::NetDev(int iType, int iWkMode, int iState, bool activeFlag, std::string ifName, int iMode):
+							mDevType(iType),
+							mWorkMode(iWkMode),	
+							mLinkState(iState),
+							mActive(activeFlag),
+							mDevName(ifName)
 {
+	iGetIpMode = iMode;
     memset(mCurIpAddr, 0, sizeof(mCurIpAddr));
     memset(mSaveIpAddr, 0, sizeof(mSaveIpAddr));
-    memset(mCachedDhcpAddr, 0, sizeof(mCachedDhcpAddr));
 
     strcpy(mCurIpAddr, "0.0.0.0");
     strcpy(mSaveIpAddr, "0.0.0.0");
-    strcpy(mCachedDhcpAddr, "0.0.0.0");
-
-    LOGDBG(TAG, "++> constructor net device");
+    LOGDBG(TAG, "---> constructor net device");
 }
 
 NetDev::~NetDev()
 {
-    LOGDBG(TAG, "++> deconstructor net device");
+    LOGDBG(TAG, "--> deconstructor net device");
 }
 
-
-void NetDev::flushDhcpAddr()
-{
-    memset(mCachedDhcpAddr, 0, sizeof(mCachedDhcpAddr));
-    mHaveCachedDhcp = false;
-}
-
-bool NetDev::isCachedDhcpAddr()
-{
-    return mHaveCachedDhcp;
-}
-
-const char* NetDev::getCachedDhcpAddr()
-{
-    return mCachedDhcpAddr;
-}
-
-void NetDev::setCachedDhcpAddr(const char* ipAddr)
-{
-    memset(mCachedDhcpAddr, 0, sizeof(mCachedDhcpAddr));
-    strcpy(mCachedDhcpAddr, ipAddr);
-    mHaveCachedDhcp = true;
-}
 
 int NetDev::getNetDevType()
 {
@@ -155,7 +112,7 @@ int NetDev::getNetdevSavedLink()
 
 void NetDev::setNetdevSavedLink(int linkState)
 {
-    unique_lock<mutex> lock(mLinkLock);
+    std::unique_lock<std::mutex> lock(mLinkLock);
 	mLinkState = linkState;
 }
 
@@ -331,7 +288,7 @@ int NetDev::setNetDevActiveState(bool state)
 }
 
 
-string& NetDev::getDevName()
+std::string& NetDev::getDevName()
 {
 	return mDevName;
 }
@@ -379,7 +336,7 @@ int NetDev::getWiFiWorkMode()
 
 /************************************* Ethernet Dev ***************************************/
 
-EtherNetDev::EtherNetDev(string name, int iMode):NetDev(DEV_LAN, WIFI_WORK_MODE_STA, NET_LINK_DISCONNECT, true, name, iMode)
+EtherNetDev::EtherNetDev(std::string name, int iMode):NetDev(DEV_LAN, WIFI_WORK_MODE_STA, NET_LINK_DISCONNECT, true, name, iMode)
 														
 {
     LOGDBG(TAG, "constructor ethernet device");
@@ -461,14 +418,6 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
 
 			/* DHCP获取到了IP地址, Phy的地址跟getCurIpAddr不一样 */
             if (etherDev->getNetDevIpFrmPhy() && strcmp(etherDev->getNetDevIpFrmPhy(), etherDev->getCurIpAddr())) {  /* Ip changed */
-
-
-				if (!strcmp(etherDev->getCurIpAddr(), "0.0.0.0") || etherDev->getCurGetIpMode() == GET_IP_DHCP) {
-					if (etherDev->isCachedDhcpAddr() == false || strcmp(etherDev->getCachedDhcpAddr(), etherDev->getNetDevIpFrmPhy())) {
-						etherDev->setCachedDhcpAddr(etherDev->getNetDevIpFrmPhy());
-					}
-				}
-
                 etherDev->setCurIpAddr(etherDev->getNetDevIpFrmPhy(), false);
             }
         } else {
@@ -485,7 +434,7 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
 
 /************************************* WiFi Dev ***************************************/
 
-WiFiNetDev::WiFiNetDev(int work_mode, string name, int iMode):NetDev(DEV_WLAN, work_mode, NET_LINK_CONNECT, false, name, iMode)
+WiFiNetDev::WiFiNetDev(int work_mode, std::string name, int iMode):NetDev(DEV_WLAN, work_mode, NET_LINK_CONNECT, false, name, iMode)
 																,bLoadDrvier(false)
 {
     LOGDBG(TAG, "constructor WiFi device");
@@ -553,14 +502,14 @@ int WiFiNetDev::netdevOpen()
 	return 0;
 }
 
+
+
 int WiFiNetDev::netdevClose()
 {
-
 	system("killall hostapd");
 	setCurIpAddr(OFF_IP, true);
 	system("ifconfig wlan0 down");
 	property_set(PROP_WIFI_AP_STATE, "false");
-
 	return 0;
 }
 
@@ -569,6 +518,26 @@ int WiFiNetDev::processPollEvent(sp<NetDev>& wifiDev)
 {
     return 1;
 }
+
+
+#define RECV_MSG(n) case n: return #n
+const char *getMsgName(uint32_t iMessage)
+{
+    switch (iMessage) {
+        RECV_MSG(NETM_POLL_NET_STATE);
+        RECV_MSG(NETM_REGISTER_NETDEV);
+        RECV_MSG(NETM_UNREGISTER_NETDEV);
+        RECV_MSG(NETM_STARTUP_NETDEV);
+        RECV_MSG(NETM_CLOSE_NETDEV);
+        RECV_MSG(NETM_SET_NETDEV_IP);
+        RECV_MSG(NETM_LIST_NETDEV);
+        RECV_MSG(NETM_EXIT_LOOP);
+        RECV_MSG(NETM_CONFIG_WIFI_AP);
+
+    default: return "Unkown Message Type";
+    }    
+}
+
 
 
 class NetManagerHandler : public ARHandler {
@@ -582,20 +551,19 @@ public:
     virtual void handleMessage(const sp<ARMessage> & msg) override {
         mNetManager->handleMessage(msg);
     }
-	
 
 private:
     NetManager* mNetManager;
 };
 
 
-sp<NetManager> NetManager::getNetManagerInstance()
+sp<NetManager> NetManager::Instance()
 {
-    unique_lock<mutex> lock(gSysNetMutex);
+    std::unique_lock<std::mutex> lock(gSysNetMutex);
     if (gSysNetManager != NULL) {
         return gSysNetManager;
     } else {
-        gSysNetManager = sp<NetManager> (new NetManager());
+        gSysNetManager = std::make_shared<NetManager>();
     }
     return gSysNetManager;
 }
@@ -609,8 +577,9 @@ sp<ARMessage> NetManager::obtainMessage(uint32_t what)
 
 void NetManager::removeNetDev(sp<NetDev> & netdev)
 {
-	vector<sp<NetDev>>::iterator itor;
-	
+	std::vector<sp<NetDev>>::iterator itor;
+
+    std::unique_lock<std::mutex> lock(mDevLock);
 	for (itor = mDevList.begin(); itor != mDevList.end(); itor++) {
 		if (*itor == netdev) {
 			mDevList.erase(itor);
@@ -621,7 +590,7 @@ void NetManager::removeNetDev(sp<NetDev> & netdev)
 
 bool NetManager::checkNetDevHaveRegistered(sp<NetDev> & netdev)
 {
-
+    std::unique_lock<std::mutex> lock(mDevLock);
 	for (uint32_t i = 0; i < mDevList.size(); i++) {
 		if (mDevList.at(i) == netdev || mDevList.at(i)->getDevName() == netdev->getDevName()) {
 			return true;
@@ -641,56 +610,6 @@ void NetManager::sendNetPollMsg(int iPollInterval)
 }
 
 
-
-string NetManager::convWhat2Msg(uint32_t what)
-{
-    string msg;
-    switch (what) {
-        case NETM_POLL_NET_STATE:
-            msg = "NETM_POLL_NET_STATE";
-            break;
-
-        case NETM_REGISTER_NETDEV:
-            msg = "NETM_REGISTER_NETDEV";
-            break;
-
-        case NETM_UNREGISTER_NETDEV:
-            msg = "NETM_UNREGISTER_NETDEV";
-            break;
-
-        case NETM_STARTUP_NETDEV:
-            msg = "NETM_STARTUP_NETDEV";
-            break;
-
-        case NETM_CLOSE_NETDEV:
-            msg = "NETM_CLOSE_NETDEV";
-            break;
-
-        case NETM_SET_NETDEV_IP:
-            msg = "NETM_SET_NETDEV_IP";
-            break;
-
-        case NETM_LIST_NETDEV:
-            msg = "NETM_LIST_NETDEV";
-            break;
-
-        case NETM_EXIT_LOOP:
-            msg = "NETM_EXIT_LOOP";
-            break;
-
-		case NETM_CONFIG_WIFI_AP:
-			msg = "NETM_CONFIG_WIFI_AP";
-			break;
-
-        default:
-            msg = "Unkown Msg";
-            break;
-    }
-
-    return msg;
-}
-
-
 /*
  * 启动WiFi需要除了发消息,还需要启动是否成功
  */
@@ -704,8 +623,6 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
     LOGDBG(TAG, "NetManager get msg what %s", convWhat2Msg(what).c_str());
 #endif
 
-
-
 	switch (what) {
 
 		case NETM_POLL_NET_STATE: {		/* 轮询网络设备的状态 */
@@ -714,8 +631,8 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
                 mPollMsg = msg->dup();
             }
 
-			vector<sp<NetDev>>::iterator itor;
-			vector<sp<NetDev>> tmpList;
+			std::vector<sp<NetDev>>::iterator itor;
+			std::vector<sp<NetDev>> tmpList;
             sp<NetDev> tmpDev;
 
 			tmpList.clear();
@@ -763,7 +680,6 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			}			
 			break;
 		}
-
 
 		/*
 		 * msg.what = NETM_REGISTER_NETDEV
@@ -840,7 +756,7 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
          *
          */
         case NETM_SET_NETDEV_IP: {	/* 设备设备IP地址(DHCP/static) */
-            LOGDBG(TAG, "______=+++++++++++++++ set ip>>>>");
+            LOGDBG(TAG, "+++++++++++++++ set ip>>>>");
             sp<DEV_IP_INFO> tmpIpInfo = NULL;
             sp<NetDev> tmpNetDev = NULL;
             CHECK_EQ(msg->find<sp<DEV_IP_INFO>>("info", &tmpIpInfo), true);
@@ -860,16 +776,7 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 					tmpNetDev->setCurGetIpMode(GET_IP_STATIC);
 				} else {	/* DHCP */
 					/* 如果已经缓存了DHCP地址,直接使用DHCP地址,否则将启动DHCP */
-#ifdef ENABLE_USE_CACHED_DHCP_IP					
-					if (tmpNetDev->isCachedDhcpAddr()) {
-						tmpNetDev->setNetDevIp2Phy(tmpNetDev->getCachedDhcpAddr());
-					} else {
-						tmpNetDev->getIpByDhcp();
-					}
-#else
 					tmpNetDev->getIpByDhcp();
-
-#endif
 					tmpNetDev->setCurGetIpMode(GET_IP_DHCP);
 				}
             }
@@ -956,52 +863,50 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 }
 
 
-sp<NetDev>& NetManager::getNetDevByType(int iType)
+sp<NetDev> NetManager::getNetDevByType(int iType)
 {
-    // uint32_t i;
+	sp<NetDev> tmpDev = nullptr;
     {
-        unique_lock<mutex> lock(mMutex);
+        std::unique_lock<std::mutex> lock(mDevLock);
         for (uint32_t i = 0; i < mDevList.size(); i++) {
             LOGDBG(TAG, "dev name: %s", mDevList.at(i)->getDevName().c_str());
             if (mDevList.at(i)->getNetDevType() == iType) {
-                return mDevList.at(i);
+                tmpDev = mDevList.at(i);
             }
         }
     }
+	return tmpDev;
 
 }
 
-void NetManager::startNetManager()
+void NetManager::setNotifyRecv(sp<ARMessage> notify)
 {
-	if (gInitNetManagerThread == false) {
-		mThread = thread([this]
-					   {
-						   mLooper = sp<ARLooper>(new ARLooper());
-						   mHandler = sp<ARHandler>(new NetManagerHandler(this));
-						   mHandler->registerTo(mLooper);
-						   mLooper->run();
-					   });
-
-		gInitNetManagerThread = true;
-		LOGDBG(TAG, "startNetManager .... success!!!");
-	} else {
-		LOGDBG(TAG, "NetManager thread have exist");
-	}	
+	mNotify = notify;
 }
 
 
-void NetManager::stopNetManager()
+void NetManager::start()
 {
-	if (gInitNetManagerThread == true) {
-		if (!mExit) {
-			mExit = true;
-			if (mThread.joinable()) {
-				obtainMessage(NETM_EXIT_LOOP)->post();
-				mThread.join();
-				gInitNetManagerThread = false;
-			} else {
-				LOGDBG(TAG, "NetManager thread not joinable");
-			}
+	mThread = std::thread([this] {
+						mLooper = std::make_shared<ARLooper>();
+						mHandler = std::make_shared<NetManagerHandler>(this);
+						mHandler->registerTo(mLooper);
+						mLooper->run();
+					});
+
+	LOGDBG(TAG, "startNetManager .... success!!!");
+}
+
+
+void NetManager::stop()
+{
+	if (!mExit) {
+		mExit = true;
+		if (mThread.joinable()) {
+			obtainMessage(NETM_EXIT_LOOP)->post();
+			mThread.join();
+		} else {
+			LOGDBG(TAG, "NetManager thread not joinable");
 		}
 	}
 }
@@ -1012,7 +917,7 @@ int NetManager::registerNetdev(sp<NetDev>& netDev)
 	uint32_t i;
 	int ret = 0;
 	
-    unique_lock<mutex> lock(mMutex);
+    std::unique_lock<std::mutex> lock(mDevLock);
     for (i = 0; i < mDevList.size(); i++) {
         if (mDevList.at(i)->getDevName() == netDev->getDevName()) {
 			break;
@@ -1034,15 +939,14 @@ void NetManager::unregisterNetDev(sp<NetDev>& netDev)
 {
 	sp<NetDev> tmpDev = netDev;
 	
-    unique_lock<mutex> lock(mMutex);
+    std::unique_lock<std::mutex> lock(mDevLock);
     for (uint32_t i = 0; i < mDevList.size(); i++) {
         if (mDevList.at(i) == netDev) {
 			tmpDev->netdevClose();
-			//mDevList.erase(i);
+			mDevList.erase(mDevList.begin() + i);
 			break;
 		}
     }
-
 }
 
 
@@ -1052,18 +956,18 @@ int NetManager::getSysNetdevCnt()
 }
 
 
-sp<NetDev>& NetManager::getNetDevByname(const char* devName)
+sp<NetDev> NetManager::getNetDevByname(const char* devName)
 {	
-    uint32_t i;
+	sp<NetDev> tmpDev = nullptr;
     {
-        unique_lock<mutex> lock(mMutex);
-        for (i = 0; i < mDevList.size(); i++) {
-            //LOGDBG(TAG, "dev name: %s", mDevList.at(i)->getDevName().c_str());
+        std::unique_lock<std::mutex> lock(mDevLock);
+        for (uint32_t i = 0; i < mDevList.size(); i++) {
             if (!strncmp(mDevList.at(i)->getDevName().c_str(), devName, strlen(devName))) {
-                return mDevList.at(i);
+                tmpDev = mDevList.at(i);
             }
         }
     }
+	return tmpDev;
 }
 
 
@@ -1084,59 +988,45 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 
 	switch (iPolicy) {
 
-	/* 基于优先级的发送IP策略: 
-	 * LAN IP不为0时显示LAN的IP 
-	 * LAN IP为0, WLAN0开启时,显示WLAN0的IP
-	 * 均为0时显示"0.0.0.0"
-	 */
+		/* 基于优先级的发送IP策略: 
+		* LAN IP不为0时显示LAN的IP 
+		* LAN IP为0, WLAN0开启时,显示WLAN0的IP
+		* 均为0时显示"0.0.0.0"
+		*/
 
-	case NETM_DISPATCH_PRIO: 	/* LAN > WLAN */
+		case NETM_DISPATCH_PRIO: {	/* LAN > WLAN */
 
+			tmpEthDev = getNetDevByname(ETH0_NAME);
+			tmpWlanDev = getNetDevByname(WLAN0_NAME);
 
-#ifdef ENABLE_DEBUG_NETM
-	 	LOGDBG(TAG, "mLastDispIp ip: [%s]", mLastDispIp);
-#endif
-
-		tmpEthDev = getNetDevByname(ETH0_NAME);
-		tmpWlanDev = getNetDevByname(WLAN0_NAME);
-
-		if (tmpEthDev && strcmp(tmpEthDev->getCurIpAddr(), "0.0.0.0")) {
-			
-#ifdef ENABLE_DEBUG_NETM
-            LOGDBG(TAG, "Lan Ip compare....[%s],[%s]", tmpEthDev->getCurIpAddr(), mLastDispIp);
-#endif
-			if (strcmp(tmpEthDev->getCurIpAddr(), mLastDispIp)) {
-				memset(mLastDispIp, 0, sizeof(mLastDispIp));
-				strcpy(mLastDispIp, tmpEthDev->getCurIpAddr());
-				bUpdate = true;
+			if (tmpEthDev && strcmp(tmpEthDev->getCurIpAddr(), "0.0.0.0")) {
+				if (strcmp(tmpEthDev->getCurIpAddr(), mLastDispIp)) {
+					memset(mLastDispIp, 0, sizeof(mLastDispIp));
+					strcpy(mLastDispIp, tmpEthDev->getCurIpAddr());
+					bUpdate = true;
+				}
+			} else if (tmpWlanDev && strcmp(tmpWlanDev->getCurIpAddr(), "0.0.0.0")) {
+				if (strcmp(tmpWlanDev->getCurIpAddr(), mLastDispIp)) {
+					memset(mLastDispIp, 0, sizeof(mLastDispIp));
+					strcpy(mLastDispIp, tmpWlanDev->getCurIpAddr());
+					bUpdate = true;
+				}
 			} else {
-#ifdef ENABLE_DEBUG_NETM
-				LOGDBG(TAG, "Lan ip equal mLastDispIp");
-#endif
-			}
-		} else if (tmpWlanDev && strcmp(tmpWlanDev->getCurIpAddr(), "0.0.0.0")) {
-			if (strcmp(tmpWlanDev->getCurIpAddr(), mLastDispIp)) {
+			
 				memset(mLastDispIp, 0, sizeof(mLastDispIp));
-				strcpy(mLastDispIp, tmpWlanDev->getCurIpAddr());
+				strcpy(mLastDispIp, "0.0.0.0");
 				bUpdate = true;
 			}
-		} else {
-		
-			memset(mLastDispIp, 0, sizeof(mLastDispIp));
-			strcpy(mLastDispIp, "0.0.0.0");
-			bUpdate = true;
+			break;
 		}
 
-		break;
+		case NETM_DISPATCH_POLL:
+			break;
 
-	case NETM_DISPATCH_POLL:
-		break;
-
-	default:
-		break;
+		default:
+			break;
 		
 	} 
-
 
 	if (bUpdate) {
 		sendIpInfo2Ui();
@@ -1165,9 +1055,7 @@ void NetManager::sendIpInfo2Ui()
 }
 
 
-NetManager::NetManager(): mState(NET_MANAGER_STAT_INIT), 
-                              mPollMsg(NULL),
-							  mExit(false)
+NetManager::NetManager()
 {
     LOGDBG(TAG, "construct NetManager....");
 
@@ -1191,7 +1079,5 @@ NetManager::~NetManager()
     /* stop all net devices */
 
     /* unregister all net devices */
-
-    mState = NET_MANAGER_STAT_DESTORYED;
 }
 

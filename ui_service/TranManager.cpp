@@ -70,11 +70,6 @@ TranManager* TranManager::Instance()
 }
 
 
-void TranManager::setNotifyRecv(sp<ARMessage> notify)
-{
-    mNotify = notify;
-}
-
 TranManager::TranManager()
 {
     LOGDBG(TAG, "----> Constructor TranManager here");
@@ -116,7 +111,7 @@ TranManager::~TranManager()
 }
 
 
-bool TranManager::exit()
+bool TranManager::stop()
 {
     if (mCtrlPipe[0] != -1) {
         writePipe(mCtrlPipe[1], CtrlPipe_Shutdown);
@@ -180,9 +175,10 @@ bool TranManager::onDataAvailable(int iFd)
                 LOGDBG(TAG, "--> Recv: %s", &mRecvBuf[RECV_HEAD_LEN]);
 
                 if (!reader->parse(&mRecvBuf[RECV_HEAD_LEN], &mRecvBuf[RECV_HEAD_LEN + iContentLen], &rootJson, &errs)) {
-                    LOGERR(TAG, "parse json format failed");
+                    LOGERR(TAG, ">>>>>> Parse json format failed");
+                } else {
+                    bResult = ProtoManager::Instance()->parseAndDispatchRecMsg(iMsgWhat, rootJson); 
                 }
-                bResult = ProtoManager::Instance()->parseAndDispatchRecMsg(iMsgWhat, rootJson); 
             }
         }
     }
@@ -309,7 +305,7 @@ bool TranManager::start()
     bool bResult = false;
 
 #ifdef TRAN_USE_FIFO
-    if (!createFifo()) {
+    if (createFifo()) {
         LOGERR(TAG, "-----> Create tran FIFO Failed!!!");
         return bResult;
     }

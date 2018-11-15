@@ -265,6 +265,10 @@ private:
     void            handleTfcardFormatResult(Json::Value& jsonData);
     void            handleSpeedTestResult(Json::Value& jsonData);
 
+
+    void            handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode);
+    void            handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode);
+
 };
 
 

@@ -1789,6 +1789,104 @@ void ProtoManager::setSyncReqExitFlag(bool bFlag)
 }
 
 
+void ProtoManager::handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode)
+{
+	
+    if (reqNode.isMember("action")  && reqNode["action"].isInt() == false) {
+        /* 设置Customer时，使用该字段来区分是拍照,录像，直播 */
+        dispType->qr_type = reqNode["action"].asInt();
+    }
+
+    if (reqNode.isMember("param")) {
+        dispType->jsonArg = reqNode["param"];
+    }
+						
+	switch (dispType->type) {
+		case START_LIVE_SUC: {	/* 16, 启动录像成功 */
+            LOGDBG(TAG, "Client control Live");
+        	dispType->control_act = ACTION_LIVE;
+			break;
+        }
+										
+		case CAPTURE: {			/* 拍照 */
+            LOGDBG(TAG, "Client control Capture");
+			dispType->control_act = ACTION_PIC;
+			break;
+        }
+										
+		case START_REC_SUC:	{	/* 1, 启动录像成功 */
+            LOGDBG(TAG, "Client control Video");
+			dispType->control_act = ACTION_VIDEO;
+			break;
+        }
+											
+		case SET_CUS_PARAM:	{	/* 46, 设置自定义参数 */
+            LOGDBG(TAG, "Client control Set Customer");
+			dispType->control_act = CONTROL_SET_CUSTOM;
+			break;
+        }
+
+        default:
+            break;
+	}	   
+}
+
+
+void ProtoManager::handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode)
+{
+    dispType->mSysSetting = std::make_shared<SYS_SETTING>();
+
+    memset(dispType->mSysSetting.get(), -1, sizeof(SYS_SETTING));
+
+    if (reqNode.isMember("flicker") && reqNode["flicker"].isInt()) {
+        dispType->mSysSetting->flicker = reqNode["flicker"].asInt();
+    }
+
+    if (reqNode.isMember("speaker") && reqNode["speaker"].isInt()) {
+        dispType->mSysSetting->speaker = reqNode["speaker"].asInt();
+    }
+
+    if (reqNode.isMember("led_on") && reqNode["led_on"].isInt()) {
+        dispType->mSysSetting->led_on = reqNode["led_on"].asInt();
+    }
+
+    if (reqNode.isMember("fan_on") && reqNode["fan_on"].isInt()) {
+        dispType->mSysSetting->fan_on = reqNode["fan_on"].asInt();
+    }
+
+    if (reqNode.isMember("aud_on") && reqNode["aud_on"].isInt()) {
+        dispType->mSysSetting->aud_on = reqNode["aud_on"].asInt();
+    }
+
+    if (reqNode.isMember("aud_spatial") && reqNode["aud_spatial"].isInt()) {
+        dispType->mSysSetting->aud_spatial = reqNode["aud_spatial"].asInt();
+    }
+
+    if (reqNode.isMember("set_logo") && reqNode["set_logo"].isInt()) {
+        dispType->mSysSetting->set_logo = reqNode["set_logo"].asInt();
+    }
+
+    if (reqNode.isMember("gyro_on") && reqNode["gyro_on"].isInt()) {
+        dispType->mSysSetting->gyro_on = reqNode["gyro_on"].asInt();
+    }
+
+    if (reqNode.isMember("video_fragment") && reqNode["video_fragment"].isInt()) {
+        dispType->mSysSetting->video_fragment = reqNode["video_fragment"].asInt();
+    }
+
+    LOGDBG(TAG, "%d %d %d %d %d %d %d %d %d",
+                dispType->mSysSetting->flicker,
+                dispType->mSysSetting->speaker,
+                dispType->mSysSetting->led_on,
+                dispType->mSysSetting->fan_on,
+                dispType->mSysSetting->aud_on,
+                dispType->mSysSetting->aud_spatial,
+                dispType->mSysSetting->set_logo,
+                dispType->mSysSetting->gyro_on,
+                dispType->mSysSetting->video_fragment);    
+}
+
+
 void ProtoManager::handleDispType(Json::Value& jsonData)
 {
     sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
@@ -1873,7 +1971,7 @@ void ProtoManager::handleGpsStateChange(Json::Value& queryJson)
         int iGpstate = queryJson["state"].asInt();
         if (mNotify) {
             sp<ARMessage> msg = mNotify->dup();
-            msg->set<int>("gps_state", iState);    
+            msg->set<int>("gps_state", iGpstate);    
             msg->setWhat(UI_MSG_UPDATE_GPS_STATE);
             msg->post();
         }
@@ -1926,25 +2024,26 @@ void ProtoManager::handleSyncInfo(Json::Value& jsonData)
 
 
     if (jsonData.isMember("state")) {
-        mSyncInfo->state = jsonData["state"].asInt();
+        syncInfo->state = jsonData["state"].asInt();
     } else {
-        mSyncInfo->state = 0;
+        syncInfo->state = 0;
     }
     
     if (jsonData.isMember("a_v")) {
-        snprintf(mSyncInfo->a_v, sizeof(mSyncInfo->a_v), "%s", jsonData["a_v"].asCString());
+        snprintf(syncInfo->a_v, sizeof(syncInfo->a_v), "%s", jsonData["a_v"].asCString());
     }            
     
     if (jsonData.isMember("h_v")) {
-        snprintf(mSyncInfo->h_v, sizeof(mSyncInfo->h_v), "%s", jsonData["h_v"].asCString());
+        snprintf(syncInfo->h_v, sizeof(syncInfo->h_v), "%s", jsonData["h_v"].asCString());
     }                
 
     if (jsonData.isMember("c_v")) {
-        snprintf(mSyncInfo->c_v, sizeof(mSyncInfo->c_v), "%s", jsonData["c_v"].asCString());
+        snprintf(syncInfo->c_v, sizeof(syncInfo->c_v), "%s", jsonData["c_v"].asCString());
     }         
 
     if (mNotify) {
         sp<ARMessage> msg = mNotify->dup();    
+        msg->setWhat(UI_MSG_SET_SYNC_INFO);
         msg->set<sp<SYNC_INIT_INFO>>("sync_info", syncInfo);
         msg->post();
     }       
@@ -2148,13 +2247,11 @@ bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             break;
         }
 
-
         case MSG_SYNC_INIT: {	/* 给UI发送同步信息: state, a_v, h_v, c_v */
             handleSyncInfo(jsonData);
             break;
         }    
    
-
         case MSG_DISP_TYPE_ERR: {	/* 给UI发送显示错误信息:  错误类型和错误码 */
             handleErrInfo(jsonData);
             break;
@@ -2182,8 +2279,8 @@ bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 
         default: 
             break;
-
     }
+    return true;
 }
 
 

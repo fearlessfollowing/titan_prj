@@ -1,7 +1,6 @@
 #ifndef _MENU_H_
 #define _MENU_H_
 
-#include <sys/net_manager.h>
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 #include <hw/oled_module.h>

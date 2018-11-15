@@ -86,7 +86,7 @@ int main(int argc ,char *argv[])
     pipe(mCtrlPipe);
 
     registerSig(signalHandler);
-    signal(SIGPIPE, pipe_signal_handler);
+    // signal(SIGPIPE, pipe_signal_handler);
 
     iRet = __system_properties_init();	/* 属性区域初始化 */
     if (iRet) {

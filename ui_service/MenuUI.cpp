@@ -31,7 +31,7 @@
 #include <sys/statfs.h>
 #include <common/include_common.h>
 
-#include <sys/net_manager.h>
+#include <sys/NetManager.h>
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 #include <util/msg_util.h>
@@ -54,6 +54,7 @@
 
 #include <sys/ProtoManager.h>
 #include <sys/CfgManager.h>
+#include <sys/TranManager.h>
 
 #include <sys/Mutex.h>
 #include <icon/setting_menu_icon.h>
@@ -106,41 +107,6 @@ enum {
     DISP_NEED_QUERY_TFCARD,
     //mtp
     DISP_USB_CONNECTED,
-};
-
-
-/*
- * UI线程使用的消息
- */
-enum {
-    UI_MSG_DISP_TYPE,//0
-    UI_MSG_DISP_ERR_MSG,
-    UI_MSG_KEY_EVENT,
-    UI_MSG_LONG_KEY_EVENT,
-    UI_MSG_UPDATE_IP,
-    UI_DISP_BATTERY,//5
-    UI_MSG_CONFIG_WIFI,		        /* 配置WIFI参数 */
-
-    UI_MSG_SET_SN,
-    UI_MSG_SET_SYNC_INFO,
-    UI_UPDATE_DEV_INFO,
-    UI_UPDATE_MID,              //10
-    OLED_DISP_BAT_LOW,
-    OLED_UPDATE_CAPTURE_LIGHT,
-    OLED_UPDATE_CAL_LIGHT,
-    UI_CLEAR_MSG_BOX,
-    UI_READ_BAT,                // 15
-    UI_DISP_LIGHT,
-    //disp oled info at start
-    UI_DISP_INIT,
-    UI_MSG_QUERY_TF_RES,               /* TF卡状态消息 */
-    UI_MSG_TF_STATE,
-    UI_MSG_TF_FORMAT_RES,
-    UI_MSG_SPEEDTEST_RESULT,
-    UI_MSG_UPDATE_GPS_STATE,
-    UI_MSG_SHUT_DOWN,
-    UI_MSG_COMMON,
-    UI_EXIT,                    /* 退出消息循环 */
 };
 
 
@@ -351,6 +317,13 @@ void MenuUI::uiSubsysInit()
         registerTo(mLooper);
         mLooper->run();
     });
+}
+
+
+void MenuUI::uiSubsysDeinit()
+{
+    setLightDirect(LIGHT_OFF);
+    sendExit();
 }
 
 
@@ -569,7 +542,7 @@ void MenuUI::init()
 *************************************************************************/
 MenuUI::MenuUI() 
 {
-    LOGDBG(TAG, "[%s: %d]>>>>>>> Constructor MenuUI Object");
+    LOGDBG(TAG, ">>>>>>> Constructor MenuUI Object");
 }
 
 
@@ -584,12 +557,6 @@ void MenuUI::subSysInit()
      *******************************************************************************/
     ProtoManager::Instance()->setNotifyRecv(obtainMessage(UI_MSG_COMMON));
 
-    
-    /*******************************************************************************
-     * 传输子系统初始化
-     *******************************************************************************/
-
-
 
     /*******************************************************************************
      * UI子系统初始化
@@ -602,28 +569,31 @@ void MenuUI::subSysInit()
      *******************************************************************************/
 #ifdef ENABLE_NET_MANAGER
 
-    mNetManager = NetManager::getNetManagerInstance();
-    mNetManager->startNetManager();
+    CfgManager* cm = CfgManager::Instance();
+    sp<NetManager> nm = NetManager::Instance();
+    nm->setNotifyRecv(obtainMessage(UI_MSG_UPDATE_IP));    
+    nm->start();
 
     /* 注册以太网卡(eth0) */
 	LOGDBG(TAG, "eth0 get ip mode [%s]", (cm->getKeyVal("dhcp") == 1) ? "DHCP" : "STATIC" );
-    sp<EtherNetDev> eth0 = (sp<EtherNetDev>)(new EtherNetDev("eth0", cm->getKeyVal("dhcp")));
-    sp<ARMessage> registerLanMsg = obtainMessage(NETM_REGISTER_NETDEV);
-    registerLanMsg->set<sp<NetDev>>("netdev", eth0);
-    mNetManager->postNetMessage(registerLanMsg);
+    sp<EtherNetDev> eth0 = std::make_shared<EtherNetDev>("eth0", cm->getKeyVal("dhcp"));
+
+    sp<ARMessage> registerEth0msg = obtainMessage(NETM_REGISTER_NETDEV);
+    registerEth0msg->set<sp<NetDev>>("netdev", eth0);
+    nm->postNetMessage(registerEth0msg);
 
     /* Register Wlan0 */
-    sp<WiFiNetDev> wlan0 = (sp<WiFiNetDev>)(new WiFiNetDev(WIFI_WORK_MODE_AP, "wlan0", 0));
+    sp<WiFiNetDev> wlan0 = std::make_shared<WiFiNetDev>(WIFI_WORK_MODE_AP, "wlan0", 0);
     sp<ARMessage> registerWlanMsg = obtainMessage(NETM_REGISTER_NETDEV);
     registerWlanMsg->set<sp<NetDev>>("netdev", wlan0);
-    mNetManager->postNetMessage(registerWlanMsg);
+    nm->postNetMessage(registerWlanMsg);
 
 
     sp<ARMessage> looperMsg = obtainMessage(NETM_POLL_NET_STATE);
-    mNetManager->postNetMessage(looperMsg);
+    nm->postNetMessage(looperMsg);
 
     sp<ARMessage> listMsg = obtainMessage(NETM_LIST_NETDEV);
-    mNetManager->postNetMessage(listMsg);
+    nm->postNetMessage(listMsg);
 
 
 	if (!mHaveConfigSSID) {
@@ -686,19 +656,26 @@ void MenuUI::subSysInit()
 
 
     /*******************************************************************************
-     * 通信子系统初始化
+     * 传输子系统初始化
      *******************************************************************************/
-    // sp<ARMessage> inputNotify = obtainMessage(UI_MSG_COMMON);
-    // InputManager* in = InputManager::Instance();
-    // in->setNotifyRecv(inputNotify);
+    TranManager::Instance()->start();
 
 }
 
 
 void MenuUI::subSysDeInit()
 {
+    TranManager::Instance()->stop();
 
+    InputManager::Instance()->stop();
+
+#ifdef ENABLE_NET_MANAGER
+    NetManager::Instance()->stop();
+#endif
+
+    uiSubsysDeinit();
 }
+
 
 void MenuUI::startUI()
 {
@@ -713,17 +690,15 @@ void MenuUI::startUI()
  */
 void MenuUI::stopUI()
 {
-    deinit();
+    subSysDeInit();
 }
 
 
 void MenuUI::deinit()
 {
-    LOGDBG(TAG, "deinit\n");
+    LOGDBG(TAG, "deinit");
 	
     setLightDirect(LIGHT_OFF);
-
-	mNetManager = nullptr;
 
     sendExit();
 
@@ -790,11 +765,9 @@ void MenuUI::init_cfg_select()
 
 #ifdef ENABLE_NET_MANAGER
 
-    sp<ARMessage> msg;
-    sp<DEV_IP_INFO> tmpInfo;
+    sp<DEV_IP_INFO> tmpInfo = std::make_shared<DEV_IP_INFO>();
     int iCmd = -1;
 
-    tmpInfo = (sp<DEV_IP_INFO>)(new DEV_IP_INFO());
     strcpy(tmpInfo->cDevName, WLAN0_NAME);
     strcpy(tmpInfo->ipAddr, WLAN0_DEFAULT_IP);
     tmpInfo->iDevType = DEV_WLAN;
@@ -807,10 +780,11 @@ void MenuUI::init_cfg_select()
         iCmd = NETM_CLOSE_NETDEV;
 	}	
 
-    msg = (sp<ARMessage>)(new ARMessage(iCmd));
     LOGDBG(TAG, "init_cfg_select: wifi state[%d]", CfgManager::Instance()->getKeyVal("wifi_on"));
+
+    sp<ARMessage> msg = NetManager::Instance()->obtainMessage(iCmd);
     msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
-    NetManager::getNetManagerInstance()->postNetMessage(msg);
+    msg->post();
 #endif
 
 }
@@ -2813,6 +2787,7 @@ void MenuUI::disp_wifi(bool bState, int disp_main)
     }
 }
 
+#ifdef ENABLE_NET_MANAGER
 
 void MenuUI::handleWifiAction()
 {    
@@ -2822,11 +2797,7 @@ void MenuUI::handleWifiAction()
     int iSetVal = 0;
     CfgManager* cm = CfgManager::Instance();
 
-    sp<ARMessage> msg;
-    sp<DEV_IP_INFO> tmpInfo;
-
-
-    tmpInfo = (sp<DEV_IP_INFO>)(new DEV_IP_INFO());
+    sp<DEV_IP_INFO> tmpInfo = std::make_shared<DEV_IP_INFO>();
     strcpy(tmpInfo->cDevName, WLAN0_NAME);
     strcpy(tmpInfo->ipAddr, WLAN0_DEFAULT_IP);
     tmpInfo->iDevType = DEV_WLAN;
@@ -2854,9 +2825,9 @@ void MenuUI::handleWifiAction()
             iSetVal = 1;
         }
 
-        msg = (sp<ARMessage>)(new ARMessage(iCmd));
+        sp<ARMessage> msg = NetManager::Instance()->obtainMessage(iCmd);
         msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
-        NetManager::getNetManagerInstance()->postNetMessage(msg);
+        msg->post();
 
         msg_util::sleep_ms(500);
 
@@ -2867,7 +2838,7 @@ void MenuUI::handleWifiAction()
     }	
 
 }
-
+#endif
 
 int MenuUI::get_back_menu(int item)
 {
@@ -3796,7 +3767,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                     if (pTmpCfg) {
                         u32 uRecLeftSec = vm->calcTakeRecLefSec(*((pTmpCfg->jsonCmd).get()));
                         vm->setRecLeftSec(uRecLeftSec);                    
-                        LOGDBG(TAG, "[%s: %d]--> UI Mode, Record left secs: %u", uRecLeftSec);
+                        LOGDBG(TAG, "--> UI Mode, Record left secs: %u", uRecLeftSec);
                     }
                 }                
             }
@@ -5416,11 +5387,8 @@ bool MenuUI::checkStorageSatisfy(int action)
 
 bool MenuUI::switchEtherIpMode(int iMode)
 {
-    sp<ARMessage> msg;
-    sp<DEV_IP_INFO> tmpInfo;
-
-    tmpInfo = (sp<DEV_IP_INFO>)(new DEV_IP_INFO());
-    msg = (sp<ARMessage>)(new ARMessage(NETM_SET_NETDEV_IP));
+    sp<ARMessage> msg = NetManager::Instance()->obtainMessage(NETM_SET_NETDEV_IP);
+    sp<DEV_IP_INFO> tmpInfo = std::make_shared<DEV_IP_INFO>();
 
     strcpy(tmpInfo->cDevName, ETH0_NAME);
     strcpy(tmpInfo->ipAddr, DEFAULT_ETH0_IP);
@@ -5433,7 +5401,7 @@ bool MenuUI::switchEtherIpMode(int iMode)
     }
 
     msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
-    NetManager::getNetManagerInstance()->postNetMessage(msg);
+    msg->post();
     return true;
 }
 
@@ -6670,8 +6638,8 @@ void MenuUI::set_flick_light()
 bool MenuUI::checkServerIsBusy()
 {
     bool bRet = false;
+    uint64_t serverState = getServerState();
 
-    //busy state with light flick
     const int busy_state[] = {STATE_TAKE_CAPTURE_IN_PROCESS,
                               STATE_PIC_STITCHING,
                               STATE_RECORD,
@@ -6680,7 +6648,7 @@ bool MenuUI::checkServerIsBusy()
                               STATE_CALIBRATING};
 
     for (u32 i = 0; i < sizeof(busy_state)/sizeof(busy_state[0]); i++) {
-        if (checkServerStateIn(busy_state[i])) {
+        if (checkServerStateIn(serverState, busy_state[i])) {
             bRet = true;
             break;
         }
@@ -6688,6 +6656,7 @@ bool MenuUI::checkServerIsBusy()
     LOGDBG(TAG, "Server Busy state[%s]", (bRet == true) ? "true": "false");
     return bRet;
 }
+
 
 void MenuUI::setLight()
 {
@@ -7603,18 +7572,16 @@ int MenuUI::oled_disp_type(int type)
                 case MENU_PIC_INFO:
                 case MENU_PIC_SET_DEF: { /* 直接读取PIC_ALL_PIC_DEF来更新底部空间 */
 
-                        /* 将该参数直接拷贝给自身的customer */
-                        int iIndex = getMenuSelectIndex(MENU_PIC_SET_DEF);
-                        PicVideoCfg* curCfg = mPicAllItemsList.at(iIndex);
-                        if (curCfg) {
-                            if (!strcmp(curCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {
-                                LOGDBG(TAG, "[%s: %d]-->> update customer arguments now...");
-                                /* 更新底部空间及右侧 - 2018年8月7日 */
-                                dispBottomInfo(false, true); 
-                            }
+                    /* 将该参数直接拷贝给自身的customer */
+                    int iIndex = getMenuSelectIndex(MENU_PIC_SET_DEF);
+                    PicVideoCfg* curCfg = mPicAllItemsList.at(iIndex);
+                    if (curCfg) {
+                        if (!strcmp(curCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {
+                            LOGDBG(TAG, "-->> update customer arguments now...");
+                            /* 更新底部空间及右侧 - 2018年8月7日 */
+                            dispBottomInfo(false, true); 
                         }
-
-                    LOGDBG(TAG, "[%s: %d]");
+                    }
                     break;
                 }
 
@@ -7622,17 +7589,16 @@ int MenuUI::oled_disp_type(int type)
                 case MENU_VIDEO_INFO:
                 case MENU_VIDEO_SET_DEF: { /* 直接读取PIC_ALL_PIC_DEF来更新底部空间 */
 
-                        /* 将该参数直接拷贝给自身的customer */
-                        int iIndex = getMenuSelectIndex(MENU_VIDEO_SET_DEF);
-                        PicVideoCfg* curCfg = mVidAllItemsList.at(iIndex);
-                        if (curCfg) {
-                            if (!strcmp(curCfg->pItemName, TAKE_VID_MOD_CUSTOMER)) {
-                                LOGDBG(TAG, "update Video customer arguments now...");
-                                /* 更新底部空间及右侧 - 2018年8月7日 */
-                                dispBottomInfo(false, true);                                
-                            }
+                    /* 将该参数直接拷贝给自身的customer */
+                    int iIndex = getMenuSelectIndex(MENU_VIDEO_SET_DEF);
+                    PicVideoCfg* curCfg = mVidAllItemsList.at(iIndex);
+                    if (curCfg) {
+                        if (!strcmp(curCfg->pItemName, TAKE_VID_MOD_CUSTOMER)) {
+                            LOGDBG(TAG, "update Video customer arguments now...");
+                            /* 更新底部空间及右侧 - 2018年8月7日 */
+                            dispBottomInfo(false, true);                                
                         }
-                    LOGDBG(TAG, "[%s: %d]");
+                    }
                     break;
                 }
 
@@ -7668,7 +7634,7 @@ int MenuUI::oled_disp_type(int type)
          * 更新timelapse值
          */
         case TIMELPASE_COUNT: { 
-            LOGDBG(TAG, "[%s: %d]>>>>>>>>>> tl_count %d", tl_count);
+            LOGDBG(TAG, ">>>>>>>>>> tl_count %d", tl_count);
             disp_tl_count(tl_count);    /* 显示timelpase拍摄值以及剩余可拍的张数 */
 
             if (vm->getTakeTimelapseCnt() > 0) {
@@ -8261,7 +8227,7 @@ void MenuUI::handleKeyMsg(int iKey)
 *************************************************************************/
 void MenuUI::handleLongKeyMsg(int key)
 {
-    LOGDBG(TAG, "[%s: %d]long press key 0x%x", key);
+    LOGDBG(TAG, "handleLongKeyMsg: ---> long press key 0x%x", key);
     VolumeManager* vm = VolumeManager::Instance();
     bool bNeedShutdown = false;
     uint64_t serverState = getServerState();
@@ -8315,6 +8281,8 @@ void MenuUI::handleUpdateIp(const char* ipAddr)
 	uiShowStatusbarIp();
 }
 
+
+#ifdef ENABLE_NET_MANAGER
 
 /*
  * 将消息丢给NetManager进行配置
@@ -8382,11 +8350,11 @@ void MenuUI::handleorSetWifiConfig(sp<WifiConfig> &mConfig)
 
 	LOGDBG(TAG, "Send our configure to NetManager");
 
-	msg = (sp<ARMessage>)(new ARMessage(NETM_CONFIG_WIFI_AP));
+    msg = NetManager::Instance()->obtainMessage(NETM_CONFIG_WIFI_AP);
     msg->set<sp<WifiConfig>>("wifi_config", mConfig);
-    NetManager::getNetManagerInstance()->postNetMessage(msg);
-
+    msg->post();
 }
+#endif
 
 
 void MenuUI::handleUpdateSysInfo(sp<SYS_INFO> &mSysInfo)
@@ -8465,7 +8433,6 @@ void MenuUI::handleDispInit()
 	
     init_cfg_select();				/* 根据配置初始化选择项 */
 
-	//disp top before check battery 170623 for met enter low power of protect at beginning
     bDispTop = true;				/* 显示顶部标志设置为true */
 
 	handleCheckBatteryState(true);		/* 检查电池的状态 */
@@ -8819,7 +8786,7 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
 
 #ifdef OPEN_BAT_LOW
         if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
-            // LOGDBG(TAG, "[%s: %d ] bat low menu[%s] %d state 0x%x", getMenuName(cur_menu), serverState);
+            // LOGDBG(TAG, "bat low menu[%s] %d state 0x%x", getMenuName(cur_menu), serverState);
             if (checkServerStateIn(serverState, STATE_RECORD)) {
                 setCurMenu(MENU_LOW_BAT, MENU_TOP);
                 addState(STATE_LOW_BAT);
@@ -8997,10 +8964,13 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             }
 
             case UI_MSG_CONFIG_WIFI:  {	/* 配置WIFI (UI-CORE处理) */
+
+            #ifdef ENABLE_NET_MANAGER
                 sp<WifiConfig> mConfig;
                 if (msg->find<sp<WifiConfig>>("wifi_config", &mConfig)) {
                     handleorSetWifiConfig(mConfig);
                 }
+            #endif
                 break;
             }
                 
@@ -9103,13 +9073,6 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 				break;
             }
 
-			/*
-			 * 低电
-			 */
-            case OLED_DISP_BAT_LOW:
-                break;
-
-
             case UI_READ_BAT: {     /* 读取电池电量消息 */
                 std::unique_lock<std::mutex> lock(mutexState);
                 handleCheckBatteryState();
@@ -9207,12 +9170,6 @@ void MenuUI::send_delay_msg(int msg_id, int delay)
 {
     sp<ARMessage> msg = obtainMessage(msg_id);
     msg->postWithDelayMs(delay);
-}
-
-void MenuUI::send_bat_low()
-{
-    sp<ARMessage> msg = obtainMessage(OLED_DISP_BAT_LOW);
-    msg->post();
 }
 
 void MenuUI::send_read_bat()

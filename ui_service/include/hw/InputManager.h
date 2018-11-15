@@ -38,7 +38,7 @@ class InputManager {
 public:
 	virtual					~InputManager();
 	
-	void 					exit();
+	void 					stop();
 	void 					start();
     static InputManager*	Instance();
 	void					setNotifyRecv(sp<ARMessage> notify);
@@ -87,6 +87,9 @@ private:
 	int 					mLongPressState;
     std::thread 			mLooperThread;                  /* 循环线程 */
 	std::thread				mLongPressMonitorThread;		/* 长按监听线程 */
+
+	std::mutex				mReportEnableLock;
+	std::mutex				mMonitorLock;
 };
 
 #endif /* _INPUT_MANAGER_H_ */

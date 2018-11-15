@@ -23,19 +23,15 @@ class TranManager {
 
 public:
 	virtual					~TranManager();
-	
-	bool 					exit();
-	bool 					start();
-    
-	void					setNotifyRecv(sp<ARMessage> notify);
 
+	bool 					start();
+	bool 					stop();
+    
     static TranManager*	    Instance();
-    static std::mutex       mInstanceLock;
 
 private:
                             TranManager();
     static TranManager*   	sInstance;
-	sp<ARMessage>			mNotify;
 
     std::mutex 				mLock;
     int 					mCtrlPipe[2]; // 0 -- read , 1 -- write
