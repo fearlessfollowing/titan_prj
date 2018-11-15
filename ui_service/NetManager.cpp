@@ -48,6 +48,9 @@
 #define NETM_DISPATCH_POLL	0x11		/* 若有多个IP依次显示 */
 
 
+#define ARRAY_SIZE(x)	    (sizeof(x) / sizeof(x[0]))
+
+
 struct ethtool_value {
     __uint32_t cmd;
     __uint32_t data;
@@ -61,6 +64,9 @@ enum {
 
 static sp<NetManager> gSysNetManager = nullptr;
 static std::mutex gSysNetMutex;
+
+
+extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit);
 
 
 /*********************************** NetDev **********************************/
@@ -296,11 +302,18 @@ std::string& NetDev::getDevName()
 
 void NetDev::getIpByDhcp()
 {
-    char cmd[512] = {0};
+    int status;
 
-    system("killall dhclient");
-    sprintf(cmd, "dhclient %s &", mDevName.c_str());
-    system(cmd);
+    system("killall udhcpc");
+    
+	const char *args[4];
+    args[0] = "/sbin/udhcpc";
+    args[1] = "-i";
+    args[2] = mDevName.c_str();
+    args[3] = "-S";
+
+	forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
+
 }
 
 
@@ -377,15 +390,13 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
     int iCurLinkState = etherDev->getNetdevLinkFrmPhy();
 	int iPollInterval = 1;
 	
-    //LOGINFO(TAG, "ethernet current state: %s", (iCurLinkState == NET_LINK_CONNECT) ? "Connect": "Disconnect");
+    LOGINFO(TAG, "ethernet current state: %s", (iCurLinkState == NET_LINK_CONNECT) ? "Connect": "Disconnect");
 
     if (etherDev->getNetdevSavedLink() != iCurLinkState) {	/* 链路发生变化 */
 
         LOGDBG(TAG, "NetManger: netdev[%s] link state changed", etherDev->getDevName().c_str());
 
         if (iCurLinkState == NET_LINK_CONNECT) {	/* Disconnect -> Connect */
-            LOGINFO(TAG, "++++>>> link connect");
-
             LOGDBG(TAG, "current ip [%s], saved ip [%s]", etherDev->getCurIpAddr(), etherDev->getSaveIpAddr());
 
             /* 只有构造设备时会将mCurIpAddr与mSavedIpAdrr设置为"0" */
@@ -397,14 +408,11 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
                     etherDev->getIpByDhcp();
                 }
             } else {	/* mCurIpAddr != mSaveIpAddr */
-                //LOGDBG(TAG, ">>>> Resume mSaveIpAddr to mCurIpAddr");
                 etherDev->resumeSavedIp2CurAndPhy(true);
             }
 
         } else {	/* Connect -> Disconnect */
             LOGINFO(TAG, "++++>>> link disconnect");
-
-             //etherDev->storeCurIp2Saved();
             etherDev->setCurIpAddr("0.0.0.0", true);
         }
 
@@ -619,9 +627,7 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
     uint32_t what = msg->what();
 	int iInterval = 0;
 
-#ifdef ENABLE_DEBUG_NETM	
-    LOGDBG(TAG, "NetManager get msg what %s", convWhat2Msg(what).c_str());
-#endif
+    LOGDBG(TAG, "NetManager get msg what [%s]", getMsgName(what));
 
 	switch (what) {
 
@@ -756,6 +762,7 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
          *
          */
         case NETM_SET_NETDEV_IP: {	/* 设备设备IP地址(DHCP/static) */
+
             LOGDBG(TAG, "+++++++++++++++ set ip>>>>");
             sp<DEV_IP_INFO> tmpIpInfo = NULL;
             sp<NetDev> tmpNetDev = NULL;
@@ -769,9 +776,8 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 				if (tmpIpInfo->iDhcp == GET_IP_STATIC) {	/* Static */
 				
 					/* 使用Direct方式时，先杀掉dhclient进程  - 2018年8月6日 */
-					system("killall dhclient");
-					msg_util::sleep_ms(1000);
-
+					system("killall udhcpc");
+					msg_util::sleep_ms(50);
 					tmpNetDev->setNetDevIp2Phy(tmpIpInfo->ipAddr);
 					tmpNetDev->setCurGetIpMode(GET_IP_STATIC);
 				} else {	/* DHCP */
@@ -1042,16 +1048,15 @@ void NetManager::sendIpInfo2Ui()
     LOGDBG(TAG, "NetManager: send ip(%s) info to ui", mLastDispIp);
 #endif
 
-    sp<DEV_IP_INFO> pInfo = (sp<DEV_IP_INFO>)(new DEV_IP_INFO());
+    sp<DEV_IP_INFO> pInfo = std::make_shared<DEV_IP_INFO>();
     strcpy(pInfo->cDevName, "NetManager");
     strcpy(pInfo->ipAddr, mLastDispIp);
 
-    sp<ARMessage> msg = (sp<ARMessage>)(new ARMessage(4));
-    msg->set<sp<DEV_IP_INFO>>("info", pInfo);
-	
-	#if 0
-    fifo::getSysTranObj()->sendUiMessage(msg);
-	#endif
+	if (mNotify) {
+		sp<ARMessage> msg = mNotify->dup();
+	    msg->set<sp<DEV_IP_INFO>>("info", pInfo);
+		msg->post();
+	}
 }
 
 

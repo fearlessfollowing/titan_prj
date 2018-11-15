@@ -184,3 +184,16 @@ APP遗留问题
 2.查询部分
 3.数据库
 
+
+
+按键的问题：
+问题描述：设置键按下时只报按下事件，过了一会会上报一堆的事件
+原因：设置脚对应的GPIO，内部没有上拉，修改tegra186-mb1-bct-pinmux-quil-p3310-1000-c03.cfg
+Linux_for_Tegra/bootloader/t186ref/tegra186-mb1-bct-pinmux-quil-p3310-1000-c03.cfg
+PBB0需要内部上拉
+
+音频问题：
+音频模块的上电问题
+
+
+
