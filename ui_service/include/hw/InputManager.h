@@ -74,6 +74,8 @@ private:
     int 					last_down_key = 0;
     int64 					last_key_ts = 0;
 	
+	int						mKeyFd;
+
     std::mutex 				mutexKey;
 	struct pollfd*			ufds = nullptr;
 	int 					nfds;

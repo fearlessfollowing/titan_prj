@@ -14,6 +14,7 @@
 ** V2.0         Skymixos        2018-09-17      长按不松开的情况下上报长按事件
 ** V3.0         Skymixos        2018-09-22      将InputManager设计为单例模式
 ** V3.1         Skymixos        2018年11月15日   修改输入监听looper线程未监听控制PIPE的BUG
+** V3.2         Skymixos        2018年11月16日   将输入监听改为select
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -79,8 +80,12 @@ void InputManager::setNotifyRecv(sp<ARMessage> notify)
 
 InputManager::InputManager(): mBtnReportCallback(nullptr), mNotify(nullptr)
 {
+
+	LOGDBG(TAG, ">>>>>>>>>>>>>>>>> InputManager Constructor <<<<<<<<<<<<<<<<<");
+
     const char* pRespRate = NULL;
 
+    mKeyFd = -1;
     mLongPressReported = false;                     
     mEnableReport = true;
     mLongPressState = MONITOR_STATE_INIT;
@@ -157,69 +162,46 @@ void InputManager::stop()
 int InputManager::openDevice(const char *device)
 {
     int version;
-    int fd;
+    int fd = -1;
 	
-    struct pollfd *new_ufds;
-
     char name[80];
-
     struct input_id id;
 
     fd = open(device, O_RDWR);
     if (fd < 0) {
-        LOGDBG(TAG, "could not open %s, %s\n", device, strerror(errno));
-        return -1;
+        LOGDBG(TAG, "could not open %s, %s", device, strerror(errno));
+        goto err_ioctl;
     }
 
     if (ioctl(fd, EVIOCGVERSION, &version)) {
-        LOGDBG(TAG, "could not get driver version for %s, %s\n", device, strerror(errno));
-        return -1;
+        LOGDBG(TAG, "could not get driver version for %s, %s", device, strerror(errno));
+        goto err_ioctl;
     }
 
-
     if (ioctl(fd, EVIOCGID, &id)) {
-        LOGDBG(TAG,"could not get driver id for %s, %s\n", device, strerror(errno));
-        return -1;
+        LOGDBG(TAG,"could not get driver id for %s, %s", device, strerror(errno));
+        goto err_ioctl;
     }
 
     name[sizeof(name) - 1] = '\0';
     if (ioctl(fd, EVIOCGNAME(sizeof(name) - 1), &name) < 1) {
-        LOGDBG(TAG, "could not get device name for %s, %s\n", device, strerror(errno));
+        LOGDBG(TAG, "could not get device name for %s, %s", device, strerror(errno));
         name[0] = '\0';
-        return -1;
+        goto err_ioctl;
     } else {
         if (strcmp(name, "gpio-keys") == 0) {
             LOGDBG(TAG, "found input device %s", device);
+            mKeyFd = fd;
         } else {
-            return -1;
+            goto err_ioctl;
         }
     }
-
-
-    new_ufds = (pollfd *)realloc(ufds, sizeof(ufds[0]) * (nfds + POLL_FD_NUM));
-    if (new_ufds == NULL) {
-        LOGDBG(TAG, "out of memory\n");
-        return -1;
-    }
-    ufds = new_ufds;
-
-    #if 0
-    new_device_names = (char **)realloc(device_names, sizeof(device_names[0]) * (nfds + POLL_FD_NUM));
-    if (new_device_names == NULL) {
-        LOGDBG(TAG,"out of memory\n");
-        return -1;
-    }
-    device_names = new_device_names;
-    device_names[nfds] = strdup(device);
-    #endif
-
-    ufds[nfds].fd = fd;
-    ufds[nfds].events = POLLIN;
-
-    nfds++;
-	LOGDBG(TAG, "open_device device %s over nfds %d ufds 0x%p", device, nfds, ufds);
-	
     return 0;
+
+err_ioctl:
+    if (fd > 0)
+        close(fd);
+    return -1;
 }
 
 
@@ -343,7 +325,7 @@ int InputManager::longPressMonitorLoop()
 
         TEMP_FAILURE_RETRY(read(mLongPressMonitorPipe[0], &c, 1));	
         if (c == CtrlPipe_Wakeup) {
-            // LOGDBG(TAG, "Startup Long press Monitor now ...");
+            LOGDBG(TAG, "Startup Long press Monitor now ...");
         } else if (c == CtrlPipe_Shutdown) {
             LOGDBG(TAG, "Long press Monitor quit now ... ");
             break;
@@ -394,159 +376,132 @@ int InputManager::longPressMonitorLoop()
 }
 
 
-
 int InputManager::inputEventLoop()
 {
-	int res;
+	int     res;
 	struct input_event event;
-	int64 key_ts;
-	int64 key_interval = 0;
-
-
-	nfds = POLL_FD_NUM;
-	ufds = (pollfd *)calloc(nfds, sizeof(ufds[0]));
+	int64   key_ts;
+	int64   key_interval = 0;
 
     if (!scanDir()) {
         LOGERR(TAG, "no dev input found (%s:%s:%d)", __FILE__, __FUNCTION__, __LINE__);
         abort();
     }
 
-    ufds[nfds++].fd = mCtrlPipe[0];
-    ufds[nfds++].events = POLLIN;
 
     while (true) {
 
-		int pollres = poll(ufds, nfds, -1);
-		
-        if (pollres < 0) {
-			LOGERR(TAG, "poll error");
-			break;
-        } else if (pollres == 0) {
-			LOGERR(TAG, "poll happen but no data");
-			continue;
-		}
-	
-        if (ufds[1].revents && (ufds[1].revents & POLLIN)) {
+        fd_set read_fds;
+        int rc = 0;
+        int max = -1;
 
-			#ifdef DEBUG_INPUT_MANAGER
-			LOGDBG(TAG, "mPipeEvent poll %d, returned %d nfds %d "
-					  "ufds[1].revents 0x%x\n", nfds, pollres, nfds, ufds[1].revents);
-			#endif
-			
-			char c = CtrlPipe_Wakeup;
-			read(mCtrlPipe[0], &c, 1);
+        FD_ZERO(&read_fds);
 
-			
-            if (c == CtrlPipe_Wakeup) {
-				LOGDBG(TAG, "InputManager Looper recv pipe shutdown.");
-				break;
-			}
-		}
-	
-        for (int i = POLL_FD_NUM; i < nfds; i++) {
-		
-			#ifdef DEBUG_INPUT_MANAGER
-			LOGDBG(TAG, "rec event[%d] 0x%x cur time %ld\n", i, ufds[i].revents, msg_util::get_cur_time_ms());
-			#endif
-			
-			{
-                if (ufds[i].revents & POLLIN) {
-					res = read(ufds[i].fd, &event, sizeof(event));
-                    if (res < (int)sizeof(event)) {
-						LOGDBG(TAG, "could not get event");
-						return -1;
-                    } else {
+        FD_SET(mCtrlPipe[0], &read_fds);	
+        if (mCtrlPipe[0] > max)
+            max = mCtrlPipe[0];
+
+        if (mKeyFd > 0) {
+            FD_SET(mKeyFd, &read_fds);	
+            if (mKeyFd > max)
+                max = mKeyFd;
+        }
+
+
+        if ((rc = select(max + 1, &read_fds, NULL, NULL, NULL)) < 0) {	
+            LOGDBG(TAG, "----> select error occured here ...");
+            continue;
+        } else if (!rc)
+            continue;        
+
+        if (FD_ISSET(mCtrlPipe[0], &read_fds)) {	    /* Pipe事件 */
+            char c = CtrlPipe_Shutdown;
+            TEMP_FAILURE_RETRY(read(mCtrlPipe[0], &c, 1));	
+            if (c == CtrlPipe_Shutdown) {
+                break;
+            }
+            continue;
+        } else if (FD_ISSET(mKeyFd, &read_fds)) {	    /* 按键事件 */
+
+            res = read(mKeyFd, &event, sizeof(event));
+            if (res < (int)sizeof(event)) {
+                LOGDBG(TAG, "could not get event");
+                return -1;
+            } else {
 						
-						#ifdef DEBUG_INPUT_MANAGER
-						LOGDBG(TAG, "get event %04x %04x %08x new_time %ld",
-								    event.type, event.code, event.value, msg_util::get_cur_time_us());
-	
-						#endif
+                #ifdef DEBUG_INPUT_MANAGER
+                LOGDBG(TAG, "get event %04x %04x %08x new_time %ld",
+                            event.type, event.code, event.value, msg_util::get_cur_time_us());
 
-                        if (event.code != 0) {
+                #endif
 
-							std::unique_lock<std::mutex> lock(mutexKey);
-							key_ts = event.time.tv_sec * 1000000LL + event.time.tv_usec;
+                if (event.code != 0) {
 
-							key_interval = key_ts - last_key_ts;
+                    std::unique_lock<std::mutex> lock(mutexKey);
+                    key_ts = event.time.tv_sec * 1000000LL + event.time.tv_usec;
 
-                            int iIntervalMs =  key_interval / 1000;
+                    key_interval = key_ts - last_key_ts;
 
-                            #ifdef DEBUG_INPUT_MANAGER
-							LOGDBG(TAG, " event.code is 0x%x, interval = %d ms\n", event.code, iIntervalMs);
-                            #endif
+                    int iIntervalMs =  key_interval / 1000;
 
-                            switch (event.value) {
-								case UP: {
+                    #ifdef DEBUG_INPUT_MANAGER
+                    LOGDBG(TAG, " event.code is 0x%x, interval = %d ms\n", event.code, iIntervalMs);
+                    #endif
 
-                                    setMonitorState(MONITOR_STATE_CANCEL);
-                                    writePipe(mLongPressMonitorPipe[1], CtrlPipe_Cancel);
+                    switch (event.value) {
+                        case UP: {
 
-                                    if ((iIntervalMs > gIKeyRespRate) && (iIntervalMs < 1500)) {
-										if (event.code == last_down_key) {
-                                            LOGDBG(TAG, "---> OK report key code [%d]", event.code); 
-                                            reportEvent(event.code);
-                                        } else {
-											LOGWARN(TAG, "up key mismatch(0x%x ,0x%x)", event.code, last_down_key);
-										}
-									} else if ((iIntervalMs > 2500) && (iIntervalMs < 6000)) {
-									    if (event.code == last_down_key) {
-                                            LOGDBG(TAG, "---> OK report long key code [%d]", event.code); 
+                            setMonitorState(MONITOR_STATE_CANCEL);
+                            writePipe(mLongPressMonitorPipe[1], CtrlPipe_Cancel);
 
-                                            if (mLongPressReported == false) {
-                                                mLongPressReported = true;
-                                                LOGDBG(TAG, "Reprot long press event by release Key");
-                                                reportLongPressEvent(event.code);
-                                            }
-                                        } else {
-											LOGWARN(TAG, "up key mismatch(0x%x ,0x%x)", event.code, last_down_key);
-										}
-                                    }
-									last_key_ts = key_ts;
-									last_down_key = -1;
-   
-                                    break;
+                            if ((iIntervalMs > gIKeyRespRate) && (iIntervalMs < 1500)) {
+                                if (event.code == last_down_key) {
+                                    LOGDBG(TAG, "---> OK report key code [%d]", event.code); 
+                                    reportEvent(event.code);
+                                } else {
+                                    LOGWARN(TAG, "up key mismatch(0x%x ,0x%x)", event.code, last_down_key);
                                 }
+                            } else if ((iIntervalMs > 2500) && (iIntervalMs < 6000)) {
+                                if (event.code == last_down_key) {
+                                    LOGDBG(TAG, "---> OK report long key code [%d]", event.code); 
+
+                                    if (mLongPressReported == false) {
+                                        mLongPressReported = true;
+                                        LOGDBG(TAG, "Reprot long press event by release Key");
+                                        reportLongPressEvent(event.code);
+                                    }
+                                } else {
+                                    LOGWARN(TAG, "up key mismatch(0x%x ,0x%x)", event.code, last_down_key);
+                                }
+                            }
+                            last_key_ts = key_ts;
+                            last_down_key = -1;
+
+                            break;
+                        }
 								
-								case DOWN: {
+                        case DOWN: {
+                            mLongPressReported = false;
+                            last_down_key = event.code;	        // iKey;
+                            last_key_ts = key_ts;
+                            mLongPressVal = last_down_key;
+                            if (256 == last_down_key) {
+                                writePipe(mLongPressMonitorPipe[1], CtrlPipe_Wakeup);
+                            }
+                            break;
+                        }
 
-                                    mLongPressReported = false;
-
-									last_down_key = event.code;	        // iKey;
-									last_key_ts = key_ts;
-
-                                    mLongPressVal = last_down_key;
-
-                                    if (256 == last_down_key) {
-                                        writePipe(mLongPressMonitorPipe[1], CtrlPipe_Wakeup);
-                                    }
-
-									break;
-                                }
-
-                                SWITCH_DEF_ERROR(event.value);
-							}	
-						}
-					}
-				}
-			}
-		}
-	}
-	
-    for (int i = POLL_FD_NUM; i < nfds; i++) {
-        if (ufds[i].fd > 0) {
-			close(ufds[i].fd);
-			ufds[i].fd = -1;
-		}
-	}
-
-    if (ufds) {
-		free(ufds);
-		ufds = nullptr;
-	}
-	
-	LOGDBG(TAG, "exit get event loop");
-	return 0;
+                        SWITCH_DEF_ERROR(event.value);
+                    }	
+                }
+            }
+        }        
+    }
+    
+    if (mKeyFd > 0) 
+        close(mKeyFd);
+    
+    return 0;
 }
 
 

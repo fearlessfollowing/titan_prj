@@ -3689,26 +3689,15 @@ void MenuUI::calcRemainSpace(bool bUseCached)
         } else {    /* 本地的拍照 - 非Customer模式 */
 
             int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
-            int iRawVal = cm->getKeyVal("raw");
-            
+            // int iRawVal = cm->getKeyVal("raw");
             struct stPicVideoCfg* pPicVidCfg = mPicAllItemsList.at(item);
-            int iUnitSize = 30;
-            if (pPicVidCfg) {
-                if (strcmp(pPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {    /* 普通模式 */
-                    iUnitSize = pPicVidCfg->pStAction->size_per_act;
-                    if (iRawVal) {
-                        iUnitSize = iUnitSize * pPicVidCfg->iRawStorageRatio;
-                    }
-                    LOGDBG(TAG, "One Group Picture size [%d]M", iUnitSize);
-                    mCanTakePicNum = vm->getLocalVolLeftSize(false) / iUnitSize;
-                } else {    /* Customer模式 */
-                    if (true == checkIsTakeTimelpaseInCustomer()) {
-                        vm->calcTakeTimelapseCnt(*(pPicVidCfg->jsonCmd.get()));                        
-                        ProtoManager* pm = ProtoManager::Instance();
-                        pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
-                    } else {
-                        mCanTakePicNum = vm->calcTakepicLefNum( *(pPicVidCfg->jsonCmd.get()), false);
-                    }
+            if (pPicVidCfg) {   /* 非timelapse和timelapse的两种计算方式 */
+                if (true == checkIsTakeTimelpaseInCustomer()) {
+                    vm->calcTakeTimelapseCnt(*(pPicVidCfg->jsonCmd.get()));                        
+                    ProtoManager* pm = ProtoManager::Instance();
+                    pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
+                } else {
+                    mCanTakePicNum = vm->calcTakepicLefNum(*(pPicVidCfg->jsonCmd.get()), false);
                 }
             } else {
                 LOGERR(TAG, "Invalid item[%d]", item);
