@@ -1,7 +1,7 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2 Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
-** 文件名称: net_manager.cpp
+** 文件名称: NetManager.cpp
 ** 功能描述: 网络管理器
 **
 **
@@ -159,8 +159,6 @@ void NetDev::setCurIpAddr(const char* ip, bool bUpPhy = true)
     }
 }
 
-
-
 int NetDev::getNetdevLinkFrmPhy()
 {
     int skfd = -1;
@@ -187,12 +185,7 @@ int NetDev::getNetdevLinkFrmPhy()
     ifr.ifr_data = (caddr_t)&edata;
 
     ret = ioctl(skfd, 0x8946, &ifr);
-    if (ret == 0) {
-
-		#if 0
-        LOGINFO(TAG, "Link detected: %d\n", edata.data);
-		#endif
-		
+    if (ret == 0) {		
         if (edata.data == 1) {
             err = NET_LINK_CONNECT;
         } else {
@@ -203,7 +196,6 @@ int NetDev::getNetdevLinkFrmPhy()
     }
 
 RET_VALUE:
-
     if (skfd != -1) {
         close(skfd);
     }
@@ -220,7 +212,6 @@ const char* NetDev::getNetDevIpFrmPhy()
 
     strcpy(ifr.ifr_name, mDevName.c_str());
 
-
     if ((skfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         goto ERR;
     }
@@ -234,7 +225,6 @@ const char* NetDev::getNetDevIpFrmPhy()
     addr = (struct sockaddr_in *)(&ifr.ifr_addr);
 
     return inet_ntoa(addr->sin_addr);
-
 ERR:
     return NULL;
 }
@@ -262,7 +252,10 @@ bool NetDev::setNetDevIp2Phy(const char* ip)
         if (ioctl(sockfd, SIOCSIFADDR, &ifr)) {
             LOGERR(TAG, "setNetDevIp2Phy -> [%s:%s] failed", getDevName().c_str(), ip);
         } else {
-            // LOGDBG(TAG, "setNetDevIp2Phy -> [%s:%s] Success", getDevName().c_str(), ip);
+		
+		#ifdef ENABLE_DEBUG_NETM
+            LOGDBG(TAG, "setNetDevIp2Phy -> [%s:%s] Success", getDevName().c_str(), ip);
+		#endif
 
             ifr.ifr_flags |= IFF_UP;
             if (ioctl(sockfd, SIOCSIFFLAGS, &ifr) == -1) {
@@ -270,14 +263,11 @@ bool NetDev::setNetDevIp2Phy(const char* ip)
 			} else {
                 LOGDBG(TAG, "setNetDevIp2Phy OK");
 			}
-
             ret = true;
-
         }
         close(sockfd);
     }
     return ret;
-
 }
 
 
@@ -311,9 +301,7 @@ void NetDev::getIpByDhcp()
     args[1] = "-i";
     args[2] = mDevName.c_str();
     args[3] = "-S";
-
 	forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
-
 }
 
 
@@ -389,8 +377,10 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
 
     int iCurLinkState = etherDev->getNetdevLinkFrmPhy();
 	int iPollInterval = 1;
-	
+
+#ifdef ENABLE_DEBUG_NETM	
     LOGINFO(TAG, "ethernet current state: %s", (iCurLinkState == NET_LINK_CONNECT) ? "Connect": "Disconnect");
+#endif
 
     if (etherDev->getNetdevSavedLink() != iCurLinkState) {	/* 链路发生变化 */
 
@@ -418,23 +408,16 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
 
         etherDev->setNetdevSavedLink(iCurLinkState);
     } else {	/* 链路未发生变化 */
-
-
         if (etherDev->getNetdevSavedLink() == NET_LINK_CONNECT) {   /* Connected */
-			
-           // LOGDBG(TAG, "+++++>>> link not changed(Connected), check ip haved changed ....");
-
 			/* DHCP获取到了IP地址, Phy的地址跟getCurIpAddr不一样 */
             if (etherDev->getNetDevIpFrmPhy() && strcmp(etherDev->getNetDevIpFrmPhy(), etherDev->getCurIpAddr())) {  /* Ip changed */
                 etherDev->setCurIpAddr(etherDev->getNetDevIpFrmPhy(), false);
             }
         } else {
-           // LOGINFO(TAG, "+++++>>> link not changed(Disconnected), do nothing.");
             etherDev->setCurIpAddr("0.0.0.0", true);
             iPollInterval = 2;
         }
     }
-
 	return iPollInterval;
 }
 
@@ -627,7 +610,9 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
     uint32_t what = msg->what();
 	int iInterval = 0;
 
+#ifdef ENABLE_DEBUG_NETM
     LOGDBG(TAG, "NetManager get msg what [%s]", getMsgName(what));
+#endif
 
 	switch (what) {
 
@@ -660,17 +645,11 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			break;
 		}
 	
-
-		/*
-		 * msg.what = NETM_REGISTER_NETDEV
-		 * msg."netdev" = sp<NetDev>
-		 */
 		case NETM_REGISTER_NETDEV: {	/* 注册网络设备 */
 			LOGDBG(TAG, "NetManager -> register net device...");
 
 			sp<NetDev> tmpNet;
             CHECK_EQ(msg->find<sp<NetDev>>("netdev", &tmpNet), true);
-
 
 			/* 检查该网络设备是否已经被注册过,及管理器管理的网卡是否达到上限 */
 			if (mDevList.size() > NETM_NETDEV_MAX_COUNT) {
@@ -687,10 +666,6 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			break;
 		}
 
-		/*
-		 * msg.what = NETM_REGISTER_NETDEV
-		 * msg."netdev" = sp<NetDev>
-		 */
 		case NETM_UNREGISTER_NETDEV: {	/* 注销网络设备 */
 			
 			LOGDBG(TAG, "NetManager -> unregister net device...");
@@ -706,11 +681,6 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			break;
 		}
 
-
-		/*
-		 * msg.what = NETM_REGISTER_NETDEV
-		 * msg."netdev" = sp<NetDev>
-		 */
 		case NETM_STARTUP_NETDEV: {		/* 启动网络设备 */
 			
             LOGDBG(TAG, "Startup Wifi test ....");
@@ -753,14 +723,9 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 					}
 				}
 			}			
-			
 			break;
 		}
 
-
-        /* NET_IP_INFO(name, ipaddr)
-         *
-         */
         case NETM_SET_NETDEV_IP: {	/* 设备设备IP地址(DHCP/static) */
 
             LOGDBG(TAG, "+++++++++++++++ set ip>>>>");
@@ -850,7 +815,6 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 				LOGDBG(TAG, "Type: %d", tmpDev->getNetDevType());
 				LOGDBG(TAG, "---------------------------------------------------------");
 			}
-
 			break;
 		}
 
@@ -860,7 +824,6 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			mLooper->quit();
 			break;
 		}
-
 
 		default:
 			LOGDBG(TAG, "NetManager: Unsupport Message recieve");
@@ -994,12 +957,6 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 
 	switch (iPolicy) {
 
-		/* 基于优先级的发送IP策略: 
-		* LAN IP不为0时显示LAN的IP 
-		* LAN IP为0, WLAN0开启时,显示WLAN0的IP
-		* 均为0时显示"0.0.0.0"
-		*/
-
 		case NETM_DISPATCH_PRIO: {	/* LAN > WLAN */
 
 			tmpEthDev = getNetDevByname(ETH0_NAME);
@@ -1018,7 +975,6 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 					bUpdate = true;
 				}
 			} else {
-			
 				memset(mLastDispIp, 0, sizeof(mLastDispIp));
 				strcpy(mLastDispIp, "0.0.0.0");
 				bUpdate = true;
@@ -1037,14 +993,12 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 	if (bUpdate) {
 		sendIpInfo2Ui();
 	}
-
 }
 
 
 void NetManager::sendIpInfo2Ui()
 {
 #ifdef ENABLE_DEBUG_NETM
-    /* Get Global UI object */
     LOGDBG(TAG, "NetManager: send ip(%s) info to ui", mLastDispIp);
 #endif
 

@@ -578,22 +578,25 @@ void MenuUI::subSysInit()
 	LOGDBG(TAG, "eth0 get ip mode [%s]", (cm->getKeyVal("dhcp") == 1) ? "DHCP" : "STATIC" );
     sp<EtherNetDev> eth0 = std::make_shared<EtherNetDev>("eth0", cm->getKeyVal("dhcp"));
 
-    sp<ARMessage> registerEth0msg = obtainMessage(NETM_REGISTER_NETDEV);
+    sp<ARMessage> registerEth0msg = nm->obtainMessage(NETM_REGISTER_NETDEV);
     registerEth0msg->set<sp<NetDev>>("netdev", eth0);
-    nm->postNetMessage(registerEth0msg);
+    registerEth0msg->post();
 
     /* Register Wlan0 */
     sp<WiFiNetDev> wlan0 = std::make_shared<WiFiNetDev>(WIFI_WORK_MODE_AP, "wlan0", 0);
-    sp<ARMessage> registerWlanMsg = obtainMessage(NETM_REGISTER_NETDEV);
+    sp<ARMessage> registerWlanMsg = nm->obtainMessage(NETM_REGISTER_NETDEV);
     registerWlanMsg->set<sp<NetDev>>("netdev", wlan0);
-    nm->postNetMessage(registerWlanMsg);
+    registerWlanMsg->post();
 
 
-    sp<ARMessage> looperMsg = obtainMessage(NETM_POLL_NET_STATE);
-    nm->postNetMessage(looperMsg);
+    nm->obtainMessage(NETM_POLL_NET_STATE)->post();
+    // sp<ARMessage> looperMsg = obtainMessage(NETM_POLL_NET_STATE);
+    // nm->postNetMessage(looperMsg);
 
-    sp<ARMessage> listMsg = obtainMessage(NETM_LIST_NETDEV);
-    nm->postNetMessage(listMsg);
+    nm->obtainMessage(NETM_LIST_NETDEV)->post();
+
+    // sp<ARMessage> listMsg = obtainMessage(NETM_LIST_NETDEV);
+    // nm->postNetMessage(listMsg);
 
 
 	if (!mHaveConfigSSID) {
@@ -3679,7 +3682,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
     LOGDBG(TAG, "Use New Way Calc Remian Space now ......");
 
     VolumeManager* vm = VolumeManager::Instance();
-    CfgManager* cm = CfgManager::Instance();
+    // CfgManager* cm = CfgManager::Instance();
     {
         mCanTakePicNum = 0;     /* 重新计算之前将可拍照片的张数清0 */
 

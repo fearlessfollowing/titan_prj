@@ -10,7 +10,6 @@ Import('com_env')
 
 import config
 
-#src = ['fifo.cpp']
 src = ['MenuUI.cpp']
 src += ['InputManager.cpp']
 src += ['NetManager.cpp']
