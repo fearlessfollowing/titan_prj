@@ -44,8 +44,6 @@ src += [config.LIBCUTILS + '/system_properties.c']
 
 
 com_env['CXXFLAGS'] += ' -I' + config.UI_SERVICE + '/include'
-#com_env['LIBS'] += ['rt']
-#com_env['LIBS'] += ['pthread']
 update_check_obj = com_env.Object(src)
 
 Return('update_check_obj')
