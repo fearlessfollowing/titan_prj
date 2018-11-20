@@ -52,6 +52,9 @@
 #include <fstream>
 #include <sstream>
 
+#include <sys/AudioManager.h>
+
+
 #include <sys/ProtoManager.h>
 #include <sys/CfgManager.h>
 #include <sys/TranManager.h>
@@ -519,6 +522,10 @@ void MenuUI::init()
     strcpy(mLocalIpAddr, "0.0.0.0");
 
     mAgingMode = false;
+
+
+    /* AudioManager init */
+    AudioManager::Instance();
 
     LOGDBG(TAG, ">>>>>>>> Init MenUI object ok ......");
 }
@@ -8229,6 +8236,18 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
     VolumeManager* vm = VolumeManager::Instance();
     bool bNeedShutdown = false;
     uint64_t serverState = getServerState();
+
+    /* 用户自定义的虚拟键 */
+    if (iAppKey == APP_KEY_USER_DEF1 
+        || iAppKey == APP_KEY_USER_DEF2 
+        || iAppKey == APP_KEY_USER_DEF3) {
+        
+        LOGDBG(TAG, "---> user long press virtual key event[0x%x]", iAppKey);
+
+        /* 目前用于测试音频播放问题 */
+
+    }
+
 
     if (iAppKey == APP_KEY_POWER) {
 

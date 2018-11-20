@@ -18,6 +18,7 @@
 #include <alsa/asoundlib.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 
 //需要从wav文件中读取的三个参数
@@ -99,9 +100,11 @@ private:
     std::vector<std::shared_ptr<struct stMapItem>> audioRes;
 #endif
 
-    std::string defaultPlayDev;
+    int         checkWavFile(const char* pBuf, HWParams* hw_params);
 
-    static AudioManager* sInstance;
+    std::string             defaultPlayDev;
+    std::string             mAudioResPath;
+    static AudioManager*    sInstance;
 };
 
 

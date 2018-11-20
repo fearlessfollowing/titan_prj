@@ -314,7 +314,9 @@ void InputManager::reportLongPressEvent(int iLinuxCode)
 
         if (iAppKey && mNotify) {
             sp<ARMessage> msg = mNotify->dup();
-            LOGDBG(TAG, "last_key_ts last_down_key %d", iAppKey);
+
+            LOGDBG(TAG, "reportLongPressEvent app key[%s]", getAppKeyName(iAppKey));
+
             msg->setWhat(3);        // UI_MSG_LONG_KEY_EVENT
             msg->set<int>("long_key", iAppKey);
             msg->post();

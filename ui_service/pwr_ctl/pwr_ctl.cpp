@@ -26,6 +26,8 @@
 #include <common/include_common.h>
 #include <common/check.h>
 
+#include <sys/AudioManager.h>
+
 #include <system_properties.h>
 #include <string.h>
 #include <prop_cfg.h>
@@ -36,6 +38,7 @@
 
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
+
 
 #include <util/msg_util.h>
 #include <hw/InputManager.h>
@@ -50,22 +53,32 @@ static std::shared_ptr<oled_light> pLed = nullptr;
 extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit);
 
 
-#if 0
+#if 1
 
 static bool bPwrState = false;
 
 void btnCallback(int iEventCode)
 {
-    Log.d(TAG, "[%s: %d] ----------- eventCode: 0x%x", __FILE__, __LINE__, iEventCode);
-    if (iEventCode == 0x100) {
-        if (false == bPwrState) {
-            system("i2cset -f -y 0 0x77 0x2 0xff");
-            bPwrState = true;
-        } else {
-            system("i2cset -f -y 0 0x77 0x2 0x00");
-            bPwrState = false;        
+    LOGDBG(TAG, "[%s: %d] ----------- eventCode: 0x%x", __FILE__, __LINE__, iEventCode);
+    
+    switch (iEventCode) {
+        case APP_KEY_POWER: {
+            if (false == bPwrState) {
+                system("i2cset -f -y 0 0x77 0x2 0xff");
+                bPwrState = true;
+            } else {
+                system("i2cset -f -y 0 0x77 0x2 0x00");
+                bPwrState = false;        
+            }
+            break;
+        }
+
+        case APP_KEY_DOWN: {
+            AudioManager::Instance()->playWav("one_s_timer.wav");
+            break;
         }
     }
+
 }
 #else 
 
@@ -106,6 +119,8 @@ int main(int argc, char* argv[])
     LogWrapper::init("/home/nvidia/insta360/log", "pwr_ctl", false);
 
     pLed = std::make_shared<oled_light>();
+
+    AudioManager::Instance();
 
     InputManager* im = InputManager::Instance();
     im->setBtnReportCallback(btnCallback);
