@@ -16,7 +16,7 @@ Export('config')
 com_env = Environment(
 	CC = config.CC, CCFLAGS = config.CFLAGS,
 	CXX = config.CXX, CXXFLAGS = config.CXXFLAGS,
-	LIBS = ['pthread', 'rt', 'ev', 'jsoncpp'],
+	LIBS = ['pthread', 'rt', 'ev', 'jsoncpp', 'asound'],
 	LINKFLAGS = config.LDFLAGS,
 	CPPPATH = config.CPPPATH,
  	)

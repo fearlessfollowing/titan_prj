@@ -94,7 +94,7 @@ private:
 #ifdef ENABLE_CACHE_AUDIO_FILE
     
     /* 加载所有的wav素材到Cache中 */
-    int         loadRes2Cache();
+    int         loadRes2Cache(const char* fileName);
 
     std::vector<std::shared_ptr<struct stMapItem>> audioRes;
 #endif
