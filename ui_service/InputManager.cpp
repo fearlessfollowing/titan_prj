@@ -1,5 +1,5 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2 Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2、Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: InputManager.cpp
 ** 功能描述: 输入管理器（用于处理按键事件）
@@ -15,6 +15,7 @@
 ** V3.0         Skymixos        2018-09-22      将InputManager设计为单例模式
 ** V3.1         Skymixos        2018年11月15日   修改输入监听looper线程未监听控制PIPE的BUG
 ** V3.2         Skymixos        2018年11月16日   将输入监听改为select
+** V3.3         Skymixos        2018年11月20日   新增Linux按键码到APP应用码值的转换
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -57,10 +58,40 @@ enum {
 #define LONG_PRESS_MSEC     (2000)
 #define SHORT_PRESS_THOR	(100)	        // 100ms
 
+#define ARRAY_SIZE(x)	    (sizeof(x) / sizeof(x[0]))
+
+
 static int          gIKeyRespRate = 100;        /* 按键的灵敏度,默认为100ms */
 static std::mutex   gInputManagerMutex;
-
 InputManager* InputManager::sInstance = NULL;
+
+
+KeyCodeConv gConvTab[] = {
+    {0x100, APP_KEY_POWER},
+    {0x101, APP_KEY_UP},
+    {0x102, APP_KEY_DOWN},
+    {0x103, APP_KEY_SETTING},
+    {0x104, APP_KEY_BACK},
+    {0x105, APP_KEY_USER_DEF1},
+    {0x106, APP_KEY_USER_DEF2},
+    {0x107, APP_KEY_USER_DEF3}
+};
+
+#define KEY_NAME(n) case n: return #n
+const char *getAppKeyName(int cmd)
+{
+    switch (cmd) {
+        KEY_NAME(APP_KEY_POWER);
+        KEY_NAME(APP_KEY_UP);
+        KEY_NAME(APP_KEY_DOWN);
+        KEY_NAME(APP_KEY_SETTING);
+        KEY_NAME(APP_KEY_BACK);
+        KEY_NAME(APP_KEY_USER_DEF1);
+        KEY_NAME(APP_KEY_USER_DEF2);
+        KEY_NAME(APP_KEY_USER_DEF3);
+    default: return "Unkown AppKey";
+    }
+}
 
 
 InputManager* InputManager::Instance() 
@@ -239,46 +270,53 @@ bool InputManager::scanDir()
 }
 
 
-int InputManager::getKey(u16 code)
+void InputManager::reportEvent(int iLinuxCode)
 {
-    const int keys[] = {0x73, 0x72, 0x101, 0x100, 0x74};
-    int key = -1;
-    for (u32 i = 0; i < sizeof(keys)/sizeof(keys[0]); i++) {
-        if (keys[i] == code) {
-            key = i;
-            break;
-        }
-    }
-    return key;
-}
+    int iAppKey = 0;
 
-
-void InputManager::reportEvent(int iKey)
-{
     if (true == getReportState()) {
+
+        for (u32 i = 0; i < ARRAY_SIZE(gConvTab); i++) {
+            if (iLinuxCode == gConvTab[i].iLinuxCode) {
+                iAppKey = gConvTab[i].iAppCode;
+                break;
+            }
+        }       
+
+        LOGDBG(TAG, "reportEvent app key[%s]", getAppKeyName(iAppKey));
         
-        if (mBtnReportCallback) {   /* 回调处理 */
-            mBtnReportCallback(iKey);
-        }
-        
-        if (mNotify) {
-            sp<ARMessage> msg = mNotify->dup();
-            msg->set<int>("oled_key", iKey);
-            msg->post();
+        if (iAppKey) {
+            if (mBtnReportCallback) {   /* 回调处理 */
+                mBtnReportCallback(iAppKey);
+            }
+            
+            if (mNotify) {
+                sp<ARMessage> msg = mNotify->dup();
+                msg->set<int>("oled_key", iAppKey);
+                msg->post();
+            }
         }
     }	
 }
 
 
-void InputManager::reportLongPressEvent(int iKey)
+void InputManager::reportLongPressEvent(int iLinuxCode)
 {
+    int iAppKey = 0;
+    
     if (true == getReportState()) {
-        
-        if (mNotify) {
+        for (u32 i = 0; i < ARRAY_SIZE(gConvTab); i++) {
+            if (iLinuxCode == gConvTab[i].iLinuxCode) {
+                iAppKey = gConvTab[i].iAppCode;
+                break;
+            }
+        }
+
+        if (iAppKey && mNotify) {
             sp<ARMessage> msg = mNotify->dup();
-            LOGDBG(TAG, "last_key_ts last_down_key %d", iKey);
+            LOGDBG(TAG, "last_key_ts last_down_key %d", iAppKey);
             msg->setWhat(3);        // UI_MSG_LONG_KEY_EVENT
-            msg->set<int>("long_key", iKey);
+            msg->set<int>("long_key", iAppKey);
             msg->post();
         }
     }
@@ -309,7 +347,6 @@ bool InputManager::getReportState()
 int InputManager::longPressMonitorLoop()
 {
     struct timeval timeout;
-
 
     LOGDBG(TAG, "Enter longPressMonitorLoop now ... ");
 
@@ -456,18 +493,14 @@ int InputManager::inputEventLoop()
 
                             if ((iIntervalMs > gIKeyRespRate) && (iIntervalMs < 1500)) {
                                 if (event.code == last_down_key) {
-                                    LOGDBG(TAG, "---> OK report key code [%d]", event.code); 
                                     reportEvent(event.code);
                                 } else {
                                     LOGWARN(TAG, "up key mismatch(0x%x ,0x%x)", event.code, last_down_key);
                                 }
                             } else if ((iIntervalMs > 2500) && (iIntervalMs < 6000)) {
                                 if (event.code == last_down_key) {
-                                    LOGDBG(TAG, "---> OK report long key code [%d]", event.code); 
-
                                     if (mLongPressReported == false) {
                                         mLongPressReported = true;
-                                        LOGDBG(TAG, "Reprot long press event by release Key");
                                         reportLongPressEvent(event.code);
                                     }
                                 } else {
@@ -490,14 +523,12 @@ int InputManager::inputEventLoop()
                             }
                             break;
                         }
-
                         SWITCH_DEF_ERROR(event.value);
                     }	
                 }
             }
         }        
     }
-    
     if (mKeyFd > 0) 
         close(mKeyFd);
     

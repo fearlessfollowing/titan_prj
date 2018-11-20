@@ -28,6 +28,26 @@ enum {
 	MONITOR_STATE_MAX,
 };
 
+
+enum {
+	APP_KEY_UP = 0x10,
+	APP_KEY_DOWN,
+	APP_KEY_BACK,
+	APP_KEY_SETTING,
+	APP_KEY_POWER,
+	APP_KEY_USER_DEF1,
+	APP_KEY_USER_DEF2,
+	APP_KEY_USER_DEF3,
+	APP_KEY_MAX
+};
+
+
+typedef struct stKeyCode {
+	int iLinuxCode;
+	int iAppCode;
+} KeyCodeConv;
+
+
 /*
  * 有按键事件时的回调接口
  */

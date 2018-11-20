@@ -49,8 +49,6 @@
 
 #include <_futex.h>
 
-
-
 //#include <sys/atomics.h>
 
 static const char property_service_socket[] = "/dev/socket/"PROP_SERVICE_NAME;

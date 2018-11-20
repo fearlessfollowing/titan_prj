@@ -5,17 +5,7 @@
 #include <util/ARMessage.h>
 #include <hw/oled_module.h>
 #include <sys/action_info.h>
-
-
-enum {
-
-    OLED_KEY_UP			= 0x101,
-    OLED_KEY_DOWN 		= 0x102,
-    OLED_KEY_BACK 		= 0x104,
-    OLED_KEY_SETTING 	= 0x103,
-    OLED_KEY_POWER 		= 0x100,
-    OLED_KEY_MAX,
-};
+#include <prop_cfg.h>
 
 
 enum {
@@ -118,7 +108,7 @@ typedef struct _menu_info_ {
     int 		back_menu;
 	
     SELECT_INFO mSelectInfo;
-    const int 	mSupportkeys[OLED_KEY_MAX];
+    const int 	mSupportkeys[SYS_MAX_BTN_NUM];
 
 	int 		iMenuId;	/* 菜单的ID */
     

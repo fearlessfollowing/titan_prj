@@ -301,7 +301,9 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define SET_ITEM_NAME_AEB9          "aeb9"
 
 
-
 #define SYS_TF_COUNT_NUM            6
+
+
+#define SYS_MAX_BTN_NUM             5
 
 #endif /* PRO2_OSC_CODE_CODE_CORE_INCLUDE_PROP_CFG_H_ */

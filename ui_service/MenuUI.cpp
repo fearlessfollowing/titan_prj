@@ -6130,10 +6130,10 @@ void MenuUI::exit_sys_err()
 }
 
 
-bool MenuUI::check_cur_menu_support_key(int iKey)
+bool MenuUI::check_cur_menu_support_key(int iCode)
 {
-	for (int i = 0; i < OLED_KEY_MAX; i++) {
-		if (mMenuInfos[cur_menu].mSupportkeys[i] == iKey)
+	for (int i = 0; i < SYS_MAX_BTN_NUM; i++) {
+		if (mMenuInfos[cur_menu].mSupportkeys[i] == iCode)
 			return true;
 	}
 	return false;
@@ -8160,47 +8160,53 @@ void MenuUI::handleDispErrMsg(sp<ERR_TYPE_INFO>& mErrInfo)
 ** 调 用: 
 ** TODO:
 *************************************************************************/
-void MenuUI::handleKeyMsg(int iKey)
+void MenuUI::handleKeyMsg(int iAppKey)
 {
     if (cur_menu == -1) {
         LOGDBG(TAG, "Menu System not Inited Yet!!!!");
         return;
     }
 
-	/* 判断当前菜单是否支持该键值 */
-	if (check_cur_menu_support_key(iKey)) {	
-		
-        switch (iKey) {
-        case OLED_KEY_UP:		/* "UP"键的处理 */
-        case 0x73:
-            procUpKeyEvent();
-            break;
-		
-        case OLED_KEY_DOWN:		/* "DOWN"键的处理 */
-        case 0x72:
-            procDownKeyEvent();
-            break;
-		
-        case OLED_KEY_BACK:		/* "BACK"键的处理 */
-        case 0x66:
-            procBackKeyEvent();
-            break;
-		
-        case OLED_KEY_SETTING:	/* "Setting"键的处理 */
-        case 0x160:
-            procSettingKeyEvent();
-            break;
-		
-        case OLED_KEY_POWER:	/* "POWER"键的处理 */
-        case 0x74:
-            procPowerKeyEvent();
-            break;
+    /* 用户自定义的虚拟键 */
+    if (iAppKey == APP_KEY_USER_DEF1 
+        || iAppKey == APP_KEY_USER_DEF2 
+        || iAppKey == APP_KEY_USER_DEF3) {
+        
+        LOGDBG(TAG, "---> user virtual key event[0x%x]", iAppKey);
 
-        default:
-            break;
+        /* 目前用于测试音频播放问题 */
+
+    }
+
+	/* 判断当前菜单是否支持该键值 */
+	if (check_cur_menu_support_key(iAppKey)) {	
+		
+        switch (iAppKey) {
+            case APP_KEY_UP:        /* "UP"键的处理 */
+                procUpKeyEvent();
+                break;
+            
+            case APP_KEY_DOWN:		/* "DOWN"键的处理 */
+                procDownKeyEvent();
+                break;
+            
+            case APP_KEY_BACK:		/* "BACK"键的处理 */
+                procBackKeyEvent();
+                break;
+            
+            case APP_KEY_SETTING:	/* "Setting"键的处理 */
+                procSettingKeyEvent();
+                break;
+            
+            case APP_KEY_POWER:	/* "POWER"键的处理 */
+                procPowerKeyEvent();
+                break;
+
+            default:
+                break;
         }
     } else {
-        LOGDBG(TAG, "cur menu[%s] not support cur key[%d]", getMenuName(cur_menu), iKey);
+        LOGDBG(TAG, "cur menu[%s] not support cur key[%d]", getMenuName(cur_menu), iAppKey);
         exit_sys_err();
     }
 }
@@ -8217,14 +8223,14 @@ void MenuUI::handleKeyMsg(int iKey)
 ** 调 用: handleMessage
 **
 *************************************************************************/
-void MenuUI::handleLongKeyMsg(int key)
+void MenuUI::handleLongKeyMsg(int iAppKey)
 {
-    LOGDBG(TAG, "handleLongKeyMsg: ---> long press key 0x%x", key);
+    LOGDBG(TAG, "handleLongKeyMsg: ---> long press key 0x%x", iAppKey);
     VolumeManager* vm = VolumeManager::Instance();
     bool bNeedShutdown = false;
     uint64_t serverState = getServerState();
 
-    if (key == OLED_KEY_POWER) {
+    if (iAppKey == APP_KEY_POWER) {
 
         LOGDBG(TAG, "Are you want Power off Machine ...");
         
@@ -8262,7 +8268,7 @@ void MenuUI::handleLongKeyMsg(int key)
 
 void MenuUI::handleShutdown()
 {
-    handleLongKeyMsg(OLED_KEY_POWER);
+    handleLongKeyMsg(APP_KEY_POWER);
 }
 
 
