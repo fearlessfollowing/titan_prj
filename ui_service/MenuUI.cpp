@@ -595,16 +595,8 @@ void MenuUI::subSysInit()
     registerWlanMsg->set<sp<NetDev>>("netdev", wlan0);
     registerWlanMsg->post();
 
-
     nm->obtainMessage(NETM_POLL_NET_STATE)->post();
-    // sp<ARMessage> looperMsg = obtainMessage(NETM_POLL_NET_STATE);
-    // nm->postNetMessage(looperMsg);
-
     nm->obtainMessage(NETM_LIST_NETDEV)->post();
-
-    // sp<ARMessage> listMsg = obtainMessage(NETM_LIST_NETDEV);
-    // nm->postNetMessage(listMsg);
-
 
 	if (!mHaveConfigSSID) {
 
@@ -616,10 +608,10 @@ void MenuUI::subSysInit()
 
 		sp<WifiConfig> wifiConfig = (sp<WifiConfig>)(new WifiConfig());
 
-        #if 0
-		snprintf(wifiConfig->cApName, 32, "%s-%s.OSC", "Insta360-Pro2", pRandSn);
+        #ifdef ENABLE_OSC_API
+		snprintf(wifiConfig->cApName, 32, "%s-%s-%s.OSC", HW_VENDOR, HW_PLATFORM, pRandSn);
         #else
-		snprintf(wifiConfig->cApName, 32, "%s-%s", "Insta360-Pro2", pRandSn);
+		snprintf(wifiConfig->cApName, 32, "%s-%s-%s", HW_VENDOR, HW_PLATFORM, pRandSn);
         #endif
 
 		strcpy(wifiConfig->cPasswd, "none");

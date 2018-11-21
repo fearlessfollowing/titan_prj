@@ -655,6 +655,21 @@ int main(int argc, char **argv)
 		iDelay = 5;
 	}
 
+	/*
+	 * 检查samba服务是否已经安装（service smbd status）
+	 */
+	const char * cmd = "/usr/sbin/service smbd status";
+	FILE* fp = popen(cmd, "r");
+	if (fp) {
+		char result[1024] = {0};
+		while (fgets(result, sizeof(result), fp) != NULL) {
+			LOGDBG(TAG, "result: %s", result);
+		}
+		pclose(fp);
+	} else {
+		LOGERR(TAG, "---> Exec check smbd service failed");
+	}
+
 	while (iDelay-- > 0) {
 		if (strcmp(vm->getLocalVolMountPath(), "none")) {
 			break;

@@ -209,6 +209,7 @@ int main(int argc, char* argv[])
 	gBootAnimation->startBootAnimation();
 	
 
+#if 0
     /* check /etc/resolv.conf */
     if (access(ETC_RESOLV_PATH, F_OK) != 0) {
         system("touch /etc/resolv.conf");
@@ -219,6 +220,7 @@ int main(int argc, char* argv[])
     system("echo nameserver 127.0.0.1 >> /etc/resolv.conf");
 
 	property_set(PROP_BOOTAN_NAME, "true");
+#endif
 
 	while (1) {
 		msg_util::sleep_ms(10000);

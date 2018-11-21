@@ -74,7 +74,7 @@ void btnCallback(int iEventCode)
         }
 
         case APP_KEY_DOWN: {
-            AudioManager::Instance()->playWav("one_s_timer.wav");
+            AudioManager::Instance()->playWav("test.wav");
             break;
         }
     }

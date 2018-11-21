@@ -1,13 +1,14 @@
-/*
- * pro_cfg.h
- *
- *  Created on: 2018年6月6日
- *      Author: root
- */
+#ifndef _PROP_CFG_H_
+#define _PROP_CFG_H_
 
-#ifndef PRO2_OSC_CODE_CODE_CORE_INCLUDE_PROP_CFG_H_
-#define PRO2_OSC_CODE_CODE_CORE_INCLUDE_PROP_CFG_H_
 
+#ifndef HW_VENDOR
+#define HW_VENDOR   "Insta360"
+#endif
+
+#ifndef HW_PLATFORM
+#define HW_PLATFORM     "Titan"
+#endif
 
 #define WIFI_TMP_AP_CONFIG_FILE				"home/nvidia/insta360/etc/.wifi_ap.conf"
 
