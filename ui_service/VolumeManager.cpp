@@ -432,17 +432,14 @@ void VolumeManager::checkAllUdiskIdle()
 {
     Volume* tmpVol = NULL;
 
-
     for (u32 i = 0; i < mModuleVols.size(); i++) {
         tmpVol = mModuleVols.at(i);
-        if (tmpVol) {
-            if (tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
-                LOGDBG(TAG, " Current Volume(%s) is Mouted State, force unmount now....", tmpVol->pMountPath);
-                if (doUnmount(tmpVol->pMountPath, true)) {
-                    LOGERR(TAG, " Force Unmount Volume Failed!!!");
-                }
-                tmpVol->iVolState = VOLUME_STATE_IDLE;
+        if (tmpVol && tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
+            LOGDBG(TAG, " Current Volume(%s) is Mouted State, force unmount now....", tmpVol->pMountPath);
+            if (doUnmount(tmpVol->pMountPath, true)) {
+                LOGERR(TAG, " Force Unmount Volume Failed!!!");
             }
+            tmpVol->iVolState = VOLUME_STATE_IDLE;
         }
     }
 }
@@ -2150,10 +2147,10 @@ bool VolumeManager::checkAllTfCardExist()
     int iExitNum = 0;
     
     {
-        unique_lock<mutex> lock(mRemoteDevLock);
+        std::unique_lock<std::mutex> lock(mRemoteDevLock);
         for (u32 i = 0; i < mModuleVols.size(); i++) {
             tmpVolume = mModuleVols.at(i);
-            if (tmpVolume->uTotal > 0) {     /* 总容量大于0,表示卡存在 */
+            if (tmpVolume && tmpVolume->uTotal > 0) {     /* 总容量大于0,表示卡存在 */
                 iExitNum++;
             }
         }
@@ -2166,6 +2163,19 @@ bool VolumeManager::checkAllTfCardExist()
     }
 }
 
+
+bool VolumeManager::getIneedTfCard(std::vector<int>& vectors)
+{
+    Volume* tmpVolume = NULL;
+    std::unique_lock<std::mutex> lock(mRemoteDevLock);
+    for (u32 i = 0; i < mModuleVols.size(); i++) {
+        tmpVolume = mModuleVols.at(i);
+        if (tmpVolume && tmpVolume->uTotal <= 0) {     /* 总容量大于0,表示卡存在 */
+            vectors.push_back(tmpVolume->iIndex);
+        }
+    }
+    return true;
+}
 
 u64 VolumeManager::calcRemoteRemainSpace(bool bFactoryMode)
 {

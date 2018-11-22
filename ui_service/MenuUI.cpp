@@ -2894,190 +2894,196 @@ void MenuUI::reset_last_info()
     tl_count = -1;
 }
 
-
 void MenuUI::procBackKeyEvent()
 {
     uint64_t tmpState = getServerState();
     ProtoManager* pm = ProtoManager::Instance();
+    InputManager* im = InputManager::Instance();
 
     LOGDBG(TAG, "procBackKeyEvent --> Current menu[%s], Current Server state[0x%x]", getMenuName(cur_menu), tmpState);
 
-    if (cur_menu == MENU_SYS_ERR || cur_menu == MENU_SYS_DEV_INFO ||
-		cur_menu == MENU_DISP_MSG_BOX || cur_menu == MENU_LOW_BAT ||
-		cur_menu == MENU_LIVE_REC_TIME || cur_menu == MENU_SET_PHOTO_DEALY /* || cur_menu == MENU_LOW_PROTECT*/)  {	/* add by skymixos */
-        
-        set_cur_menu_from_exit();
-
-    #ifdef ENABLE_MENU_STITCH_BOX        
-    } else if (cur_menu == MENU_STITCH_BOX) {
-        if (!bStiching) {
+    switch (cur_menu) {
+        case MENU_SYS_ERR:
+        case MENU_SYS_DEV_INFO:
+        case MENU_DISP_MSG_BOX:
+        case MENU_LOW_BAT:
+        case MENU_LIVE_REC_TIME:
+        case MENU_SET_PHOTO_DEALY: {
             set_cur_menu_from_exit();
-            sendRpc(ACTION_SET_STICH);
+            break;
         }
-    #endif    
-    } else if (cur_menu == MENU_FORMAT_INDICATION) {
-        if (checkServerStateIn(tmpState, STATE_FORMATING)) {
-            LOGDBG(TAG, "In Device Formating state, Can't return here");
-        } else {
-            if (mFormartState) {
-                mFormartState = false;      /* 清除在格式化状态标志 */
-            }
-            set_cur_menu_from_exit();   /* 返回上级菜单 */
-        }
-    } else if (cur_menu == MENU_SPEED_TEST || cur_menu == MENU_SET_TEST_SPEED) {
-        if (checkServerStateIn(tmpState, STATE_SPEED_TEST)) {
-            LOGDBG(TAG, "Server in Speed Test state, you can't back until Test is over");
-        } else {
-            if (true == mSpeedTestUpdateFlag) { 
-                mSpeedTestUpdateFlag = false;
-                property_set(PROP_SPEED_TEST_COMP_FLAG, "false");   
-            }
-            set_cur_menu_from_exit();
-        }
-    } else if (cur_menu == MENU_STORAGE) {  /* 从MENU_STORAGE退出时，给模组下电 */
 
-        #ifdef ENABLE_STORAGE_MODULE_ON
-        property_set(PROP_SYS_MODULE_ON, "false");
-        system("power_manager power_off");
-        #endif
-        set_cur_menu_from_exit();
-
-    }
-    #ifdef ENABLE_AWB_CALC 
-    else if (cur_menu == MENU_SYS_SETTING) {  /* 工厂AWB校正 */
-
-        InputManager* im = InputManager::Instance();
-
-        set_cur_menu_from_exit();
-
-        if (tmpState == STATE_IDLE) {
-            im->setEnableReport(false);
-            /* 发送AWB校正请求 - 如果服务器处于IDLE状态 */
-            
-            setLight();
-
-            if (pm->sendWbCalcReq()) {
-                setLightDirect(FRONT_GREEN | BACK_GREEN);
+        case MENU_FORMAT_INDICATION: {
+            if (checkServerStateIn(tmpState, STATE_FORMATING)) {
+                LOGDBG(TAG, "In Device Formating state, Can't return here");
             } else {
-                setLightDirect(FRONT_RED | BACK_RED);
-            }
-            im->setEnableReport(true);
-        } else {
-            LOGERR(TAG, "Server is busy, 0x%x", tmpState);
+                if (mFormartState) {
+                    mFormartState = false;      /* 清除在格式化状态标志 */
+                }
+                set_cur_menu_from_exit();   /* 返回上级菜单 */
+            }            
+            break;
         }
-    } 
-    #endif
-    else {
-		        
-        switch (tmpState) {
 
-            case STATE_IDLE: {
+        case MENU_SPEED_TEST:
+        case MENU_SET_TEST_SPEED: {
+            if (checkServerStateIn(tmpState, STATE_SPEED_TEST)) {
+                LOGDBG(TAG, "Server in Speed Test state, you can't back until Test is over");
+            } else {
+                if (true == mSpeedTestUpdateFlag) { 
+                    mSpeedTestUpdateFlag = false;
+                    property_set(PROP_SPEED_TEST_COMP_FLAG, "false");   
+                }
                 set_cur_menu_from_exit();
-                break;
-            }
-			
-            case STATE_UDISK: {     /* 必须完全进入U盘才能返回 */
-                VolumeManager* vm = VolumeManager::Instance();
-                if (vm->checkEnteredUdiskMode()) {
-                    oled_disp_type(EXIT_UDISK_MODE);
-                } else {
-                    LOGERR(TAG, "Entering Udisk Mode, please Wait...");
-                }
-                break;
-            }
+            }            
+            break;
+        }
 
-            case STATE_PREVIEW: {    /* 预览状态下,按返回键 */
-                switch (cur_menu) {
-                    case MENU_PIC_INFO:
-                    case MENU_VIDEO_INFO:
-                    case MENU_LIVE_INFO: {
-
-                        if (mTakeVideInTimelapseMode == true) {
-                            mTakeVideInTimelapseMode = false;
-                        }
-
-                        if (pm->sendStopPreview()) {
-                            dispWaiting();		/* 屏幕中间显示"..." */
-                        } else {
-                            LOGERR(TAG, "Stop preview request fail");
-                        }
-                        break;
-                    }
-						
-                     // preview state sent from http req while calibrating ,qr scan,gyro_start
-                    case MENU_CALIBRATION:
-                    case MENU_QR_SCAN:
-                    case MENU_GYRO_START:
-                    case MENU_NOSIE_SAMPLE: {
-                        setCurMenu(MENU_PIC_INFO);
-                        break;
-                    }
-					
-                    case MENU_PIC_SET_DEF:
-                    case MENU_VIDEO_SET_DEF:
-                    case MENU_LIVE_SET_DEF:
-                    case MENU_SPEED_TEST:
-                    
-                    case MENU_CALC_BLC:
-                    case MENU_CALC_BPC:
-                    case MENU_UDISK_MODE:
-
-#ifdef MENU_WIFI_CONNECT                    
-                    case MENU_WIFI_CONNECT:
+        case MENU_STORAGE: {
+#ifdef ENABLE_STORAGE_MODULE_ON
+            property_set(PROP_SYS_MODULE_ON, "false");
+            system("power_manager power_off");
 #endif
-                        set_cur_menu_from_exit();
-                        break;
-					
-                    default:
-                        break;
-                }
-                break;
-            }
-				
-            default: {
-                switch (cur_menu) {
-                    case MENU_QR_SCAN:
-                        exit_qr_func();
-                        break;
-					
-                    default:
-                        LOGDBG(TAG, "strange enter (%s 0x%x)", getMenuName(cur_menu), tmpState);
+            set_cur_menu_from_exit();            
+            break;
+        }
 
-                        if (checkInLive(tmpState)) {
-                            if (cur_menu != MENU_LIVE_INFO) {
-                                LOGERR(TAG, "---> In Live State, but Current Menu is [%s]", getMenuName(cur_menu));
-                                setCurMenu(MENU_LIVE_INFO);
+#ifdef ENABLE_AWB_CALC 
+        case MENU_SYS_SETTING: {
+            set_cur_menu_from_exit();
+
+            if (tmpState == STATE_IDLE) {
+                im->setEnableReport(false);
+                /* 发送AWB校正请求 - 如果服务器处于IDLE状态 */
+                
+                setLight();
+
+                if (pm->sendWbCalcReq()) {
+                    setLightDirect(FRONT_GREEN | BACK_GREEN);
+                } else {
+                    setLightDirect(FRONT_RED | BACK_RED);
+                }
+                im->setEnableReport(true);
+            } else {
+                LOGERR(TAG, "Server is busy, 0x%x", tmpState);
+            }
+            break;
+        }
+#endif
+        case MENU_UDISK_MODE: {     /* 进入U盘后，按返回键提示用户只能重启才能退出U盘模式 */
+            VolumeManager* vm = VolumeManager::Instance();
+
+        #if 0
+            if (vm->checkEnteredUdiskMode()) {
+                oled_disp_type(EXIT_UDISK_MODE);
+            } else {
+                LOGERR(TAG, "Entering Udisk Mode, please Wait...");
+            }
+        #else 
+            tipHowtoExitUdisk();
+            
+            msg_util::sleep_ms(3000);
+
+            if (vm->checkEnterUdiskResult()) {
+                enterUdiskSuc();
+            } else {
+                dispEnterUdiskFailed();
+            }
+        #endif
+            break;
+        }
+
+        default: {
+            switch (tmpState) {
+                case STATE_IDLE: {
+                    set_cur_menu_from_exit();
+                    break;
+                }
+
+                case STATE_PREVIEW: {    /* 预览状态下,按返回键 */
+                    switch (cur_menu) {
+                        case MENU_PIC_INFO:
+                        case MENU_VIDEO_INFO:
+                        case MENU_LIVE_INFO: {
+                            if (mTakeVideInTimelapseMode == true) {
+                                mTakeVideInTimelapseMode = false;
                             }
-                        } else if (checkServerStateIn(tmpState, STATE_RECORD)) {
-                            if (cur_menu != MENU_VIDEO_INFO) {
-                                setCurMenu(MENU_VIDEO_INFO);
+                            if (pm->sendStopPreview()) {
+                                dispWaiting();		/* 屏幕中间显示"..." */
+                            } else {
+                                LOGERR(TAG, "Stop preview request fail");
                             }
-                        } else if (checkServerStateIn(tmpState, STATE_CALIBRATING)) {
-                            if (cur_menu != MENU_CALIBRATION) {
-                                setCurMenu(MENU_CALIBRATION);
-                            }
-                        } else if (checkServerStateIn(tmpState, STATE_SPEED_TEST)) {
-                            if (cur_menu != MENU_SPEED_TEST) {
-                                setCurMenu(MENU_SPEED_TEST);
-                            }
-                        } else if (checkServerStateIn(tmpState, STATE_START_GYRO)) {
-                            if (cur_menu != MENU_GYRO_START) {
-                                setCurMenu(MENU_GYRO_START);
-                            }
-                        } else if (checkServerStateIn(tmpState, STATE_NOISE_SAMPLE)) {
-                            if (cur_menu != MENU_NOSIE_SAMPLE) {
-                                setCurMenu(MENU_NOSIE_SAMPLE);
-                            }
-                        } else {
+                            break;
+                        }
+                            
+                        case MENU_CALIBRATION:
+                        case MENU_QR_SCAN:
+                        case MENU_GYRO_START:
+                        case MENU_NOSIE_SAMPLE: {
+                            setCurMenu(MENU_PIC_INFO);
+                            break;
+                        }
+                        
+                        case MENU_PIC_SET_DEF:
+                        case MENU_VIDEO_SET_DEF:
+                        case MENU_LIVE_SET_DEF:
+                        case MENU_SPEED_TEST:
+                        
+                        case MENU_CALC_BLC:
+                        case MENU_CALC_BPC:
+                            set_cur_menu_from_exit();
+                            break;
+                        
+                        default:
+                            break;
+                    }
+                    break;
+                }
+		
+                default: {
+                    switch (cur_menu) {
+                        case MENU_QR_SCAN:
+                            exit_qr_func();
+                            break;
+                        
+                        default:
+                            LOGDBG(TAG, "strange enter (%s 0x%x)", getMenuName(cur_menu), tmpState);
+
+                            if (checkInLive(tmpState)) {
+                                if (cur_menu != MENU_LIVE_INFO) {
+                                    LOGERR(TAG, "---> In Live State, but Current Menu is [%s]", getMenuName(cur_menu));
+                                    setCurMenu(MENU_LIVE_INFO);
+                                }
+                            } else if (checkServerStateIn(tmpState, STATE_RECORD)) {
+                                if (cur_menu != MENU_VIDEO_INFO) {
+                                    setCurMenu(MENU_VIDEO_INFO);
+                                }
+                            } else if (checkServerStateIn(tmpState, STATE_CALIBRATING)) {
+                                if (cur_menu != MENU_CALIBRATION) {
+                                    setCurMenu(MENU_CALIBRATION);
+                                }
+                            } else if (checkServerStateIn(tmpState, STATE_SPEED_TEST)) {
+                                if (cur_menu != MENU_SPEED_TEST) {
+                                    setCurMenu(MENU_SPEED_TEST);
+                                }
+                            } else if (checkServerStateIn(tmpState, STATE_START_GYRO)) {
+                                if (cur_menu != MENU_GYRO_START) {
+                                    setCurMenu(MENU_GYRO_START);
+                                }
+                            } else if (checkServerStateIn(tmpState, STATE_NOISE_SAMPLE)) {
+                                if (cur_menu != MENU_NOSIE_SAMPLE) {
+                                    setCurMenu(MENU_NOSIE_SAMPLE);
+                                }
+                            } else {
                         }
                         break;
+                    }
+                    break;
                 }
-                break;
             }
         }
     }
 }
-
 
 #if 1
 void MenuUI::update_menu_disp(const int *icon_light, const int *icon_normal)
@@ -9335,6 +9341,14 @@ void MenuUI::tipEnterUdisk()
     dispStr((const u8*)"Loading...", 40, 16, false, 128);
     dispStr((const u8*)"Please do not remove", 6, 32, false, 128);
     dispStr((const u8*)"any storage devices.", 10, 48, false, 128);
+}
+
+void MenuUI::tipHowtoExitUdisk()
+{
+    clearArea(0, 16);
+    dispStr((const u8*)"Need to restart the", 12, 16, false, 128);
+    dispStr((const u8*)"camera to exit the", 14, 32, false, 128);
+    dispStr((const u8*)"reading storage mode", 8, 48, false, 128);    
 }
 
 void MenuUI::enterUdiskSuc()

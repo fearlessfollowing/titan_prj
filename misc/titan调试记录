@@ -317,3 +317,21 @@ GPIOs 320-511, platform/2200000.gpio, tegra-gpio:
  gpio-488 (                    |Setting             ) in  hi    
  gpio-489 (                    |wifi-ap6356s-enable ) out hi    
 root@tegra-ubuntu:/home/nvidia# 
+
+
+
+USB3.0(SS0) OTG调试：
+条件                                         现象                              结论
+开机插上USB3.0 TYPE-C线             RNDIS识别成3.0设备，U盘识别成2.0设备            正确
+开机插上USB2.0 TYPE-C线             
+
+
+开机不插Type-C线                    U盘被识别成2.0设备                            错误，正常应该显示为USB3.0设备
+手动操作可校正:（可通过检测 gpio-479的输入状态来检测是否有Type-C的插入）
+echo 0x2 > /sys/class/extcon/extcon0/state 
+echo 1 > /sys/class/gpio/gpio390/value
+echo 0 > /sys/class/gpio/gpio390/value
+
+
+
+

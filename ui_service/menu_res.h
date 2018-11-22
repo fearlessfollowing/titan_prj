@@ -340,7 +340,7 @@ static MENU_INFO mMenuInfos[] = {
 	{	/* MENU_DISP_MSG_BOX */
     	MENU_TOP,
 		{0},
-#if 0        
+#if 1        
 		{0, 0, APP_KEY_BACK, 0, 0},    /* 支持返回键 */
 #else
 		{0, 0, 0, 0, 0},    /* 支持返回键 */

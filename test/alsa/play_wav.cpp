@@ -178,6 +178,7 @@ int main(int argc, char ** argv)
         size -= chunk_size * 4;
     }
 
+    munmap();
     printf("play ok \n");
     snd_pcm_close(playback_handle);
     return 0;

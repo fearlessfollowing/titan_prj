@@ -769,6 +769,7 @@ private:
      * U盘模式提示
      */
     void    tipEnterUdisk();
+    void    tipHowtoExitUdisk();    
     void    enterUdiskSuc();
     void    dispQuitUdiskMode();
     void    dispEnterUdiskFailed();

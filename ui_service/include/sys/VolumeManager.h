@@ -443,6 +443,7 @@ public:
      */
     bool        checkAllTfCardExist();
     u64         calcRemoteRemainSpace(bool bFactoryMode = false);
+    bool        getIneedTfCard(std::vector<int>& vectors);
 
     void        updateLocalVolSpeedTestResult(int iResult);
     void        updateRemoteVolSpeedTestResult(Volume* pVol);
