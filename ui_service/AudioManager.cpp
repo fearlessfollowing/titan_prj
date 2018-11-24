@@ -88,41 +88,50 @@ AudioManager::~AudioManager()
 
 
 /*
- * 解析wav
+ * 解析wav 
+ * 失败返回负值,成功返回实际数据的偏移值
  */
 
 int AudioManager::checkWavFile(const char* pBuf, HWParams* hw_params)
 {
     int ret;
     int i, len;
+    int iOffset = 0;
     WaveHeader* header;
     WaveFmtBody* fmt;
     WaveChunkHeader* chunk_header;
 
+    /*
+     * RIFF块: "RIFF" + Length + "WAVE"
+     */
     header = (WaveHeader*)pBuf;
     if ((header->magic != WAV_RIFF) || (header->type != WAV_WAVE)) {
         LOGERR(TAG, "---> Header check, not a WAV File");
         return -1;
     }
 
-    //2. check Wave Fmt
-    chunk_header = (WaveChunkHeader*)(pBuf + sizeof(WaveHeader));
+    iOffset = sizeof(WaveHeader);
+    /*
+     * 格式头: "fmt " + 格式块长度
+     */
+    chunk_header = (WaveChunkHeader*)(pBuf + iOffset);
     if (chunk_header->type != WAV_FMT) {
         LOGERR(TAG, "---> Fomart Body Error");
         return -1;
     }
 
-    fmt = (WaveFmtBody*)(pBuf + sizeof(WaveHeader) + sizeof(WaveChunkHeader));
+    iOffset += sizeof(WaveChunkHeader);
+
+    fmt = (WaveFmtBody*)(pBuf + iOffset);
     if (fmt->format != 0x0001) {   // WAV_FMT_PCM
         LOGERR(TAG, "---> Not PCM Data");
         return -1;
     }
 
-    LOGDBG(TAG, "format=0x%x, channels=0x%x,sample_fq=%d,byte_p_sec=%d,byte_p_sample=%d,bit_p_sample=%d",
+    LOGDBG(TAG, "format = 0x%x, channels = 0x%x, sample_fq = %d, byte_p_sec = %d, byte_p_sample = %d, bit_p_sample=%d",
             fmt->format, fmt->channels,fmt->sample_fq, fmt->byte_p_sec,
             fmt->byte_p_spl, fmt->bit_p_spl);
     
-    //copy params
     hw_params->channels = fmt->channels;
     hw_params->rate = fmt->sample_fq;
     switch (fmt->bit_p_spl) {
@@ -139,23 +148,19 @@ int AudioManager::checkWavFile(const char* pBuf, HWParams* hw_params)
             break;
     }
 
-#if 0
-    //3. check data chunk
-    len = sizeof(WaveChunkHeader);
-    if ((ret = read(fd, pbuf, len)) != len) {
-        dbmsg("read error");
-        return -1;
-    }
-    chunk_header = (WaveChunkHeader*)pbuf;
-    if(chunk_header->type != WAV_DATA)
-    {
-        dbmsg("not data chunk");
-        return -1;
-    }
-    dbmsg("pcm_data_size=0x%x",chunk_header->length);
-#endif
+    iOffset += sizeof(WaveFmtBody);
 
-    return 0;
+    chunk_header = (WaveChunkHeader*)(pBuf + iOffset);
+    if (chunk_header->type != WAV_DATA) {
+        LOGERR(TAG, "not data chunk");
+        return -1;
+    }
+
+    LOGDBG(TAG, "pcm_data_size=0x%x", chunk_header->length);
+
+    iOffset += sizeof(WaveChunkHeader);
+
+    return iOffset;
 }
 
 
@@ -187,8 +192,8 @@ bool AudioManager::playWav(std::string fileName, std::string playDev)
     if (bFound) {
 
         LOGDBG(TAG, "----> play audio file[%s]", playFile.c_str());
-
-        if (checkWavFile((char*)(tmpPtr->mapPtr), &hw_params)) {
+        int iOffset = checkWavFile((char*)(tmpPtr->mapPtr), &hw_params);
+        if (iOffset <= 0) {
             LOGERR(TAG, "---> Invalid WAV File, return now...");
             return false;
         }
@@ -197,7 +202,7 @@ bool AudioManager::playWav(std::string fileName, std::string playDev)
         if ((ret = snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
             LOGERR(TAG, "open pcm device error: %s", snd_strerror(ret));
             goto err_out;
-        }
+        } 
 
         // 2. 给参数分配空间,并用hw_param(从wav头中分析出的参数)初始化
         if (snd_pcm_hw_params_malloc(&params) < 0) {
@@ -211,14 +216,8 @@ bool AudioManager::playWav(std::string fileName, std::string playDev)
         }
 
         snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
-        
-        /* 设置音频数据格式 */
         snd_pcm_hw_params_set_format(handle, params, hw_params.format); 
-        
-        /* 设置采样通道 */
         snd_pcm_hw_params_set_channels(handle, params, hw_params.channels); //last param get from wav file
-        
-        /* 设置采样率 */
         snd_pcm_hw_params_set_rate_near(handle, params, &hw_params.rate, 0);
 
         LOGDBG(TAG, "hw_params: format=%d, channels=%d, rate = %d", hw_params.format, hw_params.channels, hw_params.rate);
@@ -230,20 +229,21 @@ bool AudioManager::playWav(std::string fileName, std::string playDev)
         }        
 
         snd_pcm_hw_params_get_period_size(params, &frames, 0);
-        iSizeUnit = frames* 4;
+        mSizeUnit = frames* 4;
         snd_pcm_hw_params_get_period_time(params, &iPeroid, 0); 
         LOGDBG(TAG, "period time = %d", iPeroid);
+        snd_pcm_hw_params_free(params);
 
-        unsigned char* pStart = static_cast<unsigned char*>(tmpPtr->mapPtr);
+        unsigned char* pStart = static_cast<unsigned char*>(tmpPtr->mapPtr) + iOffset;
         unsigned char* pEnd = static_cast<unsigned char*>(tmpPtr->mapPtr) + tmpPtr->iMapLen;
         
         while (pStart < pEnd) {
             snd_pcm_writei(handle, pStart, frames);
-            pStart += iSizeUnit;
+            pStart += mSizeUnit;
         }
 
         bResult = true;
-    
+
     } else {
         LOGERR(TAG, "play wav[%s] not cached!!", fileName.c_str());
     }
@@ -251,6 +251,7 @@ bool AudioManager::playWav(std::string fileName, std::string playDev)
 err_alloc:
     snd_pcm_drain(handle);
     snd_pcm_close(handle);
+    mInited = false;
 
 err_out:
     return bResult;

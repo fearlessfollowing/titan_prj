@@ -835,22 +835,6 @@ void MenuUI::play_sound(u32 type)
 }
 
 
-void MenuUI::sound_thread()
-{
-#ifdef ENABLE_SOUND
-    while (!bExitSound) {
-        msg_util::sleep_ms(INTERVAL_1HZ);
-    }
-#endif
-}
-
-
-void MenuUI::init_sound_thread()
-{
-    th_sound_ = std::thread([this] { sound_thread(); });
-}
-
-
 /****************************************************************************************************
  * 菜单类
  ****************************************************************************************************/
@@ -1412,6 +1396,7 @@ void MenuUI::setMenuCfgInit()
 void MenuUI::set_update_mid(int interval)
 {
     clearIconByType(ICON_CAMERA_WAITING_2016_76X32);
+
     send_update_mid_msg(interval);
 }
 
@@ -6905,7 +6890,7 @@ int MenuUI::convIndex2CapDelay(int iIndex)
     int iDelayArray[] = {0, 3, 5, 10, 20, 30, 40, 50, 60};
 #else 
     int iDelayArray[] = {3, 5, 10, 20, 30, 40, 50, 60};
-#endif    
+#endif
 
     int iSize = sizeof(iDelayArray) / sizeof(iDelayArray[0]);
 
@@ -6916,6 +6901,7 @@ int MenuUI::convIndex2CapDelay(int iIndex)
         return iDelayArray[iIndex];
     }
 }
+
 
 int MenuUI::convAebNumber2Index(int iAebNum)
 {
@@ -6977,7 +6963,6 @@ int MenuUI::getTakepicCustomerDelay()
 }
 
 
-//all disp is at bottom
 int MenuUI::oled_disp_type(int type)
 {
     uint64_t serverState = getServerState();
@@ -7152,7 +7137,12 @@ int MenuUI::oled_disp_type(int type)
 /************************************ 拍照相关 START **********************************************/	
         case CAPTURE: {     /* 检查是拍照还是拍timelapse */
 
-            addState(STATE_TAKE_CAPTURE_IN_PROCESS);
+            /* 如果是客户端发起拍照，server端会先设置该状态，UI不需要再去设置该状态 
+             * 2018年11月24日（V1.0.10）
+             */
+            if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS) == false) {
+                addState(STATE_TAKE_CAPTURE_IN_PROCESS);
+            }
 
             /* mControlAct不为NULL,有两种情况 
                 * - 来自客户端的拍照请求(直接拍照)
@@ -7245,15 +7235,13 @@ int MenuUI::oled_disp_type(int type)
             LOGERR(TAG, "---> START_LIVE_SUC, Current Server State 0x%x", serverState);
             vm->incOrClearLiveRecSec(true);     /* 重置已经录像的时间为0 */
             #if 0
-            set_update_mid(INTERVAL_0HZ);
             if (cur_menu != MENU_LIVE_INFO) {
                 setCurMenu(MENU_LIVE_INFO);
             }
             #else 
+            setCurMenu(MENU_LIVE_INFO);         /* 确保屏幕进入直播状态，客户端发起直播存片时，剩余时间为0 */
             set_update_mid(INTERVAL_0HZ);
-            setCurMenu(MENU_LIVE_INFO);
             #endif
-
             break;
         }
 
@@ -7369,6 +7357,7 @@ int MenuUI::oled_disp_type(int type)
             dispWaiting();		/* 屏幕中间显示"..." */
             break;
         }
+
 
         /*
          * - 客户端发送的预览成功，都应该进入MENU_PIC_INFO菜单
@@ -8471,8 +8460,16 @@ void MenuUI::clearGpsState()
 
 void MenuUI::drawGpsState()
 {
-    clearArea(96, 16, 32, 16);    
+    clearArea(104, 16, 24, 16);    
     dispStr((const u8*)"GPS", 104, 16, false, 24);    
+}
+
+void MenuUI::drawRTS(bool bShow)
+{
+    clearArea(104, 32, 24, 16);        
+    if (bShow) {
+        dispStr((const u8*)"RTS", 104, 32, false, 24);      
+    }
 }
 
 
@@ -8782,6 +8779,52 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     double dInterTmp, dExternTmp; 
     uint64_t serverState = getServerState();
 
+    /* 移走电源适配器，一段时间后自动关机 */
+    #ifdef ENABLE_ADAPTER_REMOVE_SHUTDOWN
+    
+    bool bCharge = false;
+    if (mBatInterface->read_charge(&bCharge) == 0) {     /* 电池存在 */
+        if (bCharge == true) {  /* 充电状态 */
+            LOGDBG(TAG, "Battery is charging, clear flag mAutoShutdownFlag and mShutdownTick");
+            mAutoShutdownFlag = false;
+            mShutdownTick = 0;
+        } else {    /* 非充电状态(1.没接电源适配器<移除电源适配器>; 2.充满了) */
+            LOGDBG(TAG, "Battery is not charging, set mAutoShutdownFlag and mShutdownTick, tick[%d]", mShutdownTick);
+            mShutdownTick++;
+
+            if (mAutoShutdownFlag == false) {
+                mAutoShutdownFlag = true;
+            } else {
+                if (mShutdownTick >= ( (5*60*1000) / BAT_INTERVAL)) {
+                    /* 处于录像状态则主动停止录像，并关机 */
+                    if (checkAllowStopRecord(serverState)) {
+                        if (pm->sendStopVideoReq()) {   /* 服务器接收停止录像请求,此时系统处于停止录像状态 */
+                            dispSaving();
+                        } else {
+                            LOGERR(TAG, "Stop Record Request Failed, More detail please check h_log");
+                        }                
+                    } else if (checkAllowStopLive(serverState)) {
+                        if (pm->sendStopLiveReq()) {
+                            dispWaiting();
+                        } else {
+                            LOGERR(TAG, "Stop Living Request Failed, More detail please check h_log");
+                        }
+                    } else if (checkStateEqual(serverState, STATE_IDLE)) {
+                        /* 关机 */
+                        system("shutdown -h now");
+                    }
+                }
+            }
+        }
+    } else {    /* 电池接口读取失败(电源适配器供电) */
+        LOGDBG(TAG, "Battery not exist, clear flag mAutoShutdownFlag and mShutdownTick");
+        mAutoShutdownFlag = false;      
+        mShutdownTick = 0;
+    }
+
+    #endif  /* ENABLE_ADAPTER_REMOVE_SHUTDOWN */
+
+
     mBatInterface->read_tmp(&dInterTmp, &dExternTmp);
 
     #ifdef ENABLE_SHOW_BATTERY_TMP
@@ -8798,8 +8841,6 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     }
 
     if (is_bat_low()) { /* 电池电量低 */
-
-#ifdef OPEN_BAT_LOW
         if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
             // LOGDBG(TAG, "bat low menu[%s] %d state 0x%x", getMenuName(cur_menu), serverState);
             if (checkServerStateIn(serverState, STATE_RECORD)) {
@@ -8808,7 +8849,6 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
                 func_low_bat();
             }
         }
-#endif
     }
 
     send_delay_msg(UI_READ_BAT, BAT_INTERVAL);  /* 给UI线程发送读取电池电量的延时消息 */
@@ -9463,28 +9503,29 @@ void MenuUI::dispReady(bool bDispReady)
 {
     VolumeManager* vm = VolumeManager::Instance();
 
+    clearArea(20, 16, 84, 32);
+
     switch (cur_menu) {
         case MENU_PIC_INFO:
         case MENU_VIDEO_INFO: {
             /* 调用存储管理器来判断显示图标 */
             if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* 大卡,小卡都在 */
 
-                #ifdef ENABLE_DEBUG_MODE
+            #ifdef ENABLE_DEBUG_MODE
                 LOGDBG(TAG, "^++^ All Card is Exist ....");        
-                #endif
+            #endif
                 dispIconByType(ICON_CAMERA_READY_20_16_76_32);
             } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
 
-                #ifdef ENABLE_DEBUG_MODE
+            #ifdef ENABLE_DEBUG_MODE
                 LOGDBG(TAG, "Warnning Need TF Card ....");
-                #endif
-                dispIconByLoc(&needTfCardIconInfo);
-
+            #endif
+                dispInNeedTfCard();
             } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
 
-                #ifdef ENABLE_DEBUG_MODE
+            #ifdef ENABLE_DEBUG_MODE
                 LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
-                #endif
+            #endif
                 dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
             }            
             break;
@@ -9520,7 +9561,7 @@ void MenuUI::dispReady(bool bDispReady)
                         #ifdef ENABLE_DEBUG_MODE
                         LOGDBG(TAG, "Warnning Need TF Card ....");
                         #endif
-                        dispIconByLoc(&needTfCardIconInfo);
+                        dispInNeedTfCard();
 
                     } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
 
@@ -9534,6 +9575,47 @@ void MenuUI::dispReady(bool bDispReady)
             }             
             break;
         }
+    }
+}
+
+
+void MenuUI::dispInNeedTfCard()
+{
+    char cIndex[128] = {0};
+    std::vector<int> cards;
+    int iStartPos = 20;
+
+    VolumeManager* vm = VolumeManager::Instance();
+
+    cards.clear();
+
+    vm->getIneedTfCard(cards);
+
+    dispStr((const u8*)"No mSD card", 27, 16, false, 104 - 27);
+
+    if (cards.size() > 0) {
+
+        LOGDBG(TAG, "card size: %d", cards.size());
+
+        cIndex[0] = '(';
+        u32 i;
+        for (i = 0; i < cards.size(); i++) {
+            cIndex[i*2 + 1] = cards.at(i) + '0';
+            cIndex[i*2 + 2] = ',';
+        }
+        cIndex[(i-1)*2 + 2] = ')';
+
+        LOGDBG(TAG, "Lost mSD List: %s", cIndex);
+
+        switch (cards.size()) {
+            case 6: iStartPos = 23; break;
+            case 5: iStartPos = 29; break;
+            case 4: iStartPos = 35; break;
+            case 3: iStartPos = 41; break;
+            case 2: iStartPos = 47; break;
+            case 1: iStartPos = 53; break;
+        }
+        dispStr((const u8*)cIndex, iStartPos, 32, false, 104 - iStartPos);
     }
 }
 
