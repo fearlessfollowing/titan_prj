@@ -22,7 +22,7 @@
 #define DEFAULT_WIFI_AP_SSID				"Insta360-Pro2-Test"
 #define DEFAULT_WIFI_AP_MODE				"g"
 #define DEFAULT_WIFI_AP_CHANNEL				"6"
-#define DEFAULT_WIFI_AP_CHANNEL_NUM_BG		6
+#define DEFAULT_WIFI_AP_CHANNEL_NUM_BG		11
 #define DEFAULT_WIFI_AP_CHANNEL_NUM_AN		13
 
 #define OFF_IP								"0.0.0.0"
@@ -60,7 +60,7 @@
 #define PROP_SYS_UC_VER 			"sys.uc_ver"
 
 #define PROP_SYS_UA_VER 			"sys.ua_ver"
-#define PROP_PRO2_VER               "sys.pro2_ver"
+#define PROP_TITAN_VER               "sys.titan_ver"
 
 #define PROP_PWR_FIRST      	    "sys.hub_reset_first"
 #define PROP_KEY_RESPRATE           "sys.key_resprate"
@@ -197,6 +197,7 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define DEF_CFG_PARAM_FILE          "/home/nvidia/insta360/etc/def_cfg.json"
 #define USER_CFG_PARAM_FILE         "/home/nvidia/insta360/etc/user_cfg.json"
 
+#define DNSMASQ_CONF_PATH           "/etc/dnsmasq.conf"
 
 /*
  * 日志存放路径名
@@ -253,36 +254,36 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 /*
  * 各设置项的名称 MENU_INFO
  */
-#define SET_ITEM_NAME_DHCP          "dhcp"
-#define SET_ITEM_NAME_FREQ          "freq"
-#define SET_ITEM_NAME_HDR           "hdr"
-#define SET_ITEM_NAME_RAW           "raw"
-#define SET_ITEM_NAME_AEB           "aeb"
-#define SET_ITEM_NAME_PHDEALY       "photodelay"
-#define SET_ITEM_NAME_SPEAKER       "speaker"
-#define SET_ITEM_NAME_LED           "led"
-#define SET_ITEM_NAME_AUDIO         "audio"
-#define SET_ITEM_NAME_SPAUDIO       "spaudio"
-#define SET_ITEM_NAME_FLOWSTATE     "flowstate"
-#define SET_ITEM_NAME_GYRO_ONOFF    "gyro_onoff"
-#define SET_ITEM_NAME_GYRO_CALC     "gyrocal"
-#define SET_ITEM_NAME_FAN           "fan"
-#define SET_ITEM_NAME_NOISESAM      "samplenoise"
-#define SET_ITEM_NAME_BOOTMLOGO     "bottomlogo"
-#define SET_ITEM_NAME_VIDSEG        "vidseg"
-#define SET_ITEM_NAME_STORAGE       "storage"
-#define SET_ITEM_NAME_INFO          "info"
-#define SET_ITEM_NAME_RESET         "reset"
-#define SET_ITEM_NAME_STITCH_BOX    "stitch_box"
-#define SET_ITEM_NAME_CALC_STITCH   "calc_stitch"
+#define SET_ITEM_NAME_DHCP                  "dhcp"
+#define SET_ITEM_NAME_FREQ                  "freq"
+#define SET_ITEM_NAME_HDR                   "hdr"
+#define SET_ITEM_NAME_RAW                   "raw"
+#define SET_ITEM_NAME_AEB                   "aeb"
+#define SET_ITEM_NAME_PHDEALY               "photodelay"
+#define SET_ITEM_NAME_SPEAKER               "speaker"
+#define SET_ITEM_NAME_LED                   "led"
+#define SET_ITEM_NAME_AUDIO                 "audio"
+#define SET_ITEM_NAME_SPAUDIO               "spaudio"
+#define SET_ITEM_NAME_FLOWSTATE             "flowstate"
+#define SET_ITEM_NAME_GYRO_ONOFF            "gyro_onoff"
+#define SET_ITEM_NAME_GYRO_CALC             "gyrocal"
+#define SET_ITEM_NAME_FAN                   "fan"
+#define SET_ITEM_NAME_NOISESAM              "samplenoise"
+#define SET_ITEM_NAME_BOOTMLOGO             "bottomlogo"
+#define SET_ITEM_NAME_VIDSEG                "vidseg"
+#define SET_ITEM_NAME_STORAGE               "storage"
+#define SET_ITEM_NAME_INFO                  "info"
+#define SET_ITEM_NAME_RESET                 "reset"
+#define SET_ITEM_NAME_STITCH_BOX            "stitch_box"
+#define SET_ITEM_NAME_CALC_STITCH           "calc_stitch"
 
 
 #define SET_ITEM_NAME_TF_FOMART_THIS_CARD   "format_this_card"
-#define SET_ITEM_NAME_TF_FOMART_ALL_CARD   "format_all_card"
+#define SET_ITEM_NAME_TF_FOMART_ALL_CARD    "format_all_card"
 
 
-#define SET_ITEM_NAME_STORAGESPACE  "storage_space"
-#define SET_ITEM_NAME_TESTSPEED     "test_speed"
+#define SET_ITEM_NAME_STORAGESPACE          "storage_space"
+#define SET_ITEM_NAME_TESTSPEED             "test_speed"
 
 
 #define SET_ITEM_NAME_OFF           "OFF"
@@ -302,7 +303,7 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define SET_ITEM_NAME_AEB9          "aeb9"
 
 
-#define SYS_TF_COUNT_NUM            6
+#define SYS_TF_COUNT_NUM            8
 
 
 #define SYS_MAX_BTN_NUM             5

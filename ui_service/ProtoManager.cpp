@@ -390,8 +390,10 @@ bool ProtoManager::sendStartPreview()
     int iResult = -1;
     bool bRet = false;
     const char* pPreviewMode = NULL;
-
     Json::Value jsonRes;   
+
+#if 0
+
     Json::Value root;
     Json::Value param;
     Json::Value originParam;
@@ -400,9 +402,10 @@ bool ProtoManager::sendStartPreview()
     Json::Value imageParam;
 
     std::ostringstream os;
-    std::string resultStr = "";
+
     std::string sendStr = "";
     Json::StreamWriterBuilder builder;
+    std::string resultStr = "";
 
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
@@ -480,6 +483,11 @@ bool ProtoManager::sendStartPreview()
 	writer->write(root, &os);
     sendStr = os.str();
 
+#else 
+    std::string sendStr =  "{\"name\": \"camera._startPreview\",\"parameters\":{\"stabilization\":true, \"origin\":{\"mime\":\"h264\",\"width\":1920,\"height\":1080,\"framerate\":30,\"bitrate\":20000},\"stiching\":{\"mode\":\"pano\",\"map\":\"flat\",\"mime\":\"h264\",\"width\":1920,\"height\":960,\"framerate\":30,\"bitrate\":5000}}}";
+#endif
+
+
     iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
     switch (iResult) {
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
@@ -500,6 +508,7 @@ bool ProtoManager::sendStartPreview()
     }
     return bRet;
 }
+
 
 
 /* sendStopPreview

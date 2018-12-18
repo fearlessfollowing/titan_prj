@@ -714,6 +714,11 @@ private:
     void    handleGpsState();
     void    drawGpsState();
     void    clearGpsState();
+    void    drawRTS(bool bShow);
+    void    dispInNeedTfCard();
+
+
+
     bool    checkCurMenuShowGps();
 
     bool    checkHaveGpsSignal();

@@ -1,5 +1,5 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2 Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: main.cpp
 ** 功能描述: UI核心进程的入口
@@ -29,19 +29,17 @@
 #include <vector>
 
 #include <prop_cfg.h>
-
 #include <hw/MenuUI.h>
 #include <prop_cfg.h>
-
 #include <log/log_wrapper.h>
 #include <trans/fifo.h>
-
 #include <common/check.h>
 
-#undef  TAG
-#define TAG "uiService"
 
-#define PRO2_VER    "V1.1.0"
+#undef  TAG
+#define TAG         "uiService"
+
+#define TITAN_VER    "V0.0.1"
 
 
 enum {
@@ -95,9 +93,9 @@ int main(int argc ,char *argv[])
     }
 
     LogWrapper::init("/home/nvidia/insta360/log", "ui_log", true);
-    property_set(PROP_PRO2_VER, PRO2_VER);
+    property_set(PROP_TITAN_VER, TITAN_VER);
 
-    LOGDBG(TAG, "\n>>>>>>>>>>>>>>>>>>>>>>> Start ui_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", property_get(PROP_PRO2_VER));
+    LOGDBG(TAG, "\n>>>>>>>>>>>>>>>>>>>>>>> Start ui_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", property_get(PROP_TITAN_VER));
 
     {
         /* 构造MenuUI对象 */

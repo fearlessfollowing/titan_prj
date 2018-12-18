@@ -305,6 +305,35 @@ static SYS_ERROR mSysErr[] = {
 };
 
 
+int updateFile(const char* filePath, const char* content, int iSize)
+{
+    int iFd = -1;
+    int iWrLen = 0;
+
+    if (NULL == filePath) return -1;
+    if (NULL == content) return -1;
+    if (iSize <= 0) return -1;
+
+    if (access(filePath, F_OK) == 0) {
+        unlink(filePath);
+    }
+
+    iFd = open(filePath, O_RDWR | O_CREAT, 0666);
+    if (iFd < 0) {
+        LOGDBG(TAG, "open [%s] failed", filePath);
+        return -1;
+    }
+
+    iWrLen = write(iFd, content, iSize);
+    if (iWrLen != iSize) {
+        LOGWARN(TAG, "Write size not equal actual sizep[%d: %d]", iWrLen, iSize);
+    }
+
+    close(iFd);
+    return 0;
+}
+
+
 /*************************************************************************
 ** 方法名称: initUiMsgHandler
 ** 方法功能: 创建事件处理线程
@@ -523,7 +552,6 @@ void MenuUI::init()
 
     mAgingMode = false;
 
-
     /* AudioManager init */
     AudioManager::Instance();
 
@@ -575,6 +603,27 @@ void MenuUI::subSysInit()
      * 网络管理子系统初始化
      *******************************************************************************/
 #ifdef ENABLE_NET_MANAGER
+
+    /*
+     * 设置dnsmasq服务的参数，重启dnsmasq服务
+     */
+    std::string dnsmasq_conf =  "listen-address=192.168.55.1\n"                 \
+                                "dhcp-host=192.168.55.1\n"                      \
+                                "dhcp-range=192.168.55.10,192.168.55.30,24h\n"    \
+                                "dhcp-option=3,192.168.55.1\n"                  \
+                                "#dhcp-option=option:dns-server,8.8.8.8,114.114.114.114\n"    \
+                                "\n" \
+                                "listen-address=192.168.43.1\n"  \
+                                "dhcp-host=192.168.43.1\n"   \
+                                "dhcp-range=192.168.43.100,192.168.43.130,24h\n"   \
+                                "dhcp-option=3,192.168.43.1\n"   \
+                                "dhcp-option=option:dns-server,8.8.8.8,192.168.43.1\n";
+
+    property_set("ctl.stop", "dnsmasq");
+    msg_util::sleep_ms(20);
+    updateFile(DNSMASQ_CONF_PATH, dnsmasq_conf.c_str(), dnsmasq_conf.length());
+    property_set("ctl.start", "dnsmasq");
+
 
     CfgManager* cm = CfgManager::Instance();
     sp<NetManager> nm = NetManager::Instance();
@@ -631,6 +680,9 @@ void MenuUI::subSysInit()
 		handleorSetWifiConfig(wifiConfig);
 		mHaveConfigSSID = true;
 	}
+
+
+
 #endif 
 
 
@@ -5662,10 +5714,40 @@ void MenuUI::procPowerKeyEvent()
                         switchEtherIpMode(0);
                     #endif
 
-                        /** 重启dnsmasq服务 */
-                        system("setprop ctl.stop dnsmasq");
+                        /** 重启dnsmasq服务
+                         * 使用新的dnsmasq.conf配置
+                         * listen-address=192.168.55.1
+                         * dhcp-host=192.168.55.1
+                         * dhcp-range=192.168.55.10,192.168.55.20,24h
+                         * dhcp-option=3,192.168.55.1
+                         * #dhcp-option=option:dns-server,114.114.114.114,8.8.4.4
+                         * 
+                         * listen-address=192.168.1.188
+                         * dhcp-host=192.168.1.188
+                         * dhcp-range=192.168.1.10,192.168.1.180,24h
+                         * dhcp-option=3,192.168.1.188
+                         * dhcp-option=option:dns-server,8.8.8.8,8.8.4.4
+                         */
+                        property_set("ctl.stop", "dnsmasq");
                         msg_util::sleep_ms(200);
-                        system("setprop ctl.start dnsmasq");
+
+                        std::string dns_conf = "listen-address=192.168.1.188\n"                 \
+                                               "dhcp-host=192.168.1.188\n"                      \
+                                               "dhcp-range=192.168.1.10,192.168.1.180,24h\n"    \
+                                               "dhcp-option=3,192.168.1.188\n"                  \
+                                               "dhcp-option=option:dns-server,8.8.8.8,114.114.114.114\n"    \
+                                               "\n" \
+                                               "listen-address=192.168.55.1\n"  \
+                                               "dhcp-host=192.168.55.1\n"   \
+                                               "dhcp-range=192.168.55.10,192.168.55.20,24h\n"   \
+                                               "dhcp-option=3,192.168.55.1\n"   \
+                                               "#dhcp-option=option:dns-server,114.114.114.114,8.8.4.4\n";
+
+
+                        updateFile(DNSMASQ_CONF_PATH, dns_conf.c_str(), dns_conf.length());
+
+                        property_set("ctl.start", "dnsmasq");
+
                         oled_disp_type(ENTER_UDISK_MODE);
                     } else {
                         LOGWARN(TAG, "Server Not Allow enter Udisk mode");

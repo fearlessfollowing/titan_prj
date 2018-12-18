@@ -5,16 +5,18 @@
 
 
 typedef struct stTabSchema {
-    std::string     fileName;       // 文件名称(路径+文件名，可作为主键)
-    std::string     fileThumbnail;  // 文件对应的缩略图名称    
-    unsigned int    fileSize;       // 文件大小
-    unsigned int    fileAttr;       // 文件的属性（目录、普通文件、链接文件等）
-    std::string     fileDate;       // 文件的创建日期
-    unsigned int    u32Width;       // 视频/图片的宽度
-    unsigned int    u32Height;      // 视频/图片的高度
-    float           fLng;           // 纬度（可选）
-    float           fLant;          // 精度（可选）
-    bool            bProcess;       // 是否已经处理过
+    std::string     fileUrl;
+    std::string     fileName;
+    std::string     fullPathName;       // 文件名称(路径+文件名，可作为主键)
+    std::string     fileThumbnail;      // 文件对应的缩略图名称    
+    unsigned int    fileSize;           // 文件大小
+    unsigned int    fileAttr;           // 文件的属性（目录、普通文件、链接文件等）
+    std::string     fileDate;           // 文件的创建日期
+    unsigned int    u32Width;           // 视频/图片的宽度
+    unsigned int    u32Height;          // 视频/图片的高度
+    float           fLng;               // 纬度（可选）
+    float           fLant;              // 精度（可选）
+    bool            bProcess;           // 是否已经处理过
 } TFileInfoRec;
 
 
@@ -145,14 +147,14 @@ int main(int argc, char* argv[])
     TFileInfoRec recTest = {
         fileName:   "/mnt/udisk1/test1.mp4",
         fileThumbnail:  "test",
-        fileSize:   123309,       // 文件大小
-        fileAttr:   1,       // 文件的属性（目录、普通文件、链接文件等）
+        fileSize:   123309,         // 文件大小
+        fileAttr:   1,              // 文件的属性（目录、普通文件、链接文件等）
         fileDate:   "2018:11:07:15:34:54+08:00",       // 文件的创建日期
-        u32Width:   4000,       // 视频/图片的宽度
-        u32Height:  3000,      // 视频/图片的高度
-        fLng:       0.345,           // 纬度（可选）
+        u32Width:   4000,           // 视频/图片的宽度
+        u32Height:  3000,           // 视频/图片的高度
+        fLng:       0.345,          // 纬度（可选）
         fLant:      0.786,          // 精度（可选）
-        bProcess:   false,       // 是否已经处理过
+        bProcess:   false,          // 是否已经处理过
     };
 
     insetOneLine(recTest);

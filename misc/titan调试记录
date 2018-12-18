@@ -424,3 +424,103 @@ kernel-4.4/sound/soc/codecs/rt5640.c
 
 rt5639_jack_detect
 
+
+mount device[/dev/sdb1] on path [/mnt/mSD6] success
+mount device[/dev/sdc1] on path [/mnt/mSD5] success
+mount device[/dev/sdd1] on path [/mnt/mSD3] success
+mount device[/dev/sde1] on path [/mnt/mSD2] success
+mount device[/dev/sdf1] on path [/mnt/mSD1] success
+
+
+Think??
+HDMI Tunning....
+
+-------------------------------------------------------------------------------------------------------------------------------
+待处理的问题                                                               解决情况或方案
+-------------------------------------------------------------------------------------------------------------------------------
+1.启动
+1.1按下开机键后，亮灯，风扇转                                                   （OK）
+解决方案：
+修改dts源文件：
+kernel/hardware/nvidia/platform/t18x/common/kernel-dts/t18x-common-platforms/tegra186-cvb-prod-p2597-b00-p3310-1000-a00-00.dtsi
+98行去掉如下代码：
+/*
+			front_red_light {
+				gpio-hog;
+				gpios = <8 0>;
+				output-high;
+				label = "front_red";
+			};
+
+			front_green_light {
+				gpio-hog;
+				gpios = <9 0>;
+				output-high;
+				label = "front_green";
+			};
+			front_blue_light {
+				gpio-hog;
+				gpios = <10 0>;
+				output-high;
+				label = "front_blue";
+			};
+
+			back_red_light {
+				gpio-hog;
+				gpios = <11 0>;
+				output-low;
+				label = "back_red";
+			};
+
+			back_green_light {
+				gpio-hog;
+				gpios = <12 0>;
+				output-low;
+				label = "back_green";
+			};
+
+			back_blue_light {
+				gpio-hog;
+				gpios = <13 0>;
+				output-low;
+				label = "back_blue";
+			};
+*/
+
+1.2去掉uboot中3秒倒计时及修改启动参数，内核启动信息不从HDMI输出
+解决方案：
+参考pro2的uboot源码：
+
+
+1.3让内核使用文件系统中的dtb而不使用eMMC内部分区中的dtb                            (R28.2的系统不支持使用该方案了，可以考虑支持修改内核代码)
+解决方案：
+直接找到dtb节点对应的内核代码，修改之
+
+烧写u-boot.bin
+
+
+
+2.驱动
+3.1新版本电池驱动
+
+
+
+3.系统
+3.1系统空闲时进入低功耗模式（可以用ubuntu系统的休眠机制做试验，测功耗）
+
+4.应用
+4.1 准备调试好升级
+
+4.2 修改属性系统（增大属性系统的内存空间，支持列出所有的属性）
+    影响到的服务（monitor, logd, logcat, ui_service, power_manager）
+修改web_server与ui_service的进程间通信方式(使用binder)
+将pro2上新增的功能移植到titan上
+
+
+
+
+
+
+
+
+
