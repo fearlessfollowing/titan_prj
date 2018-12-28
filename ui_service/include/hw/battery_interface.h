@@ -1,52 +1,71 @@
 
-#ifndef PROJECT_BATTERY_INTERFACE_H
-#define PROJECT_BATTERY_INTERFACE_H
+#ifndef _BATTERY_INTERFACE_H_
+#define _BATTERY_INTERFACE_H_
 
 #include <common/sp.h>
 
-
-/*
- * BAT_INFO - 电池信息
- */
-typedef struct _bat_info_ {
-    bool        bCharge;
-    u16         battery_level;
-    u16         full_capacity;
-    double      int_tmp;
-    double      tmp;
-} BAT_INFO;
-
 class ins_i2c;
 
-class battery_interface {
+typedef struct tBaterryInfo {
+    bool        bIsCharge;                  /* 是否正在充电: 充电中 - true; 非充电 - false */
+    u16         uBatLevelPer;               /* 电量百分比: 0 - 100 */
+    u16         uBatCapacity;               /* 电池的容量: 单位为mAh */
+    u16         uBatFullChareRemainTime;    /* 电池充满电需要的剩余时长: 单位s */
+    u16         uBatRuntime2Empty;          /* 电池可放电的时长: 单位s */
+    u16         uChargingCurrent;           /* 充电电流: 单位mA */
+    u16         uChargingVoltage;           /* 充电电压: 单位mV */
+    u16         uBatDesignCapacity;         /* 电池的设计容量: mAh */
+    double      dBatTemp;                   /* 电池的当前温度: 单位(摄氏度) */
+    bool        bDataIsValid;
+#if 0
+    tBaterryInfo(bool bCharge, u16 uBatRemainPer, double bTemperature) {
+        bIsCharge = bCharge;
+        uBatLevelPer = uBatRemainPer;
+        dBatTemp = bTemperature;
+        uBatCapacity = 0;
+        uBatFullChareRemainTime = 0;
+        uBatRuntime2Empty = 0;
+    }
+#endif
+
+} BatterInfo;
+
+
+enum {
+    GET_BATINFO_OK,                 /* 电池存在，获取状态成功 */
+    GET_BATINFO_ERR_NO_EXIST,       /* 电池不存在 */
+    GET_BATINFO_ERR_TEMPERATURE,    /* 电池存在，获取电池温度失败 */
+    GET_BATINFO_ERR_BATSTATUS,      /* 电池存在，获取电池状态失败 */
+    GET_BATINFO_ERR_REMAIN_CAP,     /* 电池存在，获取剩余电量失败 */
+};
+
+/*
+ * 电池管理类提供电池访问的基本方法
+ */
+class BatteryManager {
 public:
-    explicit battery_interface();
-    ~battery_interface();
+    BatteryManager();
+    ~BatteryManager();
 
-    int read_RelativeStateOfCharge(u16 *val);
-    int read_FullChargeCapacity_mAh(u16 *val);
-    int read_RemainingCapacity_mAh(u16 *val);
-    int read_Voltage(u16 *val);
-    int read_Current(int16 *val);
-    int read_AverageTimeToFull(u16 *val);
+    /* 电池是否存在 */
+    bool isBatteryExist();
 
-    int read_bat_update(sp<BAT_INFO> &pstTmp);
-    int read_bat_data(u16 *percent);
-    int read_charge(bool *bCharge);
-    int read_tmp(double *int_tmp,double *tmp);
-    int is_enough(u16 req = 30);
-    bool isSuc();
-    void test_read_all();
+    /* 电池是否处于充电状态 */
+    bool isBatteryCharging();
+
+    /* 获取电池信息 */
+    int getCurBatteryInfo(BatterInfo* pBatInfo);
 
 private:
 
-    void init();
-    void deinit();
-    sp<ins_i2c> mI2C;
-    int read_value(int type,u16 *val);
-    int read_value(int type,int16 *val);
-    bool bSuc = false;
-    u16 full_capacity;
+    int                         mSlaveAddr;     /* 总线地址 */
+    int                         mBusNumber;     /* 总线号 */
+    int                         mBatMode;
+
+    std::shared_ptr<ins_i2c>    mI2c;
 };
 
-#endif //PROJECT_BATTERY_INTERFACE_H
+
+
+
+#endif /* _BATTERY_INTERFACE_H_ */

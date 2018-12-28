@@ -20,12 +20,25 @@
 
 using namespace std;
 
-
 #define OLD_BAT
 
+#undef  TAG
+#define TAG	"battery_interface"
 
-#define BATTERY_I2C_BUS 		2	
-#define BATTERY_I2C_SLAVE_ADDR	0x55
+#define MIN_DEG 		(-40.00)
+#define MAX_DEG 		(110.00)
+#define MAX_BAT_VAL 	(5200) 	//maxium is 5100,
+#define MIN_BAT_VAL 	(4000)
+
+#define MAX_READ_TIMES 	(3)
+#define LARGE_VAL 		(5)
+
+
+/* 
+ * Titan的电池：外接在I2C-7总线上，电池的I2C地址为0xb
+ */
+#define BATTERY_I2C_BUS 		7	
+#define BATTERY_I2C_SLAVE_ADDR	0x0b
 
 enum {
     READ_CONTROL = 0,
@@ -47,7 +60,9 @@ enum {
     READ_AVERAGE_POWER,
     READ_INTERNAL_TEMPRATURE,
     READ_CYCLE_COUNT,
-    READ_RELATIVE_STATE_OF_CHARGE,
+    READ_RELATIVE_STATE_OF_CHARGE = 0x0D,   /* RelativeStateOfCharge() */
+    READ_ABSOLUTE_STATE_OF_CHARGE = 0x0E,   /* AbsoluteStateOfCharge() */
+    READ_REMAINING_CAPACITY = 0xF,          /* RemainningCapacity() */
     READ_STATE_OF_HEALTH = 20,
     READ_CHARGE_VOL,
     READ_CHARGE_CUR,
@@ -56,47 +71,49 @@ enum {
 };
 
 
-#undef  TAG
-#define TAG	"battery_interface"
-
-
-#define MIN_DEG 		(-40.00)
-#define MAX_DEG 		(110.00)
-#define MAX_BAT_VAL 	(5200) 	//maxium is 5100,
-#define MIN_BAT_VAL 	(4000)
-
-#define MAX_READ_TIMES 	(3)
-#define LARGE_VAL 		(5)
-
-
 static const u8 reg_arr[][2] = {
-	{0x00,0x01},
-	{0x02,0x03},
-	{0x04,0x05},
-	{0x06,0x07},
-	{0x08,0x09},
-	{0x0a,0x0b}, //5
-	{0x0c,0x0d},
-	{0x10,0x11},
-	{0x12,0x13},
-	{0x14,0x15},
-	{0x16,0x17},//10
-	{0x18,0x19},
-	{0x1a,0x1b},
-	{0x1c,0x1d},
-	{0x1e,0x1f},
-	{0x20,0x21},//15
-	{0x24,0x25},
-	{0x28,0x29},
-	{0x2a,0x2b},
-	{0x2c,0x2d},
-	{0x2e,0x2f},//20
-	{0x30,0x31},
-	{0x32,0x33},
-	{0x3c,0x3d},
-	{0x3e,0x3f},
+	{0x00, 0x01},
+	{0x02, 0x03},
+	{0x04, 0x05},
+	{0x06, 0x07},
+	{0x08, 0x09},
+	{0x0a, 0x0b}, //5
+	{0x0c, 0x0d},
+	{0x10, 0x11},
+	{0x12, 0x13},
+	{0x14, 0x15},
+	{0x16, 0x17},//10
+	{0x18, 0x19},
+	{0x1a, 0x1b},
+	{0x1c, 0x1d},
+	{0x1e, 0x1f},
+	{0x20, 0x21},//15
+	{0x24, 0x25},
+	{0x28, 0x29},
+	{0x2a, 0x2b},
+	{0x2c, 0x2d},
+	{0x2e, 0x2f},//20
+	{0x30, 0x31},
+	{0x32, 0x33},
+	{0x3c, 0x3d},
+	{0x3e, 0x3f},
 };
 
+/*
+ * 电池类 
+ * | 
+ * |--- bq40z50x
+ * |--- XXXX
+ */
+
+
+/* @func
+ *  convert_k_to_c - 卡尔文温度转换为摄氏度
+ * @pram
+ *  k - 开尔文温度
+ * @return
+ *  摄氏温度
+ */
 static double convert_k_to_c(int16 k)
 {
     double tmp = (double)k;
@@ -105,6 +122,7 @@ static double convert_k_to_c(int16 k)
 #ifdef DEBUG_BATTERY    
     LOGDBG(TAG, "org tmp %f", tmp);
 #endif
+
     tmp = ((double)((int)( (tmp + 0.005) * 100))) / 100;
 
 #ifdef DEBUG_BATTERY    
@@ -113,6 +131,7 @@ static double convert_k_to_c(int16 k)
 
 	return tmp;
 }
+
 
 bool abs_large(u16 first ,u16 second, u16 d_val)
 {
@@ -142,36 +161,9 @@ bool battery_interface::isSuc()
 	return bSuc;
 }
 
-void battery_interface::test_read_all()
-{
-	mI2C->i2c_test(98);
-	printf("\n");
-}
-
 void battery_interface::init()
 {
 	mI2C = sp<ins_i2c>(new ins_i2c(BATTERY_I2C_BUS, BATTERY_I2C_SLAVE_ADDR));
-
-#if 0
-	read_FullChargeCapacity_mAh(&full_capacity);
-	if (full_capacity == 0) {
-		LOGDBG(TAG,"no bat booting");
-	} else {
-		LOGDBG(TAG,"full_capacity %d",full_capacity);
-	}
-
-    u8 val = 0;
-    for (u8 i = 0; i <= 0x61; i++) {
-        if (mI2C->i2c_read(i, &val, 1) == 0) {
-            printf("0x%x ",val);
-        }
-		
-        if ((i + 1) % 16 == 0) {
-            printf("\n");
-        }
-    }
-#endif
-
 }
 
 void battery_interface::deinit()
@@ -182,10 +174,10 @@ void battery_interface::deinit()
 int battery_interface::is_enough(u16 req)
 {
     int ret = -1;
-
     u16 val;
     int good_times = 0;
     int max_times = 5;
+
     for (int i = 0; i < max_times; i++) {
         if (read_bat_data(&val) == 0) {
             if (val >= req) {
@@ -208,6 +200,7 @@ int battery_interface::is_enough(u16 req)
     return ret;
 }
 
+
 int battery_interface::read_Voltage(u16 *val)
 {
     return read_value(READ_VOLTAGE, val);
@@ -223,8 +216,7 @@ int battery_interface::read_value(int type, u16 *val)
     int ret = -1;
     u8 high = 0;
     u8 low = 0;
-    if (mI2C->i2c_read(reg_arr[type][0], (u8*)&low, 1) == 0 &&
-       mI2C->i2c_read(reg_arr[type][1], (u8*)&high, 1) == 0) {
+    if (mI2C->i2c_read(reg_arr[type][0], (u8*)&low, 1) == 0 && mI2C->i2c_read(reg_arr[type][1], (u8*)&high, 1) == 0) {
         *val = (u16)(high << 8 | low);
         ret = 0;
     } else {
@@ -249,6 +241,7 @@ int battery_interface::read_value(int type, int16 *val)
     }
     return ret;
 }
+
 
 int battery_interface::read_tmp(double *int_tmp,double *tmp)
 {
@@ -347,6 +340,7 @@ int battery_interface::read_charge(bool *bCharge)
     return ret;
 }
 
+
 int battery_interface::read_bat_data(u16 *percent)
 {
     int ret = -1;
@@ -387,6 +381,7 @@ int battery_interface::read_bat_data(u16 *percent)
     return ret;
 }
 
+
 int battery_interface::read_bat_update(sp<BAT_INFO> &pstTmp)
 {
     bool bUpdate = false;
@@ -425,10 +420,7 @@ int battery_interface::read_bat_update(sp<BAT_INFO> &pstTmp)
             bUpdate= true;
         }
     }
-//    LOGDBG(TAG, "new bat info %d %d bSuc %d bUpdate %d",
-//          pstTmp->battery_level,
-//          pstTmp->bCharge,
-//          bSuc,bUpdate);
+
 
     return bUpdate;
 }
@@ -476,6 +468,7 @@ int battery_interface::read_RelativeStateOfCharge(u16 *val)
     }
     return ret;
 }
+
 
 int battery_interface::read_RemainingCapacity_mAh(u16 *val)
 {

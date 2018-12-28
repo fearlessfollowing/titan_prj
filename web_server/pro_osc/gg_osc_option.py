@@ -1,10 +1,12 @@
-from util.str_util import unify_float
-from collections import OrderedDict
+
 import config
 from util.ins_util import *
-from util.log_util import *
+from util.ins_log_util import *
+from util.str_util import unify_float
+from collections import OrderedDict
 
 class osc_option:
+
     capture_mode = ['image', 'interval','video','walkaround']
     exposure_prog = ['Not defined','Manual','Normal program','Aperture priority','Shutter priority','ISO priority']
     iso = [0, 100, 200, 400, 800, 1600]
@@ -39,35 +41,45 @@ class osc_option:
     total_space = 0
     remaining_space = 0
     remaining_pic = 0
+    
     gps_info = {
         "lat": 0.00,
         "lng": 0.00}
+
     date_time_zone = '2014:05:18 01:04:29+08:00'
     hdr_sup = ['off', 'hdr']
+    
     _vr_mode = [config.MODE_3D,'pano']
+    
     exposure_bracket_def = {'autoMode':True}
+    
     exposure_bracket = {
         "autoMode": True,
         "shotsSupport": [1, 3, 5, 7],
         "incrementSupport": [unify_float(0.33), unify_float(0.67), 1, unify_float(1.33), unify_float(1.67), 2]
     }
+
     # shots_index = 0
     # increment_index = 0
+    
     gyro = False
     gyro_sup = False
     gps_sup = False
+    
     image_stabilization = ["off", "_horizontal_stabilization", "_vibration_correction"]
 
     gps = False
+    
     # KBytes
-    _bitrate = [2048,1024]
-    framerate = [30,15]
+    _bitrate = [2048, 1024]
+    framerate = [30, 15]
 
-    preview_format_def = {   "width": 1920,
-            "height": 960,
-            "framerate": 30,
-            "_bitrate": 2048
-                             }
+    preview_format_def = {
+        "width": 1920,
+        "height": 960,
+        "framerate": 30,
+        "_bitrate": 2048
+    }
 
     preview_format = [
         {
@@ -89,15 +101,18 @@ class osc_option:
             "framerate": framerate
         }
     ]
+
     # pano
     wifi_pwd = ''
     captureInterval = {"minInterval": 2, "maxInterval": 60}
     capture_num_def = 2
+
     capture_num = {"minNumber": 2, "maxNumber": 50}
     remain_video_sec = 0
     pollingDelay = 1
     delay_processing = 0
     delay_processing_sup = 0
+    
     # osc api version
     client_version = 2
 
@@ -705,7 +720,7 @@ class osc_option:
 
     @classmethod
     def get_preview_format_sup(cls):
-        return cls.preview_format;
+        return cls.preview_format
 
     @classmethod
     def get_capture_interval(cls):
@@ -718,7 +733,7 @@ class osc_option:
 
     @classmethod
     def get_capture_interval_sup(cls):
-        return cls.captureInterval;
+        return cls.captureInterval
 
     @classmethod
     def get_capture_num(cls):
@@ -730,7 +745,7 @@ class osc_option:
 
     @classmethod
     def get_capture_num_sup(cls):
-        return cls.capture_num;
+        return cls.capture_num
 
     @classmethod
     def get_remain_video_sec(cls):

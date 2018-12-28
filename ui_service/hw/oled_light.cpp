@@ -23,9 +23,9 @@
 #undef  TAG
 #define TAG "oled_light"
 
-#define LED_I2C_REG 0x03
+#define LED_I2C_REG             0x03
 
-#define LED_I2C_CONTROL_REG 0x06
+#define LED_I2C_CONTROL_REG     0x07
 
 
 oled_light::oled_light()
@@ -77,7 +77,8 @@ void oled_light::set_light_val(u8 val)
 
     val &= 0x3f;    /* 设置灯的值不能改变模组的供电状态 */
 
-    if (mI2CLight->i2c_read(LED_I2C_REG, &orig_val) == 0) {
+    if (mI2CLight->i2c_read(LED_I2C_CONTROL_REG, &orig_val) == 0) {
+
     #ifdef DEBUG_LED
         LOGDBG(TAG, "+++++++>>> read orig val [0x%x]", orig_val);
         LOGDBG(TAG, "set_light_val --> val[0x%x]", val);
@@ -86,7 +87,7 @@ void oled_light::set_light_val(u8 val)
         orig_val &= 0xc0;	/* led just low 6bit */
         orig_val |= val;
 
-        if (mI2CLight->i2c_write_byte(LED_I2C_REG, orig_val) != 0) {
+        if (mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, orig_val) != 0) {
             LOGERR(TAG, " oled write val 0x%x fail", val);
         } else {
         #ifdef DEBUG_LED
@@ -127,8 +128,6 @@ void oled_light::setAllLight(int iOnOff)
     }
 
 }
-
-
 
 int oled_light::factory_test(int icnt)
 {

@@ -621,6 +621,7 @@ int main(int argc, char **argv)
 
 	property_set(PROP_SYS_UC_VER, UPDAE_CHECK_VER);		/* 将程序的版本更新到属性系统中 */
 
+
 	/* 通知卷挂载器，以只读的方式挂载升级设备 */
 	property_set(PROP_RO_MOUNT_TF, "true");
 
@@ -628,6 +629,7 @@ int main(int argc, char **argv)
 	LOGDBG(TAG, "\n>>>>>>>>>>> Service: update_check starting (Version: %s) ^_^ <<<<<<<<<<", property_get(PROP_SYS_UC_VER));
 
 	LOGDBG(TAG, "get prop: [sys.tf_mount_ro] = %s", property_get(PROP_RO_MOUNT_TF));
+
 
 	/** 复位一下SD卡模块，使得在有SD卡的情况下可以识别到 */
 	resetSdSlot();

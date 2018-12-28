@@ -55,13 +55,12 @@ class osc_info():
     def get_google_osc_info(cls):
         cls.http_port = 80
         osc_info = OrderedDict()
-        osc_info['manufacturer'] = 'Insta360'
-        osc_info['model'] = '360Pro'
+        osc_info['manufacturer'] = 'Shenzhen Arashi Vision'
+        osc_info['model'] = 'Insta360 Pro2'
         osc_info['serialNumber'] = cls.get_sn()
         osc_info['firmwareVersion'] = cls.get_version()
-        # osc_info['firmwareVersion'] = [1, 2]
         osc_info['supportUrl'] = '127.0.0.1'
-        osc_info['endpoints'] = {'httpPort':cls.get_http_port(),'httpUpdatePort':cls.get_http_update_port()}
+        osc_info['endpoints'] = {'httpPort':80,'httpUpdatePort':cls.get_http_update_port()}
         osc_info['gps'] = True
         osc_info['gyro'] = True
         osc_info['uptime'] = 600
@@ -76,5 +75,4 @@ class osc_info():
         ]
         _vendorSpecific = OrderedDict()
         osc_info['_vendorSpecific'] = _vendorSpecific
-        # Print('google osc info {}'.format(osc_info))
         return osc_info

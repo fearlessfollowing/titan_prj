@@ -102,6 +102,14 @@ service hostapd /usr/sbin/hostapd home/nvidia/insta360/etc/.wifi_ap.conf
     critical
     disabled
 
+
+# dhcp服务
+# 测试发现使用udhcpc获取IP地址的速度较快
+service dhcp  /sbin/udhcpc eth0
+    class net
+    critical
+
+
 service dnsmasq /usr/sbin/dnsmasq.bin -d
 	class core
 	critical
@@ -171,7 +179,7 @@ on property:init.svc.camerad=running
 # 触发条件：sys.web_status=true
 # 当WebServer启动后，会导致ui服务重启
 on property:sys.web_status=true
-	restart ui_service
+#	restart ui_service
 
 on property:sys.tz_changed=true
 	start time_tz

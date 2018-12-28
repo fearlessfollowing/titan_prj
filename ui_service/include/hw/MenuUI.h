@@ -150,7 +150,7 @@ typedef struct _save_path_ {
 #endif
 
 #ifndef BAT_INTERVAL
-#define BAT_INTERVAL		(5000)
+#define BAT_INTERVAL		(3000)
 #endif
 
 #ifndef PAGE_MAX
@@ -410,8 +410,12 @@ enum {
     SND_MAX_NUM,
 };
 
+/*
+ * 高电平有效
+ */
+#ifdef LED_HIGH_LEVEL
 
-/* Slave Addr: 0x77 Reg Addr: 0x02
+/* Slave Addr: 0x77 Reg Addr: 0x03
  * bit[7] - USB_POWER_EN2
  * bit[6] - USB_POWER_EN1
  * bit[5] - LED_BACK_B
@@ -422,25 +426,59 @@ enum {
  * bit[0] - LED_FRONT_R
  */
 enum {
-    LIGHT_OFF 		= 0xc0,		/* 关闭所有的灯 bit[7:6] = Camera module */
-    FRONT_RED 		= 0xc1,		/* 前灯亮红色,后灯全灭 */
-    FRONT_GREEN 	= 0xc2,		/* 前灯亮绿色,后灯全灭 */
-    FRONT_YELLOW 	= 0xc3,		/* 前灯亮黄色(G+R), 后灯全灭 */
-    FRONT_DARK_BLUE = 0xc4,		/* 前灯亮蓝色, 后灯全灭 */
+    LIGHT_OFF 		= 0xff,		/* 关闭所有的灯 bit[7:6] = Camera module */
+    FRONT_RED 		= 0xfe,		/* 前灯亮红色,后灯全灭 */
+    FRONT_GREEN 	= 0xfd,		/* 前灯亮绿色,后灯全灭 */
+    FRONT_YELLOW 	= 0xfc,		/* 前灯亮黄色(G+R), 后灯全灭 */
+    FRONT_DARK_BLUE = 0xfb,		/* 前灯亮蓝色, 后灯全灭 */
     FRONT_PURPLE 	= 0xc5,
-    FRONT_BLUE 		= 0xc6,
-    FRONT_WHITE 	= 0xc7,		/* 前灯亮白色(R+G+B),后灯全灭 */
+    FRONT_BLUE 		= 0xfb,
+    FRONT_WHITE 	= 0xf8,		/* 前灯亮白色(R+G+B),后灯全灭 */
 
-    BACK_RED 		= 0xc8,		/* 后灯亮红色 */
-    BACK_GREEN 		= 0xd0,		/* 后灯亮绿色 */
-    BACK_YELLOW 	= 0xd8,		/* 后灯亮黄色 */
+    BACK_RED 		= 0xf7,		/* 后灯亮红色 */
+    BACK_GREEN 		= 0xef,		/* 后灯亮绿色 */
+    BACK_YELLOW 	= 0xe7,		/* 后灯亮黄色 */
     BACK_DARK_BLUE 	= 0xe0,
     BACK_PURPLE 	= 0xe8,
-    BACK_BLUE 		= 0xf0,
-    BACK_WHITE		= 0xf8,		/* 后灯亮白色 */
+    BACK_BLUE 		= 0xdf,
+    BACK_WHITE		= 0xc7,		/* 后灯亮白色 */
 
-    LIGHT_ALL 		= 0xff		/* 所有的灯亮白色 */
+    LIGHT_ALL 		= 0x00,		/* 所有的灯亮白色 */
 };
+#else
+
+/*
+ * 低电平有效
+ */
+
+/* Slave Addr: 0x77 Reg Addr: 0x03
+ * bit[7] - VDD_FAN_DISABLE
+ * bit[6] - 5V0_HDMI_EN
+ * bit[5] - LED_BACK_B
+ * bit[4] - LED_BACK_G
+ * bit[3] - LED_BACK_R
+ * bit[2] - LED_FRONT_B
+ * bit[1] - LED_FRONT_G
+ * bit[0] - LED_FRONT_R
+ */
+enum {
+    LIGHT_OFF 		= 0xff,		    /* 关闭所有的灯 */
+    FRONT_RED 		= ~(1<<0),		/* 前灯亮红色,后灯全灭 */
+    FRONT_GREEN 	= ~(1<<1),		/* 前灯亮绿色,后灯全灭 */
+    FRONT_YELLOW 	= ~(0x3<<0),    /* 前灯亮黄色(G+R), 后灯全灭 */
+    FRONT_BLUE 		= ~(1<<2),      /* 前灯蓝色(B),后灯全灭 */
+    FRONT_WHITE 	= ~(0x7<<0),    /* 前灯亮白色(R+G+B),后灯全灭 */
+
+    BACK_RED 		= ~(1<<3),		/* 后灯亮红色 */
+    BACK_GREEN 		= ~(1<<4),		/* 后灯亮绿色 */
+    BACK_YELLOW 	= ~(0x3<<3),    /* 后灯亮黄色 */
+    BACK_BLUE 		= ~(1<<5),
+    BACK_WHITE		= ~(0x7<<2),    /* 后灯亮白色 */
+
+    LIGHT_ALL 		= ~(0x3f<<0),   /* 所有的灯亮白色 */
+};
+
+#endif
 
 enum {
     GPS_STATE_NO_DEVICE,
@@ -827,6 +865,7 @@ private:
     /************************************** 灯光管理 END *************************************************/
 
 
+
     /************************************** 菜单相关 START *************************************************/
     int     getMenuSelectIndex(int menu);
     int     getCurMenuCurSelectIndex();
@@ -1026,18 +1065,23 @@ private:
      * 录像/直播的可存储的剩余时长
      */
     sp<oled_light>              mOLEDLight;
+    u8                          fli_light = 0;
+    u8                          front_light;
 
+    u8                          mLastLightVal = 0;      /* 上一次的灯光颜色值 */
+    u8                          mFrontLightVal;     /* 前灯的颜色值 */
 
-    u8 last_light = 0;
-    u8 fli_light = 0;
-    u8 front_light;
-	
     std::mutex                  mutexState;
 
 
-    sp<battery_interface>       mBatInterface;
-        
+#if 0
+    sp<battery_interface>       mBatInterface;        
     sp<BAT_INFO>                m_bat_info_;
+#else 
+    sp<BatteryManager>          mBatInterface;
+    sp<BatterInfo>              mBatInfo;
+#endif
+
 
     sp<SYS_INFO>                mReadSys;
     sp<struct _ver_info_>       mVerInfo;

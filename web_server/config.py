@@ -1,8 +1,7 @@
 # -*- coding:utf-8 -*-
-#Constants
+
 import platform
 import os
-#from util.str_util import int_to_bytes
 
 #standard
 CMD_GET_STATUS      = 'camera.get_status'
@@ -26,6 +25,8 @@ GET_OPTIONS         = 'camera._getOptions'
 OSC_CAM_RESET       = 'camera.reset'
 CAMERA_RESET        = 'camera._reset'
 
+
+GET_LIVE_PREVIEW    = 'camera.getLivePreview'
 
 _TAKE_PICTURE       = 'camera._takePicture'
 #vendor define
@@ -196,6 +197,8 @@ PATH_UI_CMD_EXECUTE     = '/ui/commands/execute'
 # PATH_PIC_NAME         = '/osc/pic/<media_name>'
 
 
+
+
 #配置文件的路径：
 INSTA360_PRO2_CFG_BASE  = "/home/nvidia/insta360/etc"
 SYS_SETTING_PATH = INSTA360_PRO2_CFG_BASE + "user_cfg"
@@ -271,6 +274,8 @@ _REQ_SET_OPTIONS            = 'camera._setOptions'
 # AWB校正
 _REQ_AWB_CALC               = 'camera._calibrationAwb'
 
+# 更新系统温度
+_REQ_UPDATE_SYS_TMP         = 'camera._updateSysTemp'
 
 """camera_state"""
 STATE_IDLE                      = 0x00
@@ -349,7 +354,7 @@ FRAME_RATE  = 'framerate'
 
 # Machine
 MACHINE_TYPE = 'machine'
-MACHINE = 'pro2'
+MACHINE = 'titan'
 
 
 #audio
@@ -410,7 +415,6 @@ elif platform.machine() == 'aarch64':
     BROWER_ROOT = '/home/nvidia/insta360/log/'
     STORAGE_ROOT = BROWER_ROOT
     
-    # LOG_ROOT = STORAGE_ROOT + 'py_log/'
     LOG_FILE = STORAGE_ROOT + 'h_log'
     # DB_NAME = STORAGE_ROOT + '360_pro'
 
@@ -452,28 +456,24 @@ SERVICEUNAVAILABLE= { 'SERVICEUNAVAILABLE':'Processing requests cannot be receiv
 CANCELEDSHOOTING= { 'CANCELEDSHOOTING':'Shooting request cancellation of the self-timer'}
 UNEXPECTED= {'UNEXPECTED':'Other errors'}
 
-#state res
-DONE = 'done'
+DONE        = 'done'
 IN_PROGRESS = 'inProgress'
-ERROR = 'error'
-RESULTS = 'results'
+ERROR       = 'error'
+RESULTS     = 'results'
 FINGERPRINT = 'Fingerprint'
 
-# #pro file path
-# BASE_DIR = '/sdcard/'
-# UPLOAD_DIR = BASE_DIR + 'upload/'
 
-PIC_FORMAT = '_pictureFormat'
-REC_FORMAT = '_recordFormat'
-PREVIEW_FORMAT = 'previewFormat'
-LIVE_FORMAT = '_liveFormat'
-VR_MODE = '_vrMode'
+PIC_FORMAT      = '_pictureFormat'
+REC_FORMAT      = '_recordFormat'
+PREVIEW_FORMAT  = 'previewFormat'
+LIVE_FORMAT     = '_liveFormat'
+VR_MODE         = '_vrMode'
 
-PREVIEW_URL = '_previewUrl'
-RECORD_URL = '_recordUrl'
-LIVE_URL = '_liveUrl'
+PREVIEW_URL     = '_previewUrl'
+RECORD_URL      = '_recordUrl'
+LIVE_URL        = '_liveUrl'
 
-ORG_URL_LIST='_orgURLList'
+ORG_URL_LIST    = '_orgURLList'
 
 #write fifo msg
 # OLED_DISP_STR = 'oled_disp_str'

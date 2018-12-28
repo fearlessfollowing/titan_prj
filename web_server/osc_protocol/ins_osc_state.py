@@ -8,6 +8,7 @@ from util.ins_util import *
 from util.ins_log_util import *
 from util.time_util import *
 from threading import Semaphore
+from threading import Thread 
 
 EXTERNAL_DEV = '_external_dev'
 EXTERNAL_ENTRIES ='entries'
@@ -24,116 +25,37 @@ REC_INFO = '_rec_sec'
 LIVE_REC_INFO = '_live_rec_sec'
 TL_REC_INFO = '_tl_left'
 
-
 INTERVAL = 10000
 
 STORAGE_POS = 1
 CAM_STATE = '_cam_state'
 GPS_STATE = '_gps_state'
 SND_STATE = '_snd_state'
-
+SYS_TEMP  = '_sys_temp'
 
 sem_vfs = Semaphore()
 
 
-# 获取文件
-def get_vfs(name):
-    vfs = None
-    sem_vfs.acquire()
+class DiskCheckThread(Thread):
+    def __init__(self, name, parent):
+        super().__init__()
+        Info('----------------> constructor ComThread obj')
+        self.name = name
+        self.parent_obj = parent
 
-    try:
-        if os.path.exists(name) and os.path.isdir(name):
-            vfs = os.statvfs(name)
-        # Print('2get_vfs {} '.format(name))
-    except OSError as e:
-        Err('get_vfs OSError {} name {}'.format(e, name))
-    except Exception as e:
-        Err('get_vfs exception {}'.format(e, name))
-    sem_vfs.release()
-    # Print('3get_vfs {}'.format(name))
-    return vfs
-
-
-# 对于大卡: 需要手动计算出卡的容量
-# 对于小卡: 直接使用查询到存储数据来填充卡信息
-# 卡信息:
-#   path   - 卡的挂载路径(对于外部TF卡，该项为NULL)
-#   type   - 表示是设备的类型(本地还是模组的))
-#   index  - 索引号(表示是第几号卡)
-#   totoal - 卡的容量
-#   free   - 卡的剩余空间
-# 查询本地卡的信息
-def get_local_storage_info(path, dev_type, dev_name, unit='M'):
-    info = OrderedDict()
-    division  = {
-        'M':1024 *1024,
-        'K':1024,
-        'G':1024 *1024 * 1024,
-        }
-    pass
-
-    info['type'] = dev_type   # 现在所有的设备类型都是USB，将该字段改为区分大卡和小卡
-    info['mounttype'] = 'nv'
-    info['path'] = path
-    info['name'] = dev_name
-    info['index'] = 0           # 对于本地卡，只支持一张的模式
-    vfs = get_vfs(path)
-    if vfs is not None:
-        info['free'] = vfs.f_bsize * vfs.f_bfree / division[unit]
-        info['total'] = vfs.f_bsize * vfs.f_blocks / division[unit]
-    else:
-        info['free'] = 0
-        info['total'] = 0
-
-    # 如果该路径下含有/.pro_suc文件，表示已经通过了测速
-    if file_exist(join_str_list((path, "/.pro_suc"))):
-        info['test'] = True
-    else:
-        info['test'] = False
-    return info
-
-
-# get_tf_storage_info
-# 获取TF卡信息
-def get_tf_storage_info(path, dev_type, dev_name, index, total, free, speed_test):
-    
-    info = OrderedDict() 
-
-    info['type']  = 'sd'   # 现在所有的设备类型都是USB，将该字段改为区分大卡和小卡
-    info['mounttype'] = 'module'    
-    info['path']  = path
-    info['name']  = dev_name
-    info['index'] = index               # 对于本地卡，只支持一张的模式
-
-    info['free']  = free
-    info['total'] = total
-
-    if speed_test == 0:
-        info['test']  = False          # 没有进行速度测试，默认
-    else:
-        info['test']  = True          # 没有进行速度测试，默认
-
-    # Print('external info {}'.format(info))
-    return info
-
-
-def get_dev_info_detail(dev_list):
-    dev_info = []
-    try:
-        for dev in dev_list:
-            info = get_local_storage_info(dev['path'], dev_type = dev['dev_type'], dev_name = dev['name'])
-            dev_info.append(info)
-    except Exception as e:
-        Info('get_dev_info_detail exception {}'.format(str(e)))
-    return dev_info
-
+    def run(self):
+        while True:
+            # Info('----------------> diskcheck run parent func obj')
+            self.parent_obj.diskInfoUpdateFunc()
+            time.sleep(2)
 
 class osc_state(threading.Thread):
     def __init__(self, queue):
         threading.Thread.__init__(self)
         self._queue = queue
         self._exit = False
-        
+
+
         # 小卡信息字典列表
         self._tf_info = []      # 外部TF设备列表
         self._local_dev = []    # 本地存储设备列表
@@ -155,6 +77,9 @@ class osc_state(threading.Thread):
         self.sem = Semaphore()
         self.stateSem = Semaphore()
 
+        self._cur_save_dev_info = {'free':0, 'total':0, 'test':False}
+
+
     def run(self):
         self.func = OrderedDict({
             osc_state_handle.CLEAR_TL_COUNT:            self.clear_tl_count,
@@ -171,12 +96,15 @@ class osc_state(threading.Thread):
             osc_state_handle.TF_FORMAT_CLEAR_SPEED:     self.clear_tf_speed_flag,
             osc_state_handle.UPDATE_REC_LEFT_SEC:       self.set_rec_left_sec,
             osc_state_handle.UPDATE_TIME_LAPSE_LEFT:    self.update_timelapse_left,
+            osc_state_handle.UPDATE_SYS_TEMP:           self.updateSysTemp,
         })
+
+        # 创建检测磁盘信息的线程
+        DiskCheckThread('disk_info', self).start()
 
         while self._exit is False:
             try:
                 req = self._queue.get()
-                # Info('rec osc req {}'.format(req))
                 msg_what = req['msg_what']
                 self.aquire_sem()
                 if check_dic_key_exist(req, 'args'):
@@ -188,8 +116,118 @@ class osc_state(threading.Thread):
                 Err('monitor_fifo_write2 e {}'.format(e))
                 self.release_sem()
 
+
+    def diskInfoUpdateFunc(self):
+        division  = {
+            'M':1024 *1024,
+            'K':1024,
+            'G':1024 *1024 * 1024,
+            }
+
+        diskPath = self.poll_info[EXTERNAL_DEV]['save_path']
+        if diskPath != None:
+            vfs = self.get_vfs(diskPath)
+            if vfs is not None:
+                self._cur_save_dev_info['free'] = vfs.f_bsize * vfs.f_bfree / division['M']
+                self._cur_save_dev_info['total'] = vfs.f_bsize * vfs.f_blocks / division['M']
+            else:
+                self._cur_save_dev_info['free'] = 0
+                self._cur_save_dev_info['total'] = 0    
+
+
+            # 如果该路径下含有/.pro_suc文件，表示已经通过了测速
+            if file_exist(join_str_list((diskPath, "/.pro_suc"))):
+                self._cur_save_dev_info['test'] = True
+            else:
+                self._cur_save_dev_info['test'] = False
+
+        else:
+            Info('locak disk not exist')
+
+
+    # 获取文件
+    def get_vfs(self, name):
+        vfs = None
+        sem_vfs.acquire()
+
+        try:
+            if os.path.exists(name) and os.path.isdir(name):
+                vfs = os.statvfs(name)
+        except OSError as e:
+            Err('get_vfs OSError {} name {}'.format(e, name))
+        except Exception as e:
+            Err('get_vfs exception {}'.format(e, name))
+        sem_vfs.release()
+        return vfs
+
+
+    # get_tf_storage_info
+    # 获取TF卡信息
+    def get_tf_storage_info(self, path, dev_type, dev_name, index, total, free, speed_test):
+        
+        info = OrderedDict() 
+
+        info['type']  = 'sd'   # 现在所有的设备类型都是USB，将该字段改为区分大卡和小卡
+        info['mounttype'] = 'module'    
+        info['path']  = path
+        info['name']  = dev_name
+        info['index'] = index               # 对于本地卡，只支持一张的模式
+
+        info['free']  = free
+        info['total'] = total
+
+        if speed_test == 0:
+            info['test']  = False          # 没有进行速度测试，默认
+        else:
+            info['test']  = True          # 没有进行速度测试，默认
+
+        # Print('external info {}'.format(info))
+        return info
+
+
+    def get_dev_info_detail(self, dev_list):
+        dev_info = []
+        try:
+            for dev in dev_list:
+                info = self.get_local_storage_info(dev['path'], dev_type = dev['dev_type'], dev_name = dev['name'])
+                dev_info.append(info)
+        except Exception as e:
+            Info('get_dev_info_detail exception {}'.format(str(e)))
+        return dev_info
+
+
+
+    # 对于大卡: 需要手动计算出卡的容量
+    # 对于小卡: 直接使用查询到存储数据来填充卡信息
+    # 卡信息:
+    #   path   - 卡的挂载路径(对于外部TF卡，该项为NULL)
+    #   type   - 表示是设备的类型(本地还是模组的))
+    #   index  - 索引号(表示是第几号卡)
+    #   totoal - 卡的容量
+    #   free   - 卡的剩余空间
+    # 查询本地卡的信息
+    def get_local_storage_info(self, path, dev_type, dev_name, unit='M'):
+        info = OrderedDict()
+
+        info['type'] = dev_type   # 现在所有的设备类型都是USB，将该字段改为区分大卡和小卡
+        info['mounttype'] = 'nv'
+        info['path'] = path
+        info['name'] = dev_name
+        info['index'] = 0           # 对于本地卡，只支持一张的模式
+
+        info['free'] = self._cur_save_dev_info['free']
+        info['total'] = self._cur_save_dev_info['total']
+        info['test'] = self._cur_save_dev_info['test']
+
+        return info
+
+
     def update_timelapse_left(self, param):
         self._time_lapse_left = param['tl_left']
+
+
+    def updateSysTemp(self, param):
+        self._sys_temp = param
 
 
     def set_tf_info(self, dev_infos):
@@ -239,24 +277,19 @@ class osc_state(threading.Thread):
 
 
     def set_external_info(self, dev_info):
-        # Info('dev_info {} typed dev_info {}'.format(dev_info,type(dev_info)))
         try:
-            #self.poll_info[EXTERNAL_DEV][EXTERNAL_ENTRIES] = dev_info
             self._local_dev = dev_info
         except Exception as e:
             Err('set_external_info exception {}'.format(e))
-        # Info('set set_external_info info {} len dev_info {}'.format(self.poll_info,len(dev_info)))
 
 
     def set_save_path(self, content):
-               
         Info('----- set_save_path: {}'.format(content))
-
         try:
             self.poll_info[EXTERNAL_DEV]['save_path'] = content['path']
         except Exception as e:
             Err('set_save_path exception {}'.format(e))
-        # Print('set_save_path info {}'.format(content))
+
 
     # 设置电池信息
     def set_battery_info(self, info):
@@ -277,7 +310,7 @@ class osc_state(threading.Thread):
 
         if content['dev_list'] is not None:
             dev_list = content['dev_list']
-            dev_info = get_dev_info_detail(dev_list)
+            dev_info = self.get_dev_info_detail(dev_list)
         self.set_external_info(dev_info)
 
 
@@ -322,11 +355,11 @@ class osc_state(threading.Thread):
         
         # 查询内部卡（大卡）
         for internal_dev_info in self._local_dev:            
-            new_dev_info.append(get_local_storage_info(internal_dev_info['path'], dev_type = internal_dev_info['type'], dev_name = internal_dev_info['name']))
+            new_dev_info.append(self.get_local_storage_info(internal_dev_info['path'], dev_type = internal_dev_info['type'], dev_name = internal_dev_info['name']))
 
         # 查询外部卡（小卡）path, dev_type, dev_name, index, total, free
         for extern_dev_info in self._tf_info:
-            new_dev_info.append(get_tf_storage_info('null', 'external', 'tfcard', extern_dev_info['index'], extern_dev_info['storage_total'], extern_dev_info['storage_left'], extern_dev_info['pro_suc']))
+            new_dev_info.append(self.get_tf_storage_info('null', 'external', 'tfcard', extern_dev_info['index'], extern_dev_info['storage_total'], extern_dev_info['storage_left'], extern_dev_info['pro_suc']))
 
         # 更新整个存储部分信息(大卡 + 小卡)
         self.poll_info[EXTERNAL_DEV][EXTERNAL_ENTRIES] = new_dev_info
@@ -343,6 +376,8 @@ class osc_state(threading.Thread):
             # 获取Camera当前的状态
             st = self.poll_info[CAM_STATE]
 
+            # 去掉模组的温度
+            # self.poll_info[SYS_TEMP] = self._sys_temp
             self.poll_info[LEFT_INFO][REC_LEFT_INFO] = self._rec_left
             self.poll_info[LEFT_INFO][LIVE_REC_LEFT_INFO] = self._live_rec_left
             self.poll_info[LEFT_INFO][REC_INFO] = self._rec_sec
@@ -369,9 +404,7 @@ class osc_state(threading.Thread):
 
     def set_tl_count(self, count):
         try:
-            # Info('add tl_info {}'.format(count))
             self.poll_info[TL_INFO]['tl_count'] = count
-            # Info('poll_info {}'.format(self.poll_info))
         except Exception as e:
             Err('add_res_id exception {}'.format(e))
 
@@ -382,7 +415,7 @@ class osc_state(threading.Thread):
         except Exception as e:
             Err('add_res_id exception {}'.format(e))
 
-    def rm_res_id(self,id):
+    def rm_res_id(self, id):
         try:
             Info('rm res is {}'.format(id))
             self.poll_info[ID_RES].remove(id)
@@ -456,7 +489,7 @@ class osc_state(threading.Thread):
         Info('2set cam state {}'.format(state))
         self.stateSem.release()
 
-    def set_gps_state(self,state):
+    def set_gps_state(self, state):
         try:
             self.poll_info[GPS_STATE] = state
         except Exception as e:
@@ -464,7 +497,7 @@ class osc_state(threading.Thread):
 
 
     # 设置_snd_state
-    def set_snd_state(self,param):
+    def set_snd_state(self, param):
         try:
             # 将字符串转换为json对象, 2018年7月26日（修复BUG）
             self.poll_info[SND_STATE] = param
@@ -475,6 +508,8 @@ class osc_state(threading.Thread):
     def stop(self):
         Print('stop osc state')
         self._exit = True
+
+
 
 OSC_STATE_QUEUE_SIZE = 20
 class osc_state_handle:
@@ -494,6 +529,7 @@ class osc_state_handle:
     TF_FORMAT_CLEAR_SPEED = 11
     UPDATE_REC_LEFT_SEC = 12
     UPDATE_TIME_LAPSE_LEFT = 13
+    UPDATE_SYS_TEMP = 14
 
     @classmethod
     def start(cls):

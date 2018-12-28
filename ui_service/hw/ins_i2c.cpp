@@ -7,12 +7,11 @@
 
 #include <log/log_wrapper.h>
 
-
 using namespace std;
 
 #define TAG "ins_i2c"
 
-ins_i2c::ins_i2c(unsigned int i2c_adapter, unsigned int addr,bool bForce)
+ins_i2c::ins_i2c(unsigned int i2c_adapter, unsigned int addr, bool bForce)
 {
     if (bForce) {
         i2c_slave_type = I2C_SLAVE_FORCE;
@@ -44,13 +43,12 @@ void ins_i2c::i2c_test(int max)
 void ins_i2c::i2c_open(unsigned int i2c_adapter, unsigned int addr)
 {
     char filename[64];
-
     unique_lock<mutex> lock(i2c_mutex);
-
 
     snprintf(filename, sizeof(filename), "/dev/i2c-%d", i2c_adapter);
     i2c_fd = open(filename, O_RDWR);
-    CHECK_NE(i2c_fd,-1);
+
+    CHECK_NE(i2c_fd, -1);
     if (ioctl(i2c_fd, i2c_slave_type, addr) < 0) {
         if (i2c_slave_type == I2C_SLAVE) {
             if (ioctl(i2c_fd, I2C_SLAVE_FORCE, addr) < 0) {
@@ -100,9 +98,7 @@ int ins_i2c::i2c_write(const u8 reg, const u8 *dat, unsigned int dat_len)
 
     for ( i = 0; i < times; i++) {
         res = write(i2c_fd, buf, write_len);
-        if ( res != write_len) {
-            /* ERROR HANDLING: i2c transaction failed */
-        	// Log.w(TAG, "i2c write[%d] reg 0x%x res %d but write len  %d \n", i, reg, res, write_len);
+        if (res != write_len) {
             msg_util::sleep_ms(2);
         } else {           
         	ret = 0;
@@ -111,9 +107,8 @@ int ins_i2c::i2c_write(const u8 reg, const u8 *dat, unsigned int dat_len)
     }
 
     if (i >= times) {
-        //skip battery
-        if (i2c_addr != 0x55) {
-            // LOGERR(TAG, "really i2c write addr 0x%x reg 0x%x res %d but write len  %d", i2c_addr, reg, res, write_len);
+        if (i2c_addr != 0x0b) {
+            LOGERR(TAG, "really i2c write addr 0x%x reg 0x%x res %d but write len  %d", i2c_addr, reg, res, write_len);
         }
     }
 
@@ -125,14 +120,14 @@ int ins_i2c::i2c_read(const u8 reg, u8 *dat, const unsigned int len)
 {
     int ret = -1;
 
-    if (i2c_write(reg, nullptr,0) == 0) {
+    if (i2c_write(reg, nullptr, 0) == 0) {
         int i = 0;
         int times = 5;
         unique_lock<mutex> lock(i2c_mutex);
-
         CHECK_NE(i2c_fd, -1);
+
         for (i = 0; i < times; i++) {
-            if (read(i2c_fd ,dat, len ) != len) {
+            if (read(i2c_fd ,dat, len) != len) {
             	LOGERR(TAG, "i2c read[%d] reg 0x%x error len is %d",i, reg,len);
                 msg_util::sleep_ms(2);
             } else {

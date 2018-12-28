@@ -22,6 +22,11 @@
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
 
+enum {
+    NET_IF_UP = 1,
+    NET_IF_DOWN = 0
+};
+
 
 /**
  * 网络设备的链路状态
@@ -187,6 +192,8 @@ public:
 	/* 获取网卡的设备名 */
 	std::string&    getDevName();
 
+
+    int             ifupdown(const char *interface, int up);
 
     void            getIpByDhcp();
 

@@ -134,6 +134,7 @@ def cmd_exception(e,name = None):
         error_dict = error_dic('unknown exception',str(e))
     else:
         error_dict = e
+        
     return dict_to_jsonstr(
             OrderedDict({_state: 'exception', config.ERROR: error_dict}) if name is None else OrderedDict(
                 {_name: name, _state: 'exception', config.ERROR: error_dict}))

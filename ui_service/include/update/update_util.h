@@ -3,7 +3,6 @@
 
 #include <vector>
 
-//#define UPDATE_ZIP_PATH "/sdcard/pro_update.tar"
 #define SUC_REBOOT
 #define UPDATE_PATH UPDATE_BASE_PATH"pro_update/"
 #define UPDATE_PATH_P UPDATE_PATH"p/"
@@ -117,29 +116,20 @@ typedef struct st_section {
 #endif
 
 
-
 const char *update_zip_name[] = {"pro2_update.zip", "rom_update.zip"};
 
-#define UPDATE_IMAGE_FILE 		"Insta360_Pro2_Update.bin"
+
+#define UPDATE_IMAGE_FILE   "Insta360_Titan_Update.bin"
 
 
-//const char *update_bin = "Insta360_Pro_Update.bin";
-#define UPDATE_BIN_NAME "Insta360_Pro2_Update.bin"
-
-//#define UPDATE_BIN_NAME_BAK "Insta360_Pro_Update_Bake.bin"
-
-#define UPDATE_BIN_FULL_NAME UPDATE_BASE_PATH"Insta360_Pro2_Update.bin"
-#define UPDATE_BIN_FULL_NAME_BC UPDATE_BASE_PATH"Insta360_Pro2_Update_Backup.bin"
-//#define UPDATE_BIN_FULL_NAME_RC UPDATE_BASE_PATH"Insta360_Pro_Update_Recovery.bin"
 
 #define FP_KEY ("insta_pro")
 #define VERSION_LEN (sizeof(SYS_VERSION))
-
 
 #define HEADER_CONENT_LEN 		(4)
 #define UPDATE_APP_CONTENT_LEN 	(4)
 #define UPDATE_CONTENT_LEN 		(4)
 
-#endif //PROJECT_UPDATE_UTIL_H_H
+#endif /* PROJECT_UPDATE_UTIL_H_H */
 
 

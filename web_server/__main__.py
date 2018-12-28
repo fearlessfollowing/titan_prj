@@ -55,36 +55,6 @@ app_controller = control_center.control_center()
 # AutoIndex(app, browse_root=config.BROWER_ROOT)
 
 
-#only post support
-# @app.route('/upload',methods=['POST'])
-# def flask_osc_upload_file():
-#     try:
-#         h = request.headers
-#         print(' upload h {} hkeys {} '.format(h, h.keys()))
-#         file_dir = config.STORAGE_ROOT
-#         print('file_dir {}'.format(file_dir))
-#         f = request.files['file']
-#
-#         if f is not None:
-#             fname = secure_filename(f.filename)
-#             Print('fname {}'.format(fname))
-#             unix_time = int(time.time())
-#             new_filename = str(unix_time)
-#             f.save(os.path.join(file_dir, new_filename))
-#
-#             # token = base64.b64encode(new_filename.encode('utf-8'))
-#             # token = token.decode('utf-8')
-#             # Print('new_filename {} token {}', new_filename,token)
-#             # ret = dict_to_jsonstr({config._NAME: config._UPLOAD_FILE, 'state': 'upload success', 'token': token})
-#             ret = cmd_done(config._UPLOAD_FILE)
-#         else:
-#             ret = cmd_error(config._UPLOAD_FILE,'upload fail','upload req file none')
-#     except Exception as err:
-#         Err('flask_osc_path_execute osc path exception {}'.format(str(err)))
-#         ret = cmd_exception(error_dic('flask_osc_path_execute', str(err)))
-#     return ret
-
-
 @app.route('/osc/<path>',methods=['GET', 'POST'])
 # @add_header
 def flask_osc_path_execute(path):
@@ -100,7 +70,6 @@ def flask_osc_path_execute(path):
 
         if check_dic_key_exist(h, config.FINGERPRINT):
             fp = h[config.FINGERPRINT]
-        # Print('1path is {} {}'.format(path,fp))
         ret = app_controller.osc_path_execute(join_str_list(('/osc/',path)), fp)
     except Exception as err:
         Err('flask_osc_path_execute osc path exception {}'.format(str(err)))
@@ -169,20 +138,6 @@ def flask_osc_cmd_stitch():
         Err('flask_osc_cmd_stitch osc command exception {} ret {}'.format(str(err),ret))
     return ret
 
-# @app.route(config.STORAGE_PATH)
-# @add_header
-# def get_media_file(media_name):
-#     if isinstance(media_name,str) and media_name.:
-#
-#     Print('media name {}'.format(media_name))
-#     return 'success'
-
-# ALLOWED_EXTENSIONS = \
-#     set(['txt','png','jpg','xls','JPG','PNG','xlsx','gif','GIF'])
-#
-# def allowed_file(filename):
-#     return '.' in filename and filename.rsplit('.',1)[1] in ALLOWED_EXTENSIONS
-#
 
 @app.route('/upload')
 def upload_test():
@@ -242,63 +197,6 @@ def download(filename):
      return jsonify({config._NAME: config._DOWNLOAD_FILE, "state": "download fail"})
 
 	 
-# @app.route('/')
-# def index():
-#     return 'insta360 pro connected'
-# @app.route(config.PATH_PIC_NAME)
-# @app.route(config.PATH_PIC_NAME)
-# # @add_header
-# def get_pic_name(media_name):
-#     Print('test media_name {}'.format(media_name))
-#     if platform.machine() == 'x86_64':
-#         media_name = '/home/vans/python_test/UML.jpg'
-#     else:
-#         media_name = '/sdcard/UML.jpg'
-#     try:
-#         Print('2 test media_name {}'.format(media_name))
-#         if os.path.exists(media_name):
-#             # return app_controller.get_media_name(media_name)
-#             # image = file(media_name)
-#             # Print('2 get file')
-#             # resp = Response(image, mimetype="image/jpeg")
-#             # Print('response {}'.format(image))
-#             # return resp
-#
-#             # ret = send_file(media_name, mimetype='image/jpeg')
-#             from PIL import Image
-#             import io
-#             im = Image.open(media_name)
-#             print(im.format, im.size, im.mode)
-#
-#             if im.format == 'JPEG':
-#                 byte_io = io.BytesIO()
-#                 im.save(byte_io, 'jpeg')
-#                 byte_io.seek(0)
-#                 ret = send_file(byte_io, mimetype='image/jpeg')
-#                 ret.headers['Content-Type'] = 'image/jpeg'
-#                 print('get file 6 ', len(byte_io.read()))
-#             else:
-#                 ret = 'error'
-#             return ret
-#         else:
-#             return dict_to_jsonstr(cmd_error(config._GET_MEDIA,'error_state',join_str_list((media_name,'not found'))))
-#     except Exception as e:
-#         Err('get_pic_name')
-#         return cmd_exception(error_dic('get_pic_name',e),config._GET_MEDIA)
-
-# @app.route('/test')
-# @add_header
-# def test_oled():
-#     # app_controller.send_oled_disp_direct(name)
-#     cmd_exception(error_dic('disabledCommand', 'camera not connected'), 'osc/info')
-#     print('abc')
-#     cmd_exception(error_dic('disabledCommand', 'camera not connected2'))
-#     print('efg')
-#     return 'suc1'
-
-# app.add_url_rule('/', 'index', index)
-# app.view_functions['index'] = index
-
 
 def main():
     ins_version.get_version()

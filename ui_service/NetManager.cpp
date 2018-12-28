@@ -10,8 +10,8 @@
 ** 版     本: V2.0
 ** 日     期: 2016年12月1日
 ** 修改记录:
-** V1.0			Wans			2016-12-01		创建文件
-** V2.0			Skymixos		2018-06-05		添加注释
+** V1.0			Skymixos		2018-06-05		创建文件，添加注释
+** V2.0			Skymixos		2018-12-27		将dhcp服务的启停转到init.rc中处理
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -99,8 +99,7 @@ int NetDev::getNetDevType()
 
 int NetDev::netdevOpen()
 {
-    LOGDBG(TAG, "NetDev -> netdevOpen");
-	
+    LOGDBG(TAG, "NetDev -> netdevOpen");	
 	return 0;
 }
 
@@ -223,7 +222,6 @@ const char* NetDev::getNetDevIpFrmPhy()
 
     close(skfd);
     addr = (struct sockaddr_in *)(&ifr.ifr_addr);
-
     return inet_ntoa(addr->sin_addr);
 ERR:
     return NULL;
@@ -292,16 +290,10 @@ std::string& NetDev::getDevName()
 
 void NetDev::getIpByDhcp()
 {
-    int status;
-
-    system("killall udhcpc");
-    
-	const char *args[4];
-    args[0] = "/sbin/udhcpc";
-    args[1] = "-i";
-    args[2] = mDevName.c_str();
-    args[3] = "-S";
-	forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
+    char cmd[512] = {0};
+    system("killall dhclient");
+    sprintf(cmd, "dhclient %s &", mDevName.c_str());
+    system(cmd);	
 }
 
 
@@ -310,7 +302,6 @@ int NetDev::processPollEvent(sp<NetDev>& netdev)
     LOGDBG(TAG, "Netdev -> processPollEvent");
     return 1;
 }
-
 
 int NetDev::getCurGetIpMode()
 {
@@ -334,10 +325,40 @@ int NetDev::getWiFiWorkMode()
 }
 
 
+int NetDev::ifupdown(const char *interface, int up)
+{
+    struct ifreq ifr;
+    int s, ret;
+
+    strncpy(ifr.ifr_name, interface, IFNAMSIZ);
+
+    s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s < 0)
+        return -1;
+
+    ret = ioctl(s, SIOCGIFFLAGS, &ifr);
+    if (ret < 0) {
+        goto done;
+    }
+
+    if (up)
+        ifr.ifr_flags |= IFF_UP;
+    else
+        ifr.ifr_flags &= ~IFF_UP;
+
+    ret = ioctl(s, SIOCSIFFLAGS, &ifr);
+
+	LOGDBG(TAG, "ifupdown: [%s] netif [%s]", (up == NET_IF_UP) ? "UP": "DOWN", interface);
+
+done:
+    close(s);
+    return ret;
+}
+
 
 /************************************* Ethernet Dev ***************************************/
 
-EtherNetDev::EtherNetDev(std::string name, int iMode):NetDev(DEV_LAN, WIFI_WORK_MODE_STA, NET_LINK_DISCONNECT, true, name, iMode)
+EtherNetDev::EtherNetDev(std::string name, int iMode): NetDev(DEV_LAN, WIFI_WORK_MODE_STA, NET_LINK_DISCONNECT, true, name, iMode)
 														
 {
     LOGDBG(TAG, "constructor ethernet device");
@@ -351,24 +372,29 @@ EtherNetDev::~EtherNetDev()
 
 int EtherNetDev::netdevOpen()
 {
+#if 0
     char cmd[512] = {0};
-
     LOGDBG(TAG, "EtherNetdev Open ....");
     sprintf(cmd, "ifconfig %s up", getDevName().c_str());
     system(cmd);
-
 	return 0;
+#else 
+	return ifupdown(getDevName().c_str(), NET_IF_UP);
+#endif
 }
 
 int EtherNetDev::netdevClose()
 {
+#if 0	
     char cmd[512] = {0};
-
     LOGDBG(TAG, "Ethernetdev Close...");
     sprintf(cmd, "ifconfig %s down", getDevName().c_str());
     system(cmd);
-
 	return 0;
+#else 
+	return ifupdown(getDevName().c_str(), NET_IF_DOWN);
+#endif 
+
 }
 
 
@@ -414,7 +440,9 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
                 etherDev->setCurIpAddr(etherDev->getNetDevIpFrmPhy(), false);
             }
         } else {
-            etherDev->setCurIpAddr("0.0.0.0", true);
+			if (strcmp(etherDev->getCurIpAddr(), "0.0.0.0")) {
+	            etherDev->setCurIpAddr("0.0.0.0", true);
+			}
             iPollInterval = 2;
         }
     }
@@ -494,7 +522,6 @@ int WiFiNetDev::netdevOpen()
 }
 
 
-
 int WiFiNetDev::netdevClose()
 {
 	system("killall hostapd");
@@ -562,7 +589,12 @@ sp<NetManager> NetManager::Instance()
 
 sp<ARMessage> NetManager::obtainMessage(uint32_t what)
 {
-    return mHandler->obtainMessage(what);
+	if (mHandler)
+    	return mHandler->obtainMessage(what);
+	else {
+		LOGERR(TAG, "---> mHandler not inited, try later!");
+		return nullptr;
+	}
 }
 
 
@@ -640,12 +672,11 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
             }
 
 			dispatchIpPolicy(NETM_DISPATCH_PRIO);
-
-			sendNetPollMsg(iInterval);	/* 继续发送轮询消息 */
+			sendNetPollMsg(iInterval);		/* 继续发送轮询消息 */
 			break;
 		}
 	
-		case NETM_REGISTER_NETDEV: {	/* 注册网络设备 */
+		case NETM_REGISTER_NETDEV: {		/* 注册网络设备 */
 			LOGDBG(TAG, "NetManager -> register net device...");
 
 			sp<NetDev> tmpNet;
@@ -666,14 +697,13 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			break;
 		}
 
-		case NETM_UNREGISTER_NETDEV: {	/* 注销网络设备 */
+		case NETM_UNREGISTER_NETDEV: {		/* 注销网络设备 */
 			
 			LOGDBG(TAG, "NetManager -> unregister net device...");
 			sp<NetDev> tmpNet;
 			CHECK_EQ(msg->find<sp<NetDev>>("netdev", &tmpNet), true);
 
 			if (checkNetDevHaveRegistered(tmpNet) == true) {
-				/* 从注册列表中移除该网络设备 */
 				removeNetDev(tmpNet);
 			} else {
 				LOGERR(TAG, "NetManager: netdev [%s] not registered yet", tmpNet->getDevName().c_str());
@@ -681,7 +711,7 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			break;
 		}
 
-		case NETM_STARTUP_NETDEV: {		/* 启动网络设备 */
+		case NETM_STARTUP_NETDEV: {			/* 启动网络设备 */
 			
             LOGDBG(TAG, "Startup Wifi test ....");
             sp<DEV_IP_INFO> tmpIpInfo = NULL;
@@ -704,7 +734,7 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 		}
 
 
-		case NETM_CLOSE_NETDEV: {		/* 关闭网络设备 */
+		case NETM_CLOSE_NETDEV: {			/* 关闭网络设备 */
 
             LOGDBG(TAG, "Stop Wifi test ....");
             sp<DEV_IP_INFO> tmpIpInfo = NULL;
@@ -726,7 +756,7 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			break;
 		}
 
-        case NETM_SET_NETDEV_IP: {	/* 设备设备IP地址(DHCP/static) */
+        case NETM_SET_NETDEV_IP: {			/* 设备设备IP地址(DHCP/static) */
 
             LOGDBG(TAG, "+++++++++++++++ set ip>>>>");
             sp<DEV_IP_INFO> tmpIpInfo = NULL;
@@ -739,14 +769,11 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
             tmpNetDev = getNetDevByType(tmpIpInfo->iDevType);
             if (tmpNetDev) {
 				if (tmpIpInfo->iDhcp == GET_IP_STATIC) {	/* Static */
-				
-					/* 使用Direct方式时，先杀掉dhclient进程  - 2018年8月6日 */
-					system("killall udhcpc");
+					system("killall dhclient");
 					msg_util::sleep_ms(50);
 					tmpNetDev->setNetDevIp2Phy(tmpIpInfo->ipAddr);
 					tmpNetDev->setCurGetIpMode(GET_IP_STATIC);
-				} else {	/* DHCP */
-					/* 如果已经缓存了DHCP地址,直接使用DHCP地址,否则将启动DHCP */
+				} else {									/* DHCP */
 					tmpNetDev->getIpByDhcp();
 					tmpNetDev->setCurGetIpMode(GET_IP_DHCP);
 				}
@@ -755,7 +782,7 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 		}
 
 
-		case NETM_CONFIG_WIFI_AP: {	/* 配置WIFI的AP参数 */
+		case NETM_CONFIG_WIFI_AP: {		/* 配置WIFI的AP参数 */
 
 			sp<WifiConfig> tmpConfig = NULL;
             CHECK_EQ(msg->find<sp<WifiConfig>>("wifi_config", &tmpConfig), true);
@@ -818,7 +845,6 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			break;
 		}
 
-
 		case NETM_EXIT_LOOP: {
 			LOGDBG(TAG, "NetManager: netmanager exit loop...");
 			mLooper->quit();
@@ -863,6 +889,7 @@ void NetManager::start()
 						mLooper->run();
 					});
 
+	msg_util::sleep_ms(100);
 	LOGDBG(TAG, "startNetManager .... success!!!");
 }
 
@@ -947,7 +974,6 @@ void NetManager::postNetMessage(sp<ARMessage>& msg, int interval)
 }
 
 
-
 void NetManager::dispatchIpPolicy(int iPolicy)
 {
     sp<NetDev> tmpEthDev;
@@ -1018,7 +1044,7 @@ NetManager::NetManager()
 {
     LOGDBG(TAG, "construct NetManager....");
 
-    system("rm /etc/resolv.conf");
+	unlink("/etc/resolv.conf");
     
     msg_util::sleep_ms(50);
     system("touch /etc/resolv.conf");
@@ -1034,9 +1060,5 @@ NetManager::NetManager()
 NetManager::~NetManager()
 {
     LOGDBG(TAG, "deconstruct NetManager....");
-
-    /* stop all net devices */
-
-    /* unregister all net devices */
 }
 

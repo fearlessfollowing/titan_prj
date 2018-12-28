@@ -33,17 +33,17 @@ monitor_obj = SConscript('./init/SConscript')
 
 MONITOR_EXE = 'out/monitor'
 MONITOR_OBJS = monitor_obj
-com_env.Program(target = MONITOR_EXE, source = MONITOR_OBJS)
+#com_env.Program(target = MONITOR_EXE, source = MONITOR_OBJS)
 
 
 ############################ update_check ##################################
-update_check_obj = SConscript('./update_check/SConscript')
-com_env.Program('out/update_check', update_check_obj)
+#update_check_obj = SConscript('./update_check/SConscript')
+#com_env.Program('out/update_check', update_check_obj)
 
 
 ############################ update_app ####################################
-update_app_obj = SConscript('./update_app/SConscript')
-com_env.Program('out/update_app', update_app_obj)
+#update_app_obj = SConscript('./update_app/SConscript')
+#com_env.Program('out/update_app', update_app_obj)
 
 
 ############################ http_server ####################################
@@ -52,17 +52,17 @@ com_env.Program('out/update_app', update_app_obj)
 	
 
 ############################ bootanimation ##################################
-bootan_obj = SConscript('./bootan/SConscript')
-com_env.Program('out/bootanimation', bootan_obj)
+#bootan_obj = SConscript('./bootan/SConscript')
+#com_env.Program('out/bootanimation', bootan_obj)
 
 
 ############################ power_manager ##################################
-power_obj = SConscript('./ui_service/power/SConscript')
-com_env.Program('./out/power_manager', power_obj)
+#power_obj = SConscript('./ui_service/power/SConscript')
+#com_env.Program('./out/power_manager', power_obj)
 
 ############################ pwr_ctl ##################################
-pwr_obj = SConscript('./ui_service/pwr_ctl/SConscript')
-com_env.Program('./out/pwr_ctl', pwr_obj)
+#pwr_obj = SConscript('./ui_service/pwr_ctl/SConscript')
+#com_env.Program('./out/pwr_ctl', pwr_obj)
 
 
 ############################ ui_service ##################################

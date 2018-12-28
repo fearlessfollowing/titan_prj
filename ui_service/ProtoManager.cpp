@@ -569,18 +569,20 @@ bool ProtoManager::sendStopPreview()
     "name":"camera._queryStorage",
     "results":{
         "module":[
-            {"index":1,"pro_suc":0,"storage_left":30119,"storage_total":30520},
-            {"index":2,"pro_suc":0,"storage_left":60623,"storage_total":61024},
-            {"index":3,"pro_suc":0,"storage_left":60623,"storage_total":61024},
-            {"index":4,"pro_suc":0,"storage_left":30119,"storage_total":30520},
-            {"index":5,"pro_suc":0,"storage_left":60623,"storage_total":61024},
-            {"index":6,"pro_suc":0,"storage_left":30119,"storage_total":30520}
+            {"index":1,"pro_suc":1,"storage_left":41490,"storage_total":60874},
+            {"index":2,"pro_suc":1,"storage_left":60521,"storage_total":60874},
+            {"index":3,"pro_suc":1,"storage_left":41760,"storage_total":60874},
+            {"index":4,"pro_suc":1,"storage_left":41707,"storage_total":60874},
+            {"index":5,"pro_suc":1,"storage_left":60753,"storage_total":60874},
+            {"index":6,"pro_suc":1,"storage_left":41125,"storage_total":60874},
+            {"index":7,"pro_suc":1,"storage_left":41483,"storage_total":60874},
+            {"index":8,"pro_suc":1,"storage_left":60545,"storage_total":60874}
         ],
-        "storagePath":"none"
+        "storagePath":"/mnt/udisk1"
     },
-    "sequence":8,
-    "state":"done"
-}
+    "sequence":15,
+    "state":"done"}
+
 #endif
 
 
@@ -614,8 +616,7 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
 
                     sprintf(tmpVol->cVolName, "mSD%d", tmpVol->iIndex);
                     LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d]",
-                                __FILE__, __LINE__, tmpVol->cVolName, 
-                                tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest);
+                                tmpVol->cVolName, tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest);
 
                     mStorageList.push_back(tmpVol);
 
@@ -1179,7 +1180,7 @@ bool ProtoManager::sendStorageListReq(const char* devList)
     return bRet;     
 }
 
-
+#if 0
 bool ProtoManager::sendUpdateBatteryInfo(BAT_INFO* pBatInfo)
 {
     int iResult = -1;
@@ -1231,6 +1232,7 @@ bool ProtoManager::sendUpdateBatteryInfo(BAT_INFO* pBatInfo)
     }
     return bRet;     
 }
+#endif
 
 
 bool ProtoManager::sendStartNoiseSample()

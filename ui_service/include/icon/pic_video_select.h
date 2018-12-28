@@ -1661,8 +1661,8 @@ static PicVideoCfg vid8K_30F_3D_Cfg = {
 	stNorIcon: 			{	/* 未选中时的图标列表 */
 		vid_8K30F3D_Nor_78x16,
 	},
-    pNote:              "8K|30F|3D",
-    bDispType:          true,
+    pNote:              "11K|30F|3D",
+    bDispType:          false,
 };
 
 static PicVideoCfg vid8K_60F_Cfg = {
@@ -1685,8 +1685,8 @@ static PicVideoCfg vid8K_60F_Cfg = {
 	stNorIcon:			{	                            /* 未选中时的图标列表 */
 		vid_8K60F_Nor_78x16,
 	},
-    pNote:              "8K|60F",
-    bDispType:          true,
+    pNote:              "10K|30F|3D",
+    bDispType:          false,
 };
 
 static PicVideoCfg vid8K_5F_Cfg = {
@@ -1709,8 +1709,8 @@ static PicVideoCfg vid8K_5F_Cfg = {
 	stNorIcon:			{	                        /* 未选中时的图标列表 */
 		vid_8K5F_Nor_78x16,
 	},
-    pNote:              "8K|5F|GSV",
-    bDispType:          true,
+    pNote:              "8K|30F|10bit",
+    bDispType:          false,
 };
 
 static PicVideoCfg vid6K_60F_3D_Cfg = {
@@ -1831,8 +1831,8 @@ static PicVideoCfg vid8K_30F_3D_HDR_Cfg = {
 	stNorIcon:			{	/* 未选中时的图标列表 */
 		vid_8K30F_3D_Hdr_Nor_78x16,
 	},
-    pNote:              "8K|30F|3D|HDR",
-    bDispType:          true,
+    pNote:              "11K|30F|2D",
+    bDispType:          false,
 };
 
 
@@ -2233,7 +2233,10 @@ PicVideoCfg* gLiveAllModeCfgList[] = {
 /* 
  * 默认的参数(当配置文件不存在或者解析配置文件出错时使用)
  */
-static const char* pCmdTakePic_8K3DOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 4000, \"height\": 3000, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
+// static const char* pCmdTakePic_8K3DOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 4000, \"height\": 3000, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
+
+static const char* pCmdTakePic_8K3DOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}}}";
+
 
 static const char* pCmdTakePic_8KOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 4000, \"height\": 3000, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"pano\", \"height\": 3840, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
 
@@ -2246,11 +2249,25 @@ static const char* pCmdTakePic_Burst 	= "{\"name\":\"camera._takePicture\",\"par
 static const char* pCmdTakePic_Customer = "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 4000, \"height\": 3000, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
 
 
-static const char* pCmdTakeVid_8K30F3D 	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":30,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3840,\"height\":2880,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
 
-static const char* pCmdTakeVid_8K60F 	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":60,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3840,\"height\":1920,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+// static const char* pCmdTakeVid_8K30F3D 	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":30,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3840,\"height\":2880,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
 
-static const char* pCmdTakeVid_8K5F		= "{\"name\":\"camera._startRecording\", \"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":5,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3840,\"height\":2160,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+static const char* pCmdTakeVid_8K30F3D 	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":30,\"bitrate\":180000,\"saveOrigin\":true,\"width\":5280,\"height\":2972,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+
+
+
+// static const char* pCmdTakeVid_8K60F 	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":60,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3840,\"height\":1920,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+
+static const char* pCmdTakeVid_8K60F 	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":30,\"bitrate\":180000,\"saveOrigin\":true,\"width\":4800,\"height\":3072,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+
+
+
+// static const char* pCmdTakeVid_8K5F		= "{\"name\":\"camera._startRecording\", \"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":5,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3840,\"height\":2160,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+
+
+static const char* pCmdTakeVid_8K5F		= "{\"name\":\"camera._startRecording\", \"parameters\":{\"origin\":{\"mime\":\"h265\", \"bitDepth\":10, \"framerate\":30,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3840,\"height\":2880,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+
+
 
 static const char* pCmdTakeVid_6K60F3D	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":60,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3200,\"height\":2400,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
 

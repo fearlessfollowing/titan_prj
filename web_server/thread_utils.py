@@ -11,6 +11,7 @@ import os
 import base64
 import sys
 import platform
+import time
 from util.str_util import *
 from util.ins_log_util import *
 
@@ -39,6 +40,8 @@ class ComSyncReqThread(Thread):
     def run(self):
         Info('----------------> run ComSyncReqThread obj')
         self.control_obj.write_and_read(self.sync_req, True)
+
+
 
 
 

@@ -40,6 +40,8 @@
 #include <prop_cfg.h>
 
 #include <hw/battery_interface.h>
+
+
 #include <hw/oled_light.h>
 #include <hw/lan.h>
 
@@ -53,7 +55,6 @@
 #include <sstream>
 
 #include <sys/AudioManager.h>
-
 
 #include <sys/ProtoManager.h>
 #include <sys/CfgManager.h>
@@ -458,15 +459,16 @@ void MenuUI::init()
     mOLEDLight = std::make_shared<oled_light>();
     CHECK_NE(mOLEDLight, nullptr);
 
+
     LOGDBG(TAG, "Create System Battery Manager Object...");
-    mBatInterface = std::make_shared<battery_interface>();
+
+
+    mBatInterface = std::make_shared<BatteryManager>();
     CHECK_NE(mBatInterface, nullptr);
 
-    m_bat_info_ = std::make_shared<BAT_INFO>();
-    CHECK_NE(m_bat_info_, nullptr);
+    mBatInfo = std::make_shared<BatterInfo>();
+    CHECK_NE(mBatInfo, nullptr);
 
-    memset(m_bat_info_.get(), 0, sizeof(BAT_INFO));
-    m_bat_info_->battery_level = 1000;
 
     LOGDBG(TAG, "Create System Info Object...");
     mReadSys = std::make_shared<SYS_INFO>();
@@ -604,28 +606,8 @@ void MenuUI::subSysInit()
      *******************************************************************************/
 #ifdef ENABLE_NET_MANAGER
 
-    /*
-     * 设置dnsmasq服务的参数，重启dnsmasq服务
-     */
-    std::string dnsmasq_conf =  "listen-address=192.168.55.1\n"                 \
-                                "dhcp-host=192.168.55.1\n"                      \
-                                "dhcp-range=192.168.55.10,192.168.55.30,24h\n"    \
-                                "dhcp-option=3,192.168.55.1\n"                  \
-                                "#dhcp-option=option:dns-server,8.8.8.8,114.114.114.114\n"    \
-                                "\n" \
-                                "listen-address=192.168.43.1\n"  \
-                                "dhcp-host=192.168.43.1\n"   \
-                                "dhcp-range=192.168.43.100,192.168.43.130,24h\n"   \
-                                "dhcp-option=3,192.168.43.1\n"   \
-                                "dhcp-option=option:dns-server,8.8.8.8,192.168.43.1\n";
-
-    property_set("ctl.stop", "dnsmasq");
-    msg_util::sleep_ms(20);
-    updateFile(DNSMASQ_CONF_PATH, dnsmasq_conf.c_str(), dnsmasq_conf.length());
-    property_set("ctl.start", "dnsmasq");
-
-
     CfgManager* cm = CfgManager::Instance();
+
     sp<NetManager> nm = NetManager::Instance();
     nm->setNotifyRecv(obtainMessage(UI_MSG_UPDATE_IP));    
     nm->start();
@@ -635,14 +617,18 @@ void MenuUI::subSysInit()
     sp<EtherNetDev> eth0 = std::make_shared<EtherNetDev>("eth0", cm->getKeyVal("dhcp"));
 
     sp<ARMessage> registerEth0msg = nm->obtainMessage(NETM_REGISTER_NETDEV);
-    registerEth0msg->set<sp<NetDev>>("netdev", eth0);
-    registerEth0msg->post();
+    if (registerEth0msg) {
+        registerEth0msg->set<sp<NetDev>>("netdev", eth0);
+        registerEth0msg->post();
+    }
 
     /* Register Wlan0 */
     sp<WiFiNetDev> wlan0 = std::make_shared<WiFiNetDev>(WIFI_WORK_MODE_AP, "wlan0", 0);
     sp<ARMessage> registerWlanMsg = nm->obtainMessage(NETM_REGISTER_NETDEV);
-    registerWlanMsg->set<sp<NetDev>>("netdev", wlan0);
-    registerWlanMsg->post();
+    if (registerWlanMsg) {
+        registerWlanMsg->set<sp<NetDev>>("netdev", wlan0);
+        registerWlanMsg->post();
+    }
 
     nm->obtainMessage(NETM_POLL_NET_STATE)->post();
     nm->obtainMessage(NETM_LIST_NETDEV)->post();
@@ -681,10 +667,31 @@ void MenuUI::subSysInit()
 		mHaveConfigSSID = true;
 	}
 
+    /*
+     * 设置dnsmasq服务的参数，重启dnsmasq服务
+     */
+    std::string dnsmasq_conf =  "listen-address=192.168.55.1\n"                 \
+                                "dhcp-host=192.168.55.1\n"                      \
+                                "dhcp-range=192.168.55.10,192.168.55.30,24h\n"    \
+                                "dhcp-option=3,192.168.55.1\n"                  \
+                                "dhcp-option=option:dns-server,8.8.8.8,114.114.114.114\n"    \
+                                "\n" \
+                                "listen-address=192.168.43.1\n"  \
+                                "dhcp-host=192.168.43.1\n"   \
+                                "dhcp-range=192.168.43.100,192.168.43.130,24h\n"   \
+                                "dhcp-option=3,192.168.43.1\n"   \
+                                "dhcp-option=option:dns-server,8.8.8.8,192.168.43.1\n";
 
+
+
+    LOGDBG(TAG, "----> Restart dnsmasq service here for ip addr: 192.168.55.1");
+
+    property_set("ctl.stop", "dnsmasq");
+    msg_util::sleep_ms(20);
+    updateFile(DNSMASQ_CONF_PATH, dnsmasq_conf.c_str(), dnsmasq_conf.length());
+    property_set("ctl.start", "dnsmasq");
 
 #endif 
-
 
 
     /*******************************************************************************
@@ -902,6 +909,7 @@ void MenuUI::disp_top_info()
     }
 
 	uiShowStatusbarIp();
+
     oled_disp_battery();
     
     bDispTop = true;
@@ -1960,8 +1968,6 @@ int MenuUI::oled_reset_disp(int type)
     
     //fix select if working by controller 0616
 
-//    init_menu_select();
-    //reset wifi config
     return 0;
 }
 
@@ -2240,6 +2246,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 mCurTakePicJson = pTmpPicVidCfg->jsonCmd;
                 pTakePicJson = (pTmpPicVidCfg->jsonCmd).get();
 
+            #if 0
             #ifdef ENABLE_MENU_AEB
 
                 PIC_ORG* pTmpAeb = NULL;
@@ -2263,6 +2270,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 } else {
                     LOGWARN(TAG, "Warnning Aeb Item lossed, please check!!!");
                 }
+            #endif
             #endif
 
                 if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) { /* 非Customer模式根据是否使能RAW来设置origin.mime，Customer模式不用理会该属性 */
@@ -2996,9 +3004,20 @@ void MenuUI::procBackKeyEvent()
                 setLight();
 
                 if (pm->sendWbCalcReq()) {
-                    setLightDirect(FRONT_GREEN | BACK_GREEN);
+                    LOGDBG(TAG, "-----> Calc Awb Suc.");
+                    #ifdef LED_HIGH_LEVEL   /* 高电平点亮灯 */                 
+                        setLightDirect(FRONT_GREEN | BACK_GREEN);
+                    #else 
+                        setLightDirect(FRONT_GREEN & BACK_GREEN);
+                    #endif
                 } else {
-                    setLightDirect(FRONT_RED | BACK_RED);
+                    LOGDBG(TAG, "-----> Calc Awb Failed.");
+                    #ifdef LED_HIGH_LEVEL   /* 高电平点亮灯 */                 
+                        setLightDirect(FRONT_RED | FRONT_RED);
+                    #else 
+                        setLightDirect(FRONT_RED & FRONT_RED);
+                    #endif
+
                 }
                 im->setEnableReport(true);
             } else {
@@ -3662,27 +3681,19 @@ void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, std::vector<Volume*>& mVolum
 
         int pos = i % pParentMenu->mSelectInfo.page_max;		// 3
         switch (pos) {
-            case 0:
-                tmPos.yPos 		= 16;
-                break;
-
-            case 1:
-                tmPos.yPos 		= 32;
-                break;
-            
-            case 2:
-                tmPos.yPos 		= 48;
-                break;
+            case 0: tmPos.yPos = 16; break;
+            case 1: tmPos.yPos = 32; break;
+            case 2: tmPos.yPos = 48; break;
         }
-        #ifdef ENABLE_SHOW_SPACE_NV
+    #ifdef ENABLE_SHOW_SPACE_NV
         tmPos.xPos 		= 27;   
         tmPos.iWidth	= 103;   
         tmPos.iHeight   = 16;   
-        #else
+    #else
         tmPos.xPos 		= 0;        
         tmPos.iWidth	= 128;     
         tmPos.iHeight   = 16;       
-        #endif
+    #endif
 
         gStorageInfoItems[i]->stPos = tmPos;
         gStorageInfoItems[i]->pStVolumeInfo = mVolumeList.at(i);
@@ -4529,22 +4540,18 @@ void MenuUI::disp_org_rts(int org, int rts, int hdmi)
     {
         switch (new_org_rts) {
             case 0:
-                // dispIconByType(ICON_INFO_ORIGIN32_16);
                 drawGpsState();
                 dispIconByType(ICON_INFO_RTS32_16);
                 break;
             case 1:
-                // dispIconByType(ICON_INFO_ORIGIN32_16);
                 drawGpsState();
                 clearIconByType(ICON_INFO_RTS32_16);
                 break;
             case 2:
-                // clearIconByType(ICON_INFO_ORIGIN32_16);
                 clearGpsState();
                 dispIconByType(ICON_INFO_RTS32_16);
                 break;
             case 3:
-                // clearIconByType(ICON_INFO_ORIGIN32_16);
                 clearGpsState();
                 clearIconByType(ICON_INFO_RTS32_16);
                 break;
@@ -5175,7 +5182,12 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 
 
         case MENU_SYS_ERR: {         /* 显示系统错误菜单 */
-            setLightDirect(BACK_RED|FRONT_RED);
+            #ifdef LED_HIGH_LEVEL
+                setLightDirect(BACK_RED|FRONT_RED);
+            #else 
+                setLightDirect(BACK_RED & FRONT_RED);
+            #endif
+
             dispIconByType(ICON_ERROR_128_64128_64);
             break;
         }
@@ -6231,33 +6243,31 @@ bool MenuUI::check_allow_update_top()
 int MenuUI::oled_disp_battery()
 {
 
-#ifdef DEBUG_BATTERY
-    LOGDBG(TAG, "mBatInterface->isSuc()  %d "
-                  "m_bat_info_->bCharge %d "
-                  "m_bat_info_->battery_level %d",
-                mBatInterface->isSuc(), m_bat_info_->bCharge, m_bat_info_->battery_level);
-#endif
-
-    if (mBatInterface->isSuc()) {   /* 电池存在 */
+    if (mBatInterface->isBatteryExist()) {   /* 电池存在 */
         int icon;
         const int x = 110;
         u8 buf[16];
 
-        if (m_bat_info_->bCharge && m_bat_info_->battery_level < 100) { /* 电池正在充电并且没有充满 */
-            icon = ICON_BATTERY_IC_CHARGE_103_0_6_166_16;   
+        if (GET_BATINFO_OK == mBatInterface->getCurBatteryInfo(mBatInfo.get())) {
+            if (mBatInfo->bIsCharge && mBatInfo->uBatLevelPer < 100) {  /* 电池存在,处于充电状态 */
+                icon = ICON_BATTERY_IC_CHARGE_103_0_6_166_16;       
+            } else {    /* 电池存在非充电状态
+             */
+                icon = ICON_BATTERY_IC_FULL_103_0_6_166_16;
+            }
         } else {
             icon = ICON_BATTERY_IC_FULL_103_0_6_166_16;
         }
 		
         if (check_allow_update_top()) { /* 允许更新电池信息到屏幕上 */
-            if (m_bat_info_->battery_level == 1000) {
-                m_bat_info_->battery_level = 0;
+            if (mBatInfo->uBatLevelPer == 1000) {
+                mBatInfo->uBatLevelPer = 0;
             }
 			
-            if ( m_bat_info_->battery_level >= 100) {
+            if (mBatInfo->uBatLevelPer >= 100) {
                 snprintf((char *) buf, sizeof(buf), "%d", 100);
             } else {
-                snprintf((char *)buf, sizeof(buf), "%d", m_bat_info_->battery_level);
+                snprintf((char *)buf, sizeof(buf), "%d", mBatInfo->uBatLevelPer);
             }
 			
             dispStrFill(buf, x, 0);   /* 显示电池图标及电量信息 */
@@ -6604,7 +6614,12 @@ void MenuUI::disp_err_code(int code, int back_menu)
     for (u32 i = 0; i < sizeof(mErrDetails) / sizeof(mErrDetails[0]); i++) {
         if (mErrDetails[i].code == code) {
             if (mErrDetails[i].icon != -1) {
-                setLightDirect(BACK_RED | FRONT_RED);
+                #ifdef LED_HIGH_LEVEL
+                    setLightDirect(BACK_RED | FRONT_RED);
+                #else 
+                    setLightDirect(BACK_RED & FRONT_RED);
+                #endif
+
                 LOGDBG(TAG, "disp error code (%d %d %d)", i, mErrDetails[i].icon, code);
                 dispIconByType(mErrDetails[i].icon);
                 bFound = true;
@@ -6630,7 +6645,13 @@ void MenuUI::disp_err_code(int code, int back_menu)
     reset_last_info();
 
     //force cur menu sys_err
-    setLightDirect(BACK_RED|FRONT_RED);
+
+    #ifdef LED_HIGH_LEVEL
+        setLightDirect(BACK_RED | FRONT_RED);
+    #else 
+        setLightDirect(BACK_RED & FRONT_RED);
+    #endif 
+
     cur_menu = MENU_SYS_ERR;
     bDispTop = false;
 }
@@ -6724,25 +6745,27 @@ bool MenuUI::checkServerIsBusy()
 
 void MenuUI::setLight()
 {
-    if (mBatInterface->isSuc()) {	/* 电池存在,根据电池的电量来设置前灯的显示状态:   */
-        if (m_bat_info_->battery_level < 10) {			/* 电量小于10%显示红色 */
-            front_light = FRONT_RED;
-        } else if (m_bat_info_->battery_level < 20) {	/* 电量小于20%显示黄色 */
-            front_light = FRONT_YELLOW;
-        } else {										/* 电量高于20%,显示白色 */
+    if (mBatInterface->isBatteryExist()) {
+        if (mBatInterface->getCurBatteryInfo(mBatInfo.get()) == GET_BATINFO_OK) {
+            if (mBatInfo->uBatLevelPer < 10) {              /* 电量小于10%显示红色 */
+                front_light = FRONT_RED;
+            } else if (mBatInfo->uBatLevelPer < 20) {       /* 电量小于20%显示黄色 */
+                front_light = FRONT_YELLOW;
+            } else {                                        /* 电量高于20%,显示白色 */
+                front_light = FRONT_WHITE;
+            }
+        } else {
+            LOGERR(TAG, "---> Get Battery Info Failed..");
             front_light = FRONT_WHITE;
         }
-    } else {	/* 电池不存在,显示白色 */
+    } else {
         front_light = FRONT_WHITE;
     }
-	
-    set_flick_light();	/* 根据前灯的状态来设置闪烁时的灯颜色 */
 
+    set_flick_light();	    /* 根据前灯的状态来设置闪烁时的灯颜色 */
     if (!checkServerIsBusy() && (cur_menu != MENU_SYS_ERR) && (cur_menu != MENU_LOW_BAT)) {
         setLight(front_light);
-    }
-	
-    return;
+    }	
 }
 
 void MenuUI::setAllLightOnOffForce(int iOnOff)
@@ -7219,13 +7242,6 @@ int MenuUI::oled_disp_type(int type)
 /************************************ 拍照相关 START **********************************************/	
         case CAPTURE: {     /* 检查是拍照还是拍timelapse */
 
-            /* 如果是客户端发起拍照，server端会先设置该状态，UI不需要再去设置该状态 
-             * 2018年11月24日（V1.0.10）
-             */
-            if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS) == false) {
-                addState(STATE_TAKE_CAPTURE_IN_PROCESS);
-            }
-
             /* mControlAct不为NULL,有两种情况 
                 * - 来自客户端的拍照请求(直接拍照)
                 * - 识别二维码的请求
@@ -7234,6 +7250,10 @@ int MenuUI::oled_disp_type(int type)
                 LOGDBG(TAG, "+++++++++++++++>>>> CAPTURE Come from Client");
                 mNeedSendAction = false;
             } else {
+
+                if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS) == false) {
+                    addState(STATE_TAKE_CAPTURE_IN_PROCESS);
+                }
 
                 mNeedSendAction = true;
                 int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
@@ -7740,7 +7760,11 @@ int MenuUI::oled_disp_type(int type)
             if (MENU_LOW_BAT != cur_menu) {
                 setCurMenu(MENU_LOW_BAT);
             } else {
-                setLightDirect(BACK_RED|FRONT_RED);
+                #ifdef LED_HIGH_LEVEL
+                    setLightDirect(BACK_RED | FRONT_RED);
+                #else 
+                    setLightDirect(BACK_RED & FRONT_RED);
+                #endif 
             }
             break;
 
@@ -7748,7 +7772,11 @@ int MenuUI::oled_disp_type(int type)
             if (MENU_LOW_BAT != cur_menu) {
                 setCurMenu(MENU_LOW_BAT);
             } else {
-                setLightDirect(BACK_RED|FRONT_RED);
+                #ifdef LED_HIGH_LEVEL
+                    setLightDirect(BACK_RED | FRONT_RED);
+                #else 
+                    setLightDirect(BACK_RED & FRONT_RED);
+                #endif 
             }
             break;
         }
@@ -7838,9 +7866,11 @@ int MenuUI::oled_disp_type(int type)
 
 int MenuUI::getCurOneGroupPicSize()
 {
-    int iSize = 10;
+    int iSize = 20;
     int iIndex = getMenuSelectIndex(MENU_PIC_SET_DEF);
     struct stPicVideoCfg* pTmpCfg = mPicAllItemsList.at(iIndex);
+
+    #if 0
     if (pTmpCfg) {
         if (!strcmp(pTmpCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {  /* take picture consutomer */
 
@@ -7851,6 +7881,8 @@ int MenuUI::getCurOneGroupPicSize()
             iSize = pTmpCfg->pStAction->size_per_act;
         }
     }    
+    #endif
+
     return iSize;
 }
 
@@ -7935,7 +7967,7 @@ void MenuUI::disp_dev_msg_box(int bAdd, int type, bool bChange)
 
 void MenuUI::flick_light()
 {	
-    if ((last_light & 0xf8) != fli_light) {
+    if ((mLastLightVal & 0xf8) != fli_light) {
         setLight(fli_light);
     } else {
         setLight(LIGHT_OFF);
@@ -7946,9 +7978,10 @@ void MenuUI::flick_light()
 bool MenuUI::is_bat_low()
 {
     bool ret = false;
-    if (mBatInterface->isSuc() && !m_bat_info_->bCharge && m_bat_info_->battery_level <= BAT_LOW_VAL) {
+    if (mBatInterface->isBatteryExist() &&  !mBatInfo->bIsCharge &&  mBatInfo->uBatLevelPer <= BAT_LOW_VAL) {
         ret = true;
     }
+
     return ret;
 }
 
@@ -7959,18 +7992,26 @@ void MenuUI::func_low_bat()
     pm->sendLowPowerReq();
 }
 
+/* @ func
+ *      setLightDirect - 直接设置系统的灯光颜色值
+ * @param
+ *      val - 系统的灯光颜色值
+ * @return 
+ *      无
+ */
 void MenuUI::setLightDirect(u8 val)
 {
 
 #ifdef ENABLE_DEBUG_LIGHT
-    LOGDBG(TAG, "last_light 0x%x val 0x%x", last_light, val);
+    LOGDBG(TAG, "mLastLightVal 0x%x val 0x%x", mLastLightVal, val);
 #endif
 
-    if (last_light != val) {
-        last_light = val;
+    if (mLastLightVal != val) {
+        mLastLightVal = val;
         mOLEDLight->set_light_val(val);
     }
 }
+
 
 void MenuUI::setLight(u8 val)
 {
@@ -7979,7 +8020,11 @@ void MenuUI::setLight(u8 val)
 #endif
 
     if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
-        setLightDirect(val | front_light);
+        #ifdef LED_HIGH_LEVEL
+            setLightDirect(val | front_light);
+        #else 
+            setLightDirect(val & front_light);
+        #endif
     }
 }
 
@@ -8083,42 +8128,6 @@ struct stPicVideoCfg* MenuUI::getPicVidCfgByName(std::vector<struct stPicVideoCf
     }
     return pTmpCfg;
 }
-
-
-/*************************************************************************
-** 方法名称: get_battery_charging
-** 方法功能: 检测电池是否正在充电
-** 入口参数:  
-**      bCharge - 是否充电 
-** 返回值: 是返回true; 否则返回false
-** 调 用: 
-**
-*************************************************************************/
-int MenuUI::get_battery_charging(bool *bCharge)
-{
-    return mBatInterface->read_charge(bCharge);
-}
-
-
-
-/*************************************************************************
-** 方法名称: read_tmp
-** 方法功能: 读取电池的温度
-** 入口参数:  
-**      int_tmp - 温度值
-**      tmp - 温度值
-** 返回值: 成功读取返回0;否则返回1
-** 调 用: 
-**
-*************************************************************************/
-int MenuUI::read_tmp(double *int_tmp, double *tmp)
-{
-    return mBatInterface->read_tmp(int_tmp, tmp);
-}
-
-
-
-
 
 /**********************************************************************************************
  *  UI线程处理的各类消息
@@ -8244,9 +8253,7 @@ void MenuUI::handleKeyMsg(int iAppKey)
     }
 
     /* 用户自定义的虚拟键 */
-    if (iAppKey == APP_KEY_USER_DEF1 
-        || iAppKey == APP_KEY_USER_DEF2 
-        || iAppKey == APP_KEY_USER_DEF3) {
+    if (iAppKey == APP_KEY_USER_DEF1  || iAppKey == APP_KEY_USER_DEF2  || iAppKey == APP_KEY_USER_DEF3) {
         
         LOGDBG(TAG, "---> user virtual key event[0x%x]", iAppKey);
 
@@ -8349,7 +8356,7 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
             
             /* 关掉OLED显示，避免屏幕上显示东西 */
             mOLEDModule->display_onoff(0);
-            system("shutdown -h now");
+            system("shutdown now");
         }
     }
 }
@@ -8693,26 +8700,13 @@ void MenuUI::handleSppedTest(std::vector<sp<Volume>>& mSpeedTestList)
         
     LOGDBG(TAG, "cMsg Content: %s", cMsg);
     switch (i) {
-        case 1:
-            xStarPos = 46;
-            break;
-        case 2:
-            xStarPos = 40;
-            break;
-        case 3:
-            xStarPos = 34;
-            break;
-        case 4:
-            xStarPos = 28;
-            break;
-        case 5:
-            xStarPos = 22;
-            break;
-        case 6:
-            xStarPos = 16;
-            break;
-        default:
-            break;
+        case 1: xStarPos = 46;  break;
+        case 2: xStarPos = 40;  break;
+        case 3: xStarPos = 34;  break;
+        case 4: xStarPos = 28;  break;
+        case 5: xStarPos = 22;  break;
+        case 6: xStarPos = 16;  break;
+        default: break;
     }
 
     if (iLocalTestFlag == 0) {  /* 大卡不通过 */
@@ -8854,87 +8848,54 @@ void MenuUI::handleUpdateMid()
 *************************************************************************/
 bool MenuUI::handleCheckBatteryState(bool bUpload)
 {
+    
+    int iResult = GET_BATINFO_OK;
+    int iNextPollTime = BAT_INTERVAL;       /* 下次获取电池信息的时刻 */
+
     ProtoManager* pm = ProtoManager::Instance();
-
-    bool bUpdate = mBatInterface->read_bat_update(m_bat_info_);
-
-    double dInterTmp, dExternTmp; 
     uint64_t serverState = getServerState();
 
-    /* 移走电源适配器，一段时间后自动关机 */
-    #ifdef ENABLE_ADAPTER_REMOVE_SHUTDOWN
-    
-    bool bCharge = false;
-    if (mBatInterface->read_charge(&bCharge) == 0) {     /* 电池存在 */
-        if (bCharge == true) {  /* 充电状态 */
-            LOGDBG(TAG, "Battery is charging, clear flag mAutoShutdownFlag and mShutdownTick");
-            mAutoShutdownFlag = false;
-            mShutdownTick = 0;
-        } else {    /* 非充电状态(1.没接电源适配器<移除电源适配器>; 2.充满了) */
-            LOGDBG(TAG, "Battery is not charging, set mAutoShutdownFlag and mShutdownTick, tick[%d]", mShutdownTick);
-            mShutdownTick++;
+    iResult = mBatInterface->getCurBatteryInfo(mBatInfo.get());
+    switch (iResult) {
 
-            if (mAutoShutdownFlag == false) {
-                mAutoShutdownFlag = true;
-            } else {
-                if (mShutdownTick >= ( (5*60*1000) / BAT_INTERVAL)) {
-                    /* 处于录像状态则主动停止录像，并关机 */
-                    if (checkAllowStopRecord(serverState)) {
-                        if (pm->sendStopVideoReq()) {   /* 服务器接收停止录像请求,此时系统处于停止录像状态 */
-                            dispSaving();
-                        } else {
-                            LOGERR(TAG, "Stop Record Request Failed, More detail please check h_log");
-                        }                
-                    } else if (checkAllowStopLive(serverState)) {
-                        if (pm->sendStopLiveReq()) {
-                            dispWaiting();
-                        } else {
-                            LOGERR(TAG, "Stop Living Request Failed, More detail please check h_log");
-                        }
-                    } else if (checkStateEqual(serverState, STATE_IDLE)) {
-                        /* 关机 */
-                        system("shutdown -h now");
+        case GET_BATINFO_OK: {  /* 获取成功 */
+	
+            oled_disp_battery();	/* 显示电池及电量信息 */
+#if 0
+            if (false == pm->sendUpdateBatteryInfo(m_bat_info_.get())) {
+                LOGERR(TAG, "---> Update Battery Info Failed, please check h_log");
+            }
+#endif
+
+            if (is_bat_low()) { /* 电池电量低 */
+                if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
+                    if (checkServerStateIn(serverState, STATE_RECORD)) {
+                        setCurMenu(MENU_LOW_BAT, MENU_TOP);
+                        addState(STATE_LOW_BAT);
+                        func_low_bat();
                     }
                 }
             }
+
+            break;
         }
-    } else {    /* 电池接口读取失败(电源适配器供电) */
-        LOGDBG(TAG, "Battery not exist, clear flag mAutoShutdownFlag and mShutdownTick");
-        mAutoShutdownFlag = false;      
-        mShutdownTick = 0;
+
+        case GET_BATINFO_ERR_NO_EXIST: {
+            LOGDBG(TAG, "---> battery not exist");
+            break;
+        }
+
+        case GET_BATINFO_ERR_BATSTATUS:
+        case GET_BATINFO_ERR_REMAIN_CAP:
+        case GET_BATINFO_ERR_TEMPERATURE: { /* I2C通信失败 */
+            iNextPollTime = 1;              /* 马上进行一次检查 */
+            break;
+        }
+
     }
 
-    #endif  /* ENABLE_ADAPTER_REMOVE_SHUTDOWN */
-
-
-    mBatInterface->read_tmp(&dInterTmp, &dExternTmp);
-
-    #ifdef ENABLE_SHOW_BATTERY_TMP
-    LOGDBG(TAG, "Read Battery Tmp: interTmp[%f], externTmp[%f]", dInterTmp, dExternTmp);
-    #endif
-
-    if (bUpdate || bUpload) {   /* 电池电量需要更新或者需要上报 */
-		
-        oled_disp_battery();	/* 显示电池及电量信息 */
-
-        if (false == pm->sendUpdateBatteryInfo(m_bat_info_.get())) {
-            LOGERR(TAG, "---> Update Battery Info Failed, please check h_log");
-        }
-    }
-
-    if (is_bat_low()) { /* 电池电量低 */
-        if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
-            // LOGDBG(TAG, "bat low menu[%s] %d state 0x%x", getMenuName(cur_menu), serverState);
-            if (checkServerStateIn(serverState, STATE_RECORD)) {
-                setCurMenu(MENU_LOW_BAT, MENU_TOP);
-                addState(STATE_LOW_BAT);
-                func_low_bat();
-            }
-        }
-    }
-
-    send_delay_msg(UI_READ_BAT, BAT_INTERVAL);  /* 给UI线程发送读取电池电量的延时消息 */
-    return bUpdate;
+    send_delay_msg(UI_READ_BAT, iNextPollTime);  /* 给UI线程发送读取电池电量的延时消息 */
+    return true;
 }
 
 
@@ -9406,40 +9367,15 @@ void MenuUI::dispLeftNum(const char* pBuf)
     int iStartPos = 78;         /* 默认的显示的横坐标为78 */
 
     switch (iLen) {
-        case 1:
-            iStartPos = 122;
-            break;
-
-        case 2:
-            iStartPos = 116;
-            break;
-
-        case 3:
-            iStartPos = 110;
-            break;
-
-        case 4:
-            iStartPos = 104;
-            break;
-        
-        case 5:
-            iStartPos = 98;
-            break;
-
-        case 6:
-            iStartPos = 92;
-            break;
-        
-        case 7:
-            iStartPos = 86;
-            break;
-
-        case 8:
-            iStartPos = 80;
-            break;
-        
-        default:
-            break;
+        case 1: iStartPos = 122; break;
+        case 2: iStartPos = 116; break;
+        case 3: iStartPos = 110; break;
+        case 4: iStartPos = 104; break;
+        case 5: iStartPos = 98;  break;
+        case 6: iStartPos = 92;  break;
+        case 7: iStartPos = 86;  break;
+        case 8: iStartPos = 80;  break;
+        default: break;
     }
 
     clearArea(78, 48);  /* 先清除一下该区域 */
@@ -9738,7 +9674,12 @@ void MenuUI::disp_low_bat()
 {
     clearArea();
     dispStr((const u8 *)"Low Battery ", 32, 32);
-    setLightDirect(BACK_RED|FRONT_RED);
+    
+    #ifdef LED_HIGH_LEVEL
+        setLightDirect(BACK_RED | FRONT_RED);
+    #else 
+        setLightDirect(BACK_RED & FRONT_RED);
+    #endif 
 }
 
 

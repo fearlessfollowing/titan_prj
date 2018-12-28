@@ -17,6 +17,12 @@
 ** V2.0         skymixos        2018-09-05      存储事件直接通过传输层发送，去掉从UI层发送
 ** V3.0         SKymixos        2018-09-22      增加切换挂载模式接口
 ** V3.1         Skymixos        2018年10月12日   更新存储设备及存储设备列表的接口改为调用ProtoManager的接口
+** Titan TX2与H22连接的GPIO:
+** F7:          GPIO3_PN.02     320 + 13*8 + 2 = 320 + 106 = 426
+** H7:          GPIO3_PR.01     320 + 17*8 + 1 = 320 + 137 = 457
+**
+** 426(1)/457(0) -> 模组进入U盘模式
+** 426(0)/547(0) -> 模组进入正常模式
 ******************************************************************************************************/
 
 #include <stdio.h>
@@ -79,7 +85,7 @@ using namespace std;
  *  输出日志的TAG(用于刷选日志)
  *********************************************************************************************/
 #undef      TAG
-#define     TAG "Vold"
+#define     TAG     "Vold"
 
 
 /*********************************************************************************************
@@ -95,7 +101,7 @@ using namespace std;
 
 #define MKFS_EXFAT          "/sbin/mkexfatfs"
 
-// #define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
+#define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
 
 
 /*********************************************************************************************
@@ -365,15 +371,16 @@ VolumeManager::VolumeManager() :
     /* 删除/mnt/下未挂载的目录，已经挂载了的不处理（实时上update_check已经将升级设备挂载了） */
     clearAllunmountPoint();
 
-#if 0
+
     /*
      * 初始化与模组交互的两个GPIO
      */
-    system("echo 456 > /sys/class/gpio/export");
-    system("echo 478 > /sys/class/gpio/export");
-    system("echo out > /sys/class/gpio/gpio456/direction");
-    system("echo out > /sys/class/gpio/gpio478/direction");
-#endif
+    system("echo 426 > /sys/class/gpio/export");
+    system("echo 457 > /sys/class/gpio/export");
+    system("echo out > /sys/class/gpio/gpio426/direction");
+    system("echo out > /sys/class/gpio/gpio457/direction");
+    system("echo 0 > /sys/class/gpio/gpio426/value");
+    system("echo 0 > /sys/class/gpio/gpio457/value");
 
 
     /* 根据类型将各个卷加入到系统多个Vector中 */
@@ -667,16 +674,17 @@ bool VolumeManager::waitHub2RestComplete()
     }    
 }
 
+
 /*
  * HUB1 - gpio461(6,1,2)
  */
 void VolumeManager::resetHub1()
 {
-    system("echo 1 > /sys/class/gpio/gpio461/value");
-    system("echo in > /sys/class/gpio/gpio461/direction");
+    system("echo 1 > /sys/class/gpio/gpio303/value");
+    system("echo in > /sys/class/gpio/gpio303/direction");
     msg_util::sleep_ms(500);
-    system("echo out > /sys/class/gpio/gpio461/direction");
-    system("echo 0 > /sys/class/gpio/gpio461/value");
+    system("echo out > /sys/class/gpio/gpio303/direction");
+    system("echo 0 > /sys/class/gpio/gpio303/value");
     msg_util::sleep_ms(500);
 }
 
@@ -686,11 +694,11 @@ void VolumeManager::resetHub1()
  */
 void VolumeManager::resetHub2()
 {
-    system("echo 1 > /sys/class/gpio/gpio457/value");
-    system("echo in > /sys/class/gpio/gpio457/direction");
+    system("echo 1 > /sys/class/gpio/gpio303/value");
+    system("echo in > /sys/class/gpio/gpio303/direction");
     msg_util::sleep_ms(500);
-    system("echo out > /sys/class/gpio/gpio457/direction");
-    system("echo 0 > /sys/class/gpio/gpio457/value");
+    system("echo out > /sys/class/gpio/gpio303/direction");
+    system("echo 0 > /sys/class/gpio/gpio303/value");
     msg_util::sleep_ms(500);
 }
 
@@ -760,7 +768,7 @@ bool VolumeManager::enterUdiskMode()
     int iEnterTotalLen = 15;        /* 将整个进入U盘的周期定为15s */
 
     /* 1.检查所有卷的状态，如果非IDLE状态（MOUNTED状态），先进行强制卸载操作
-     * 1.将gpio456, gpio478设置为1，0
+     * 1.将gpio426, gpio457设置为1，0
      * 2.调用power_manager power_on给所有的模组上电
      * 3.等待所有的模组挂上
      * 4.检查是否所有的模组都挂载成功
@@ -771,10 +779,10 @@ bool VolumeManager::enterUdiskMode()
     setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_UDISK);
     checkAllUdiskIdle();
 
-    system("echo out > /sys/class/gpio/gpio456/direction");
-    system("echo out > /sys/class/gpio/gpio478/direction");
-    system("echo 0 > /sys/class/gpio/gpio478/value");   /* gpio456 = 1 */
-    system("echo 1 > /sys/class/gpio/gpio456/value");   /* gpio478 = 1 */
+    system("echo out > /sys/class/gpio/gpio426/direction");
+    system("echo out > /sys/class/gpio/gpio457/direction");
+    system("echo 1 > /sys/class/gpio/gpio426/value");   /* gpio426 = 1 */
+    system("echo 0 > /sys/class/gpio/gpio457/value");   /* gpio457 = 0 */
 
 
 #ifdef ENABLE_USB_NEW_UDISK_POWER_ON
@@ -789,17 +797,13 @@ bool VolumeManager::enterUdiskMode()
         LOGDBG(TAG, " -------------- Hub1 Reset Complete");
     }
     
-    if (waitHub2RestComplete()) {
-        LOGDBG(TAG, " -------------- Hub2 Reset Complete");
-    }
-
     gettimeofday(&enterTv, NULL);   
 
     /* 给模组上电 */
     // int iRetry;
     int iModulePowerOnTimes;
 
-    for (int i = 6; i >= 1; i--) {
+    for (int i = 8; i >= 1; i--) {
         for (iModulePowerOnTimes = 0; iModulePowerOnTimes < 3; iModulePowerOnTimes++) {
             LOGDBG(TAG, " Power on for device[%d]", i);
             powerOnOffModuleByIndex(true, i);        /* 6, 1, 2 */
@@ -841,9 +845,11 @@ bool VolumeManager::enterUdiskMode()
         msg_util::sleep_ms(1000);
     }
 
-#endif    
+#endif   
+
     return true;
 }
+
 
 
 /*
@@ -2223,7 +2229,7 @@ void VolumeManager::updateLocalVolSpeedTestResult(int iResult)
             system(cmd.c_str());
         }
     }
-}
+} 
 
 
 

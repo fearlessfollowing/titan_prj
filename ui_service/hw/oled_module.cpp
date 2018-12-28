@@ -128,7 +128,7 @@ void oled_module::init()
 void oled_module::deinit()
 {
     ssd1306_set_off();
-    ssd1306_reset();
+    ssd1306_reset(); 
 
     if (ucBuf) {
         free(ucBuf);
