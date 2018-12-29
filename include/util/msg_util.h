@@ -16,17 +16,11 @@ public:
 	static void sleep_ms(uint32_t uiMS)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(uiMS));
-//		usleep(uiMS *1000);
-//		for(int i = 0; i< 100;i++)
-//			;
 	}
 
     static void sleep_us(uint32_t uiUS)
     {
         std::this_thread::sleep_for(std::chrono::microseconds(uiUS));
-//		usleep(uiMS *1000);
-//		for(int i = 0; i< 100;i++)
-//			;
     }
 
     static long get_cur_time_us()

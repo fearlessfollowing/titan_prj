@@ -25,7 +25,7 @@ src += ['ProtoManager.cpp']
 src += ['TranManager.cpp']
 src += ['CfgManager.cpp']
 src += ['AudioManager.cpp']
-
+src += ['HardwareService.cpp']
 
 
 src += [config.UTIL + '/Process.cpp']

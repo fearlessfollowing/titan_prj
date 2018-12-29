@@ -25,15 +25,17 @@
 #include <sys/ins_types.h>
 #include <util/msg_util.h>
 #include <common/sp.h>
-#include <sys/sig_util.h>
 #include <update/update_util.h>
-#include <update/dbg_util.h>
 #include <util/md5.h>
 #include <vector>
 #include <dirent.h>
 
 
 #define UPDATE_TOOL_VER	"V1.4 Created By skymixos"
+
+#ifndef UPDATE_BIN_NAME
+#define UPDATE_BIN_NAME "Insta360_Titan_Update.bin"
+#endif
 
 
 /*
@@ -51,7 +53,7 @@
 #define CHECK_EQ(a, b) \
 do { \
 if((a) != (b)) {\
-   DBG_ERR( "CHECK_EQ(%s, %s) %d %d\n",#a, #b ,(int)a,(int)b);\
+   printf( "CHECK_EQ(%s, %s) %d %d\n",#a, #b ,(int)a,(int)b);\
    abort();\
 }\
 } while(0)
@@ -59,7 +61,7 @@ if((a) != (b)) {\
 #define CHECK_NOT_NULL(a) \
 do { \
 if((a) ==  nullptr) {\
-   DBG_ERR( "CHECK_NOT_NULL(%s) is nullptr\n",#a);\
+   printf( "CHECK_NOT_NULL(%s) is nullptr\n",#a);\
    abort();\
 }\
 } while(0)
@@ -73,16 +75,18 @@ typedef struct section_item_cfg {
 
 
 static const char* clean_files[] = {
-	"Insta360_Pro2_Update.bin",
+	"Insta360_Titan_Update.bin",
 	"update_app.zip",
-	"pro2_update.zip"
+	"titan_update.zip"
 
 };
 
 static const char* necesary_file_dir[] = {
 	"update_app",
-	"pro2_update"
+	"titan_update"
 };
+
+
 
 
 
@@ -103,10 +107,18 @@ void usage()
     fprintf(stdout, "-e 0(unencrpt) or 1(encrpt)\n");
     fprintf(stdout, "-k kenerl version(string)\n");
     fprintf(stdout, "-v major.minor.release[eg: 1.0.1]\n");
-	fprintf(stdout, "-l <Insta360_Pro2_Update.bin> show image info.\n");
+	fprintf(stdout, "-l <Insta360_Titan_Update.bin> show image info.\n");
     fprintf(stdout, "default: cid(100) mid(101) type(0) encrpyt(0)\n");
 }
 
+
+void int_to_bytes(u8 *buf, unsigned int val)
+{
+    buf[0] = (u8)((val >> 24) &0xff);
+    buf[1] = (u8)((val >> 16) &0xff);
+    buf[2] = (u8)((val >> 8) &0xff);
+    buf[3] = (u8)((val &0xff));
+}
 
 /*************************************************************************
 ** 方法名称: rm_update_bin
@@ -119,8 +131,7 @@ void usage()
 *************************************************************************/
 static void rm_update_bin()
 {
-    int iRet = rm_file(UPDATE_BIN_NAME);	/* Insta360_Pro_Update.bin */
-    CHECK_EQ(iRet, 0);
+    unlink(UPDATE_BIN_NAME);	/* Insta360_Pro_Update.bin */
 }
 
 
@@ -160,14 +171,13 @@ static u32 write_update_app(FILE *fp_bin, SYS_VERSION* pVer)
     write_len = fwrite(FP_KEY, 1, strlen(FP_KEY), fp_bin);
     CHECK_EQ(write_len, strlen(FP_KEY));
 
-    dump_bytes((u8 *)FP_KEY, write_len, "write fp key");
     write_update_size += write_len;
 
 
 	/* 2.写入版本号 */
     write_len = fwrite(pVer, 1, sizeof(SYS_VERSION), fp_bin);
     CHECK_EQ(write_len, sizeof(SYS_VERSION));
-    dump_bytes((u8 *)pVer, sizeof(SYS_VERSION), "write version");
+
     write_update_size += write_len;
 	
     printf("write version [%d.%d.%d]\n", pVer->major_ver, pVer->minor_ver, pVer->release_ver);
@@ -303,7 +313,6 @@ static u32 write_bin(UPDATE_HEADER *pstHead, const char *file_name, SYS_VERSION*
     CHECK_EQ(write_len, sizeof(header_len_bytes));
 
     packet_header_len += write_len;
-    dump_bytes(header_len_bytes, write_len, "write header_len_bytes");
 
     int_to_bytes((u8 *)pstHead->len, size1);	/* 将"pro_update.zip"长度的转换为bytes */
     u8 *header_buf = (u8 *)pstHead;
@@ -313,7 +322,6 @@ static u32 write_bin(UPDATE_HEADER *pstHead, const char *file_name, SYS_VERSION*
     CHECK_EQ(write_len, header_len);
 
     packet_header_len += write_len;
-    dump_bytes(header_buf, write_len, "write header");
 
     printf("packet_header_len %u content_offset is ( %lu + %u) = %u\n",
            packet_header_len, sizeof(header_len_bytes),
@@ -428,6 +436,12 @@ static bool gen_version(const char* optarg, SYS_VERSION* pVer)
 	return true;
 }
 
+unsigned int bytes_to_int(const u8 *buf)
+{
+    return (buf[0] << 24 | buf[1] <<16 | buf[2] << 8 | buf[3]);
+}
+
+
 
 static void show_image_info(const char* image)
 {
@@ -467,7 +481,6 @@ static void show_image_info(const char* image)
 		goto EXIT;
     }
 	
-    dump_bytes(buf, read_len, "read key");
 
     memset(buf, 0, sizeof(buf));
     read_len = fread(buf, 1, sizeof(SYS_VERSION), fp);
@@ -748,12 +761,12 @@ static int gen_bill_list()
 	std::vector<sp<UPDATE_SECTION>> mSections;
 	
 	/* 1.一次遍历各个目录,每个目录对应一个section */
-	iRet = gen_sections(mSections, "./pro2_update");
+	iRet = gen_sections(mSections, "./titan_update");
 	if (iRet) {
 		printf("gen_sections failed ...\n");
 	} else {
 		/* 将mSections的内容写入到pro2_update/bill.list文件中 */
-		iRet = write_sections(mSections, "./pro2_update/bill.list");
+		iRet = write_sections(mSections, "./titan_update/bill.list");
 	}
 
 	return iRet;
@@ -765,15 +778,13 @@ static int gen_bill_list()
  */
 static int gen_zip_files()
 {
-	if (exec_sh("zip -r update_app.zip update_app") != 0)
-	{
+	if (system("zip -r update_app.zip update_app") != 0) {
 		printf("zip update_app failed...\n");
 		return -1;
 	}
 
-	if (exec_sh("zip -r pro2_update.zip pro2_update") != 0)
-	{
-		printf("zip pro_update failed...\n");
+	if (system("zip -r titan_update.zip titan_update") != 0) {
+		printf("zip titan_update failed...\n");
 		return -1;
 	}
 	
@@ -790,7 +801,7 @@ static int gen_zip_files()
 **		argv - 参数列表
 ** 返 回 值: 成功返回0
 ** 调     用: OS
-**
+** update_titan_tool
 *************************************************************************/
 int main(int argc, char **argv)
 {
@@ -804,17 +815,12 @@ int main(int argc, char **argv)
     int type = 0;
     int encrpyt = 0;
     char k_version[512];
-    //bool bKey = false;
     u32 check_size = 0;
 	
 	SYS_VERSION sys_version;
 
 	/* 1.注册信号处理函数 */
-    registerSig(default_signal_handler);
-    signal(SIGPIPE, pipe_signal_handler);
-
-    //set k1.00 default
-    snprintf(k_version, sizeof(k_version), "%s", "k1.00");
+    snprintf(k_version, sizeof(k_version), "%s", "k-4.4.38");
 
 	if (argc < 3) {
 		usage();

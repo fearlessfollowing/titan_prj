@@ -1,13 +1,12 @@
 # Makefile for update_tool
 
-TARGET = update_tool
+TARGET = update_titan_tool
 
 TARGET_USES_LOGD=true
 WITH_MINGW :=
 
 
 CXXSRC := update_tool.cpp
-CXXSRC += update_util.cpp
 CXXSRC += md5.cpp
 
 CFLAGS += -fexceptions -Wall -Wunused-variable -Werror
@@ -17,15 +16,12 @@ CXXFLAGS += -std=c++11 -frtti -fexceptions  -Wall
 LDFLAGS :=
 
 INCLUDE_PATH = -I ./include 
-INCLUDE_PATH += -I ../pro2_service/include
-
+INCLUDE_PATH += -I ../include 
+INCLUDE_PATH += -I ../ui_service/include
 LIBS = -lrt -lpthread 
-#-llog -lev
-
 
 
 TOOLCHAIN =
-#TOOLCHAIN = /home/xlb/work/customer_24r5/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-
 CC=$(TOOLCHAIN)gcc
 CXX=$(TOOLCHAIN)g++
 

@@ -291,8 +291,15 @@ std::string& NetDev::getDevName()
 void NetDev::getIpByDhcp()
 {
     char cmd[512] = {0};
+
+#ifdef DHCP_USE_DHCLIENT	
     system("killall dhclient");
     sprintf(cmd, "dhclient %s &", mDevName.c_str());
+#else 
+    system("killall udhcpc");
+    sprintf(cmd, "udhcpc %s &", mDevName.c_str());
+#endif
+
     system(cmd);	
 }
 
@@ -372,29 +379,12 @@ EtherNetDev::~EtherNetDev()
 
 int EtherNetDev::netdevOpen()
 {
-#if 0
-    char cmd[512] = {0};
-    LOGDBG(TAG, "EtherNetdev Open ....");
-    sprintf(cmd, "ifconfig %s up", getDevName().c_str());
-    system(cmd);
-	return 0;
-#else 
 	return ifupdown(getDevName().c_str(), NET_IF_UP);
-#endif
 }
 
 int EtherNetDev::netdevClose()
 {
-#if 0	
-    char cmd[512] = {0};
-    LOGDBG(TAG, "Ethernetdev Close...");
-    sprintf(cmd, "ifconfig %s down", getDevName().c_str());
-    system(cmd);
-	return 0;
-#else 
 	return ifupdown(getDevName().c_str(), NET_IF_DOWN);
-#endif 
-
 }
 
 
@@ -769,7 +759,12 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
             tmpNetDev = getNetDevByType(tmpIpInfo->iDevType);
             if (tmpNetDev) {
 				if (tmpIpInfo->iDhcp == GET_IP_STATIC) {	/* Static */
+
+#ifdef DHCP_USE_DHCLIENT
 					system("killall dhclient");
+#else 
+					system("killall udhcpc");
+#endif
 					msg_util::sleep_ms(50);
 					tmpNetDev->setNetDevIp2Phy(tmpIpInfo->ipAddr);
 					tmpNetDev->setCurGetIpMode(GET_IP_STATIC);
@@ -1024,6 +1019,7 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 
 void NetManager::sendIpInfo2Ui()
 {
+	
 #ifdef ENABLE_DEBUG_NETM
     LOGDBG(TAG, "NetManager: send ip(%s) info to ui", mLastDispIp);
 #endif

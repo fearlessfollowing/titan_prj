@@ -4,15 +4,8 @@
 #include <vector>
 
 #define SUC_REBOOT
-#define UPDATE_PATH UPDATE_BASE_PATH"pro_update/"
-#define UPDATE_PATH_P UPDATE_PATH"p/"
-#define UPDATE_PATH_H UPDATE_PATH"h/"
-#define UPDATE_PATH_C UPDATE_PATH"c/"
-#define UPDATE_PATH_A UPDATE_PATH"a/"
 
 #define DEST_PATH "/usr/local/"
-#define DEST_LIB64_PATH DEST_PATH"lib64/"
-#define DEST_LIB32_PATH DEST_PATH"lib/"
 #define DEST_BIN_PATH DEST_PATH"bin/"
 
 
@@ -82,11 +75,13 @@ typedef struct _update_header_ {
     u8 kernel_version[8];
 } UPDATE_HEADER;
 
+
 typedef struct _update_file_ {
     const char *src;
     const char *dest;
     int error_enum;
 } UPDATE_FILES;
+
 
 typedef struct sys_version {
 	u32 major_ver;		/* 主版本号 */
@@ -116,14 +111,12 @@ typedef struct st_section {
 #endif
 
 
-const char *update_zip_name[] = {"pro2_update.zip", "rom_update.zip"};
-
-
-#define UPDATE_IMAGE_FILE   "Insta360_Titan_Update.bin"
+const char *update_zip_name[] = {"titan_update.zip", "rom_update.zip"};
+#define UPDATE_IMAGE_FILE       "Insta360_Titan_Update.bin"
 
 
 
-#define FP_KEY ("insta_pro")
+#define FP_KEY ("insta_titan")
 #define VERSION_LEN (sizeof(SYS_VERSION))
 
 #define HEADER_CONENT_LEN 		(4)

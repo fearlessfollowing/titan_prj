@@ -463,19 +463,19 @@ enum {
  */
 enum {
     LIGHT_OFF 		= 0xff,		    /* 关闭所有的灯 */
-    FRONT_RED 		= ~(1<<0),		/* 前灯亮红色,后灯全灭 */
-    FRONT_GREEN 	= ~(1<<1),		/* 前灯亮绿色,后灯全灭 */
-    FRONT_YELLOW 	= ~(0x3<<0),    /* 前灯亮黄色(G+R), 后灯全灭 */
-    FRONT_BLUE 		= ~(1<<2),      /* 前灯蓝色(B),后灯全灭 */
-    FRONT_WHITE 	= ~(0x7<<0),    /* 前灯亮白色(R+G+B),后灯全灭 */
+    FRONT_RED 		= 0xfe,		    /* 前灯亮红色,后灯全灭: 0xfe */
+    FRONT_GREEN 	= 0xfd,		    /* 前灯亮绿色,后灯全灭 */
+    FRONT_YELLOW 	= 0xfc,         /* 前灯亮黄色(G+R), 后灯全灭 */
+    FRONT_BLUE 		= 0xfb,         /* 前灯蓝色(B),后灯全灭 */
+    FRONT_WHITE 	= 0xf8,         /* 前灯亮白色(R+G+B),后灯全灭 */
 
-    BACK_RED 		= ~(1<<3),		/* 后灯亮红色 */
-    BACK_GREEN 		= ~(1<<4),		/* 后灯亮绿色 */
-    BACK_YELLOW 	= ~(0x3<<3),    /* 后灯亮黄色 */
-    BACK_BLUE 		= ~(1<<5),
-    BACK_WHITE		= ~(0x7<<2),    /* 后灯亮白色 */
+    BACK_RED 		= 0xf7,		    /* 后灯亮红色 */
+    BACK_GREEN 		= 0xef,		    /* 后灯亮绿色 */
+    BACK_YELLOW 	= 0xe7,         /* 后灯亮黄色 */
+    BACK_BLUE 		= 0xdf,
+    BACK_WHITE		= 0xe3,         /* 后灯亮白色 */
 
-    LIGHT_ALL 		= ~(0x3f<<0),   /* 所有的灯亮白色 */
+    LIGHT_ALL 		= 0xc0,         /* 所有的灯亮白色 */
 };
 
 #endif
@@ -537,6 +537,7 @@ public:
 private:
 
     void    subSysInit();
+
     void    subSysDeInit();
 
 
@@ -555,7 +556,9 @@ private:
 	bool    check_cur_menu_support_key(int iKey);
 
 	void    set_mainmenu_item(int item,int icon);
+
     void    disp_calibration_res(int type,int t = -1);
+    
     void    disp_sec(int sec,int x,int y);
 
     /*
@@ -575,39 +578,27 @@ private:
     bool    check_state_preview();
     bool    check_state_equal(u64 state);
     bool    check_state_in(u64 state);
-    bool    check_live();
 
-    void    update_menu_page();
 
-    //void update_menu_sys_setting(bool bUpdateLast = false);
     void    update_menu_disp(const int *icon_light,const int *icon_normal = nullptr);
-    void    disp_scroll();
     void    set_back_menu(int item,int menu);
     int     get_back_menu(int item);
 
-    int     get_select();
     
-    int     get_last_select();
-
     void    disp_org_rts(int org,int rts,int hdmi = -1);
     void    disp_org_rts(sp<struct _action_info_> &mAct,int hdmi = -1);
-    void    send_save_path_change();
 
 
     void    init_cfg_select();
 
     void    disp_msg_box(int type);
-    const u8 *get_disp_str(int lan_index);
-
 
     bool    checkServerAllowTakePic();
 
 
-    //reset camera state and disp as begging
     int     oled_reset_disp(int type);
 
     void    format(const char *src,const char *path,int trim_err_icon,int err_icon,int suc_icon);
-    int     exec_sh_new(const char *buf);
 
     void    disp_ageing();
 
@@ -621,15 +612,14 @@ private:
     void    disp_err_code(int code,int back_menu);
     void    disp_top_info();
 
-    int     oled_disp_battery();
+    // int     uiShowBatteryInfo();
+
+    int     uiShowBatteryInfo(BatterInfo* pBatInfo);
+
 
     bool    check_allow_update_top();
     void    handleWifiAction();
     void    disp_wifi(bool bState, int disp_main = -1);
-    int     wifi_stop();
-
-    int     start_wifi_ap(int disp_main = -1);
-    void    start_wifi(int disp_main = -1);
 
     void    wifi_config(sp<struct _wifi_config_> &config);
 
@@ -645,9 +635,6 @@ private:
     void    init_menu_select();
     void    deinit();
     
-    void    init_sound_thread();
-    
-    void    sound_thread();
     void    play_sound(u32 type);
     void    send_update_light(int menu, int interval,bool bLight = false,int sound_id = -1);
     void    write_p(int p, int val);
@@ -706,8 +693,6 @@ private:
 
     void    send_clear_msg_box(int delay = 1000);
     void    send_delay_msg(int msg_id, int delay);
-    void    send_bat_low();
-    void    send_read_bat();
 
     void    send_update_mid_msg(int interval = 1000);
     void    set_update_mid(int interval = 1000);
@@ -1021,13 +1006,9 @@ private:
 
     void    showSpaceQueryTfCallback();
 
-
-
 private:
 
-	sp<ARLooper>                mLooper;
-    // sp<ARHandler>               mHandler;
-    
+	sp<ARLooper>                mLooper;    
     std::thread                 mUiMsgThread;
 	
     std::thread                 th_sound_;
@@ -1077,11 +1058,10 @@ private:
 #if 0
     sp<battery_interface>       mBatInterface;        
     sp<BAT_INFO>                m_bat_info_;
-#else 
+// #else 
     sp<BatteryManager>          mBatInterface;
     sp<BatterInfo>              mBatInfo;
 #endif
-
 
     sp<SYS_INFO>                mReadSys;
     sp<struct _ver_info_>       mVerInfo;

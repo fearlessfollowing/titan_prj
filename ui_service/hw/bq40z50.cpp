@@ -59,16 +59,11 @@ static double convert_k_to_c(int16 k)
     double tmp = (double)k;
     tmp = (tmp / 10 - 273.15);
 	
-#ifdef DEBUG_BATTERY    
     LOGDBG(TAG, "org tmp %f", tmp);
-#endif
 
     tmp = ((double)((int)( (tmp + 0.005) * 100))) / 100;
 
-#ifdef DEBUG_BATTERY    
 	LOGDBG(TAG, "new org tmp %f", tmp);
-#endif
-
 	return tmp;
 }
 
@@ -165,13 +160,13 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
      */
     if (mI2c->i2c_read(BQ40Z50_CMD_BAT_MODE, (u8*)&uBatMode, 2)) {
         LOGERR(TAG, "--> Read bq40z50 work mode failed, Maybe battery not exist");
-        pBatInfo->bDataIsValid = false;
+        pBatInfo->bIsExist = false;
         return GET_BATINFO_ERR_NO_EXIST;            /* 电池不存在 */
     } else {
         LOGERR(TAG, "--> Read bq40z50 work mode suc. mode[0x%x]", uBatMode);
         mBatMode = uBatMode;
 
-        pBatInfo->bDataIsValid = true;
+        pBatInfo->bIsExist = true;
         
         /* Get temperature */
         if (mI2c->i2c_read(BQ40Z50_CMD_TEMPERATURE, (u8*)&kTemp, 2)) {
@@ -180,7 +175,7 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             return GET_BATINFO_ERR_TEMPERATURE;     /* 获取电池温度失败 */
         } else {
             pBatInfo->dBatTemp = convert_k_to_c(kTemp);
-            LOGDBG(TAG, "---> Battery temperature: %d[K], %f[C]", kTemp, batTemp);
+            LOGDBG(TAG, "---> Battery temperature: %d[K], %f[C]", kTemp, pBatInfo->dBatTemp);
         }
 
         /* is Charging */

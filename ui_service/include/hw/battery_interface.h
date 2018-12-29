@@ -16,18 +16,7 @@ typedef struct tBaterryInfo {
     u16         uChargingVoltage;           /* 充电电压: 单位mV */
     u16         uBatDesignCapacity;         /* 电池的设计容量: mAh */
     double      dBatTemp;                   /* 电池的当前温度: 单位(摄氏度) */
-    bool        bDataIsValid;
-#if 0
-    tBaterryInfo(bool bCharge, u16 uBatRemainPer, double bTemperature) {
-        bIsCharge = bCharge;
-        uBatLevelPer = uBatRemainPer;
-        dBatTemp = bTemperature;
-        uBatCapacity = 0;
-        uBatFullChareRemainTime = 0;
-        uBatRuntime2Empty = 0;
-    }
-#endif
-
+    bool        bIsExist;                   /* 电池是否存在 */
 } BatterInfo;
 
 
@@ -38,6 +27,7 @@ enum {
     GET_BATINFO_ERR_BATSTATUS,      /* 电池存在，获取电池状态失败 */
     GET_BATINFO_ERR_REMAIN_CAP,     /* 电池存在，获取剩余电量失败 */
 };
+
 
 /*
  * 电池管理类提供电池访问的基本方法
