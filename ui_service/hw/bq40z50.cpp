@@ -46,6 +46,8 @@ enum {
     BQ40Z50_CMD_DESIGNCAPACITY      = 0x18,     /* 电池的设计容量 */
 };
 
+#define INVALID_BATTERY_TEMP    1000
+
 
 /* @func
  *  convert_k_to_c - 卡尔文温度转换为摄氏度
@@ -58,12 +60,16 @@ static double convert_k_to_c(int16 k)
 {
     double tmp = (double)k;
     tmp = (tmp / 10 - 273.15);
-	
-    LOGDBG(TAG, "org tmp %f", tmp);
 
+#ifdef DEBUG_BQ40Z50	
+    LOGDBG(TAG, "org tmp %f", tmp);
+#endif 
     tmp = ((double)((int)( (tmp + 0.005) * 100))) / 100;
 
+#ifdef DEBUG_BQ40Z50
 	LOGDBG(TAG, "new org tmp %f", tmp);
+#endif 
+
 	return tmp;
 }
 
@@ -141,9 +147,6 @@ bool BatteryManager::isBatteryCharging()
     return bCharge;
 }
 
-#define INVALID_BATTERY_TEMP    1000
-
-
 
 int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
 {
@@ -169,13 +172,16 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
         pBatInfo->bIsExist = true;
         
         /* Get temperature */
-        if (mI2c->i2c_read(BQ40Z50_CMD_TEMPERATURE, (u8*)&kTemp, 2)) {
+        if (mI2c->i2c_read(BQ40Z50_CMD_TEMPERATURE, (u8*)&kTemp, 2)) {            
             LOGERR(TAG, "---> Read Temperature failed.");
             pBatInfo->dBatTemp = INVALID_BATTERY_TEMP;
             return GET_BATINFO_ERR_TEMPERATURE;     /* 获取电池温度失败 */
         } else {
             pBatInfo->dBatTemp = convert_k_to_c(kTemp);
+
+#ifdef DEBUG_BQ40Z50            
             LOGDBG(TAG, "---> Battery temperature: %d[K], %f[C]", kTemp, pBatInfo->dBatTemp);
+#endif 
         }
 
         /* is Charging */
@@ -204,10 +210,13 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             pBatInfo->uBatLevelPer = INVALID_BATTERY_TEMP;
             return GET_BATINFO_ERR_REMAIN_CAP;
         } else {
+#ifdef DEBUG_BQ40Z50            
             LOGDBG(TAG, "---> Battery Remain Capacity: %d%%", uRemainPer);
+#endif 
             pBatInfo->uBatLevelPer = uRemainPer;
         }
     }
+
     return GET_BATINFO_OK;
 }
 

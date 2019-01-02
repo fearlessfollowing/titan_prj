@@ -445,7 +445,7 @@ unsigned int bytes_to_int(const u8 *buf)
 
 static void show_image_info(const char* image)
 {
-    const char *key = "insta_pro";
+    const char *key = "insta_titan";
 	SYS_VERSION* pVer = NULL;
     u32 update_app_len;
 	

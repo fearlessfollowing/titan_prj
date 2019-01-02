@@ -11,12 +11,11 @@ src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
 src += [config.UI_SERVICE + '/hw/ins_i2c.cpp']
 src += [config.UI_SERVICE + '/hw/oled_light.cpp']
 src += [config.UI_SERVICE + '/hw/oled_module.cpp']
-src += [config.UI_SERVICE + '/hw/battery_interface.cpp']
+#src += [config.UI_SERVICE + '/hw/battery_interface.cpp']
 
 src += [config.UTIL + '/md5.cpp']
 src += [config.UTIL + '/update_oled.cpp']
 src += [config.UTIL + '/util.cpp']
-src += [config.UTIL + '/update_util.cpp']
 src += [config.UTIL + '/forkUtil.cpp']
 
 src += [config.LIBLOG + '/logd_write.c']

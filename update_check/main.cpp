@@ -95,7 +95,7 @@ using namespace std;
 #define UPDATE_DEST_BASE_DIR	"/mnt/update/"
 #define UPDAE_CHECK_VER			"V3.3"
 #define TMP_UNZIP_PATH			"/tmp/update"	/* 解压升级包的目标路径 */
-#define PRO_UPDATE_ZIP			"pro2_update.zip"
+#define PRO_UPDATE_ZIP			"titan_update.zip"
 
 enum {
 	ERROR_SUCCESS = 0,
@@ -372,10 +372,10 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 	/* 提取升级压缩包:    pro2_update.zip */
 	if (gen_file(pPro2UpdatePackagePath, iPro2updateZipLen, fp)) {	/* 从Insta360_Pro2_Update.bin中提取pro2_update.zip */
 		if (tar_zip(pPro2UpdatePackagePath, UPDATE_DEST_BASE_DIR) == 0) {	/* 解压压缩包到TMP_UNZIP_PATH目录中 */
-			LOGDBG(TAG, "unzip pro2_update.zip to [%s] success...", pPro2UpdatePackagePath);
+			LOGDBG(TAG, "unzip titan_update.zip to [%s] success...", pPro2UpdatePackagePath);
 			return ERROR_SUCCESS;
 		} else {
-			LOGERR(TAG, "unzip pro_update.zip to [%s] failed...", pPro2UpdatePackagePath);
+			LOGERR(TAG, "unzip titan_update.zip to [%s] failed...", pPro2UpdatePackagePath);
 			return ERROR_UNZIP_PRO2_UPDATE;
 		}
 	} else {

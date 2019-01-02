@@ -803,6 +803,16 @@ private:
     void    dispEnterUdiskFailed();
 
     /*
+     * 错误号对应的提示:
+     */
+    void    tipHighTempError(int iErrno);                 /* 温度过高提示 */
+    void    tipWriteProtectError(int iErrno);   /* 写保护错误 */
+    void    tipSDcardSpeedInsufficient();       /* 大卡卡速不足 */
+    void    tipmSDcardSpeedInsufficient();      /* 小卡卡速不足 */
+    void    tipNomSDCard();
+
+
+    /*
      * 格式化
      */
     void    startFormatDevice();

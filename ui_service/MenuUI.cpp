@@ -62,6 +62,8 @@
 #include <sys/TranManager.h>
 #include <sys/HardwareService.h>
 
+#include <sys/err_code.h>
+
 #include <sys/Mutex.h>
 #include <icon/setting_menu_icon.h>
 #include <icon/pic_video_select.h>
@@ -930,6 +932,22 @@ void MenuUI::disp_top_info()
 }
 
 
+static int extraSpeedInsuffCnt(char* pProName, char* pUnspeedArry)
+{
+	char *p; 
+	const char *delim = "_"; 
+	int iCnt = 0;
+
+	p = strtok(pProName, delim); 
+	while (p) { 
+		pUnspeedArry[iCnt] = atoi(p);
+		iCnt++;
+		p = strtok(NULL, delim); 
+	} 
+	return iCnt;
+}
+
+
 /*
  * disp_msg_box - 显示消息框
  */
@@ -1033,15 +1051,18 @@ void MenuUI::disp_msg_box(int type)
         case DISP_NEED_SDCARD: {
             clearArea();
 
-            #if 1
+            #if 0
             dispStr((const u8*)"Please", 48, 8, false, 128);
             dispStr((const u8*)"ensure SD card or", 16, 24, false, 128);
             dispStr((const u8*)"USB disk are inserted", 8, 40, false, 128);
             #else 
 
-            dispStr((const u8*)"Shutting down ejecting", 4, 16, false, 128);
-            dispStr((const u8*)" storage devices...", 8, 32, false, 128);
-            dispStr((const u8*)"Stop pressing button", 8, 48, false, 128);
+            // dispStr((const u8*)"Shutting down ejecting", 4, 16, false, 128);
+            // dispStr((const u8*)" storage devices...", 8, 32, false, 128);
+            // dispStr((const u8*)"Stop pressing button", 8, 48, false, 128);
+
+            dispStr((const u8*)"(1,2,3,4,5,6,7,8)", 23, 32, false, 128);
+
             #endif
             break;
         }
@@ -4530,19 +4551,19 @@ void MenuUI::disp_org_rts(int org, int rts, int hdmi)
         switch (new_org_rts) {
             case 0:
                 drawGpsState();
-                dispIconByType(ICON_INFO_RTS32_16);
+                drawRTS(true);
                 break;
             case 1:
                 drawGpsState();
-                clearIconByType(ICON_INFO_RTS32_16);
+                drawRTS(false);
                 break;
             case 2:
                 clearGpsState();
-                dispIconByType(ICON_INFO_RTS32_16);
+                drawRTS(true);
                 break;
             case 3:
                 clearGpsState();
-                clearIconByType(ICON_INFO_RTS32_16);
+                drawRTS(false);
                 break;
             SWITCH_DEF_ERROR(new_org_rts)
         }
@@ -6670,9 +6691,42 @@ void MenuUI::disp_err_code(int code, int back_menu)
 	
     if (!bFound) {
         if (strlen(err_code) == 0) {
-            dispIconByType(ICON_ERROR_128_64128_64);
-            snprintf(err_code, sizeof(err_code), "%d", code);
-            dispStr((const u8 *)err_code, 64, 16);
+            switch (code) {
+                case ERR_MODULE_HIGH_TEMP:
+                case ERR_HIGH_TEMPERATURE: {        /* 温度过高 */
+                    tipHighTempError(code);
+                    break;
+                }
+
+                case ERR_mSD_WRITE_SPEED_INSUFF: {  /* mSD卡卡速不足 */   
+                    tipmSDcardSpeedInsufficient();
+                    break;
+                }
+
+                case ERR_LOW_WRITE_SPEED: {         /* 大卡的卡速不足 */
+                    tipSDcardSpeedInsufficient();
+                    break;
+                }
+
+                case ERR_FILE_OPEN_FAILED:          /* 文件打开失败，检查是否写保护 */
+                case ERR_FILE: {
+                    tipWriteProtectError(code);
+                    break;
+                }
+
+                /* 非预览状态下，显示310错误 */
+                case ERR_NO_mSD: {
+                    tipNomSDCard();
+                    break;
+                }                 
+
+                default: {
+                    dispIconByType(ICON_ERROR_128_64128_64);
+                    snprintf(err_code, sizeof(err_code), "%d", code);
+                    dispStr((const u8 *)err_code, 64, 16);                    
+                }
+            }
+
         } else {
             clearArea();
             dispStr((const u8 *)err_code, 16, 16);
@@ -9659,7 +9713,13 @@ void MenuUI::dispReady(bool bDispReady)
     }
 }
 
-
+/* @func 
+ *  dispInNeedTfCard - 显示却卡信息(无卡或卡被写保护)
+ * @param
+ *  无
+ * @return
+ *  
+ */
 void MenuUI::dispInNeedTfCard()
 {
     char cIndex[128] = {0};
@@ -9670,31 +9730,37 @@ void MenuUI::dispInNeedTfCard()
 
     cards.clear();
 
+
     vm->getIneedTfCard(cards);
 
     dispStr((const u8*)"No mSD card", 27, 16, false, 104 - 27);
 
     if (cards.size() > 0) {
-
         LOGDBG(TAG, "card size: %d", cards.size());
 
-        cIndex[0] = '(';
-        u32 i;
-        for (i = 0; i < cards.size(); i++) {
-            cIndex[i*2 + 1] = cards.at(i) + '0';
-            cIndex[i*2 + 2] = ',';
-        }
-        cIndex[(i-1)*2 + 2] = ')';
+        if (cards.size() >= SYS_TF_COUNT_NUM) {             /* 8 */
+            sprintf(cIndex, "%s", "(1-8)");
+            iStartPos = 49;
+        } else if (cards.size() <= SYS_TF_COUNT_NUM -1) {   /* <=7 */
+            cIndex[0] = '(';
+            u32 i;
+            for (i = 0; i < cards.size(); i++) {
+                cIndex[i*2 + 1] = cards.at(i) + '0';
+                cIndex[i*2 + 2] = ',';
+            }
+            cIndex[(i-1)*2 + 2] = ')';
 
-        LOGDBG(TAG, "Lost mSD List: %s", cIndex);
+            LOGDBG(TAG, "Lost mSD List: %s", cIndex);
 
-        switch (cards.size()) {
-            case 6: iStartPos = 23; break;
-            case 5: iStartPos = 29; break;
-            case 4: iStartPos = 35; break;
-            case 3: iStartPos = 41; break;
-            case 2: iStartPos = 47; break;
-            case 1: iStartPos = 53; break;
+            switch (cards.size()) {
+                case 7:
+                case 6: iStartPos = 23; break;
+                case 5: iStartPos = 29; break;
+                case 4: iStartPos = 35; break;
+                case 3: iStartPos = 41; break;
+                case 2: iStartPos = 47; break;
+                case 1: iStartPos = 53; break;
+            }
         }
         dispStr((const u8*)cIndex, iStartPos, 32, false, 104 - iStartPos);
     }
@@ -9744,6 +9810,137 @@ void MenuUI::disp_low_bat()
         setLightDirect(BACK_RED & FRONT_RED);
     #endif 
 }
+
+
+/*
+ * 提示温度过高: 417错误
+ *
+ * Error 417.Camera temp
+ * temperature high. Please 
+ * turn on the fan or take 
+ * a break before continue
+ */
+void MenuUI::tipHighTempError(int iErrno)
+{
+    clearArea();    
+    if (ERR_MODULE_HIGH_TEMP == iErrno) {
+        dispStr((const u8*)"Error 305. Camera", 15, 0, false, 128);
+    } else {
+        dispStr((const u8*)"Error 417. Camera", 15, 0, false, 128);
+    }
+    dispStr((const u8*)"temperature high.Please", 0, 16, false, 128);
+    dispStr((const u8*)"turn on the fan or take", 0, 32, false, 128);
+    dispStr((const u8*)"a break before continue", 0, 48, false, 128); 
+}
+
+
+void MenuUI::tipNomSDCard()
+{
+    clearArea();
+    dispStr((const u8*)"Error 310.", 37, 16, false, 128);
+    dispStr((const u8*)"No mSD card", 30, 32, false, 128);
+}
+
+
+/*
+ * 小卡速度不足
+ */
+void MenuUI::tipmSDcardSpeedInsufficient()
+{
+    const char* pCard = property_get("module.unspeed");
+    char propVal[128] = {0};
+    char cUnSpeedIndex[10] = {0};
+    char cLineOne[128] = {0};
+    char cLineTwo[128] = {0};
+    int iNum = 0;
+
+    clearArea();      
+
+    if (pCard) {
+        strcpy(propVal, pCard);
+        iNum = extraSpeedInsuffCnt(propVal, cUnSpeedIndex);
+    }
+
+    switch (iNum) {
+        case 1: {
+            sprintf(cLineOne, "Error 313. mSD card(%d)", cUnSpeedIndex[0]);
+            sprintf(cLineTwo, "speed insufficient.");
+            dispStr((const u8*)cLineOne, 0, 0, false, 128);
+            dispStr((const u8*)cLineTwo, 16, 16, false, 128);
+            break;
+        }
+
+        case 2: {
+            sprintf(cLineOne, "Error 313. mSD card");
+            sprintf(cLineTwo, "(%d,%d)speed insufficient.", cUnSpeedIndex[0], cUnSpeedIndex[1]);
+            dispStr((const u8*)cLineOne, 9, 0, false, 128);
+            dispStr((const u8*)cLineTwo, 1, 16, false, 128);
+            break;
+        }
+
+        case 3: {
+            sprintf(cLineOne, "Error 313. mSD card(%d,", cUnSpeedIndex[0]);
+            sprintf(cLineTwo, "%d,%d)speed insufficient.", cUnSpeedIndex[1], cUnSpeedIndex[2]);
+            dispStr((const u8*)cLineOne, 0, 0, false, 128);
+            dispStr((const u8*)cLineTwo, 4, 16, false, 128);
+            break;
+        }
+
+        case 4:
+        case 5:
+        case 6: {
+            sprintf(cLineOne, "Error 313.mSD card(%d,%d", cUnSpeedIndex[0], cUnSpeedIndex[1]);
+            sprintf(cLineTwo, ",%d,%d)speed insufficient.", cUnSpeedIndex[2], cUnSpeedIndex[3]);
+            dispStr((const u8*)cLineOne, 0, 0, false, 128);
+            dispStr((const u8*)cLineTwo, 1, 16, false, 128);
+            break;
+        }
+
+        default: {  /* 默认按一张卡处理 */
+            sprintf(cLineOne, "Error 313. mSD card(6)");
+            sprintf(cLineTwo, "speed insufficient.");
+            dispStr((const u8*)cLineOne, 0, 0, false, 128);
+            dispStr((const u8*)cLineTwo, 16, 16, false, 128);
+            break;
+        }
+    }
+
+    dispStr((const u8*)"Please do a full over-", 6, 32, false, 128);
+    dispStr((const u8*)"write format before use", 2, 48, false, 128);    
+}
+
+
+/*
+ * 大卡卡速不足
+ */
+void MenuUI::tipSDcardSpeedInsufficient()
+{
+    clearArea();    
+    dispStr((const u8*)"Error 434. SD card", 13, 0, false, 128);
+    dispStr((const u8*)"speed insufficient.Please", 0, 16, false, 128);
+    dispStr((const u8*)"do a full overwrite", 16, 32, false, 128);
+    dispStr((const u8*)"format before use.", 14, 48, false, 128); 
+
+}
+
+
+/*
+ * 写保护错误
+ */
+void MenuUI::tipWriteProtectError(int iErrno)
+{
+    clearArea();
+    if (ERR_FILE_OPEN_FAILED == iErrno) {
+        dispStr((const u8*)"Error 430.", 37, 0, false, 128);
+    } else {
+        dispStr((const u8*)"Error 431.", 37, 0, false, 128);        
+    }
+
+    dispStr((const u8*)"Please remove", 27, 16, false, 128);
+    dispStr((const u8*)"write-protection from", 10, 32, false, 128);
+    dispStr((const u8*)"SD card before use.", 9, 48, false, 128); 
+}
+
 
 
 const char* MenuUI::getDispType(int iType)

@@ -81,15 +81,17 @@ enum {
 
 enum {
     VOLUME_STATE_INIT       = -1,
-    VOLUME_STATE_NOMEDIA    = 0,
-    VOLUME_STATE_IDLE       = 1,
-    VOLUME_STATE_PENDING    = 2,
-    VOLUME_STATE_CHECKNG    = 3,
-    VOLUME_STATE_MOUNTED    = 4,
-    VOLUME_STATE_UNMOUNTING = 5,
-    VOLUME_STATE_FORMATTING = 6,
-    VOLUME_STATE_DISABLED   = 7,    /* 卷被禁止, 可以不上报UI */
-    VOLUME_STATE_ERROR      = 8,
+    VOLUME_STATE_OK         = 0,
+    VOLUME_STATE_NOMEDIA    = 1,    /* 后面的状态值待定 - 2019年01月02日 */
+    VOLUME_STATE_IDLE       = 2,
+    VOLUME_STATE_PENDING    = 3,
+    VOLUME_STATE_CHECKNG    = 4,
+    VOLUME_STATE_MOUNTED    = 5,
+    VOLUME_STATE_UNMOUNTING = 6,
+    VOLUME_STATE_FORMATTING = 7,
+    VOLUME_STATE_DISABLED   = 8,    /* 卷被禁止, 可以不上报UI */
+    VOLUME_STATE_ERROR      = 9,
+    VOLUME_STATE_WPROTECT   = 10,
 };
 
 enum {
@@ -148,7 +150,7 @@ typedef struct stVol {
 	int		        iType;                              /* 用于表示是内部设备还是外部设备 */
 	u32		        iIndex;			                    /* 索引号（对于模组上的小卡有用） */
     int             iPrio;                              /* 卷的优先级 */
-    int             iVolState;                          /* 卷所处的状态: No_Media/Init/Mounted/Formatting */
+    int             iVolState;                          /* 卷所处的状态: No_Media/Init/Mounted/Formatting/写保护 */
     int             iVolSlotSwitch;                     /* 是否使能该接口槽 */
 
     u64             uTotal;			                    /* 总容量:  (单位为MB) */
@@ -346,11 +348,11 @@ static Volume gSysVols[] = {
         .cVolFsType     = {0},
 
         .iType          = VOLUME_TYPE_MODULE,
-        .iIndex         = 5,
+        .iIndex         = 7,
         .iPrio          = VOLUME_PRIO_LOW,
 
         .iVolState      = VOLUME_STATE_INIT,
-        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF5: 默认为使能状态 */           
+        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF7: 默认为使能状态 */           
         
         .uTotal         = 0,
         .uAvail         = 0,
@@ -366,11 +368,11 @@ static Volume gSysVols[] = {
         .cVolFsType     = {0},
 
         .iType          = VOLUME_TYPE_MODULE,
-        .iIndex         = 6,
+        .iIndex         = 8,
         .iPrio          = VOLUME_PRIO_LOW,
 
         .iVolState      = VOLUME_STATE_INIT,
-        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF6: 默认为使能状态 */           
+        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF8: 默认为使能状态 */           
         
         .uTotal         = 0,
         .uAvail         = 0,
@@ -378,6 +380,19 @@ static Volume gSysVols[] = {
     }, 
 #endif
 
+};
+
+
+/*
+ * 返回值
+ * 1.所有的小卡存在并且可用返回VOL_mSD_OK
+ * 2.缺小卡: VOL_mSD_LOST
+ * 3.有小卡被写保护: VOL_mSD_WP
+ */
+enum {
+    VOL_mSD_OK = 0,
+    VOL_mSD_WP = 1,
+    VOL_mSD_LOST = 2,
 };
 
 
@@ -443,7 +458,7 @@ public:
      */
     bool        checkAllTfCardExist();
     u64         calcRemoteRemainSpace(bool bFactoryMode = false);
-    bool        getIneedTfCard(std::vector<int>& vectors);
+    int         getIneedTfCard(std::vector<int>& vectors);
 
     void        updateLocalVolSpeedTestResult(int iResult);
     void        updateRemoteVolSpeedTestResult(Volume* pVol);

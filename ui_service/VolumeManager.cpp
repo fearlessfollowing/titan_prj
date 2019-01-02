@@ -101,7 +101,7 @@ using namespace std;
 
 #define MKFS_EXFAT          "/sbin/mkexfatfs"
 
-#define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
+// #define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
 
 
 /*********************************************************************************************
@@ -1738,7 +1738,13 @@ bool VolumeManager::volumeIsTfCard(Volume* pVol)
         || !strcmp(pVol->pMountPath, "/mnt/mSD3")
         || !strcmp(pVol->pMountPath, "/mnt/mSD4")
         || !strcmp(pVol->pMountPath, "/mnt/mSD5")
-        || !strcmp(pVol->pMountPath, "/mnt/mSD6")) {
+        || !strcmp(pVol->pMountPath, "/mnt/mSD6")
+
+#ifdef HW_FLATFROM_TITAN
+        || !strcmp(pVol->pMountPath, "/mnt/mSD7")
+        || !strcmp(pVol->pMountPath, "/mnt/mSD8")
+#endif
+        ) {
         return true;
     } else {
         return false;
@@ -2156,7 +2162,10 @@ bool VolumeManager::checkAllTfCardExist()
         std::unique_lock<std::mutex> lock(mRemoteDevLock);
         for (u32 i = 0; i < mModuleVols.size(); i++) {
             tmpVolume = mModuleVols.at(i);
-            if (tmpVolume && tmpVolume->uTotal > 0) {     /* 总容量大于0,表示卡存在 */
+            /*
+             * 新增卡的状态
+             */
+            if (tmpVolume && tmpVolume->uTotal > 0 && (tmpVolume->iVolState == VOL_mSD_OK) ) {     /* 总容量大于0,表示卡存在 */
                 iExitNum++;
             }
         }
@@ -2170,17 +2179,28 @@ bool VolumeManager::checkAllTfCardExist()
 }
 
 
-bool VolumeManager::getIneedTfCard(std::vector<int>& vectors)
+
+
+int VolumeManager::getIneedTfCard(std::vector<int>& vectors)
 {
+    int iErrType = VOL_mSD_OK;
     Volume* tmpVolume = NULL;
     std::unique_lock<std::mutex> lock(mRemoteDevLock);
     for (u32 i = 0; i < mModuleVols.size(); i++) {
         tmpVolume = mModuleVols.at(i);
-        if (tmpVolume && tmpVolume->uTotal <= 0) {     /* 总容量大于0,表示卡存在 */
-            vectors.push_back(tmpVolume->iIndex);
+        if (tmpVolume) {
+            if (tmpVolume->uTotal <= 0) {   /* 卡不存在 */
+                vectors.push_back(tmpVolume->iIndex);
+                iErrType = VOL_mSD_LOST;
+            } else if (tmpVolume->uTotal > 0 && tmpVolume->iVolState != VOLUME_STATE_OK) {
+                vectors.push_back(tmpVolume->iIndex);
+                if (iErrType <= VOL_mSD_WP)
+                    iErrType = VOL_mSD_WP;
+            }
         }
     }
-    return true;
+
+    return iErrType;
 }
 
 u64 VolumeManager::calcRemoteRemainSpace(bool bFactoryMode)
@@ -2291,6 +2311,9 @@ bool VolumeManager::checkSavepathChanged()
 }
 
 
+/*
+ * 处理模组上卡的热插拔时间
+ */
 int VolumeManager::handleRemoteVolHotplug(vector<sp<Volume>>& volChangeList)
 {
     Volume* tmpSourceVolume = NULL;
@@ -2306,6 +2329,9 @@ int VolumeManager::handleRemoteVolHotplug(vector<sp<Volume>>& volChangeList)
             for (u32 i = 0; i < mModuleVols.size(); i++) {
                 tmpSourceVolume = mModuleVols.at(i);
                 if (tmpChangedVolume && tmpSourceVolume) {
+                    /*
+                     * 新增卡的状态(写保护)
+                     */
                     if (tmpChangedVolume->iIndex == tmpSourceVolume->iIndex) {
                         tmpSourceVolume->uTotal     = tmpChangedVolume->uTotal;
                         tmpSourceVolume->uAvail     = tmpChangedVolume->uAvail;
@@ -3177,6 +3203,7 @@ void VolumeManager::updateRemoteTfsInfo(std::vector<sp<Volume>>& mList)
                     localVolume->uTotal = tmpVolume->uTotal;
                     localVolume->uAvail = tmpVolume->uAvail;
                     localVolume->iSpeedTest = tmpVolume->iSpeedTest;
+                    localVolume->iVolState = tmpVolume->iVolState;
                 }
             }
         }

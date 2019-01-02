@@ -64,15 +64,15 @@ using namespace std;
 #define TAG 	"update_app"
 
 #define UAPP_VER 				"V3.0"
-#define PRO_UPDATE_ZIP			"pro2_update.zip"
+#define PRO_UPDATE_ZIP			"titan_update.zip"
 #define UPDATE_DEST_BASE_DIR 	"/mnt/update/"
 #define ARRAY_SIZE(x)   		(sizeof(x) / sizeof(*(x)))
 
 /* 
  * 清单文件的相对路径
  */
-#define BILL_REL_PATH 			"pro2_update/bill.list"
-#define PRO2_UPDATE_DIR			"pro2_update"
+#define BILL_REL_PATH 			"titan_update/bill.list"
+#define PRO2_UPDATE_DIR			"titan_update"
 
 
 #define FIRMWARE 				"firmware"
@@ -121,6 +121,126 @@ struct sensor_firm_item firm_items[SENSOR_FIRM_CNT] = {
 	{"version.txt", 0}
 };
 
+
+unsigned int bytes_to_int(const u8 *buf)
+{
+    return (buf[0] << 24 | buf[1] <<16 | buf[2] << 8 | buf[3]);
+}
+
+void int_to_bytes(u8 *buf, unsigned int val)
+{
+    buf[0] = (u8)((val >> 24) &0xff);
+    buf[1] = (u8)((val >> 16) &0xff);
+    buf[2] = (u8)((val >> 8) &0xff);
+    buf[3] = (u8)((val &0xff));
+}
+
+
+void str_trim(char* pStr) 
+{ 
+	char *pTmp = pStr; 
+
+	while (*pStr != '\0') { 
+		if (*pStr != ' ' && *pStr != '\r' && *pStr != '\n') { 
+			*pTmp++ = *pStr; 
+		} 
+		++pStr; 
+	} 
+	*pTmp = '\0'; 
+} 
+
+bool gen_file(const char *name, u32 file_size, FILE *fp_read)
+{
+    u32 gen_file_size = 0;
+    u32 read_len;
+    u32 write_len;
+
+    u32 max_read_size;
+    u8 buf[1024 * 1024];
+    bool bRet = false;
+    FILE *fp_write = nullptr;
+
+    unlink(name);
+
+    fp_write = fopen(name, "wb+");
+    if (fp_write) {
+        max_read_size = file_size;
+        fseek(fp_write, 0L, SEEK_SET);
+        memset(buf, 0, sizeof(buf));
+        if (max_read_size > sizeof(buf)) {
+            u32 read_bytes = sizeof(buf);
+            while ((read_len = fread(buf, 1, read_bytes, fp_read)) > 0) {
+                write_len = fwrite(buf, 1, read_len, fp_write);
+                if (write_len != read_len) {
+                    LOGERR(TAG, "1 write %s  mismatch(%d %d)\n", name, write_len, read_len);
+                    goto EXIT;
+                } else {
+                    gen_file_size += write_len;
+                }
+                max_read_size -= read_len;
+                if (max_read_size > sizeof(buf)) {
+                    read_bytes = sizeof(buf);
+                } else {
+                    read_bytes = max_read_size;
+                }
+                memset(buf, 0, sizeof(buf));
+            }
+        } else {
+            read_len = fread(buf, 1, max_read_size, fp_read);
+            if (read_len != max_read_size) {
+                LOGERR(TAG, "2read %s len mismatch(%d %d)\n",name,read_len,max_read_size);
+                goto EXIT;
+            }
+			
+            write_len = fwrite(buf, 1, read_len, fp_write);
+            if (write_len != read_len) {
+                LOGERR(TAG,"2write %s mismatch(%d %d)\n",name, write_len, read_len);
+                goto EXIT;
+            } else {
+                gen_file_size += write_len;
+            }
+        }
+
+        if (gen_file_size != file_size) {
+            LOGERR(TAG, "gen %s file size mismatch(%d %d)\n", name, gen_file_size, file_size);
+        } else {
+            bRet = true;
+            sync();
+            msg_util::sleep_ms(200);
+        }
+EXIT:
+        if (fp_write) {
+            fclose(fp_write);
+        }
+    }
+REACH_END:
+    return bRet;
+}
+
+
+int chmod_x(const char *name)
+{
+    char buf[512];
+
+    snprintf(buf,sizeof(buf), "chmod +x %s", name);
+
+    return system(buf);
+}
+
+int tar_zip(const char *zip_name, const char* dest_path)
+{
+    int iRet = -1;
+
+    char cmd[512];
+
+    snprintf(cmd,sizeof(cmd),"unzip -o -q %s -d %s", zip_name, dest_path);
+
+    iRet = system(cmd);
+    if (iRet == 0) {
+        msg_util::sleep_ms(10);
+    }
+    return iRet;
+}
 
 
 /*
@@ -322,7 +442,10 @@ static int update_firmware(const char* update_root_path, sp<UPDATE_SECTION> & se
 	int iRet = ERR_UPDATE_SUCCESS;
 	u32 iCnt = 0;
 	char src_path[1024] = {0};
+    char upgrage_path[1024] = {0};	
+    char update_upgrade_cmd[1024] = {0};	
 	u32 firm_item_cnt = SENSOR_FIRM_CNT;
+
 
 	/*
 	 * 1.检查firmware目录下是否有升级模组所需的文件(upgrade, 固件, version.txt)
@@ -330,6 +453,14 @@ static int update_firmware(const char* update_root_path, sp<UPDATE_SECTION> & se
 	 * 2.将文件拷贝到/usr/local/bin/firmware目录下
 	 * 3.直接升级操作
 	 */
+    sprintf(upgrage_path, "%s/bin/upgrade", update_root_path);
+    if (access(upgrage_path, F_OK) == 0) {
+		LOGDBG(TAG, "--> Used newest upgrade update.");
+        sprintf(update_upgrade_cmd, "cp %s /usr/local/bin/upgrade", upgrage_path);
+        LOGDBG(TAG, "upgrade_cmd: %s", update_upgrade_cmd);
+        system(update_upgrade_cmd);
+    }
+
 	for (u32 i = 0; i < section->mContents.size(); i++) {
 
 		LOGDBG(TAG, "update_firmware: section item[%d] -> [%s]", i, section->mContents.at(i)->name);
@@ -360,10 +491,17 @@ static int update_firmware(const char* update_root_path, sp<UPDATE_SECTION> & se
 		} else {
 
     		int status;
+
+		#if 1
 			const char *args[3];
         	args[0] = "/usr/local/bin/upgrade";
         	args[1] = "-p";
         	args[2] = section->dst_path;
+		#else 
+			const char *args[2];
+        	args[0] = "/usr/local/bin/upgrade";
+        	args[1] = section->dst_path;
+		#endif 
 
 			for (int i = 0; i < 3; i++) {
         		iRet = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
@@ -379,11 +517,13 @@ static int update_firmware(const char* update_root_path, sp<UPDATE_SECTION> & se
 				}
 
 				status = WEXITSTATUS(status);
-				if (status == 0) {
+				if (status == 0 || status == 1) {
 					LOGDBG(TAG, ">>>> upgrade module OK");
+					iRet = ERR_UPDATE_SUCCESS;				
 					break;
 				} else {
 					LOGERR(TAG, ">>> upgrade module failed (unknown exit code %d)", status);
+            		iRet = ERR_UPAPP_MODUE;		
 					continue;
 				}
 			}
@@ -783,6 +923,27 @@ static int installSamba(const char* cmdPath)
 }
 
 
+#ifdef UPGRADE_CHECK_BATTERY
+bool is_bat_enough()
+{
+    bool ret = false;
+    sp<battery_interface> mBat = sp<battery_interface>(new battery_interface());
+    if (mBat == nullptr) {
+        LOGERR(TAG,"bat creat error\n");
+    } else {
+        if (mBat->is_enough() == 0) {
+            ret = true;
+        }
+    }
+	
+    if (!ret) {
+        LOGERR(TAG,"is_bat_enough false\n");
+    }
+    return ret;
+}
+#endif
+
+
 
 /*************************************************************************
 ** 方法名称: start_update_app
@@ -805,8 +966,9 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 	
     disp_update_icon(ICON_UPGRADE_SCHEDULE00128_64);	/* 显示正在更新 */
 
+#ifdef UPGRADE_CHECK_BATTERY
     if (is_bat_enough()) {	/* 电量充足 */
-		
+#endif		
 		if (bMode) {	/* 兼容0.2.18及以前的update_check */
 
 			if (pro2Updatecheck(pUpdatePackagePath)) {		/* 提取解压升级包成功 */
@@ -824,6 +986,7 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 			iRet = update_sections(updateRootPath.c_str(), mSections);
 
 
+		#if 0
 			/*
 			 * 检查是否安装了samba,如果没有安装，执行以下脚本安装samba服务
 			 */
@@ -832,15 +995,17 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 				chmod(INSTALL_SAMBA_CMD, 0766);
 				installSamba(INSTALL_SAMBA_CMD);
 			}
-
-			installVm();
-
+		#endif 
+		
+					
 		}
 
+#ifdef UPGRADE_CHECK_BATTERY
     } else  {	/* 电池电量低 */
         LOGERR(TAG, "battery low, can't update...");
         iRet = ERR_UPAPP_BATTERY_LOW;
     }
+#endif 
 
 err_get_pro2_update:
     return iRet;
@@ -951,12 +1116,13 @@ static void handleUpdateSuc()
 	/* 3.根据配置是重启or直接启动应用 */
     disp_start_reboot(5);
 
-	system("mv /lib/systemd/system/NetworkManager.service /lib/systemd/");	/* 暂时移除这个服务，测试Direct */
+	// system("mv /lib/systemd/system/NetworkManager.service /lib/systemd/");	/* 暂时移除这个服务，测试Direct */
 
 	/* 2018年8月20日：禁止avahi-demon服务，避免分配169.254.xxxx的IP */
-	system("mv /etc/avahi /");
+	// system("mv /etc/avahi /");
 	
-	start_reboot();			
+	// start_reboot();			
+	system("reboot");
 }	
 
 
@@ -975,7 +1141,7 @@ static void handleBatterLow(void)
 {
     disp_update_err_str("battery low");
     disp_start_reboot(5);
-	start_reboot();		/* 重启 */
+	system("reboot");
 }
 
 
@@ -990,7 +1156,7 @@ static void handleComUpdateError(int err_type)
 
 	/* 3.重启 */
     disp_start_reboot(5);
-	start_reboot();		/* 重启 */	
+	system("reboot");
 }
 
 
@@ -1005,7 +1171,8 @@ static void handleUpdateModuleFail(int err_type)
 	
 	/* 3.重启 */
     disp_start_reboot(5);
-	start_reboot();		/* 重启 */	
+	system("reboot");
+
 }
 #endif
 

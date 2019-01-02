@@ -569,7 +569,7 @@ bool ProtoManager::sendStopPreview()
     "name":"camera._queryStorage",
     "results":{
         "module":[
-            {"index":1,"pro_suc":1,"storage_left":41490,"storage_total":60874},
+            {"index":1,"pro_suc":1,"storage_left":41490,"storage_total":60874, "storage_state": 0/1},
             {"index":2,"pro_suc":1,"storage_left":60521,"storage_total":60874},
             {"index":3,"pro_suc":1,"storage_left":41760,"storage_total":60874},
             {"index":4,"pro_suc":1,"storage_left":41707,"storage_total":60874},
@@ -586,6 +586,9 @@ bool ProtoManager::sendStopPreview()
 #endif
 
 
+/*
+ * TF卡的查询结果
+ */
 bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
 {
     LOGDBG(TAG, "[%s:%d] ---> parseQueryTfcardResult");
@@ -614,9 +617,18 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
                         tmpVol->iSpeedTest = jsonData["results"]["module"][i]["pro_suc"].asInt();
                     }
 
+                    /*
+                     * 添加卷的状态
+                     */
+                    if (jsonData["results"]["module"][i].isMember("storage_state")) {
+                        if (jsonData["results"]["module"][i]["storage_state"].isInt()) {
+                            tmpVol->iVolState = jsonData["results"]["module"][i]["storage_state"].asInt();
+                        }
+                    }
+
                     sprintf(tmpVol->cVolName, "mSD%d", tmpVol->iIndex);
-                    LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d]",
-                                tmpVol->cVolName, tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest);
+                    LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d], storage_state[%d]",
+                                tmpVol->cVolName, tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest, tmpVol->iVolState);
 
                     mStorageList.push_back(tmpVol);
 
@@ -2085,7 +2097,7 @@ void ProtoManager::handleErrInfo(Json::Value& jsonData)
 
 void ProtoManager::handleTfCardChanged(Json::Value& jsonData)
 {
-    LOGDBG(TAG, "[%s:%d] Get Tfcard Changed....");      
+    LOGDBG(TAG, "Get Tfcard Changed....");      
 
     std::vector<sp<Volume>> storageList;   
     storageList.clear();
