@@ -163,7 +163,7 @@ typedef struct stVol {
 static Volume gSysVols[] = {
     {   /* SD卡 - 3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb2-1.1,usb2-2.2",      /* USB3.0设备 */
+        .pBusAddr       = "usb2-1.1",      /* USB3.0设备 */
         .pMountPath     = "/mnt/sdcard",
         .cVolName       = {0},                      /* 动态生成 */
         .cDevNode       = {0},
@@ -181,7 +181,7 @@ static Volume gSysVols[] = {
 
     {   /* Udisk1 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
-        .pBusAddr       = "usb2-1,usb1-2.1",           /* 接3.0设备时的总线地址 */
+        .pBusAddr       = "usb2-1.2,usb1-2.1",           /* 接3.0设备时的总线地址 */
         .pMountPath     = "/mnt/udisk1",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},  

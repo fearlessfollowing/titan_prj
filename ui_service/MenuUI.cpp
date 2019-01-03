@@ -3480,9 +3480,9 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
 
 void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint64_t serverState)
 {
-#if 0
+#if 1
     Json::FastWriter writer;
-    string actionStr = writer.write(actionJson);
+    std::string actionStr = writer.write(actionJson);
 
     LOGDBG(TAG, "Action Json: %s", actionStr.c_str());
     LOGDBG(TAG, "add_qr_res type (%d %d)", type, control_act);

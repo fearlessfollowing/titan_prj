@@ -566,7 +566,6 @@ static void resetSdSlot()
 	LOGDBG(TAG, "Reset SD Slot First");
 
 #ifdef HW_PLATFORM_TITAN	
-
 	int iDefaultSdResetGpio = 298;
 	const char* pSdResetProp = NULL;
 	
@@ -637,7 +636,7 @@ int main(int argc, char **argv)
 	/** 启动卷管理器,用于挂载升级设备 */
     VolumeManager* vm = VolumeManager::Instance();
     if (vm) {
-        LOGDBG(TAG, "+++++++++++++ Start Vold(2.5) Manager +++++++++++");
+        LOGDBG(TAG, "+++++++++++++ Start Vold Manager for update check +++++++++++");
         vm->start();
     }
 
@@ -656,22 +655,7 @@ int main(int argc, char **argv)
 	} else {
 		iDelay = 5;
 	}
-
-	/*
-	 * 检查samba服务是否已经安装（service smbd status）
-	 */
-	const char * cmd = "/usr/sbin/service smbd status";
-	FILE* fp = popen(cmd, "r");
-	if (fp) {
-		char result[1024] = {0};
-		while (fgets(result, sizeof(result), fp) != NULL) {
-			LOGDBG(TAG, "result: %s", result);
-		}
-		pclose(fp);
-	} else {
-		LOGERR(TAG, "---> Exec check smbd service failed");
-	}
-
+ 
 	while (iDelay-- > 0) {
 		if (strcmp(vm->getLocalVolMountPath(), "none")) {
 			break;
@@ -779,9 +763,7 @@ int main(int argc, char **argv)
 					}
 				} else {
 					LOGDBG(TAG, "Update file is Not regular file, delete it");
-					string delUpdateFile = "rm ";
-					delUpdateFile += pUpdateFilePathName;
-					system(delUpdateFile.c_str());
+					unlink(pUpdateFilePathName);
 					goto err_regula_update_file;
 				}
 			}

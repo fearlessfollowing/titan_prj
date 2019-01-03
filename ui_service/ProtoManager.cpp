@@ -1815,7 +1815,7 @@ void ProtoManager::setSyncReqExitFlag(bool bFlag)
 void ProtoManager::handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode)
 {
 	
-    if (reqNode.isMember("action")  && reqNode["action"].isInt() == false) {
+    if (reqNode.isMember("action")) {
         /* 设置Customer时，使用该字段来区分是拍照,录像，直播 */
         dispType->qr_type = reqNode["action"].asInt();
     }

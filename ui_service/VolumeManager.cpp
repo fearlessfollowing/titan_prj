@@ -70,6 +70,10 @@
 
 #include <sys/Condition.h>
 
+#ifdef ENABLE_CACHE_SERVICE
+#include <sys/CacheService.h>
+#endif
+
 #include <trans/fifo.h>
 #include <sstream>
 
@@ -101,7 +105,7 @@ using namespace std;
 
 #define MKFS_EXFAT          "/sbin/mkexfatfs"
 
-// #define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
+#define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
 
 
 /*********************************************************************************************
@@ -396,6 +400,10 @@ VolumeManager::VolumeManager() :
             mLocalVols.push_back(tmpVol);
         }
     }
+
+#ifdef ENABLE_CACHE_SERVICE
+    CacheService::Instance();
+#endif 
 
     LOGDBG(TAG, " Construtor VolumeManager Done...");
 }
@@ -1578,7 +1586,7 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
      * 挂载成功后/卸载成功后,通知UI(SD/USB attached/detacheed)
      */
 
-    // AutoMutex _l(gHandleBlockEvtLock);
+    AutoMutex _l(gHandleBlockEvtLock);
 
 
     LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", evt->getAction(), evt->getBusAddr());
@@ -1640,6 +1648,12 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
                             sendCurrentSaveListNotify();
                             sendDevChangeMsg2UI(VOLUME_ACTION_ADD, tmpVol->iVolSubsys, getCurSavepathList());
                         #endif
+
+                        /* 当有卡插入并且成功挂载后,扫描卡中的文件并写入数据库中 */
+                        #ifdef ENABLE_CACHE_SERVICE
+                            CacheService::Instance()->scanVolume(tmpVol->pMountPath);
+                        #endif 
+
                         }
                     }
                 }

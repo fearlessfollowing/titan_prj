@@ -37,8 +37,8 @@ MONITOR_OBJS = monitor_obj
 
 
 ############################ update_check ##################################
-update_check_obj = SConscript('./update_check/SConscript')
-com_env.Program('out/update_check', update_check_obj)
+#update_check_obj = SConscript('./update_check/SConscript')
+#com_env.Program('out/update_check', update_check_obj)
 
 
 ############################ update_app ####################################
@@ -66,8 +66,10 @@ com_env.Program('out/update_app', update_app_obj)
 
 
 ############################ ui_service ##################################
-#ui_service_obj = SConscript('./ui_service/SConscript')
-#com_env.Program('./out/ui_service', ui_service_obj)
+ui_service_env = com_env.Clone()
+ui_service_env.Append(LIBS=['sqlite3'])
+ui_service_obj = SConscript('./ui_service/SConscript')
+ui_service_env.Program('./out/ui_service', ui_service_obj)
 
 
 ############################ mongoose ##################################

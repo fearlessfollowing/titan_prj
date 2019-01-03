@@ -12,7 +12,13 @@
 ** 修改记录:
 ** V1.0			Skymixos		2018-05-04		创建文件，添加注释
 ** V2.0         Skymixos        2018-11-28      修改模组的温度检测
-**                                              （选择6个中温度最高的上报，模组下电后，温度变为无效值）
+**                                              （选择8个中温度最高的上报，模组下电后，温度变为无效值）
+**
+** V3.0         Skymixos        2019-01-03      将电池信息，CPU/GPU的温度写入属性系统
+** sys.bat_exist    true/false  电池是否存在
+** sys.bat_temp                 电池温度
+** sys.cpu_temp                 CPU温度
+** sys.gpu_temp                 GPU温度
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -44,8 +50,8 @@
 
 #define MAX_VAL(a,b) (((a) > (b)) ? (a):(b))
 
-#define CPU_TEMP_PATH   "/sys/class/thermal/thermal_zone2/temp"
-#define GPU_TEMP_PATH   "/sys/class/thermal/thermal_zone1/temp"
+#define CPU_TEMP_PATH           "/sys/class/thermal/thermal_zone2/temp"
+#define GPU_TEMP_PATH           "/sys/class/thermal/thermal_zone1/temp"
 
 #define INVALID_TMP_VAL         1000.0f
 #define BAT_LOW_VAL             (5)
@@ -54,7 +60,8 @@
 #define PROP_POLL_SYS_PERIOD    "sys.poll_period"
 
 
-#define ENABLE_DEBUG_TMPSERVICE
+// #define ENABLE_DEBUG_TMPSERVICE
+
 
 
 bool HardwareService::mHaveInstance = false;
@@ -105,8 +112,17 @@ HardwareService::HardwareService()
 HardwareService::~HardwareService()
 {
     LOGDBG(TAG, "---> deConstructor HardwareService now ...");
-    close(mCtrlPipe[0]);
-    close(mCtrlPipe[1]);
+    if (mCtrlPipe[0] != -1) {
+        writePipe(mCtrlPipe[1], CtrlPipe_Shutdown);
+         if (mLooperThread.joinable()) {
+            mLooperThread .join();
+        }
+
+        close(mCtrlPipe[0]);
+        close(mCtrlPipe[1]);
+        
+        mRunning = false;
+    }
 }
 
 
@@ -138,6 +154,11 @@ void HardwareService::getNvTemp()
         mGpuTmp = uGpuTemp / 1000.0f;
         fclose(fp2);
     }
+    
+    /* sync temp to property */
+    property_set(PROP_CPU_TEMP, cCpuBuf);
+    property_set(PROP_GPU_TEMP, cGpuBuf);
+
 
 #ifdef ENABLE_DEBUG_TMPSERVICE
     LOGDBG(TAG, "CPU temp[%f]C, GPU temp[%f]C", mCpuTmp, mGpuTmp);
@@ -189,13 +210,20 @@ bool HardwareService::reportSysTemp()
 void HardwareService::updateBatteryInfo()
 {
     int iResult = GET_BATINFO_OK;
-    
+    char cBatTemp[128] = {0};
+
+    property_set(PROP_BAT_EXIST, "false");
     {
         std::unique_lock<std::mutex> _lock(mBatteryLock);
+        
         iResult = mBatteryInterface->getCurBatteryInfo(mBatInfo.get());
         switch (iResult) {
-            case GET_BATINFO_OK:
+            case GET_BATINFO_OK: {
+                property_set(PROP_BAT_EXIST, "true");
+                sprintf(cBatTemp, "%f", mBatInfo->dBatTemp);
+                property_set(PROP_BAT_TEMP, cBatTemp);
                 break;
+            }
             case GET_BATINFO_ERR_NO_EXIST: {
                 mBatInfo->dBatTemp = INVALID_TMP_VAL;
                 break;
@@ -285,7 +313,6 @@ int HardwareService::serviceLooper()
 
             /* 获取并更新电池信息: 并同步给UI */
             updateBatteryInfo();
-
 
             /* 读取并上报温度信息： CPU/GPU, BATTERY, MODULE */
             updateSysTemp();

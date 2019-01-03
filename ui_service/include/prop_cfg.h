@@ -30,48 +30,48 @@
 /*
  * 系统使用的属性
  */
-#define PROP_SYS_AP_SSID			"sys.wifi_ssid"
-#define PROP_SYS_AP_PESUDO_SN		"sys.wifi_pesu_sn"
-#define PROP_SYS_AP_PASSWD			"sys.wifi_passwd"
-#define PROP_SYS_AP_MODE			"sys.wifi_mode"
-#define PROP_SYS_AP_CHANNEL			"sys.wifi_channel"
-#define PROP_WIFI_DRV_EXIST         "sys.wifi_driver"
-#define PROP_WIFI_AP_STATE          "sys.wifi_ap_state"
+#define PROP_SYS_AP_SSID			    "sys.wifi_ssid"
+#define PROP_SYS_AP_PESUDO_SN		    "sys.wifi_pesu_sn"
+#define PROP_SYS_AP_PASSWD			    "sys.wifi_passwd"
+#define PROP_SYS_AP_MODE			    "sys.wifi_mode"
+#define PROP_SYS_AP_CHANNEL			    "sys.wifi_channel"
+#define PROP_WIFI_DRV_EXIST             "sys.wifi_driver"
+#define PROP_WIFI_AP_STATE              "sys.wifi_ap_state"
 
-#define PROP_SYS_FIRM_VER 			"sys.firm_ver"			/*  */
-#define PROP_SYS_IMAGE_VER 			"sys.img_ver"
-#define PROP_UC_START_UPDATE 		"sys.uc_update_app"
-#define PROP_UC_START_APP 			"sys.uc_start_app"
+#define PROP_SYS_FIRM_VER 			    "sys.firm_ver"			
+#define PROP_SYS_IMAGE_VER 			    "sys.img_ver"
+#define PROP_UC_START_UPDATE 		    "sys.uc_update_app"
+#define PROP_UC_START_APP 			    "sys.uc_start_app"
 
-#define PROP_RO_MOUNT_TF            "sys.tf_mount_ro"
+#define PROP_RO_MOUNT_TF                "sys.tf_mount_ro"
 
-#define PROP_CAN_ENTER_UDISK        "sys.can_enter_udisk"
+#define PROP_CAN_ENTER_UDISK            "sys.can_enter_udisk"
 
 /*
  * 模组的数组/TF卡的数目
  */
-#define PROP_REMOTE_TF_NUM          "sys.tf_num"
+#define PROP_REMOTE_TF_NUM              "sys.tf_num"
 
-#define PROP_SYS_UPDATE_IMG_PATH	"update_image_path"
+#define PROP_SYS_UPDATE_IMG_PATH	    "update_image_path"
 
-#define PROP_SYS_UPDTATE_DIR        "sys.update_dir"
+#define PROP_SYS_UPDTATE_DIR            "sys.update_dir"
 
 /** update_check service version prop */
-#define PROP_SYS_UC_VER 			"sys.uc_ver"
+#define PROP_SYS_UC_VER 			    "sys.uc_ver"
 
-#define PROP_SYS_UA_VER 			"sys.ua_ver"
-#define PROP_TITAN_VER               "sys.titan_ver"
+#define PROP_SYS_UA_VER 			    "sys.ua_ver"
+#define PROP_TITAN_VER                  "sys.titan_ver"
 
-#define PROP_PWR_FIRST      	    "sys.hub_reset_first"
-#define PROP_KEY_RESPRATE           "sys.key_resprate"
-#define PROP_SKIP_SPEED_TEST        "sys.skip_speed_test"
+#define PROP_PWR_FIRST      	        "sys.hub_reset_first"
+#define PROP_KEY_RESPRATE               "sys.key_resprate"
+#define PROP_SKIP_SPEED_TEST            "sys.skip_speed_test"
 
-#define PROP_CAM_STATE              "sys.cam_state"
+#define PROP_CAM_STATE                  "sys.cam_state"
 
 
-#define PROP_PREVIEW_MODE           "sys.preview_mode"
+#define PROP_PREVIEW_MODE               "sys.preview_mode"
 
-#define PROP_SPEED_TEST_COMP_FLAG   "sys.speed_test_comp_flag"
+#define PROP_SPEED_TEST_COMP_FLAG       "sys.speed_test_comp_flag"
 
 #define PROP_LOG_FILE_PATH_BASE         "sys.log_path"
 #define DEFAULT_LOG_FILE_PATH_BASE      "/home/nvidia/insta360/log"
@@ -79,80 +79,78 @@
 /*
  * 启动动画属性
  */
-#define PROP_BOOTAN_NAME			"sys.bootan"
+#define PROP_BOOTAN_NAME			    "sys.bootan"
 
 
-#define PROP_HUB_RESET_INTERVAL     "sys.hub_reset"
-#define PROP_CAM_POWER_INTERVAL     "sys.cam_pinterval"
+#define PROP_HUB_RESET_INTERVAL         "sys.hub_reset"
+#define PROP_CAM_POWER_INTERVAL         "sys.cam_pinterval"
 
-#define PROP_SYS_DISK_NUM 			"sys.disk_cnt"
-#define PROP_SYS_DISK_RW			"sys.disk_rw"
-
-#define PROP_SYS_DEV_DISK0			"sys.disk0"
-#define PROP_SYS_DEV_DISK1			"sys.disk1"
-#define PROP_SYS_DEV_DISK2			"sys.disk2"
-#define PROP_SYS_DEV_DISK3			"sys.disk3"
-#define PROP_SYS_DEV_DISK4			"sys.disk4"
-#define PROP_SYS_DEV_DISK5			"sys.disk5"
-#define PROP_SYS_DEV_DISK6			"sys.disk6"
-#define PROP_SYS_DEV_DISK7			"sys.disk7"
-#define PROP_SYS_DEV_DISK8			"sys.disk8"
-#define PROP_SYS_DEV_DISK9			"sys.disk9"
-
-#define PROP_SYS_MODULE_ON          "sys.module_on"
-
-#define PROP_SYS_FILE_LIST_ROOT     "sys.list_root"
-
-#define PROP_EXTERN_TF_STATE        "sys.tf_info"
-#define PROP_SYS_TZ_CHANGED         "sys.tz_changed"
-
-#define PROP_SYS_TZ_VER             "sys.tz_ver"
-
-#define PROP_SYS_TZ                 "sys.timezone"
-#define PROP_SYS_TZ1                "sys.timezone1"
-#define PROP_SYS_TIME               "sys.hw_time"
-
-#define PROP_UPDATE_IMAG_DST_PATH   "sys.img_dst_path"
-
-#define PROP_SERVER_STATE           "sys.server_state"
-
-#define PROP_MAX_DISK_SLOT_NUM	    10
+#define PROP_SYS_DISK_NUM 			    "sys.disk_cnt"
+#define PROP_SYS_DISK_RW			    "sys.disk_rw"
 
 
-#define PROP_SD_RESET_GPIO          "sys.sd_reset_gpio"
+#define PROP_SYS_MODULE_ON              "sys.module_on"
+
+#define PROP_SYS_FILE_LIST_ROOT         "sys.list_root"
+
+#define PROP_EXTERN_TF_STATE            "sys.tf_info"
+#define PROP_SYS_TZ_CHANGED             "sys.tz_changed"
+
+#define PROP_SYS_TZ_VER                 "sys.tz_ver"
+
+#define PROP_SYS_TZ                     "sys.timezone"
+#define PROP_SYS_TZ1                    "sys.timezone1"
+#define PROP_SYS_TIME                   "sys.hw_time"
+
+#define PROP_UPDATE_IMAG_DST_PATH       "sys.img_dst_path"
+
+#define PROP_SERVER_STATE               "sys.server_state"
+
+#define PROP_MAX_DISK_SLOT_NUM	        10
+
+
+#define PROP_SD_RESET_GPIO              "sys.sd_reset_gpio"
 
 
 
 /******************************************************************************************************
  * 模组及HUB涉及的属性
  ******************************************************************************************************/
-#define PROP_MODULE_HUB_NUM			"sys.hub_reset_num"
-#define PROP_HUB_RESET_GPIO1		"sys.hub_reset_gpio1"
-#define PROP_HUB_RESET_GPIO2		"sys.hub_reset_gpio2"
-#define PROP_HUB_RESET_DURATION		"sys.hub_reset_duration"
-#define PROP_HUB_RESET_LEVEL		"sys.hub_reset_level"
+#define PROP_MODULE_HUB_NUM			    "sys.hub_reset_num"
+#define PROP_HUB_RESET_GPIO1		    "sys.hub_reset_gpio1"
+#define PROP_HUB_RESET_GPIO2		    "sys.hub_reset_gpio2"
+#define PROP_HUB_RESET_DURATION		    "sys.hub_reset_duration"
+#define PROP_HUB_RESET_LEVEL		    "sys.hub_reset_level"
 /*
  * 高电平/低电平有效
  */
-#define PROP_HUB_RESET_LEVEL		"sys.hub_reset_level"
+#define PROP_HUB_RESET_LEVEL		    "sys.hub_reset_level"
 
 
-#define PROP_MODULE_NUM				"sys.module_num"
-#define PROP_MODULE_PWR_ON			"sys.module_pwr_on"
-#define PROP_MODULE_PWR_INTERVAL 	"sys.module_pwr_interval"
+#define PROP_MODULE_NUM				    "sys.module_num"
+#define PROP_MODULE_PWR_ON			    "sys.module_pwr_on"
+#define PROP_MODULE_PWR_INTERVAL 	    "sys.module_pwr_interval"
 
 
-#define PROP_MODULE_PWR_CTL_1		"sys.module_pwr_ctl_1"
-#define PROP_MODULE_PWR_CTL_2		"sys.module_pwr_ctl_2"
-#define PROP_MODULE_PWR_CTL_3		"sys.module_pwr_ctl_3"
-#define PROP_MODULE_PWR_CTL_4		"sys.module_pwr_ctl_4"
-#define PROP_MODULE_PWR_CTL_5		"sys.module_pwr_ctl_5"
-#define PROP_MODULE_PWR_CTL_6		"sys.module_pwr_ctl_6"
-#define PROP_MODULE_PWR_CTL_7		"sys.module_pwr_ctl_7"
-#define PROP_MODULE_PWR_CTL_8		"sys.module_pwr_ctl_8"
+#define PROP_MODULE_PWR_CTL_1		    "sys.module_pwr_ctl_1"
+#define PROP_MODULE_PWR_CTL_2		    "sys.module_pwr_ctl_2"
+#define PROP_MODULE_PWR_CTL_3		    "sys.module_pwr_ctl_3"
+#define PROP_MODULE_PWR_CTL_4		    "sys.module_pwr_ctl_4"
+#define PROP_MODULE_PWR_CTL_5		    "sys.module_pwr_ctl_5"
+#define PROP_MODULE_PWR_CTL_6		    "sys.module_pwr_ctl_6"
+#define PROP_MODULE_PWR_CTL_7		    "sys.module_pwr_ctl_7"
+#define PROP_MODULE_PWR_CTL_8		    "sys.module_pwr_ctl_8"
 
-#define PROP_MODULE_PWR_SEQ			"sys.module_pwr_seq"
+/*
+ * 模组上电顺序
+ */
+#define PROP_MODULE_PWR_SEQ			    "sys.module_pwr_seq"
 
+
+#define PROP_BAT_EXIST                  "sys.bat_exist"     /* 存在:"true"; 不存在: "false" */
+#define PROP_BAT_TEMP                   "sys.bat_temp"
+#define PROP_CPU_TEMP                   "sys.cpu_temp"
+#define PROP_GPU_TEMP                   "sys.gpu_temp"
 
 
 /******************************************************************************************************

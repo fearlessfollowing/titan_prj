@@ -26,7 +26,7 @@ src += ['TranManager.cpp']
 src += ['CfgManager.cpp']
 src += ['AudioManager.cpp']
 src += ['HardwareService.cpp']
-
+src += ['CacheService.cpp']
 
 src += [config.UTIL + '/Process.cpp']
 src += [config.UTIL + '/forkUtil.cpp']
