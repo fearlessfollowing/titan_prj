@@ -36,6 +36,7 @@ src += [config.UTIL + '/bytes_int_convert.cpp']
 src += [config.UTIL + '/util.cpp']
 #src += [config.UTIL + '/cJSON.c']
 src += [config.UTIL + '/http_util.cpp']
+src += [config.UTIL + '/tinyxml2.cpp']
 
 
 src += [config.UI_SERVICE + '/hw/oled_module.cpp']

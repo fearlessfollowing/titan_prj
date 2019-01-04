@@ -39,6 +39,8 @@
 
 #include <log/log_wrapper.h>
 
+#include <util/tinyxml2.h>
+
 
 #undef      TAG
 #define     TAG "CacheService"
@@ -55,6 +57,9 @@
 #define  DEFAULT_TAB_STATE_PATH_NAME    "/home/nvidia/insta360/etc/tab_state.json"
 #define  DEFAULT_VOL_REL_TAB_PATH       "/.LOST.DIR/.insta360_tab_id.json"
 #define  PROP_DB_PATH                   "sys.db_path"
+#define  DEFAULT_PRJ_FILE               "pro.prj"
+#define  PROP_PRJ_NAME                  "sys.prj_name"
+
 
 static bool mHaveInstance = false;
 static std::mutex gInstanceLock;
@@ -349,6 +354,108 @@ bool CacheService::createDatabase(const char* dbName)
 }
 
 
+bool CacheService::parsePrjFile(const char* prjFile)
+{
+    tinyxml2::XMLDocument doc;
+    tinyxml2::XMLElement *origin;
+    tinyxml2::XMLElement *stitcher;
+    tinyxml2::XMLElement *gyro;
+
+    tinyxml2::XMLError result = doc.LoadFile(prjFile);
+    if (result != tinyxml2::XML_SUCCESS) {
+        LOGERR(TAG, "--> Load Xml file[%s] failed.", prjFile);
+        return false;
+    }
+
+    tinyxml2::XMLElement *root = doc.RootElement(); 
+    if (root) {
+        origin = root->FirstChildElement("origin");
+        if (origin) {
+            tinyxml2::XMLElement *metaElement = origin->FirstChildElement("metadata");
+            if (metaElement) {
+                for (const tinyxml2::XMLAttribute* p_attribute = metaElement->FirstAttribute(); p_attribute; p_attribute=p_attribute->Next()) {
+        			const char* pszXmlName = p_attribute->Name();
+		        	const char* pszXmlValue = p_attribute->Value();
+			        if (pszXmlName && pszXmlValue){
+				        LOGDBG(TAG, "name: %s, value: %s", pszXmlName, pszXmlValue);
+			        }
+		        }
+            }
+        }
+
+        stitcher = root->FirstChildElement("stitching");
+        gyro = root->FirstChildElement("gyro");
+    } else {
+        LOGERR(TAG, "");
+    }
+}
+
+
+
+bool CacheService::recordDirInfoByPrj(const char* pDirAbsPath)
+{
+    char cAbsPath[1024] = {0};
+    const char* pPrjName = DEFAULT_PRJ_FILE;
+    
+    if (property_get(PROP_PRJ_NAME)) {
+        pPrjName = property_get(PROP_PRJ_NAME);
+        LOGDBG(TAG, "--> Use property project name: %s", pPrjName);
+    }
+
+    sprintf(cAbsPath, "%s/%s", pDirAbsPath, pPrjName);
+    if (access(cAbsPath, F_OK) == 0) {
+        /* 解析工程文件，生成一项记录 */
+        parsePrjFile(cAbsPath);
+
+    } else {
+        LOGERR(TAG, "--> TODO: not support no prj file dir");
+        return false;
+    }
+}
+
+
+
+
+bool CacheService::collectDirsInfo(std::string volPath)
+{
+    DIR *dir;
+    struct dirent *ptr;
+    char base[1024];
+    const char* rootPath = volPath.c_str();
+
+    if ((dir = opendir(rootPath)) == NULL)  {
+        LOGDBG(TAG, "Open dir[%s] error...", rootPath);
+        return false;
+    }
+
+    while ((ptr = readdir(dir)) != NULL) {
+        if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
+            continue;
+        } else {
+            char path_name[1024] = {0};
+            struct stat tmpStat;
+            sprintf(path_name, "%s/%s", rootPath, ptr->d_name);
+            if (stat(path_name, &tmpStat)) {
+                LOGERR(TAG, "stat path[%s] failed", path_name);
+            } else {
+                if (S_ISDIR(tmpStat.st_mode)) {         /* 目录 */
+                    memset(base, '\0', sizeof(base));
+                    strcpy(base, rootPath);
+                    strcat(base, "/");
+                    strcat(base, ptr->d_name);
+
+                    LOGDBG(TAG, "---> dir: %s", base);
+
+                    recordDirInfoByPrj(base);
+
+                } 
+            }
+        }
+    }
+    closedir(dir);
+    return true;
+}
+
 
 bool CacheService::recurFileList(char *basePath)
 {
@@ -430,7 +537,10 @@ void CacheService::scanWorker(std::string volPath)
 
         /* 启动扫描 */
         gettimeofday(&sTime, NULL);
-        recurFileList((char*)(volPath.c_str()));
+        
+        // recurFileList((char*)(volPath.c_str()));
+        collectDirsInfo(volPath);
+
         gettimeofday(&eTime, NULL);
 
         usedTime = (eTime.tv_sec - sTime.tv_sec) * 1000 + (eTime.tv_usec - sTime.tv_usec) / 1000;

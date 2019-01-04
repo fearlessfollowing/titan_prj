@@ -877,8 +877,11 @@ static int pro2Updatecheck(const char* pUpdateFileDir)
 
 static void installVm()
 {
-	mkdir("/swap", 0766);
-	system("dd if=/dev/zero of=/swap/sfile bs=1024 count=4000000");
+	if (access("/swap/sfile", F_OK) != 0) {
+		mkdir("/swap", 0766);
+		system("dd if=/dev/zero of=/swap/sfile bs=1024 count=4000000");
+	}
+	
 	system("mkswap /swap/sfile");
 	system("swapon /swap/sfile");
 	system("cp /usr/local/bin/fstab /etc/fstab");
@@ -996,8 +999,9 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 				installSamba(INSTALL_SAMBA_CMD);
 			}
 		#endif 
-		
-					
+
+			installVm();
+
 		}
 
 #ifdef UPGRADE_CHECK_BATTERY

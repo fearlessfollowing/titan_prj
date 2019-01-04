@@ -1,0 +1,1 @@
+/usr/bin/c++      CMakeFiles/xmltest.dir/xmltest.cpp.o  -o xmltest -rdynamic libtinyxml2.so.7.0.1 -Wl,-rpath,/home/nvidia/work/titan_prj/extlib/tinyxml2 

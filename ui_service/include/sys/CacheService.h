@@ -24,6 +24,9 @@
 
 #include <json/value.h>
 #include <json/json.h>
+
+#include <util/tinyxml2.h>
+
 #include <sqlite3.h>
 
 
@@ -59,6 +62,19 @@ typedef struct stTabSchema {
 } CacheItem;
 
 
+
+/*
+ * 以文件夹顶层的子目录为索引，依次解析各个PIC, VID开头的文件夹下的pro.prj或titan.prj的工程文件
+ * 解析工程文件生成对应的一个表项目，插入对应的表中
+ * 目录的类型:      pic/timelapse/video
+ * 工程类型:        pro/pro2/titan  (决定模组的个数)
+ * 路径名称:        /mnt/udisk1/XXXXXX
+ * 项数:            n
+ * 拼接信息:        "none"
+ * 陀螺仪:          "none"/"gryo.dat"
+ * 
+ * 
+ */
 class CacheService {
     
 public:
@@ -85,10 +101,11 @@ private:
     Json::Value                          mCurTabState;           /* 当前正在使用的表（对应一个卷） */
     std::string                          mDbPathName;
     std::string                          mCurTabName;
-    
+
     Json::Value                          mTabState;             /* 维护表状态Json root */
     
     bool                                 mScanThreadALive;
+
 
 
     void        init();
@@ -125,6 +142,19 @@ private:
     void            loadTabState(const char* pFile, Json::Value* jsonRoot);
 
     void            syncJson2File(std::string path, Json::Value& jsonNode);
+
+    /*
+     * 收集目录信息
+     */
+    bool            collectDirsInfo(std::string volPath);
+
+    /*
+     * 通过工程文件来收集该子目录的详细信息
+     */
+    bool            recordDirInfoByPrj(const char* pDirAbsPath);
+
+    bool            parsePrjFile(const char* prjFile);
+
 
 };
 

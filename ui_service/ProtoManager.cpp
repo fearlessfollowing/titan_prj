@@ -237,7 +237,7 @@ bool ProtoManager::getServerState(uint64_t* saveState)
 
     param[_method] = "get";      /* 获取服务器的状态 */
 
-    root[_name] = REQ_GET_SET_CAM_STATE;
+    root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -292,7 +292,7 @@ bool ProtoManager::setServerState(uint64_t saveState)
     param[_method] = "set";      /* 设置服务器的状态 */
     param[_state] = saveState;
 
-    root[_name] = REQ_GET_SET_CAM_STATE;
+    root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -347,7 +347,7 @@ bool ProtoManager::rmServerState(uint64_t saveState)
     param[_method] = "clear";      /* 设置服务器的状态 */
     param[_state] = saveState;
 
-    root[_name] = REQ_GET_SET_CAM_STATE;
+    root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -478,7 +478,7 @@ bool ProtoManager::sendStartPreview()
     param[_stitch] = stitchParam;
     param[_audio] = audioParam;
 
-    root[_name] = REQ_START_PREVIEW;
+    root[_name_] = REQ_START_PREVIEW;
     root[_param] = param;
 	writer->write(root, &os);
     sendStr = os.str();
@@ -534,7 +534,7 @@ bool ProtoManager::sendStopPreview()
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
 
-    root[_name] = REQ_STOP_PREVIEW;
+    root[_name_] = REQ_STOP_PREVIEW;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
@@ -665,7 +665,7 @@ bool ProtoManager::sendQueryTfCard()
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
 
-    root[_name] = REQ_QUERY_TF_CARD;
+    root[_name_] = REQ_QUERY_TF_CARD;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
@@ -718,7 +718,7 @@ bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
 
-    root[_name] = REQ_SET_CUSTOMER_PARAM;
+    root[_name_] = REQ_SET_CUSTOMER_PARAM;
     root[_param] = customParam["parameters"]["properties"];
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -770,7 +770,7 @@ bool ProtoManager::sendSpeedTestReq(const char* path)
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_path] = path;
-    root[_name] = REQ_SPEED_TEST;
+    root[_name_] = REQ_SPEED_TEST;
     root[_param] = param;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -909,7 +909,7 @@ bool ProtoManager::sendStopVideoReq()
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name] = REQ_STOP_REC;
+    root[_name_] = REQ_STOP_REC;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
@@ -1014,7 +1014,7 @@ bool ProtoManager::sendStopLiveReq()
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name] = REQ_STOP_LIVE;
+    root[_name_] = REQ_STOP_LIVE;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
@@ -1064,7 +1064,7 @@ bool ProtoManager::sendStichCalcReq()
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_delay] = 5;      /* 默认为5秒 */
-    root[_name] = REQ_STITCH_CALC;
+    root[_name_] = REQ_STITCH_CALC;
     root[_param] = param;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -1117,7 +1117,7 @@ bool ProtoManager::sendSavePathChangeReq(const char* savePath)
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_path]    = savePath;      
-    root[_name]     = REQ_CHANGE_SAVEPATH;
+    root[_name_]     = REQ_CHANGE_SAVEPATH;
     root[_param]    = param;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -1164,7 +1164,7 @@ bool ProtoManager::sendStorageListReq(const char* devList)
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name]         = REQ_UPDATE_DEV_LIST;
+    root[_name_]         = REQ_UPDATE_DEV_LIST;
     root[_param]        = devList;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -1217,7 +1217,7 @@ bool ProtoManager::sendUpdateBatteryInfo(BAT_INFO* pBatInfo)
     param["int_tmp"]        =  pBatInfo->int_tmp;
     param["tmp"]            =  pBatInfo->tmp;  
 
-    root[_name]         = REQ_UPDATE_BAT_INFO;
+    root[_name_]         = REQ_UPDATE_BAT_INFO;
     root[_param]        = param;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -1265,7 +1265,7 @@ bool ProtoManager::sendStartNoiseSample()
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name] = REQ_NOISE_SAMPLE;
+    root[_name_] = REQ_NOISE_SAMPLE;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
@@ -1311,7 +1311,7 @@ bool ProtoManager::sendGyroCalcReq()
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name] = REQ_GYRO_CALC;
+    root[_name_] = REQ_GYRO_CALC;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
@@ -1357,7 +1357,7 @@ bool ProtoManager::sendLowPowerReq()
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name] = REQ_LOW_POWER;
+    root[_name_] = REQ_LOW_POWER;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
@@ -1403,7 +1403,7 @@ bool ProtoManager::sendWbCalcReq()
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name] = REQ_AWB_CALC;
+    root[_name_] = REQ_AWB_CALC;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
 
@@ -1449,7 +1449,7 @@ bool ProtoManager::sendSetOptionsReq(Json::Value& optionsReq)
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name] = REQ_SET_OPTIONS;
+    root[_name_] = REQ_SET_OPTIONS;
 	writer->write(optionsReq, &osInput);
     sendStr = osInput.str();
 
@@ -1501,7 +1501,7 @@ bool ProtoManager::sendSwitchUdiskModeReq(bool bEnterExitFlag)
     } else {        
         param[_mode] = 0;      /* 退出Udisk模式 */
     }
-    root[_name] = REQ_SWITCH_UDISK_MODE;
+    root[_name_] = REQ_SWITCH_UDISK_MODE;
     root[_param] = param;
 	writer->write(root, &osInput);
     sendStr = osInput.str();
@@ -1563,7 +1563,7 @@ bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uL
     param[_rec_left_sec] = uLeftRecSecs;
     param[_live_rec_sec] = uLiveSec;
     param[_live_rec_left_sec] = uLiveRecLeftSec;
-    root[_name] = REQ_UPDATE_REC_LIVE_INFO;
+    root[_name_] = REQ_UPDATE_REC_LIVE_INFO;
     root[_param] = param;
 	writer->write(root, &os);
     sendStr = os.str();
@@ -1614,7 +1614,7 @@ bool ProtoManager::sendUpdateTakeTimelapseLeft(u32 leftVal)
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_tl_left] = leftVal;
-    root[_name] = REQ_UPDATE_TIMELAPSE_LEFT;
+    root[_name_] = REQ_UPDATE_TIMELAPSE_LEFT;
     root[_param] = param;
 	writer->write(root, &os);
     sendStr = os.str();
@@ -1665,7 +1665,7 @@ bool ProtoManager::sendStateSyncReq(REQ_SYNC* pReqSyncInfo)
     param["p_v"] = pReqSyncInfo->p_v;
     param["k_v"] = pReqSyncInfo->k_v;
 
-    root[_name] = REQ_SYNC_INFO;
+    root[_name_] = REQ_SYNC_INFO;
     root[_param] = param;
 	writer->write(root, &os);
     sendStr = os.str();
@@ -1708,7 +1708,7 @@ int ProtoManager::sendQueryGpsState()
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    root[_name] = REQ_QUERY_GPS_STATE;
+    root[_name_] = REQ_QUERY_GPS_STATE;
 	writer->write(root, &os);
     sendStr = os.str();
 
@@ -1759,7 +1759,7 @@ int ProtoManager::sendFormatmSDReq(int iIndex)
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_index] = iIndex;
-    root[_name] = REQ_FORMAT_TFCARD;
+    root[_name_] = REQ_FORMAT_TFCARD;
     root[_param] = param;
 	writer->write(root, &os);
     sendStr = os.str();

@@ -900,8 +900,8 @@ void MenuUI::play_sound(u32 type)
              * aplay 带 -D hw:1,0 参数时播出的音声会有两声
              * 去掉-D hw:1,0 参数，插上HDMI时没有声音播放
              */
-            snprintf(cmd, sizeof(cmd), "aplay -D hw:1,0 %s", sound_str[type]);
-            exec_sh(cmd);
+            // snprintf(cmd, sizeof(cmd), "aplay -D hw:1,0 %s", sound_str[type]);
+            // exec_sh(cmd);
 		} else {
             LOGERR(TAG, "sound type %d exceed", type);
 		}

@@ -68,6 +68,7 @@ com_env.Program('out/update_app', update_app_obj)
 ############################ ui_service ##################################
 ui_service_env = com_env.Clone()
 ui_service_env.Append(LIBS=['sqlite3'])
+#ui_service_env.Append(LIBS=['tinyxml2'])
 ui_service_obj = SConscript('./ui_service/SConscript')
 ui_service_env.Program('./out/ui_service', ui_service_obj)
 

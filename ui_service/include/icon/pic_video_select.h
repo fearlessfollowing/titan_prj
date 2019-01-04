@@ -1733,8 +1733,8 @@ static PicVideoCfg vid6K_60F_3D_Cfg = {
 	stNorIcon:			{	/* 未选中时的图标列表 */
 		vid_6K60F3D_Nor_78x16,
 	},
-    pNote:              "6K|60F|3D",
-    bDispType:          true,
+    pNote:              "8K|30F|8bit",
+    bDispType:          false,
 };
 
 
@@ -2269,7 +2269,10 @@ static const char* pCmdTakeVid_8K5F		= "{\"name\":\"camera._startRecording\", \"
 
 
 
-static const char* pCmdTakeVid_6K60F3D	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":60,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3200,\"height\":2400,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+// static const char* pCmdTakeVid_6K60F3D	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":60,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3200,\"height\":2400,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+
+static const char* pCmdTakeVid_6K60F3D	= "{\"name\":\"camera._startRecording\", \"parameters\":{\"origin\":{\"mime\":\"h264\", \"bitDepth\":8, \"framerate\":30,\"bitrate\":122880,\"saveOrigin\":true,\"width\":3840,\"height\":2880,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
+
 
 static const char* pCmdTakeVid_4K120F3D	= "{\"name\":\"camera._startRecording\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"framerate\":120,\"bitrate\":122880,\"saveOrigin\":true,\"width\":1920,\"height\":1440,\"storage_loc\":1},\"audio\": {\"mime\": \"aac\", \"sampleFormat\": \"s16\", \"samplerate\": 48000, \"bitrate\": 128, \"channelLayout\": \"stereo\"}}}";
 

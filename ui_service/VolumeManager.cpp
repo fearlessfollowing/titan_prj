@@ -2297,11 +2297,15 @@ bool VolumeManager::checkAllmSdSpeedOK()
         }
     }
 
+#ifdef ENABLE_SKIP_SPEED_TEST
+    return true;
+#else 
     if (iExitNum >= mModuleVolNum) {
         return true;
     } else {
         return false;
-    }    
+    } 
+#endif        
 }
 
 
@@ -2309,7 +2313,11 @@ bool VolumeManager::checkAllmSdSpeedOK()
 bool VolumeManager::checkLocalVolSpeedOK()
 {
     if (mCurrentUsedLocalVol) {
+#ifdef ENABLE_SKIP_SPEED_TEST
+        return true;
+#else         
         return (mCurrentUsedLocalVol->iSpeedTest == 1) ? true : false;
+#endif 
     } else {
         return false;
     }
