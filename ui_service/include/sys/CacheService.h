@@ -29,6 +29,29 @@
 
 #include <sqlite3.h>
 
+enum {
+    DIR_INFO_TYPE_PHOTO,
+    DIR_INFO_TYPE_BRACKET,
+    DIR_INFO_TYPE_BURST,
+    DIR_INFO_TYPE_HDR,
+    DIR_INFO_TYPE_TIMELAPSE,
+    DIR_INFO_TYPE_VIDEO,
+    DIR_INFO_TYPE_MAX
+};
+
+typedef struct stDirRecInfo {
+    int             iType;          /* photo/timelapse/video */
+    int             iGroupNum;      /* timelapse拍摄的组数 */
+    std::string     sCreateTime;    /* 该目录的创建日期 */
+    std::string     sFileMode;      /* 非timelaspe: File1@File2@File3...; Timelapse:File_grounum_max.jpg@... */
+    std::string     sPathName;      /* 路径名: Example /mnt/udisk1/PIC_20190405_87/ */
+    unsigned int    u32Width;       // 视频/图片的宽度
+    unsigned int    u32Height;      // 视频/图片的高度
+    float           fLng;           // 纬度（可选）
+    float           fLant;          // 精度（可选） 
+    bool            bProcess;       // 是否已经处理过       
+} CachedDirItem;
+
 
 typedef struct stTabSchema {
     std::string     fullPathName;       // 文件名称(路径+文件名，可作为主键)
@@ -97,21 +120,22 @@ public:
 
 
 private:
-    std::vector<sp<CacheItem>>           mListVec;              /* 列文件时的存储容器 */
-    Json::Value                          mCurTabState;           /* 当前正在使用的表（对应一个卷） */
-    std::string                          mDbPathName;
-    std::string                          mCurTabName;
+    std::vector<std::shared_ptr<CachedDirItem>>     mCachedVector;          /* 列文件时的存储容器 */
+    std::mutex                                      mCacheVectorLock;
 
-    Json::Value                          mTabState;             /* 维护表状态Json root */
+    Json::Value                                     mCurTabState;           /* 当前正在使用的表（对应一个卷） */
     
-    bool                                 mScanThreadALive;
+    std::string                                     mDbPathName;
+    std::string                                     mCurTabName;
 
+    Json::Value                         mTabState;             /* 维护表状态Json root */
+    
+    bool                                mScanThreadALive;
 
+    void                                init();
+    void                                deInit();
 
-    void        init();
-    void        deInit();
-
-    void        scanWorker(std::string volPath);
+    void                                scanWorker(std::string volPath);
 
     /*
      * 创建删除指定的表
@@ -153,7 +177,14 @@ private:
      */
     bool            recordDirInfoByPrj(const char* pDirAbsPath);
 
-    bool            parsePrjFile(const char* prjFile);
+    bool            parsePrjFile(const char* prjFile, CachedDirItem* pItem);
+
+    std::string     genFileModeChain(const char* dirPath);
+    std::string     parseTimelapseFileChain(const char* dirPath);
+
+    bool            addDirInfoItem(const char* pDirAbsPath);
+    bool            removeDirInfoItem(const char* pDirAbsPath);
+    void            listDirInfoItems();
 
 
 };

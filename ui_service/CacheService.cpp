@@ -46,6 +46,12 @@
 #define     TAG "CacheService"
 
 
+#define CACHE_USE_MEMORY    /* 直接在内存中存储各个文件夹信息 */
+
+// #define CACHE_USE_FILE      /* 以文件的形式存储各个文件夹信息 */
+// #define CACHE_USE_DB        /* 以数据库形式存储各个文件夹信息 */
+
+
 /*
  * 一个接口对应一张表
  * 如:  insta360_sd_tab: SD接口 
@@ -93,12 +99,14 @@ CacheService::~CacheService()
 
 void CacheService::init()
 {
-    mListVec.clear();
+    mCachedVector.clear();
     mTabState.clear();
     mCurTabState.clear();
 
     mScanThreadALive = false;
-    
+
+#ifdef CACHE_USE_DB
+
     /* 初始化数据库 */
     const char* pDbPath = DEFAULT_CACHE_DB_PATH;
     if (property_get(PROP_DB_PATH)) {
@@ -130,16 +138,19 @@ void CacheService::init()
     } else {    /* 加载tab_state.json到mTabState中 */
         loadTabState(DEFAULT_TAB_STATE_PATH_NAME, &mTabState);
     }
+#endif 
+
 }
 
 
 void CacheService::deInit()
 {
     LOGDBG(TAG, "In CacheService::deInit, do nothing...");
-    mListVec.clear();    
+    mCachedVector.clear();    
 }
 
 
+#ifdef CACHE_USE_DB
 /*
  * 在系统数据库中创建表
  */
@@ -191,7 +202,10 @@ bool CacheService::createCacheTable(std::string tabName)
     sqlite3_close(db);
     return bResult;
 }
+#endif 
 
+
+#ifdef CACHE_USE_DB
 
 /* 
  * 删除系统数据库中指定的表
@@ -353,48 +367,141 @@ bool CacheService::createDatabase(const char* dbName)
     return (rc == SQLITE_OK) ? true : false;
 }
 
+#endif 
 
-bool CacheService::parsePrjFile(const char* prjFile)
+/*
+<camera_info make="Insta360" model="Insta360 Pro2" sn=""/>
+    <origin>
+        <metadata mime="jpeg" width="4000" height="3000" interval="2000" count="100000" type="timelapse" storage_loc="0"/>
+        <file>origin_%d_6.jpg</file>
+        <file>origin_%d_5.jpg</file>
+        <file>origin_%d_4.jpg</file>
+        <file>origin_%d_3.jpg</file>
+        <file>origin_%d_2.jpg</file>
+        <file>origin_%d_1.jpg</file>
+    </origin>
+
+struct recordItem {
+    int             iType;              // photo/timelapse/video
+    std::string     sCreateTime;        // create timestap
+    std::string     sOrginFormat;       // origin_X.jpg
+    std::string     sStitcherFile;  
+    std::string     sGyroFile;          
+    int             iPhotoGroup;        // photo/video = 1; timelapse = XXXX
+    int             iThumbnail;         // have thumbnail
+}
+*/
+
+std::string CacheService::genFileModeChain(const char* dirPath)
 {
-    tinyxml2::XMLDocument doc;
-    tinyxml2::XMLElement *origin;
-    tinyxml2::XMLElement *stitcher;
-    tinyxml2::XMLElement *gyro;
+    DIR *dir;
+    struct dirent *ptr;
+    std::string fileList;
 
-    tinyxml2::XMLError result = doc.LoadFile(prjFile);
-    if (result != tinyxml2::XML_SUCCESS) {
-        LOGERR(TAG, "--> Load Xml file[%s] failed.", prjFile);
-        return false;
+    if ((dir = opendir(dirPath)) == NULL)  {
+        LOGDBG(TAG, "Open dir[%s] error...", dirPath);
+        return "none";
     }
 
-    tinyxml2::XMLElement *root = doc.RootElement(); 
-    if (root) {
-        origin = root->FirstChildElement("origin");
-        if (origin) {
-            tinyxml2::XMLElement *metaElement = origin->FirstChildElement("metadata");
-            if (metaElement) {
-                for (const tinyxml2::XMLAttribute* p_attribute = metaElement->FirstAttribute(); p_attribute; p_attribute=p_attribute->Next()) {
-        			const char* pszXmlName = p_attribute->Name();
-		        	const char* pszXmlValue = p_attribute->Value();
-			        if (pszXmlName && pszXmlValue){
-				        LOGDBG(TAG, "name: %s, value: %s", pszXmlName, pszXmlValue);
-			        }
-		        }
+    while ((ptr = readdir(dir)) != NULL) {
+        if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
+            continue;
+        } else {
+
+        #ifdef ENABLE_STAT_FILE_INFO   
+            char base[1024];         
+            char path_name[1024] = {0};
+            struct stat tmpStat;
+            sprintf(path_name, "%s/%s", basePath, ptr->d_name);
+            if (stat(path_name, &tmpStat)) {
+                LOGERR(TAG, "stat path[%s] failed", path_name);
+            } else {
+                if (S_ISDIR(tmpStat.st_mode)) {         /* 目录 */
+                    memset(base, '\0', sizeof(base));
+                    strcpy(base, basePath);
+                    strcat(base, "/");
+                    strcat(base, ptr->d_name);
+                    recurFileList(base);
+                } else if (S_ISREG(tmpStat.st_mode)) {  /* 普通文件 */
+                    // 构造一行记录，填入到对应的tab中
+
+                    CacheItem tabItem(basePath, 
+                                      ptr->d_name, 
+                                      tmpStat.st_size, 
+                                      1, 
+                                      "2018:11:07:15:34:54+08:00");
+
+                    insertCacheItem(mCurTabName.c_str() , &tabItem);
+                } else if (S_ISLNK(tmpStat.st_mode)) {  /* 链接文件 */
+                    LOGDBG(TAG, "file [%s] is link file", path_name);
+                }
             }
+        #else 
+        fileList += ptr->d_name;
+        fileList += "@";
+        #endif 
         }
 
-        stitcher = root->FirstChildElement("stitching");
-        gyro = root->FirstChildElement("gyro");
+    }
+    closedir(dir);
+    return fileList;    
+}
+
+
+bool CacheService::addDirInfoItem(const char* pDirAbsPath)
+{
+
+}
+
+bool CacheService::removeDirInfoItem(const char* pDirAbsPath)
+{
+    std::shared_ptr<CachedDirItem> pTmpDir = nullptr;
+    std::string dstPath = pDirAbsPath;
+    u32 i = 0;
+
+    std::unique_lock<std::mutex> _lock(mCacheVectorLock);
+    for (i = 0; i < mCachedVector.size(); i++) {
+        pTmpDir = mCachedVector.at(i);
+        if (pTmpDir && pTmpDir->sPathName == dstPath) {
+            break;
+        }
+    }
+
+    if (i >= mCachedVector.size()) {
+        LOGERR(TAG, "---> Not Found Dir item in Vector");
     } else {
-        LOGERR(TAG, "");
+        mCachedVector.erase(mCachedVector.begin() + i);
     }
 }
 
 
-
-bool CacheService::recordDirInfoByPrj(const char* pDirAbsPath)
+void CacheService::listDirInfoItems()
 {
-    char cAbsPath[1024] = {0};
+    std::unique_lock<std::mutex> _lock(mCacheVectorLock);
+    for (u32 i = 0; i < mCachedVector.size(); i++) {
+        std::shared_ptr<CachedDirItem> tmpDir = mCachedVector.at(i);
+        if (tmpDir) {
+            LOGDBG(TAG, "--------------------- Print Dir Item Info(1.2) ---------------------------");
+            LOGDBG(TAG, "URI: %s", tmpDir->sPathName.c_str());
+            LOGDBG(TAG, "FileMode: %s", tmpDir->sFileMode.c_str());
+            LOGDBG(TAG, "Group cnt: %d", tmpDir->iGroupNum);
+            LOGDBG(TAG, "Node type: %d", tmpDir->iType);
+        }
+    }
+    LOGDBG(TAG, ">>> Total Item size: %d", mCachedVector.size());
+}
+
+
+bool CacheService::parsePrjFile(const char* pDirAbsPath, CachedDirItem* pItem)
+{
+    tinyxml2::XMLDocument doc;
+    tinyxml2::XMLElement *origin;
+    tinyxml2::XMLElement *cameraInfo;    
+    tinyxml2::XMLElement *stitcher;
+    tinyxml2::XMLElement *gyro;
+
+    int iOneGroupNum = 6;
+    char cAbsPath[512] = {0};
     const char* pPrjName = DEFAULT_PRJ_FILE;
     
     if (property_get(PROP_PRJ_NAME)) {
@@ -403,15 +510,150 @@ bool CacheService::recordDirInfoByPrj(const char* pDirAbsPath)
     }
 
     sprintf(cAbsPath, "%s/%s", pDirAbsPath, pPrjName);
-    if (access(cAbsPath, F_OK) == 0) {
-        /* 解析工程文件，生成一项记录 */
-        parsePrjFile(cAbsPath);
 
+    tinyxml2::XMLError result = doc.LoadFile(cAbsPath);
+    if (result != tinyxml2::XML_SUCCESS) {
+        LOGERR(TAG, "--> Load Xml file[%s] failed.", cAbsPath);
+        return false;
+    }
+
+    tinyxml2::XMLElement *root = doc.RootElement(); 
+    if (root) {
+
+        pItem->sPathName = pDirAbsPath;
+
+        origin = root->FirstChildElement("origin");
+        cameraInfo = root->FirstChildElement("camera_info");
+        if (cameraInfo) {
+            const tinyxml2::XMLAttribute* pAttrModel = cameraInfo->FindAttribute("model");
+            if (pAttrModel) {   /* Maybe Pro2 or Titan */
+                if (!strcmp(pAttrModel->Value(), "Insta360 Pro2")) {
+                    iOneGroupNum = 6;
+                } else {
+                    iOneGroupNum = 8;
+                }
+            } else {    /* Pro */
+                iOneGroupNum = 6;
+            }
+
+            if (origin) {   
+                tinyxml2::XMLElement *metaElement = origin->FirstChildElement("metadata");
+                if (metaElement) {  /* 提取"type"字段，判断出是"photo","timelapse", "video" */
+                    const tinyxml2::XMLAttribute* pAttrType = metaElement->FindAttribute("type");
+                    if (pAttrType) {
+                        const char* pTypeVal = pAttrType->Value();
+                        if (!strcmp(pTypeVal, "photo") || !strcmp(pTypeVal, "video")) {
+                            if (pAttrType->Value(), "photo") {
+                                pItem->iType = DIR_INFO_TYPE_PHOTO;                              
+                            } else {
+                                pItem->iType = DIR_INFO_TYPE_VIDEO;                                
+                            }
+
+                            pItem->iGroupNum = 1;                            
+                            if (root->FirstChildElement("stitching")) {
+                                pItem->bProcess = true;
+                            }
+
+                            std::string fileList = genFileModeChain(pDirAbsPath);
+                            if (fileList == "none") {
+                                LOGERR(TAG, "--> Parse dir failed.");
+                            } else {
+                                // LOGDBG(TAG, "---> FileList: %s", fileList.c_str());
+                            }
+                            pItem->sFileMode = fileList;
+                        } else {
+                            const tinyxml2::XMLAttribute* pAttrCount = metaElement->FindAttribute("count");
+                            if (pAttrCount) {
+                                int iGrpNum = atoi(pAttrCount->Value());
+                                char cFileChain[256] = {0};
+                                std::string fileList;
+
+
+                                if (!strcmp(pTypeVal, "timelapse")) {
+                                    pItem->iType = DIR_INFO_TYPE_TIMELAPSE; 
+                                } else if (!strcmp(pTypeVal, "burst")) {
+                                    pItem->iType = DIR_INFO_TYPE_BURST;  
+                                } else if (!strcmp(pTypeVal, "bracket")) {
+                                    pItem->iType = DIR_INFO_TYPE_BRACKET; 
+                                } else if (!strcmp(pTypeVal, "hdr")) {
+                                    pItem->iType = DIR_INFO_TYPE_HDR; 
+                                }
+
+                                pItem->iGroupNum = iGrpNum;
+                                pItem->bProcess = false;
+
+                                sprintf(cFileChain, "origin_[1-%d]_[1-%d].jpg", iGrpNum, iOneGroupNum);
+                                fileList = cFileChain;
+                                fileList += "@";
+
+                                stitcher = root->FirstChildElement("stitching");
+                                if (stitcher) {
+                                    LOGWARN(TAG, "--> Timelapse has Stitching Now ????");
+                                }
+                                
+                                gyro = root->FirstChildElement("gyro");
+                                if (gyro) {
+                                    const tinyxml2::XMLAttribute* pAttrFile = gyro->FindAttribute("file");
+                                    if (pAttrFile) {
+                                        fileList += pAttrFile->Value();
+                                        fileList += "@";
+                                    }
+                                }
+                                fileList += pPrjName;
+                                fileList += "@";
+                                pItem->sFileMode = fileList;                                
+                                
+                                // LOGDBG(TAG, "---> Timelapse filelist: %s", fileList.c_str());
+                            } else {
+                                LOGERR(TAG, "Parse Xml:metadata count was lost");
+                                return false;
+                            }
+
+                        }
+                        return true;
+                    }   // <metadata type="XXX" />
+                }       // <metadata />
+            }           // <origin> XXX </origin>
+        } else {
+            LOGERR(TAG, "---> Invalid xml file, dir[%s], lost Attr[camera_info/model]", pDirAbsPath);
+        }
     } else {
-        LOGERR(TAG, "--> TODO: not support no prj file dir");
+        LOGERR(TAG, "Warnning: Parse Dir[%s]'s project file Failed!!", pDirAbsPath);
+    }
+    return false;
+}
+
+
+
+/*
+ * 通过解析工程文件来生成目录对应的记录信息
+ */
+bool CacheService::recordDirInfoByPrj(const char* pDirAbsPath)
+{
+    std::shared_ptr<CachedDirItem> pTmpDirRec = std::make_shared<CachedDirItem>();
+    if (pTmpDirRec) {
+        if (parsePrjFile(pDirAbsPath, pTmpDirRec.get())) {  /* 解析工程文件，生成一项记录 */
+            LOGDBG(TAG, "--------------------- Print Dir Item Info(1.1) ---------------------------");
+            LOGDBG(TAG, "URI: %s", pTmpDirRec->sPathName.c_str());
+            LOGDBG(TAG, "FileMode: %s", pTmpDirRec->sFileMode.c_str());
+            LOGDBG(TAG, "Group cnt: %d", pTmpDirRec->iGroupNum);
+            LOGDBG(TAG, "Node type: %d", pTmpDirRec->iType);
+            
+            {
+                std::unique_lock<std::mutex> _lock(mCacheVectorLock);
+                mCachedVector.push_back(pTmpDirRec);
+            }
+
+        } else {   /* TODO: 暂不支持没有工程文件的文件夹解析 */
+            LOGERR(TAG, "--> TODO: not support no prj file dir");
+            return false;
+        }
+    } else {
+        LOGERR(TAG, "--->>> New CachedDirItem Failed!");
         return false;
     }
 }
+
 
 
 
@@ -420,8 +662,8 @@ bool CacheService::collectDirsInfo(std::string volPath)
 {
     DIR *dir;
     struct dirent *ptr;
-    char base[1024];
     const char* rootPath = volPath.c_str();
+    char cDirPath[512];
 
     if ((dir = opendir(rootPath)) == NULL)  {
         LOGDBG(TAG, "Open dir[%s] error...", rootPath);
@@ -429,26 +671,28 @@ bool CacheService::collectDirsInfo(std::string volPath)
     }
 
     while ((ptr = readdir(dir)) != NULL) {
-        if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
+        /* 
+         * 只处理一些特殊的目录，如:
+         * PIC_*
+         * VID_*
+         */
+        if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0
+            || (strncmp(ptr->d_name, "PIC", strlen("PIC")) && strncmp(ptr->d_name, "VID", strlen("VID")))) {
             continue;
         } else {
-            char path_name[1024] = {0};
+            char path_name[512] = {0};
             struct stat tmpStat;
             sprintf(path_name, "%s/%s", rootPath, ptr->d_name);
             if (stat(path_name, &tmpStat)) {
                 LOGERR(TAG, "stat path[%s] failed", path_name);
             } else {
                 if (S_ISDIR(tmpStat.st_mode)) {         /* 目录 */
-                    memset(base, '\0', sizeof(base));
-                    strcpy(base, rootPath);
-                    strcat(base, "/");
-                    strcat(base, ptr->d_name);
-
-                    LOGDBG(TAG, "---> dir: %s", base);
-
-                    recordDirInfoByPrj(base);
-
-                } 
+                    memset(cDirPath, '\0', sizeof(cDirPath));
+                    strcpy(cDirPath, rootPath);
+                    strcat(cDirPath, "/");
+                    strcat(cDirPath, ptr->d_name);
+                    recordDirInfoByPrj(cDirPath);   /* 通过分析工程文件来记录目录信息 */
+                }
             }
         }
     }
@@ -456,6 +700,8 @@ bool CacheService::collectDirsInfo(std::string volPath)
     return true;
 }
 
+
+#if 0
 
 bool CacheService::recurFileList(char *basePath)
 {
@@ -503,6 +749,7 @@ bool CacheService::recurFileList(char *basePath)
     closedir(dir);
     return true;
 }
+#endif
 
 
 
@@ -519,6 +766,22 @@ void CacheService::scanWorker(std::string volPath)
     long usedTime = 0;
 
     mScanThreadALive = true;
+
+#ifdef CACHE_USE_MEMORY
+
+    mCachedVector.clear();  
+    
+    /* 启动扫描 */
+    gettimeofday(&sTime, NULL);
+    collectDirsInfo(volPath);
+    gettimeofday(&eTime, NULL);
+
+    usedTime = (eTime.tv_sec - sTime.tv_sec) * 1000 + (eTime.tv_usec - sTime.tv_usec) / 1000;
+    LOGDBG(TAG, "Scan dir[%s], total consumer: [%ld]ms", volPath.c_str(), usedTime);
+
+    LOGDBG(TAG, "+++++++>>>>> Collect item num [%d]", mCachedVector.size());
+
+#elif CACHE_USE_DB
 
     /* 根据卷名来生成表明
      * 如果有同名的表,先清空表的内容
@@ -537,21 +800,24 @@ void CacheService::scanWorker(std::string volPath)
 
         /* 启动扫描 */
         gettimeofday(&sTime, NULL);
-        
-        // recurFileList((char*)(volPath.c_str()));
         collectDirsInfo(volPath);
-
         gettimeofday(&eTime, NULL);
 
         usedTime = (eTime.tv_sec - sTime.tv_sec) * 1000 + (eTime.tv_usec - sTime.tv_usec) / 1000;
         LOGDBG(TAG, "Scan dir[%s], total consumer: [%ld]ms", volPath.c_str(), usedTime);
 
+        LOGDBG(TAG, "+++++++>>>>> Collect item num [%d]", mCachedVector.size());
+
     } else {
         LOGERR(TAG, "---> Create Table[%s] Failed, What's wrong", tabName.c_str());
     }
+#endif 
 
     mScanThreadALive = false;
 }
+
+
+
 
 
 /* 为了简便,系统在同一时刻只支持一张大卡
@@ -562,10 +828,6 @@ void CacheService::scanWorker(std::string volPath)
 
 void CacheService::scanVolume(std::string volName)
 {
-    struct timeval sTime, eTime;
-    long usedTime = 0;
-    std::string tabPathName = volName + "/.LOST.DIR/.insta360_tab_id.json";
-    
     if (true == mScanThreadALive) { /* is Scanning */
         LOGDBG(TAG, "Warnning: We Have Volume is Scanning");
         return;
@@ -577,6 +839,8 @@ void CacheService::scanVolume(std::string volName)
     }
 }
 
+
+#ifdef CACHE_USE_DB
 
 void CacheService::genTabStateFile()
 {
@@ -667,5 +931,5 @@ void CacheService::syncJson2File(std::string path, Json::Value& jsonNode)
     ofs.close();
 }
 
-
+#endif
 

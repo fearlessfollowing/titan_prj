@@ -381,6 +381,9 @@ bool ProtoManager::rmServerState(uint64_t saveState)
 }
 
 
+#define PREVIEW_JSON_FILE "/home/nvidia/insta360/etc/preview.json"
+
+
 /* sendStartPreview
  * @param 
  * 发送启动预览请求
@@ -484,7 +487,13 @@ bool ProtoManager::sendStartPreview()
     sendStr = os.str();
 
 #else 
-    std::string sendStr =  "{\"name\": \"camera._startPreview\",\"parameters\":{\"stabilization\":true, \"origin\":{\"mime\":\"h264\",\"width\":1920,\"height\":1080,\"framerate\":30,\"bitrate\":20000},\"stiching\":{\"mode\":\"pano\",\"map\":\"flat\",\"mime\":\"h264\",\"width\":1920,\"height\":960,\"framerate\":30,\"bitrate\":5000}}}";
+    #if 0
+    if (access(PREVIEW_JSON_FILE, F_OK) == 0) {
+        
+    }
+    #endif 
+
+    std::string sendStr =  "{\"name\": \"camera._startPreview\",\"parameters\":{\"stabilization\":true, \"origin\":{\"mime\":\"h264\",\"width\":1920,\"height\":1440,\"framerate\":30,\"bitrate\":20000},\"stiching\":{\"mode\":\"pano\",\"map\":\"flat\",\"mime\":\"h264\",\"width\":1920,\"height\":960,\"framerate\":30,\"bitrate\":5000}}}";
 #endif
 
 
