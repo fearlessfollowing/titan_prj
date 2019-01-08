@@ -489,7 +489,18 @@ bool ProtoManager::sendStartPreview()
 #else 
     #if 0
     if (access(PREVIEW_JSON_FILE, F_OK) == 0) {
+        std::ifstream ifs;  
+        ifs.open(PREVIEW_JSON_FILE, std::ios::binary); 
         
+        Json::CharReaderBuilder builder;
+        builder["collectComments"] = false;
+        JSONCPP_STRING errs;
+        if (!parseFromStream(builder, ifs, pRoot.get(), &errs)) {
+            LOGDBG(TAG, "parse [%s] success", path);
+            pSetItems[i]->jsonCmd = pRoot;
+            bParseFileFlag = true;
+        }    
+        ifs.close();     
     }
     #endif 
 

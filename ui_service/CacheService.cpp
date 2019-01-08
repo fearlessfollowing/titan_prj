@@ -450,7 +450,7 @@ std::string CacheService::genFileModeChain(const char* dirPath)
 
 bool CacheService::addDirInfoItem(const char* pDirAbsPath)
 {
-
+    std::unique_lock<std::mutex> _lock(mCacheVectorLock);
 }
 
 bool CacheService::removeDirInfoItem(const char* pDirAbsPath)

@@ -219,7 +219,7 @@ static Volume gSysVols[] = {
 
     {   /* mSD1 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb1-2.3",                         /* usb1-3.2 usb1-2.3 */
+        .pBusAddr       = "usb2-3.4",                         
         .pMountPath     = "/mnt/mSD1",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -239,7 +239,7 @@ static Volume gSysVols[] = {
 
     {   /* mSD2 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb1-2.2",
+        .pBusAddr       = "usb2-2.1",
         .pMountPath     = "/mnt/mSD2",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -259,7 +259,7 @@ static Volume gSysVols[] = {
 
     {   /* mSD3 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb1-3.3",
+        .pBusAddr       = "usb2-2.2",
         .pMountPath     = "/mnt/mSD3",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -279,7 +279,7 @@ static Volume gSysVols[] = {
 
     {   /* mSD4 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb1-3.2",
+        .pBusAddr       = "usb2-2.3",
         .pMountPath     = "/mnt/mSD4",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -299,7 +299,7 @@ static Volume gSysVols[] = {
 
     {   /* mSD5 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb1-3.1",
+        .pBusAddr       = "usb2-2.4",
         .pMountPath     = "/mnt/mSD5",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -319,7 +319,7 @@ static Volume gSysVols[] = {
 
     {   /* mSD6 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb1-2.4",
+        .pBusAddr       = "usb2-3.1",
         .pMountPath     = "/mnt/mSD6",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -341,7 +341,7 @@ static Volume gSysVols[] = {
     
     {   /* mSD7 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb1-3.1",
+        .pBusAddr       = "usb2-3.2",
         .pMountPath     = "/mnt/mSD7",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -361,7 +361,7 @@ static Volume gSysVols[] = {
 
     {   /* mSD8 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb1-2.4",
+        .pBusAddr       = "usb2-3.3",
         .pMountPath     = "/mnt/mSD8",
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
