@@ -70,6 +70,8 @@
 
 #include <log/log_wrapper.h>
 
+#include <icon/status_bar.h>
+
 #include "menu_res.h"
 
 
@@ -2106,7 +2108,7 @@ void MenuUI::update_sys_info()
 
 void MenuUI::dispSysInfo()
 {
-    int col = 0; //25
+    int col = 1;
     char buf[32];
 
     read_sn();
@@ -2808,7 +2810,8 @@ void MenuUI::disp_wifi(bool bState, int disp_main)
         set_mainmenu_item(MAINMENU_WIFI, 1);
 		
         if (check_allow_update_top()) {
-            dispIconByType(ICON_WIFI_OPEN_0_0_16_16);
+            // dispIconByType(ICON_WIFI_OPEN_0_0_16_16);
+            dispIconByLoc(&sbWifiOpenIconInfo);
         }
 		
         if (cur_menu == MENU_TOP) {
@@ -2828,7 +2831,8 @@ void MenuUI::disp_wifi(bool bState, int disp_main)
         set_mainmenu_item(MAINMENU_WIFI, 0);
 		
         if (check_allow_update_top()) {
-            dispIconByType(ICON_WIFI_CLOSE_0_0_16_16);
+            // dispIconByType(ICON_WIFI_CLOSE_0_0_16_16);
+            dispIconByLoc(&sbWifiCloseIconInfo);
         }
 		
         if (cur_menu == MENU_TOP) {
@@ -5731,6 +5735,8 @@ void MenuUI::procPowerKeyEvent()
                      */
                     if (pm->sendSwitchUdiskModeReq(true)) { /* 请求服务器进入U盘模式 */
 
+
+#if 0
                     #ifdef ENABLE_NET_MANAGER
                         /* 主动切网卡为直接模式 */
                         switchEtherIpMode(0);
@@ -5769,7 +5775,7 @@ void MenuUI::procPowerKeyEvent()
                         updateFile(DNSMASQ_CONF_PATH, dns_conf.c_str(), dns_conf.length());
 
                         property_set("ctl.start", "dnsmasq");
-
+#endif
                         oled_disp_type(ENTER_UDISK_MODE);
                     } else {
                         LOGWARN(TAG, "Server Not Allow enter Udisk mode");

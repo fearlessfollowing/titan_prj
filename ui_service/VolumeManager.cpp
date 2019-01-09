@@ -59,7 +59,7 @@
 #include <log/log_wrapper.h>
 
 #include <hw/ins_i2c.h>
-
+#include <hw/ins_gpio.h>
 #include <system_properties.h>
 
 #include <sys/inotify.h>
@@ -263,8 +263,7 @@ static void clearAllunmountPoint()
     while ((de = readdir(dir))) {
 
         int iLen = strlen(cPath); 
-        if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") 
-                || strlen(de->d_name) + iLen + 1 >= PATH_MAX)
+        if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") || strlen(de->d_name) + iLen + 1 >= PATH_MAX)
             continue;
 
         cPath[iParentLen] = 0;
@@ -347,8 +346,6 @@ VolumeManager::VolumeManager() :
     mCurSaveVolList.clear();
     mSysStorageVolList.clear();
 
-    mI2CLight = sp<ins_i2c>(new ins_i2c(0, 0x77, true));
-
     /* 挂载点初始化 */
     #ifdef ENABLE_MOUNT_TFCARD_RO
     property_set(PROP_RO_MOUNT_TF, "true");     /* 只读的方式挂载TF卡 */    
@@ -400,6 +397,39 @@ VolumeManager::VolumeManager() :
             mLocalVols.push_back(tmpVol);
         }
     }
+
+    LOGDBG(TAG, "--> Module num = %d", mModuleVolNum);
+
+#if 0
+    mModulePwrCtrl.iModulePwrCtl1 	    = 240;			/* 控制模组1上电的GPIO */
+	mModulePwrCtrl.iModulePwrCtl2 	    = 241;			/* 控制模组2上电的GPIO */
+	mModulePwrCtrl.iModulePwrCtl3 	    = 242;			/* 控制模组3上电的GPIO */
+	mModulePwrCtrl.iModulePwrCtl4 	    = 243;			/* 控制模组4上电的GPIO */
+	mModulePwrCtrl.iModulePwrCtl5 	    = 244;			/* 控制模组5上电的GPIO */
+	mModulePwrCtrl.iModulePwrCtl6 	    = 245;			/* 控制模组6上电的GPIO */
+	mModulePwrCtrl.iModulePwrCtl7 	    = 246;			/* 控制模组7上电的GPIO */
+	mModulePwrCtrl.iModulePwrCtl8 	    = 247;			/* 控制模组8上电的GPIO */
+
+	mModulePwrCtrl.iResetHubNum		    = 1;
+	mModulePwrCtrl.iHub1ResetGpio 	    = 303;
+	mModulePwrCtrl.iHub2ResetGpio 	    = 303;
+	mModulePwrCtrl.iHubResetLevel 	    = 1;
+	mModulePwrCtrl.iHubResetDuration 	= 100;
+
+	mModulePwrCtrl.iModuleNum 		    = 8;
+	mModulePwrCtrl.iModulePwrOnLevel 	= 1;            /* 模组上电的电平级别: 1:高电平有效; 0:低电平有效 */
+	mModulePwrCtrl.iModulePwrInterval   = 500;          /* 模组间上电间隔 */
+	
+    mModulePwrCtrl.cPwrOnSeq[0]         = 4;
+    mModulePwrCtrl.cPwrOnSeq[1]         = 1;
+    mModulePwrCtrl.cPwrOnSeq[2]         = 6;
+    mModulePwrCtrl.cPwrOnSeq[3]         = 2;
+    mModulePwrCtrl.cPwrOnSeq[4]         = 7;
+    mModulePwrCtrl.cPwrOnSeq[5]         = 3;
+    mModulePwrCtrl.cPwrOnSeq[6]         = 8;
+    mModulePwrCtrl.cPwrOnSeq[7]         = 5;
+#endif
+
 
 #ifdef ENABLE_CACHE_SERVICE
     CacheService::Instance();
@@ -532,39 +562,8 @@ bool VolumeManager::isMountpointMounted(const char *mp)
             return true;
         }
     }
-
     fclose(fp);
     return false;
-}
-
-
-
-/*
- * 给所有的模组上电
- */
-void VolumeManager::powerOffAllModule()
-{
-	u8 module1_val = 0;
-	u8 module2_val = 0; 	
-
-    mI2CLight->i2c_read(0x2, &module1_val);
-			
-	module1_val &= ~(1 << 6);
-	mI2CLight->i2c_write_byte(0x2, module1_val);
-							
-	module1_val &= ~(1 << 7);
-	mI2CLight->i2c_write_byte(0x2, module1_val);
-
-    mI2CLight->i2c_read(0x3, &module2_val);
-    
-    module2_val &= ~(1 << 0);
-    mI2CLight->i2c_write_byte(0x3, module2_val);
-    module2_val &= ~(1 << 1);
-    mI2CLight->i2c_write_byte(0x3, module2_val);
-    module2_val &= ~(1 << 2);
-    mI2CLight->i2c_write_byte(0x3, module2_val);
-    module2_val &= ~(1 << 3);
-    mI2CLight->i2c_write_byte(0x3, module2_val);
 }
 
 
@@ -573,98 +572,17 @@ void VolumeManager::powerOffAllModule()
  */
 void VolumeManager::powerOnOffModuleByIndex(bool bOnOff, int iIndex)
 {
-	u8 module1_val = 0;
-	u8 module2_val = 0; 
-    int iRet1 = -1, iRet2 = -1;
 
-    iRet1 = mI2CLight->i2c_read(0x2, &module1_val);
-    if (iRet1) {
-        LOGERR(TAG, " I2c read 0x77 -> 0x2 Failed");
-        return;
-    }
-
-    iRet2 = mI2CLight->i2c_read(0x3, &module2_val);		
-    if (iRet2) {
-        LOGERR(TAG, " I2c read 0x77 -> 0x3 Failed");
-        return;
-    }
-
-    switch (iIndex) {
-        case 1: {
-            if (bOnOff) {
-        		module1_val |= (1 << 7);
-            } else {
-        		module1_val &= ~(1 << 7);
-            }
-	    	mI2CLight->i2c_write_byte(0x2, module1_val);
-            break;
-        }
-
-        case 2: {
-            if (bOnOff) {   /* On */
-        		module1_val |= (1 << 6);
-            } else {    /* Off */
-        		module1_val &= ~(1 << 6);
-            }
-            mI2CLight->i2c_write_byte(0x2, module1_val);
-            break;
-        }
-
-        case 3: {
-            if (bOnOff) {
-        		module2_val |= (1 << 3);
-            } else {
-        		module2_val &= ~(1 << 3);
-            }
-	    	mI2CLight->i2c_write_byte(0x3, module2_val);
-            break;
-        }
-
-        case 4: {
-            if (bOnOff) {
-        		module2_val |= (1 << 2);
-            } else {
-        		module2_val &= ~(1 << 2);
-            }
-	    	mI2CLight->i2c_write_byte(0x3, module2_val);
-            break;
-        }
-
-        case 5: {
-            if (bOnOff) {
-        		module2_val |= (1 << 1);
-            } else {
-        		module2_val &= ~(1 << 1);
-            }
-	    	mI2CLight->i2c_write_byte(0x3, module2_val);
-            break;
-        }
-
-        case 6: {
-            if (bOnOff) {
-        		module2_val |= (1 << 0);
-            } else {
-        		module2_val &= ~(1 << 0);
-            }
-	    	mI2CLight->i2c_write_byte(0x3, module2_val);            
-            break;
-        }
-    }
 }
 
 
-/*
- * usb1 / 1-3: 3,4,5    - gpio457
- * usb1 / 1-2: 6,1,2    - gpio461
- */
-
-const string moduleHubBasePath = "/sys/devices/3530000.xhci/usb1";
-
-
-bool VolumeManager::waitHub1RestComplete()
+bool VolumeManager::waitHubRestComplete()
 {
-    string hub1Path = moduleHubBasePath + "/1-2";
-    if (access(hub1Path.c_str(), F_OK) == 0) {
+    const std::string moduleHubBasePath = "/sys/devices/3530000.xhci/usb2";
+    std::string hub1Path = moduleHubBasePath + "/2-2";
+    std::string hub2Path = moduleHubBasePath + "/2-3";
+
+    if (!access(hub1Path.c_str(), F_OK) && !access(hub2Path.c_str(), F_OK)) {
         return true;
     } else {
         return false;
@@ -672,42 +590,74 @@ bool VolumeManager::waitHub1RestComplete()
 }
 
 
-bool VolumeManager::waitHub2RestComplete()
+enum {
+    NOTIFY_MODULE_ENTER_UDISK_MODE = 0x11,
+    NOTIFY_MODULE_EXIT_UDISK_MODE
+};
+
+void VolumeManager::notifyModuleEnterExitUdiskMode(int iMode)
 {
-    string hub2Path = moduleHubBasePath + "/1-3";
-    if (access(hub2Path.c_str(), F_OK) == 0) {
-        return true;
-    } else {
-        return false;
-    }    
+    switch (iMode) {
+        case NOTIFY_MODULE_ENTER_UDISK_MODE: {
+            system("echo out > /sys/class/gpio/gpio426/direction");
+            system("echo out > /sys/class/gpio/gpio457/direction");
+            system("echo 1 > /sys/class/gpio/gpio426/value");   /* gpio426 = 1 */
+            system("echo 0 > /sys/class/gpio/gpio457/value");   /* gpio457 = 0 */
+            break;
+        }
+
+        case NOTIFY_MODULE_EXIT_UDISK_MODE: {
+            system("echo out > /sys/class/gpio/gpio426/direction");
+            system("echo out > /sys/class/gpio/gpio457/direction");
+            system("echo 0 > /sys/class/gpio/gpio426/value");   /* gpio426 = 1 */
+            system("echo 1 > /sys/class/gpio/gpio457/value");   /* gpio457 = 0 */            
+            break;
+        }
+
+        default: {
+            LOGERR(TAG, "Invalid Mode given: [%d]", iMode);
+        }
+    }
+}
+
+void VolumeManager::resetHub(int iResetGpio, int iResetLevel, int iResetDuration)
+{
+	int iRet = gpio_request(iResetGpio);
+	if (iRet) {
+		LOGERR(TAG, "request gpio failed[%d]", iResetGpio);
+	}
+
+	if (RESET_HIGH_LEVEL == iResetLevel) {	/* 高电平复位 */
+		gpio_direction_output(iResetGpio, 1);
+		msg_util::sleep_ms(iResetDuration);
+		gpio_direction_output(iResetGpio, 0);
+	} else {	/* 低电平复位 */
+		gpio_direction_output(iResetGpio, 0);
+		msg_util::sleep_ms(iResetDuration);
+		gpio_direction_output(iResetGpio, 1);
+	}
 }
 
 
-/*
- * HUB1 - gpio461(6,1,2)
- */
-void VolumeManager::resetHub1()
+void VolumeManager::modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel)
 {
-    system("echo 1 > /sys/class/gpio/gpio303/value");
-    system("echo in > /sys/class/gpio/gpio303/direction");
-    msg_util::sleep_ms(500);
-    system("echo out > /sys/class/gpio/gpio303/direction");
-    system("echo 0 > /sys/class/gpio/gpio303/value");
-    msg_util::sleep_ms(500);
-}
+	int pCtlGpio = pVol->iPwrCtlGpio;
+	
+	LOGDBG(TAG, "[gpio%d power %s]", pCtlGpio, (onOff == true) ? "on": "off");
 
-
-/*
- * HUB2 - gpio457(3,4,5)
- */
-void VolumeManager::resetHub2()
-{
-    system("echo 1 > /sys/class/gpio/gpio303/value");
-    system("echo in > /sys/class/gpio/gpio303/direction");
-    msg_util::sleep_ms(500);
-    system("echo out > /sys/class/gpio/gpio303/direction");
-    system("echo 0 > /sys/class/gpio/gpio303/value");
-    msg_util::sleep_ms(500);
+	if (true == onOff) {
+		if (iPwrOnLevel) {
+			gpio_direction_output(pCtlGpio, 1);
+		} else {
+			gpio_direction_output(pCtlGpio, 0);
+		}
+	} else {
+		if (iPwrOnLevel) {
+			gpio_direction_output(pCtlGpio, 0);
+		} else {
+			gpio_direction_output(pCtlGpio, 1);
+		}
+	}
 }
 
 
@@ -751,14 +701,17 @@ bool VolumeManager::checkVolIsMountedByIndex(int iIndex, int iTimeout)
     Volume* pVol = NULL;
     pVol = getUdiskVolByIndex(iIndex);
 
-    while (iTimeout > 0) {
-        msg_util::sleep_ms(1000);
-        bResult = isMountpointMounted(pVol->pMountPath);
-        if (bResult) {
-            break;
-        } else {
+    if (pVol) {
+        while (iTimeout > 0) {
             msg_util::sleep_ms(1000);
-            iTimeout -= 1000;
+            bResult = isMountpointMounted(pVol->pMountPath);
+            if (bResult) {
+                bResult = true;
+                break;
+            } else {
+                msg_util::sleep_ms(1000);
+                iTimeout -= 1000;
+            }
         }
     }
     return bResult;
@@ -771,9 +724,9 @@ bool VolumeManager::checkVolIsMountedByIndex(int iIndex, int iTimeout)
  */
 bool VolumeManager::enterUdiskMode()
 {
-
     struct timeval enterTv, exitTv;
-    int iEnterTotalLen = 15;        /* 将整个进入U盘的周期定为15s */
+    int iEnterTotalLen = 60;        /* 将整个进入U盘的周期定为15s */
+    int iResetHubRetry = 0;
 
     /* 1.检查所有卷的状态，如果非IDLE状态（MOUNTED状态），先进行强制卸载操作
      * 1.将gpio426, gpio457设置为1，0
@@ -787,39 +740,40 @@ bool VolumeManager::enterUdiskMode()
     setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_UDISK);
     checkAllUdiskIdle();
 
-    system("echo out > /sys/class/gpio/gpio426/direction");
-    system("echo out > /sys/class/gpio/gpio457/direction");
-    system("echo 1 > /sys/class/gpio/gpio426/value");   /* gpio426 = 1 */
-    system("echo 0 > /sys/class/gpio/gpio457/value");   /* gpio457 = 0 */
-
-
-#ifdef ENABLE_USB_NEW_UDISK_POWER_ON
-
+    /* 通知模组以U盘模式启动 */
+    notifyModuleEnterExitUdiskMode(NOTIFY_MODULE_ENTER_UDISK_MODE);
 
     mAllowExitUdiskMode = false;
 
-    system("power_manager power_off");
-    msg_util::sleep_ms(2000);
-    
-    if (waitHub1RestComplete()) {
-        LOGDBG(TAG, " -------------- Hub1 Reset Complete");
+    /* 给所有模组断电 */
+    for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
+        modulePwrCtl(getUdiskVolByIndex(i+1), false, 1);
+        msg_util::sleep_ms(500);
     }
+
+    do {
+        resetHub(303, RESET_HIGH_LEVEL, 300);
+        if (waitHubRestComplete()) {
+            LOGDBG(TAG, " -------------- Hub Reset Complete");
+            break;
+        }
+        msg_util::sleep_ms(1000);        
+    } while (iResetHubRetry++ < 3);
     
     gettimeofday(&enterTv, NULL);   
 
-    /* 给模组上电 */
-    // int iRetry;
-    int iModulePowerOnTimes;
-
-    for (int i = 8; i >= 1; i--) {
-        for (iModulePowerOnTimes = 0; iModulePowerOnTimes < 3; iModulePowerOnTimes++) {
+    for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
+        int iModulePowerOnTimes = 0;
+        for (; iModulePowerOnTimes < 3; iModulePowerOnTimes++) {
             LOGDBG(TAG, " Power on for device[%d]", i);
-            powerOnOffModuleByIndex(true, i);        /* 6, 1, 2 */
-            if (checkVolIsMountedByIndex(i)) {
+            modulePwrCtl(getUdiskVolByIndex(i+1), true, 1);            
+            if (checkVolIsMountedByIndex(i+1)) {    /* 卷index是从1开始的(非0) */
+                LOGDBG(TAG, "--> Module[%d] Mounted Success!", i+1);
                 break;
             } else {
-                powerOnOffModuleByIndex(false, i);  /* 给模组下电 */
-                msg_util::sleep_ms(2000);
+                LOGERR(TAG, "--> Module[%d] Mounted Failed, Restart here", i+1);
+                modulePwrCtl(getUdiskVolByIndex(i+1), false, 1); /* 给模组下电 */
+                msg_util::sleep_ms(500);
             }
         }
 
@@ -827,16 +781,8 @@ bool VolumeManager::enterUdiskMode()
             LOGERR(TAG, " Mount Module[%d] Failed, What's wrong!", i);
         }
     }
-
-#if 0
-    for (int i = 0; i < 3; i++) {
-        powerOnModuleByIndex(iHub2Index[i]);        /* 6, 1, 2 */
-        msg_util::sleep_ms(1000);
-    }
-#endif    
-
-
     gettimeofday(&exitTv, NULL);   
+    
     int iNeedSleepTime = iEnterTotalLen - (exitTv.tv_sec - enterTv.tv_sec);
     LOGDBG(TAG, " Should Sleep time: %ds", iNeedSleepTime);
     if (iNeedSleepTime > 0) {
@@ -844,18 +790,6 @@ bool VolumeManager::enterUdiskMode()
     }
 
     return checkEnterUdiskResult();
-
-#else
-
-    /* 依次给模组上电 */
-    for (int i = 1; i <= 6; i++) {
-        powerOnModuleByIndex(i);
-        msg_util::sleep_ms(1000);
-    }
-
-#endif   
-
-    return true;
 }
 
 
@@ -1085,8 +1019,6 @@ void VolumeManager::unmountAll()
     system("echo 1 > /sys/class/gpio/gpio478/value");   /* gpio456 = 0 */
 
     msg_util::sleep_ms(5000);
-
-    powerOffAllModule();
 
     system("power_manager power_off");
 }
@@ -1618,13 +1550,14 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
                     if (mountVolume(tmpVol)) {
                         LOGERR(TAG, "mount device[%s -> %s] failed, reason [%d]", tmpVol->cDevNode, tmpVol->pMountPath, errno);
                         iResult = -1;
+                        tmpVol->iVolState = VOLUME_STATE_NOMEDIA;                        
                     } else {
                         LOGDBG(TAG, "mount device[%s] on path [%s] success", tmpVol->cDevNode, tmpVol->pMountPath);
 
                         tmpVol->iVolState = VOLUME_STATE_MOUNTED;
-
                         if ((getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) && volumeIsTfCard(tmpVol)) {
-                            mHandledAddUdiskVolCnt++;  
+                            mHandledAddUdiskVolCnt++;
+                            LOGDBG(TAG, "---> mHandledAddUdiskVolCnt = [%d]", mHandledAddUdiskVolCnt);
                         }
 
                         /* 如果是TF卡,不需要做如下操作 */
@@ -1665,6 +1598,7 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
 
         /* 移除卷 */
         case NETLINK_ACTION_REMOVE: {
+
             tmpVol = isSupportedDev(evt->getBusAddr());            
             if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE)) {  /* 该卷被使能 */ 
 
@@ -1683,12 +1617,11 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
 
                     #ifdef USE_TRAN_SEND_MSG                        
                         sendCurrentSaveListNotify();
-                        
                         /* 发送存储设备移除,及当前存储设备路径的消息 */
                         sendDevChangeMsg2UI(VOLUME_ACTION_REMOVE, tmpVol->iVolSubsys, getCurSavepathList());
                     #endif
                     }
-                } else {
+                } else {    /* 卸载失败,卷仍处于挂载状态 */
                     LOGDBG(TAG, " Unmount Failed!!");
                     iResult = -1;
                 }
@@ -1966,22 +1899,7 @@ void VolumeManager::sendSavepathChangeNotify(const char* pSavePath)
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
     ProtoManager* pm = ProtoManager::Instance();
-
-    #if 0
-    sp<SAVE_PATH> mSavePath = sp<SAVE_PATH>(new SAVE_PATH());    
-    sp<ARMessage> msg = mNotify->dup();
-    msg->setWhat(MSG_SAVE_PATH_CHANGE);   
-
-    savePathRoot["path"] = pSavePath;    
-    savePathStr = writer.write(savePathRoot);
-
-
-    snprintf(mSavePath->path, sizeof(mSavePath->path), "%s", savePathStr.c_str());
-    msg->set<sp<SAVE_PATH>>("save_path", mSavePath);
-    fifo::getSysTranObj()->postTranMessage(msg);
-    #else 
     pm->sendSavePathChangeReq(pSavePath);
-    #endif
 }
 
 
@@ -2017,17 +1935,7 @@ void VolumeManager::sendCurrentSaveListNotify()
 
     LOGDBG(TAG, "Current Save List: %s", devListStr.c_str());
     
-    #if 0
-    sp<ARMessage> msg = mNotify->dup();
-    sp<SAVE_PATH> mSavePath = sp<SAVE_PATH>(new SAVE_PATH());
-
-    msg->setWhat(MSG_UPDATE_CURRENT_SAVE_LIST);   
-    snprintf(mSavePath->path, sizeof(mSavePath->path), "%s", devListStr.c_str());
-    msg->set<sp<SAVE_PATH>>("dev_list", mSavePath);
-    fifo::getSysTranObj()->postTranMessage(msg);
-    #else 
     pm->sendStorageListReq(devListStr.c_str());
-    #endif
 }
 
 #endif
@@ -2412,7 +2320,7 @@ int VolumeManager::mountVolume(Volume* pVol)
 
         LOGDBG(TAG, " Check over, Need repair Volume now");
         /* 修复一下卡 */
-        repairVolume(pVol);
+        // repairVolume(pVol);
     }
     #endif
 
@@ -2500,6 +2408,7 @@ int VolumeManager::mountVolume(Volume* pVol)
             LOGERR(TAG, "Unable to create LOST.DIR (%s)", strerror(errno));
         }
 
+#if 0
         /* 对于TF卡，挂载成功后，根据标志再次挂载成只读的 */
         if ((pMountFlag && !strcmp(pMountFlag, "true")) && volumeIsTfCard(pVol)) {
             const char *args[5];
@@ -2511,6 +2420,7 @@ int VolumeManager::mountVolume(Volume* pVol)
             forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
             LOGDBG(TAG, " Step 2 Mount device to Read Only device");
         }
+#endif        
         return 0;
     } else {
         LOGERR(TAG, ">>> Mount Volume failed (unknown exit code %d)", status);

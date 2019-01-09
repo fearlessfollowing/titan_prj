@@ -247,6 +247,7 @@ void oled_module::SSD_Set_Segment_Remap(u8 attr)
     } // Set Segment Normal
 }
 
+
 /*----------------------------------------------------------------------------*/
 // SSD1306
 // attr:    1 = Scan from COM[N-1] to COM0
@@ -259,6 +260,7 @@ void oled_module::SSD_Set_Common_Remap(u8 attr)
         ssd1306_write_cmd(SSD_SET_COM_SCAN_NORMAL);
     } // Normal
 }
+
 
 /*----------------------------------------------------------------------------*/
 // SSD1306
@@ -445,14 +447,13 @@ void oled_module::fill(const u8 x, const u8 y, const u8 w, const u8 h,const u8 d
 void oled_module::ssd1306_fill(const u8 dat)
 {
 
-
 #ifdef HORIZONAL_ADDRESS_MODE
     SSD_Set_RAM_Address(0, 0);
 #endif
 
     memcpy(ucBufLast, ucBuf, MAX_BUF);
 
-#if 0
+#if 1
     u8 pag, col;
     for (pag = 0; pag < PAGE_MAX; pag++) {
 

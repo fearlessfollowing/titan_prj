@@ -17,6 +17,7 @@
 static int gpio_write_value(const char *pathname, const char *buf, size_t count)
 {
     int fd;
+
     if ((fd = open(pathname, O_WRONLY)) == -1) {
         LOGDBG(TAG, "gpio_write_value open path %s buf %s count %zd error", pathname, buf, count);
         return -1;
@@ -42,12 +43,19 @@ int gpio_is_requested(unsigned int gpio)
     return (rv == 0);
 }
 
+
 int gpio_request(unsigned int gpio)
 {
-    char buffer[16];
-    snprintf(buffer, sizeof(buffer), "%d\n", gpio);
-    return gpio_write_value(GPIO_EXPORT, buffer, strlen(buffer));
+    if (gpio_is_requested(gpio) > 0) {
+        return 0;
+    } else {
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "%d\n", gpio);
+        return gpio_write_value(GPIO_EXPORT, buffer, strlen(buffer));
+    }
 }
+
+
 
 int gpio_free(unsigned int gpio)
 {
@@ -63,6 +71,7 @@ int gpio_free(unsigned int gpio)
     snprintf(buffer, sizeof(buffer), "%d\n", gpio);
     return gpio_write_value(GPIO_UNEXPORT, buffer, strlen(buffer));
 }
+
 
 int gpio_direction_input(unsigned int gpio)
 {

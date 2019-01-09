@@ -1661,7 +1661,7 @@ static PicVideoCfg vid8K_30F_3D_Cfg = {
 	stNorIcon: 			{	/* 未选中时的图标列表 */
 		vid_8K30F3D_Nor_78x16,
 	},
-    pNote:              "11K|30F|3D",
+    pNote:              "11K|30F",
     bDispType:          false,
 };
 

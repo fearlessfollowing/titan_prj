@@ -143,6 +143,7 @@ typedef struct stVol {
     const char*     pBusAddr;                           /* 总线地址: USB - "1-2.3" */
     const char*     pMountPath;                         /* 挂载点：挂载点与总线地址是一一对应的 */
 
+    int             iPwrCtlGpio;
     char            cVolName[COM_NAME_MAX_LEN];         /* 卷的名称 */
     char            cDevNode[COM_NAME_MAX_LEN];         /* 设备节点名: 如'/dev/sdX' */
     char            cVolFsType[COM_NAME_MAX_LEN];
@@ -156,6 +157,8 @@ typedef struct stVol {
     u64             uTotal;			                    /* 总容量:  (单位为MB) */
     u64             uAvail;			                    /* 剩余容量:(单位为MB) */
 	int 	        iSpeedTest;		                    /* 1: 已经测速通过; 0: 没有进行测速或测速未通过 */
+
+
     Mutex           mVolLock;                           /* 访问卷的互踩锁 */
 } Volume;
 
@@ -165,6 +168,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-1.1",      /* USB3.0设备 */
         .pMountPath     = "/mnt/sdcard",
+        .iPwrCtlGpio    = 0,
         .cVolName       = {0},                      /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -183,6 +187,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_USB,
         .pBusAddr       = "usb2-1.2,usb1-2.1",           /* 接3.0设备时的总线地址 */
         .pMountPath     = "/mnt/udisk1",
+        .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},  
         .cVolFsType     = {0},
@@ -201,6 +206,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_USB,
         .pBusAddr       = "usb2-3",           /* 3.0 */
         .pMountPath     = "/mnt/udisk2",
+        .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -221,6 +227,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.4",                         
         .pMountPath     = "/mnt/mSD1",
+        .iPwrCtlGpio    = 243,
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -241,6 +248,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.1",
         .pMountPath     = "/mnt/mSD2",
+        .iPwrCtlGpio    = 244,        
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -261,6 +269,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.2",
         .pMountPath     = "/mnt/mSD3",
+        .iPwrCtlGpio    = 245,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -281,6 +290,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.3",
         .pMountPath     = "/mnt/mSD4",
+        .iPwrCtlGpio    = 246,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -301,6 +311,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.4",
         .pMountPath     = "/mnt/mSD5",
+        .iPwrCtlGpio    = 247,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -321,6 +332,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.1",
         .pMountPath     = "/mnt/mSD6",
+        .iPwrCtlGpio    = 240,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -343,6 +355,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.2",
         .pMountPath     = "/mnt/mSD7",
+        .iPwrCtlGpio    = 241,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -363,6 +376,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.3",
         .pMountPath     = "/mnt/mSD8",
+        .iPwrCtlGpio    = 242,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
@@ -393,6 +407,37 @@ enum {
     VOL_mSD_OK = 0,
     VOL_mSD_WP = 1,
     VOL_mSD_LOST = 2,
+};
+
+
+typedef struct stPwrCtl {
+	int 	iModulePwrCtl1;			/* 控制模组1上电的GPIO */
+	int 	iModulePwrCtl2;			/* 控制模组2上电的GPIO */
+	int 	iModulePwrCtl3;			/* 控制模组3上电的GPIO */
+	int 	iModulePwrCtl4;			/* 控制模组4上电的GPIO */
+	int 	iModulePwrCtl5;			/* 控制模组5上电的GPIO */
+	int 	iModulePwrCtl6;			/* 控制模组6上电的GPIO */
+	int 	iModulePwrCtl7;			/* 控制模组7上电的GPIO */
+	int 	iModulePwrCtl8;			/* 控制模组8上电的GPIO */
+
+	int		iResetHubNum;			/* 使用的HUB个数 */
+	int		iHub1ResetGpio;			/* HUB1复位的GPIO */
+	int		iHub2ResetGpio;			/* HUB2复位的GPIO */
+	int 	iHubResetLevel;			/* 复位的电平级别: 1 - 高电平复位; 0 - 低电平复位 */
+	int		iHubResetDuration;		/* Hub复位的时长(单位为ms) */
+
+	int		iModuleNum;				/* 系统中模组的个数 */
+	int		iModulePwrOnLevel;		/* 模组上电的电平级别: 1:高电平有效; 0:低电平有效 */
+	int 	iModulePwrInterval;		/* 模组间上电间隔 */
+
+	char	cPwrOnSeq[8];			/* 模组的上电顺序 */
+} PwrCtl;
+
+
+enum {
+	RESET_LOW_LEVEL = 0,
+	RESET_HIGH_LEVEL = 1,
+	RESET_MAX_LEVEL,
 };
 
 
@@ -527,8 +572,6 @@ public:
 
 
     void        powerOnOffModuleByIndex(bool bOnOff, int iIndex);
-    void        powerOffAllModule();
-
 
     u32         calcTakeLiveRecLefSec(Json::Value& jsonCmd);
 
@@ -630,6 +673,9 @@ private:
 
     bool                    mAllowExitUdiskMode;
 
+    PwrCtl                  mModulePwrCtrl;
+
+
 
                             VolumeManager();
 
@@ -656,15 +702,17 @@ private:
     bool                    formatVolume2Ext4(Volume* pVol);
 
 
-    void                    resetHub1();
-    void                    resetHub2();
+    void                    resetHub(int iResetGpio, int iResetLevel, int iResetDuration);
 
-    bool                    waitHub1RestComplete();
-    bool                    waitHub2RestComplete();
+    void                    resetHub();
+    bool                    waitHubRestComplete();
+
+    void                    notifyModuleEnterExitUdiskMode(int iMode);
 
     Volume*                 getUdiskVolByIndex(u32 iIndex);
     bool                    checkVolIsMountedByIndex(int iIndex, int iTimeout = 6000);
 
+    void                    modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel);   
 public:
     void                    runFileMonitorListener();
 };

@@ -115,7 +115,8 @@ bool BatteryManager::isBatteryExist()
     u8 batStaus[2] = {0};
     bool bExist = false;
     if (mI2c->i2c_read(BQ40Z50_CMD_BATTERYSTATUS, batStaus, 2)) {
-        LOGERR(TAG, "Communicate with bq40z50 failed!");
+        // LOGERR(TAG, "Communicate with bq40z50 failed!");
+        bExist = false;
     } else {
         bExist = true;
     }
@@ -162,7 +163,7 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
      * 2.电池存在
      */
     if (mI2c->i2c_read(BQ40Z50_CMD_BAT_MODE, (u8*)&uBatMode, 2)) {
-        LOGERR(TAG, "--> Read bq40z50 work mode failed, Maybe battery not exist");
+        // LOGERR(TAG, "--> Read bq40z50 work mode failed, Maybe battery not exist");
         pBatInfo->bIsExist = false;
         return GET_BATINFO_ERR_NO_EXIST;            /* 电池不存在 */
     } else {

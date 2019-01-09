@@ -133,6 +133,7 @@ COM_FLAGS +=  ' -DENABLE_VOLUME_MANAGER_USE_NETLINK '
 # 使能设备文件删除监听线程
 # COM_FLAGS += ' -DENABLE_REMOVE_LISTEN_THREAD '
 
+
 # 使能跳过测速
 COM_FLAGS += ' -DENABLE_SKIP_SPEED_TEST '
 
@@ -158,7 +159,7 @@ COM_FLAGS += ' -DBATTERY_USE_BQ40Z50 '
 
 
 # 调试Netlink消息
-COM_FLAGS += ' -DENABLE_DEBUG_NETLINK_MSG '
+# COM_FLAGS += ' -DENABLE_DEBUG_NETLINK_MSG '
 
 COM_FLAGS += ' -fexceptions -Wall -Wunused-variable -g '
 
