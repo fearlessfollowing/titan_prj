@@ -1360,16 +1360,18 @@ void VolumeManager::volWorkerEntry()
                     }
                     break;
                 }
+
+                case NETLINK_ACTION_EXIT: {
+                    LOGDBG(TAG, "--> volWorkerEntry Exit Event");
+                    return;
+                }
             }            
-        
         } else {
             LOGDBG(TAG, "volWorkerEntry: Nothing to do, just relax some time");
             msg_util::sleep_ms(500);
         }
     }
-
     LOGDBG(TAG, "-----> Volume Worker Thread Exit here <------");
-
 }
 
 
@@ -1657,123 +1659,9 @@ int VolumeManager::handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt)
      */
 
     AutoMutex _l(gHandleBlockEvtLock);
-
     LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", pEvt->getAction(), pEvt->getBusAddr());
-    
-    Volume* tmpVol = NULL;
-    int iResult = 0;
-
-#if 0
-    switch (pEvt->getAction()) {
-
-        case NETLINK_ACTION_ADD: {
-
-            /* 1.检查，检查该插入的设备是否在系统的支持范围内 */
-            tmpVol = isSupportedDev(pEvt->getBusAddr());
-            if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE)) {
-
-                /* 2.检查卷对应的槽是否已经被挂载，如果已经挂载说明上次卸载出了错误
-                 * 需要先进行强制卸载操作否则会挂载不上
-                 */
-
-                if (isValidFs(pEvt->getDevNodeName(), tmpVol)) {
-                    if (tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
-                        LOGERR(TAG, " Volume Maybe unmount failed, last time");
-                        unmountVolume(tmpVol, pEvt, true);
-                        tmpVol->iVolState = VOLUME_STATE_INIT;
-                    }
-
-                    LOGDBG(TAG, " dev[%s] mount point[%s]", tmpVol->cDevNode, tmpVol->pMountPath);
-
-                    if (mountVolume(tmpVol)) {
-                        LOGERR(TAG, "mount device[%s -> %s] failed, reason [%d]", tmpVol->cDevNode, tmpVol->pMountPath, errno);
-                        iResult = -1;
-                        tmpVol->iVolState = VOLUME_STATE_NOMEDIA;                        
-                    } else {
-                        LOGDBG(TAG, "mount device[%s] on path [%s] success", tmpVol->cDevNode, tmpVol->pMountPath);
-
-                        tmpVol->iVolState = VOLUME_STATE_MOUNTED;
-                        if ((getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) && volumeIsTfCard(tmpVol)) {
-                            mHandledAddUdiskVolCnt++;
-                            LOGDBG(TAG, "---> mHandledAddUdiskVolCnt = [%d]", mHandledAddUdiskVolCnt);
-                        }
-
-                        /* 如果是TF卡,不需要做如下操作 */
-                        if (volumeIsTfCard(tmpVol) == false) {
-
-                            string testSpeedPath = tmpVol->pMountPath;
-                            testSpeedPath + "/.pro_suc";
-    
-                            if (access(testSpeedPath.c_str(), F_OK) == 0) {
-                                tmpVol->iSpeedTest = 1;
-                            } else {
-                                tmpVol->iSpeedTest = 0;
-                            }
-                            setVolCurPrio(tmpVol, pEvt);
-
-                            setSavepathChanged(VOLUME_ACTION_ADD, tmpVol);
-
-                            LOGDBG(TAG, "-------- Current save path: %s", getLocalVolMountPath());
-
-                        #ifdef USE_TRAN_SEND_MSG
-                            sendCurrentSaveListNotify();
-                            sendDevChangeMsg2UI(VOLUME_ACTION_ADD, tmpVol->iVolSubsys, getCurSavepathList());
-                        #endif
-
-                        /* 当有卡插入并且成功挂载后,扫描卡中的文件并写入数据库中 */
-                        #ifdef ENABLE_CACHE_SERVICE
-                            CacheService::Instance()->scanVolume(tmpVol->pMountPath);
-                        #endif 
-
-                        }
-                    }
-                }
-            } else {
-                LOGDBG(TAG, " Not Support Device Addr[%s] or Slot Not Enable[%d]", pEvt->getBusAddr(), tmpVol->iVolSlotSwitch);
-            }
-            break;
-        }
-
-        /* 移除卷 */
-        case NETLINK_ACTION_REMOVE: {
-
-            tmpVol = isSupportedDev(pEvt->getBusAddr());            
-            if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE)) {  /* 该卷被使能 */ 
-
-                if ((getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) && volumeIsTfCard(tmpVol)) {
-                    mHandledRemoveUdiskVolCnt++;  /* 不能确保所有的卷都能挂载(比如说卷已经损坏) */
-                }
-
-                iResult = unmountVolume(tmpVol, pEvt, true);
-                if (!iResult) {    /* 卸载卷成功 */
-
-                    tmpVol->iVolState = VOLUME_STATE_INIT;
-                    
-                    if (volumeIsTfCard(tmpVol) == false) {
-                        setVolCurPrio(tmpVol, pEvt); /* 重新修改该卷的优先级 */
-                        setSavepathChanged(VOLUME_ACTION_REMOVE, tmpVol);   /* 检查是否修改当前的存储路径 */
-
-                    #ifdef USE_TRAN_SEND_MSG                        
-                        sendCurrentSaveListNotify();
-                        /* 发送存储设备移除,及当前存储设备路径的消息 */
-                        sendDevChangeMsg2UI(VOLUME_ACTION_REMOVE, tmpVol->iVolSubsys, getCurSavepathList());
-                    #endif
-                    }
-                } else {    /* 卸载失败,卷仍处于挂载状态 */
-                    LOGDBG(TAG, " Unmount Failed!!");
-                    iResult = -1;
-                }
-            } else {
-                LOGERR(TAG, " unmount volume Failed, Reason = %d", iResult);
-            }
-            break;
-        }
-    }  
-
-#else 
     postEvent(pEvt);
-#endif 
-    return iResult;  
+    return 0;  
 }
 
 
