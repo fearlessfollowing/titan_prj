@@ -2,6 +2,7 @@
 #define _NETLINKHANDLER_H
 
 #include "NetlinkListener.h"
+#include <common/sp.h>
 
 class NetlinkHandler: public NetlinkListener {
 
@@ -13,7 +14,7 @@ public:
     int stop(void);
 
 protected:
-    virtual void onEvent(NetlinkEvent *evt);
+    virtual void onEvent(std::shared_ptr<NetlinkEvent> pEvt);
 };
 
 

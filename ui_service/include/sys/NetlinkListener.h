@@ -1,6 +1,7 @@
 #ifndef _NETLINKLISTENER_H
 #define _NETLINKLISTENER_H
 
+#include <memory>
 #include "SocketListener.h"
 
 class NetlinkEvent;
@@ -28,7 +29,8 @@ public:
 
 protected:
     virtual bool onDataAvailable(SocketClient *cli);
-    virtual void onEvent(NetlinkEvent *evt) = 0;
+    // virtual void onEvent(NetlinkEvent *evt) = 0;
+    virtual void onEvent(std::shared_ptr<NetlinkEvent> pEvt) = 0;    
 };
 
 #endif

@@ -28,6 +28,8 @@
 #include <hw/ins_i2c.h>
 #include <json/json.h>
 
+#include <thread>
+
 #include <sys/Mutex.h>
 
 enum {
@@ -166,7 +168,7 @@ typedef struct stVol {
 static Volume gSysVols[] = {
     {   /* SD卡 - 3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb2-1.1",      /* USB3.0设备 */
+        .pBusAddr       = "usb2-1.1,usb1-2.1",      /* USB3.0设备,或者USB2.0设备 */
         .pMountPath     = "/mnt/sdcard",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},                      /* 动态生成 */
@@ -185,7 +187,7 @@ static Volume gSysVols[] = {
 
     {   /* Udisk1 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
-        .pBusAddr       = "usb2-1.2,usb1-2.1",           /* 接3.0设备时的总线地址 */
+        .pBusAddr       = "usb2-1.2,usb1-2.2",           /* 接3.0设备时的总线地址 */
         .pMountPath     = "/mnt/udisk1",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
@@ -409,6 +411,7 @@ enum {
     VOL_mSD_LOST = 2,
 };
 
+#if 0
 
 typedef struct stPwrCtl {
 	int 	iModulePwrCtl1;			/* 控制模组1上电的GPIO */
@@ -432,12 +435,18 @@ typedef struct stPwrCtl {
 
 	char	cPwrOnSeq[8];			/* 模组的上电顺序 */
 } PwrCtl;
-
+#endif
 
 enum {
 	RESET_LOW_LEVEL = 0,
 	RESET_HIGH_LEVEL = 1,
 	RESET_MAX_LEVEL,
+};
+
+
+enum {
+    NOTIFY_MODULE_ENTER_UDISK_MODE = 0x11,
+    NOTIFY_MODULE_EXIT_UDISK_MODE
 };
 
 
@@ -470,11 +479,11 @@ public:
     /*
      * 处理块设备事件的到来
      */
-    int         handleBlockEvent(NetlinkEvent *evt);
+    int         handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt);
     void        unmountCurLocalVol();
 
     void        listVolumes();
-    int         unmountVolume(Volume* pVol, NetlinkEvent* pEvt, bool force);
+    int         unmountVolume(Volume* pVol, std::shared_ptr<NetlinkEvent> pEvt, bool force);
     int         formatVolume(Volume* pVol, bool wipe = false);
     
     void        disableVolumeManager(void) { mVolManagerDisabled = 1; }
@@ -671,23 +680,39 @@ private:
     pthread_t               mFileMonitorThread;
     int                     mFileMonitorPipe[2];
 
+    std::thread             mVolWorkerThread;
+
     bool                    mAllowExitUdiskMode;
-
-    PwrCtl                  mModulePwrCtrl;
-
-
 
                             VolumeManager();
 
     bool                    initFileMonitor();
     bool                    deInitFileMonitor();
 
+    /*
+     * 工作线程
+     */
+    void                    startWorkThread();
+    void                    stopWorkThread();
+    void                    volWorkerEntry();
+    std::shared_ptr<NetlinkEvent>   getEvent();
+    // std::vector<std::shared_ptr<NetlinkEvent>> getEvents();
+    void                    postEvent(std::shared_ptr<NetlinkEvent> pEvt);
+
+
+    int                     mCtrlPipe[2];   // 0 -- read , 1 -- write
+    std::vector<std::shared_ptr<NetlinkEvent>>  mEventVec;
+    std::mutex              mEvtLock;
+
+
+
+
     int                     mountVolume(Volume* pVol);
 
     int                     doUnmount(const char *path, bool force);
     bool                    extractMetadata(const char* devicePath, char* volFsType, int iLen);
 
-    void                    setVolCurPrio(Volume* pVol, NetlinkEvent* pEvt);
+    void                    setVolCurPrio(Volume* pVol, std::shared_ptr<NetlinkEvent> pEvt);
     void                    setSavepathChanged(int iAction, Volume* pVol);
 
     bool                    checkMountPath(const char* mountPath);
@@ -710,6 +735,7 @@ private:
     void                    notifyModuleEnterExitUdiskMode(int iMode);
 
     Volume*                 getUdiskVolByIndex(u32 iIndex);
+
     bool                    checkVolIsMountedByIndex(int iIndex, int iTimeout = 6000);
 
     void                    modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel);   

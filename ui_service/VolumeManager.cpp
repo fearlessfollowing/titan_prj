@@ -23,6 +23,7 @@
 **
 ** 426(1)/457(0) -> 模组进入U盘模式
 ** 426(0)/547(0) -> 模组进入正常模式
+** V3.2         Skymixos        2019年1月10日   卷的挂载卸载交由独立的线程来操作
 ******************************************************************************************************/
 
 #include <stdio.h>
@@ -99,11 +100,16 @@ using namespace std;
 #define EPOLL_COUNT 		20
 #define MAXCOUNT 			500
 #define EPOLL_SIZE_HINT 	8
-#define CtrlPipe_Shutdown   0
-#define CtrlPipe_Wakeup     1
+
+enum {
+    CtrlPipe_Shutdown = 0,                  /* 关闭管道通知: 线程退出时使用 */
+    CtrlPipe_Wakeup   = 1,                  /* 唤醒消息: 长按监听线程执行完依次检测后会睡眠等待唤醒消息的到来 */
+    CtrlPipe_Cancel   = 2,                  /* 取消消息: 通知长按监听线程取消本次监听,说明按键已经松开 */
+};
 
 
-#define MKFS_EXFAT          "/sbin/mkexfatfs"
+
+#define MKFS_EXFAT          "/usr/local/bin/mkexfatfs"
 
 #define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
 
@@ -346,6 +352,8 @@ VolumeManager::VolumeManager() :
     mCurSaveVolList.clear();
     mSysStorageVolList.clear();
 
+    mEventVec.clear();
+
     /* 挂载点初始化 */
     #ifdef ENABLE_MOUNT_TFCARD_RO
     property_set(PROP_RO_MOUNT_TF, "true");     /* 只读的方式挂载TF卡 */    
@@ -400,76 +408,11 @@ VolumeManager::VolumeManager() :
 
     LOGDBG(TAG, "--> Module num = %d", mModuleVolNum);
 
-#if 0
-    mModulePwrCtrl.iModulePwrCtl1 	    = 240;			/* 控制模组1上电的GPIO */
-	mModulePwrCtrl.iModulePwrCtl2 	    = 241;			/* 控制模组2上电的GPIO */
-	mModulePwrCtrl.iModulePwrCtl3 	    = 242;			/* 控制模组3上电的GPIO */
-	mModulePwrCtrl.iModulePwrCtl4 	    = 243;			/* 控制模组4上电的GPIO */
-	mModulePwrCtrl.iModulePwrCtl5 	    = 244;			/* 控制模组5上电的GPIO */
-	mModulePwrCtrl.iModulePwrCtl6 	    = 245;			/* 控制模组6上电的GPIO */
-	mModulePwrCtrl.iModulePwrCtl7 	    = 246;			/* 控制模组7上电的GPIO */
-	mModulePwrCtrl.iModulePwrCtl8 	    = 247;			/* 控制模组8上电的GPIO */
-
-	mModulePwrCtrl.iResetHubNum		    = 1;
-	mModulePwrCtrl.iHub1ResetGpio 	    = 303;
-	mModulePwrCtrl.iHub2ResetGpio 	    = 303;
-	mModulePwrCtrl.iHubResetLevel 	    = 1;
-	mModulePwrCtrl.iHubResetDuration 	= 100;
-
-	mModulePwrCtrl.iModuleNum 		    = 8;
-	mModulePwrCtrl.iModulePwrOnLevel 	= 1;            /* 模组上电的电平级别: 1:高电平有效; 0:低电平有效 */
-	mModulePwrCtrl.iModulePwrInterval   = 500;          /* 模组间上电间隔 */
-	
-    mModulePwrCtrl.cPwrOnSeq[0]         = 4;
-    mModulePwrCtrl.cPwrOnSeq[1]         = 1;
-    mModulePwrCtrl.cPwrOnSeq[2]         = 6;
-    mModulePwrCtrl.cPwrOnSeq[3]         = 2;
-    mModulePwrCtrl.cPwrOnSeq[4]         = 7;
-    mModulePwrCtrl.cPwrOnSeq[5]         = 3;
-    mModulePwrCtrl.cPwrOnSeq[6]         = 8;
-    mModulePwrCtrl.cPwrOnSeq[7]         = 5;
-#endif
-
-
 #ifdef ENABLE_CACHE_SERVICE
     CacheService::Instance();
 #endif 
 
     LOGDBG(TAG, " Construtor VolumeManager Done...");
-}
-
-
-void handleDevRemove(const char* pDevNode)
-{
-    u32 i;
-    Volume* tmpVol = NULL;
-    string devNodePath = "/dev/";
-    devNodePath += pDevNode;
-
-    VolumeManager *vm = VolumeManager::Instance();
-    vector<Volume*>& tmpVector = vm->getRemoteVols();
-
-    LOGDBG(TAG, " handleDevRemove -> [%s]", pDevNode);
-    LOGDBG(TAG, " Remote vols size = %d", tmpVector.size());
-
-    /* 处理TF卡的移除 */
-    for (i = 0; i < tmpVector.size(); i++) {
-        tmpVol = tmpVector.at(i);
-    
-        LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
-    
-        if (tmpVol && !strcmp(tmpVol->cDevNode, devNodePath.c_str())) {
-            NetlinkEvent *evt = new NetlinkEvent();
-
-            evt->setAction(NETLINK_ACTION_REMOVE);
-            evt->setSubsys(VOLUME_SUBSYS_USB);
-            evt->setBusAddr(tmpVol->pBusAddr);
-            evt->setDevNodeName(pDevNode);
-            
-            vm->handleBlockEvent(evt);
-            delete evt;
-        }
-    }
 }
 
 
@@ -567,14 +510,6 @@ bool VolumeManager::isMountpointMounted(const char *mp)
 }
 
 
-/*
- * 单独给指定的模组上电
- */
-void VolumeManager::powerOnOffModuleByIndex(bool bOnOff, int iIndex)
-{
-
-}
-
 
 bool VolumeManager::waitHubRestComplete()
 {
@@ -590,10 +525,6 @@ bool VolumeManager::waitHubRestComplete()
 }
 
 
-enum {
-    NOTIFY_MODULE_ENTER_UDISK_MODE = 0x11,
-    NOTIFY_MODULE_EXIT_UDISK_MODE
-};
 
 void VolumeManager::notifyModuleEnterExitUdiskMode(int iMode)
 {
@@ -958,34 +889,39 @@ u64 VolumeManager::getLiveRecLeftSec()
 void VolumeManager::unmountCurLocalVol()
 {
     if (mCurrentUsedLocalVol) {
-        NetlinkEvent *evt = new NetlinkEvent();        
-        evt->setEventSrc(NETLINK_EVENT_SRC_APP);
-        evt->setAction(NETLINK_ACTION_REMOVE);
-        evt->setSubsys(VOLUME_SUBSYS_USB);
-        evt->setBusAddr(mCurrentUsedLocalVol->pBusAddr);
-        evt->setDevNodeName(mCurrentUsedLocalVol->cDevNode);            
-        handleBlockEvent(evt);
-        delete evt;
+        std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();
+        if (pEvt) {
+            pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
+            pEvt->setAction(NETLINK_ACTION_REMOVE);
+            pEvt->setSubsys(VOLUME_SUBSYS_USB);
+            pEvt->setBusAddr(mCurrentUsedLocalVol->pBusAddr);
+            pEvt->setDevNodeName(mCurrentUsedLocalVol->cDevNode);            
+            handleBlockEvent(pEvt);
+        } else {
+            LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");
+        }
     }
 }
 
 
 void VolumeManager::unmountAll()
 {
-
     u32 i;
     int iResult = -1;
     Volume* tmpVol = NULL;
 
     if (mCurrentUsedLocalVol) {
-        NetlinkEvent *evt = new NetlinkEvent();        
-        evt->setEventSrc(NETLINK_EVENT_SRC_APP);
-        evt->setAction(NETLINK_ACTION_REMOVE);
-        evt->setSubsys(VOLUME_SUBSYS_USB);
-        evt->setBusAddr(mCurrentUsedLocalVol->pBusAddr);
-        evt->setDevNodeName(mCurrentUsedLocalVol->cDevNode);            
-        handleBlockEvent(evt);
-        delete evt;
+        std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();  
+        if (pEvt) {
+            pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
+            pEvt->setAction(NETLINK_ACTION_REMOVE);
+            pEvt->setSubsys(VOLUME_SUBSYS_USB);
+            pEvt->setBusAddr(mCurrentUsedLocalVol->pBusAddr);
+            pEvt->setDevNodeName(mCurrentUsedLocalVol->cDevNode);            
+            handleBlockEvent(pEvt);
+        } else {
+            LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");
+        }
     }    
 
 #if 1
@@ -999,17 +935,20 @@ void VolumeManager::unmountAll()
             LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
             if (tmpVol) {
 
-                NetlinkEvent *evt = new NetlinkEvent();        
-                evt->setEventSrc(NETLINK_EVENT_SRC_APP);
-                evt->setAction(NETLINK_ACTION_REMOVE);
-                evt->setSubsys(VOLUME_SUBSYS_USB);
-                evt->setBusAddr(tmpVol->pBusAddr);
-                evt->setDevNodeName(tmpVol->cDevNode);            
-                iResult = handleBlockEvent(evt);
-                if (iResult) {
-                    LOGDBG(TAG, " Remove Device Failed ...");
-                }       
-                delete evt;
+                std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();  
+                if (pEvt) {      
+                    pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
+                    pEvt->setAction(NETLINK_ACTION_REMOVE);
+                    pEvt->setSubsys(VOLUME_SUBSYS_USB);
+                    pEvt->setBusAddr(tmpVol->pBusAddr);
+                    pEvt->setDevNodeName(tmpVol->cDevNode);            
+                    iResult = handleBlockEvent(pEvt);
+                    if (iResult) {
+                        LOGDBG(TAG, " Remove Device Failed ...");
+                    }  
+                } else {
+                    LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");                    
+                }
             }
         }
     }
@@ -1047,18 +986,20 @@ void VolumeManager::exitUdiskMode()
         
             LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
             if (tmpVol) {
-
-                NetlinkEvent *evt = new NetlinkEvent();        
-                evt->setEventSrc(NETLINK_EVENT_SRC_APP);
-                evt->setAction(NETLINK_ACTION_REMOVE);
-                evt->setSubsys(VOLUME_SUBSYS_USB);
-                evt->setBusAddr(tmpVol->pBusAddr);
-                evt->setDevNodeName(tmpVol->cDevNode);            
-                iResult = handleBlockEvent(evt);
-                if (iResult) {
-                    LOGDBG(TAG, " Remove Device Failed ...");
-                }       
-                delete evt;
+                std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();
+                if (pEvt) {
+                    pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
+                    pEvt->setAction(NETLINK_ACTION_REMOVE);
+                    pEvt->setSubsys(VOLUME_SUBSYS_USB);
+                    pEvt->setBusAddr(tmpVol->pBusAddr);
+                    pEvt->setDevNodeName(tmpVol->cDevNode);            
+                    iResult = handleBlockEvent(pEvt);
+                    if (iResult) {
+                        LOGDBG(TAG, " Remove Device Failed ...");
+                    }   
+                } else {
+                    LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");                         
+                }
             }
         }
     }
@@ -1164,7 +1105,7 @@ void VolumeManager::runFileMonitorListener()
                          * 由设备名找到对应的卷(地址，子系统，挂载路径，设备命) - 构造出一个NetlinkEvent事件
                          */
                         LOGDBG(TAG, " [%s] Remove", devNode.c_str());
-                        // handleDevRemove(curInotifyEvent->name);
+
                     }
                 }
                 curInotifyEvent--;
@@ -1195,6 +1136,7 @@ void* fileMonitorThread(void *obj)
     return NULL;
 }
 
+
 /*
  * 卷管理器新增功能: 2018年8月31日
  * 1.监听/mnt下的文件变化   - (何时创建/删除文件，将其记录在日志中)
@@ -1219,6 +1161,219 @@ bool VolumeManager::initFileMonitor()
 }
 
 
+
+void writePipe(int p, int val)
+{
+    char c = (char)val;
+    int  rc;
+
+    rc = write(p, &c, 1);
+    if (rc != 1) {
+        LOGDBG(TAG, "Error writing to control pipe (%s) val %d", strerror(errno), val);
+        return;
+    }
+}
+
+
+void VolumeManager::startWorkThread()
+{
+    LOGDBG(TAG, "---> Start Volume Worker thread!");
+
+    if (pipe(mCtrlPipe)) {
+        LOGERR(TAG, "---> Create control pipe for volume thread failed!");
+        exit(-1);
+    }
+    mVolWorkerThread = std::thread([this]{ volWorkerEntry();});
+}
+
+
+void VolumeManager::stopWorkThread()
+{
+    LOGDBG(TAG, "---> Stop Volume Worker thread!");
+
+    std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();
+    if (pEvt) {
+
+    }
+    if (mCtrlPipe[0] != -1) {
+        writePipe(mCtrlPipe[1], CtrlPipe_Shutdown);
+        if (mVolWorkerThread.joinable()) {
+            mVolWorkerThread .join();
+        }
+        mCtrlPipe[0] = -1;
+        mCtrlPipe[1] = -1;
+    }
+    mEventVec.clear();    
+}
+
+std::shared_ptr<NetlinkEvent> VolumeManager::getEvent()
+{
+    std::shared_ptr<NetlinkEvent> pEvt = nullptr;
+    std::unique_lock<std::mutex> _lock(mEvtLock);
+    LOGDBG(TAG, "--->getEvent: vector size: %d", mEventVec.size());    
+    if (mEventVec.empty() == false) {
+        pEvt = mEventVec.at(0);
+        mEventVec.erase(mEventVec.begin());
+    }
+    return pEvt;
+}
+
+#if 0
+std::vector<std::shared_ptr<NetlinkEvent>> VolumeManager::getEvents()
+{
+    std::vector<std::shared_ptr<NetlinkEvent>> vectors;
+    vectors.clear();
+    std::unique_lock<std::mutex> _lock(mEvtLock);
+    vectors = mEventVec;
+    mEventVec.clear();
+    return vectors;
+}
+#endif
+
+void VolumeManager::postEvent(std::shared_ptr<NetlinkEvent> pEvt)
+{
+    if (pEvt) {
+        std::unique_lock<std::mutex> _lock(mEvtLock);
+        mEventVec.push_back(pEvt);
+        LOGDBG(TAG, "---> vector size: %d", mEventVec.size());
+    }
+}
+
+
+
+void VolumeManager::volWorkerEntry()
+{
+    LOGDBG(TAG, "-----> Volume Worker Thread Running here <------");
+    
+    while (true) {
+        std::shared_ptr<NetlinkEvent> pEvt = getEvent();
+
+        /* 
+         * 检查工作队列中是否有事件,如果有处理事件 
+         */
+        if (pEvt) {
+            LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> volWorkerEntry Handle Event(action: %d, bus: %s) <<<<<<<<<<<<<<<", pEvt->getAction(), pEvt->getBusAddr());
+            Volume* tmpVol = NULL;
+            int iResult = 0;
+
+            switch (pEvt->getAction()) {
+
+                case NETLINK_ACTION_ADD: {
+
+                    /* 1.检查，检查该插入的设备是否在系统的支持范围内 */
+                    tmpVol = isSupportedDev(pEvt->getBusAddr());
+                    if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE)) {
+
+                        /* 2.检查卷对应的槽是否已经被挂载，如果已经挂载说明上次卸载出了错误
+                        * 需要先进行强制卸载操作否则会挂载不上
+                        */
+
+                        if (isValidFs(pEvt->getDevNodeName(), tmpVol)) {
+                            if (tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
+                                LOGERR(TAG, " Volume Maybe unmount failed, last time");
+                                unmountVolume(tmpVol, pEvt, true);
+                                tmpVol->iVolState = VOLUME_STATE_INIT;
+                            }
+
+                            LOGDBG(TAG, " dev[%s] mount point[%s]", tmpVol->cDevNode, tmpVol->pMountPath);
+
+                            if (mountVolume(tmpVol)) {
+                                LOGERR(TAG, "mount device[%s -> %s] failed, reason [%d]", tmpVol->cDevNode, tmpVol->pMountPath, errno);
+                                iResult = -1;
+                                tmpVol->iVolState = VOLUME_STATE_NOMEDIA;                        
+                            } else {
+                                LOGDBG(TAG, "mount device[%s] on path [%s] success", tmpVol->cDevNode, tmpVol->pMountPath);
+
+                                tmpVol->iVolState = VOLUME_STATE_MOUNTED;
+                                if ((getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) && volumeIsTfCard(tmpVol)) {
+                                    mHandledAddUdiskVolCnt++;
+                                    LOGDBG(TAG, "---> mHandledAddUdiskVolCnt = [%d]", mHandledAddUdiskVolCnt);
+                                }
+
+                                /* 如果是TF卡,不需要做如下操作 */
+                                if (volumeIsTfCard(tmpVol) == false) {
+
+                                    string testSpeedPath = tmpVol->pMountPath;
+                                    testSpeedPath + "/.pro_suc";
+            
+                                    if (access(testSpeedPath.c_str(), F_OK) == 0) {
+                                        tmpVol->iSpeedTest = 1;
+                                    } else {
+                                        tmpVol->iSpeedTest = 0;
+                                    }
+                                    setVolCurPrio(tmpVol, pEvt);
+
+                                    setSavepathChanged(VOLUME_ACTION_ADD, tmpVol);
+
+                                    LOGDBG(TAG, "-------- Current save path: %s", getLocalVolMountPath());
+
+                                #ifdef USE_TRAN_SEND_MSG
+                                    sendCurrentSaveListNotify();
+                                    sendDevChangeMsg2UI(VOLUME_ACTION_ADD, tmpVol->iVolSubsys, getCurSavepathList());
+                                #endif
+
+                                /* 当有卡插入并且成功挂载后,扫描卡中的文件并写入数据库中 */
+                                #ifdef ENABLE_CACHE_SERVICE
+                                    CacheService::Instance()->scanVolume(tmpVol->pMountPath);
+                                #endif 
+
+                                }
+                            }
+                        }
+                    } else {
+                        LOGDBG(TAG, " Not Support Device Addr[%s] or Slot Not Enable[%d]", pEvt->getBusAddr(), tmpVol->iVolSlotSwitch);
+                    }
+                    break;
+                }
+
+                /* 移除卷 */
+                case NETLINK_ACTION_REMOVE: {
+
+                    tmpVol = isSupportedDev(pEvt->getBusAddr());            
+                    if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE)) {  /* 该卷被使能 */ 
+
+                        if ((getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) && volumeIsTfCard(tmpVol)) {
+                            mHandledRemoveUdiskVolCnt++;  /* 不能确保所有的卷都能挂载(比如说卷已经损坏) */
+                        }
+
+                        iResult = unmountVolume(tmpVol, pEvt, true);
+                        if (!iResult) {    /* 卸载卷成功 */
+
+                            tmpVol->iVolState = VOLUME_STATE_INIT;
+                            
+                            if (volumeIsTfCard(tmpVol) == false) {
+                                setVolCurPrio(tmpVol, pEvt); /* 重新修改该卷的优先级 */
+                                setSavepathChanged(VOLUME_ACTION_REMOVE, tmpVol);   /* 检查是否修改当前的存储路径 */
+
+                            #ifdef USE_TRAN_SEND_MSG                        
+                                sendCurrentSaveListNotify();
+                                /* 发送存储设备移除,及当前存储设备路径的消息 */
+                                sendDevChangeMsg2UI(VOLUME_ACTION_REMOVE, tmpVol->iVolSubsys, getCurSavepathList());
+                            #endif
+                            }
+                        } else {    /* 卸载失败,卷仍处于挂载状态 */
+                            LOGDBG(TAG, " Unmount Failed!!");
+                            iResult = -1;
+                        }
+                    } else {
+                        LOGERR(TAG, " unmount volume Failed, Reason = %d", iResult);
+                    }
+                    break;
+                }
+            }            
+        
+        } else {
+            LOGDBG(TAG, "volWorkerEntry: Nothing to do, just relax some time");
+            msg_util::sleep_ms(500);
+        }
+    }
+
+    LOGDBG(TAG, "-----> Volume Worker Thread Exit here <------");
+
+}
+
+
+
 bool VolumeManager::start()
 {
     bool bResult = false;
@@ -1240,6 +1395,7 @@ bool VolumeManager::start()
                 initFileMonitor();
             #endif
 
+                startWorkThread();
             }
         }      
     
@@ -1270,6 +1426,8 @@ bool VolumeManager::deInitFileMonitor()
     mFileMonitorPipe[0] = -1;
     mFileMonitorPipe[1] = -1;
     
+    stopWorkThread();
+
     return true;
 }
 
@@ -1377,24 +1535,8 @@ bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int
     char line[1024];
      
     if (fgets(line, sizeof(line), fp) != NULL) {
-		//blkid identified as /dev/block/vold/179:14: LABEL="ROCKCHIP" UUID="0FE6-0808" TYPE="vfat"
         LOGDBG(TAG, "blkid identified as %s", line);
-		
-        #if 0
-        char* start = strstr(line, "UUID=");
-        if (start != NULL && sscanf(start + 5, "\"%127[^\"]\"", value) == 1) {
-            setUuid(value);
-        } else {
-            setUuid(NULL);
-        }
 
-        start = strstr(line, "LABEL=");
-        if (start != NULL && sscanf(start + 6, "\"%127[^\"]\"", value) == 1) {
-            setUserLabel(value);
-        } else {
-            setUserLabel(NULL);
-        }
-        #else 
         char* pType = strstr(line, "TYPE=");
         char* ptType = strstr(line, "PTTYPE=");
         if (pType) {
@@ -1417,15 +1559,11 @@ bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int
             }
         }
         LOGDBG(TAG, "Parse File system type: %s", volFsType);
-        #endif
-
     } else {
         LOGWARN(TAG, "blkid failed to identify %s", devicePath);
         bResult = false;
     }
-
     pclose(fp);
-
 done:
     return bResult;
 }
@@ -1505,7 +1643,7 @@ bool VolumeManager::isValidFs(const char* devName, Volume* pVol)
 ** 调 用: 
 ** 处理来自底层的事件: 1.Netlink; 2.inotify(/dev)
 *************************************************************************/
-int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
+int VolumeManager::handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt)
 {
     /*
      * 1.根据NetlinkEvent信息来查找对应的卷
@@ -1520,28 +1658,28 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
 
     AutoMutex _l(gHandleBlockEvtLock);
 
-
-    LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", evt->getAction(), evt->getBusAddr());
+    LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", pEvt->getAction(), pEvt->getBusAddr());
     
     Volume* tmpVol = NULL;
     int iResult = 0;
 
-    switch (evt->getAction()) {
+#if 0
+    switch (pEvt->getAction()) {
 
         case NETLINK_ACTION_ADD: {
 
             /* 1.检查，检查该插入的设备是否在系统的支持范围内 */
-            tmpVol = isSupportedDev(evt->getBusAddr());
+            tmpVol = isSupportedDev(pEvt->getBusAddr());
             if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE)) {
 
                 /* 2.检查卷对应的槽是否已经被挂载，如果已经挂载说明上次卸载出了错误
                  * 需要先进行强制卸载操作否则会挂载不上
                  */
 
-                if (isValidFs(evt->getDevNodeName(), tmpVol)) {
+                if (isValidFs(pEvt->getDevNodeName(), tmpVol)) {
                     if (tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
                         LOGERR(TAG, " Volume Maybe unmount failed, last time");
-                        unmountVolume(tmpVol, evt, true);
+                        unmountVolume(tmpVol, pEvt, true);
                         tmpVol->iVolState = VOLUME_STATE_INIT;
                     }
 
@@ -1571,7 +1709,7 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
                             } else {
                                 tmpVol->iSpeedTest = 0;
                             }
-                            setVolCurPrio(tmpVol, evt);
+                            setVolCurPrio(tmpVol, pEvt);
 
                             setSavepathChanged(VOLUME_ACTION_ADD, tmpVol);
 
@@ -1591,7 +1729,7 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
                     }
                 }
             } else {
-                LOGDBG(TAG, " Not Support Device Addr[%s] or Slot Not Enable[%d]", evt->getBusAddr(), tmpVol->iVolSlotSwitch);
+                LOGDBG(TAG, " Not Support Device Addr[%s] or Slot Not Enable[%d]", pEvt->getBusAddr(), tmpVol->iVolSlotSwitch);
             }
             break;
         }
@@ -1599,20 +1737,20 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
         /* 移除卷 */
         case NETLINK_ACTION_REMOVE: {
 
-            tmpVol = isSupportedDev(evt->getBusAddr());            
+            tmpVol = isSupportedDev(pEvt->getBusAddr());            
             if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE)) {  /* 该卷被使能 */ 
 
                 if ((getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) && volumeIsTfCard(tmpVol)) {
                     mHandledRemoveUdiskVolCnt++;  /* 不能确保所有的卷都能挂载(比如说卷已经损坏) */
                 }
 
-                iResult = unmountVolume(tmpVol, evt, true);
+                iResult = unmountVolume(tmpVol, pEvt, true);
                 if (!iResult) {    /* 卸载卷成功 */
 
                     tmpVol->iVolState = VOLUME_STATE_INIT;
                     
                     if (volumeIsTfCard(tmpVol) == false) {
-                        setVolCurPrio(tmpVol, evt); /* 重新修改该卷的优先级 */
+                        setVolCurPrio(tmpVol, pEvt); /* 重新修改该卷的优先级 */
                         setSavepathChanged(VOLUME_ACTION_REMOVE, tmpVol);   /* 检查是否修改当前的存储路径 */
 
                     #ifdef USE_TRAN_SEND_MSG                        
@@ -1631,6 +1769,10 @@ int VolumeManager::handleBlockEvent(NetlinkEvent *evt)
             break;
         }
     }  
+
+#else 
+    postEvent(pEvt);
+#endif 
     return iResult;  
 }
 
@@ -1744,7 +1886,7 @@ bool VolumeManager::changeMountMethod(const char* mode)
 ** 调 用: 
 ** 根据卷的传递的地址来改变卷的优先级
 *************************************************************************/
-void VolumeManager::setVolCurPrio(Volume* pVol, NetlinkEvent* pEvt)
+void VolumeManager::setVolCurPrio(Volume* pVol, std::shared_ptr<NetlinkEvent> pEvt)
 {
     /* 根据卷的地址重置卷的优先级 */
     if (!strncmp(pEvt->getBusAddr(), "2-2", strlen("2-2"))) {
@@ -2174,7 +2316,6 @@ void VolumeManager::updateLocalVolSpeedTestResult(int iResult)
 } 
 
 
-
 void VolumeManager::updateRemoteVolSpeedTestResult(Volume* pVol)
 {
     Volume* tmpVol = NULL;
@@ -2205,15 +2346,11 @@ bool VolumeManager::checkAllmSdSpeedOK()
         }
     }
 
-#ifdef ENABLE_SKIP_SPEED_TEST
-    return true;
-#else 
     if (iExitNum >= mModuleVolNum) {
         return true;
     } else {
         return false;
     } 
-#endif        
 }
 
 
@@ -2405,7 +2542,7 @@ int VolumeManager::mountVolume(Volume* pVol)
         }
 
         if (mkdir(lost_path, 0755)) {
-            LOGERR(TAG, "Unable to create LOST.DIR (%s)", strerror(errno));
+            LOGERR(TAG, "Unable to create .LOST.DIR (%s)", strerror(errno));
         }
 
 #if 0
@@ -2736,9 +2873,7 @@ int VolumeManager::doUnmount(const char *path, bool force)
         }
 
         LOGERR(TAG, "Failed to unmount %s (%s, retries %d, action %d)", path, strerror(errno), retries, action);
-
         Process::killProcessesWithOpenFiles(path, action);
-
         sleep(1);
     }
 
@@ -2751,7 +2886,7 @@ int VolumeManager::doUnmount(const char *path, bool force)
 /*
  * unmountVolume - 卸载/强制卸载卷
  */
-int VolumeManager::unmountVolume(Volume* pVol, NetlinkEvent* pEvt, bool force)
+int VolumeManager::unmountVolume(Volume* pVol, std::shared_ptr<NetlinkEvent> pEvt, bool force)
 {
     AutoMutex _l(pVol->mVolLock);
 
@@ -2872,14 +3007,16 @@ void VolumeManager::updateVolumeSpace(Volume* pVol)
             
             u32 uBlockSize = diskInfo.f_bsize / 1024;
 
-            // LOGDBG(TAG, " stat fs path: %s", pVol->pMountPath);
+            #ifdef ENABLE_DEBUG_VOLUME
+            LOGDBG(TAG, " stat fs path: %s", pVol->pMountPath);
 
-            // LOGDBG(TAG, " statfs block size: %d KB", uBlockSize);
-            // LOGDBG(TAG, " statfs total block: %d ", diskInfo.f_blocks);
-            // LOGDBG(TAG, " statfs free block: %d ", diskInfo.f_bfree);
+            LOGDBG(TAG, " statfs block size: %d KB", uBlockSize);
+            LOGDBG(TAG, " statfs total block: %d ", diskInfo.f_blocks);
+            LOGDBG(TAG, " statfs free block: %d ", diskInfo.f_bfree);
 
-            // LOGDBG(TAG, " statfs Tatol size = %u MB", (diskInfo.f_blocks * uBlockSize) / 1024);
-            // LOGDBG(TAG, " state Avail size = %u MB", (diskInfo.f_bfree * uBlockSize) / 1024);
+            LOGDBG(TAG, " statfs Tatol size = %u MB", (diskInfo.f_blocks * uBlockSize) / 1024);
+            LOGDBG(TAG, " state Avail size = %u MB", (diskInfo.f_bfree * uBlockSize) / 1024);
+            #endif 
 
             pVol->uTotal = (uBlockSize * diskInfo.f_blocks) / 1024;
             

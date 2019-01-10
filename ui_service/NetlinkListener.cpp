@@ -3,10 +3,9 @@
 #include <sys/socket.h>
 #include <linux/netlink.h>
 #include <string.h>
-
 #include <unistd.h>
-
 #include <sys/NetlinkEvent.h>
+#include <common/sp.h>
 
 #undef  TAG
 #define TAG "NetlinkListener"
@@ -134,6 +133,7 @@ bool NetlinkListener::onDataAvailable(SocketClient *cli)
         return false;
     }
 
+#if 0
     NetlinkEvent *evt = new NetlinkEvent();	
     if (evt) {
         if (evt->decode(mBuffer, count, mFormat)) {		
@@ -141,7 +141,14 @@ bool NetlinkListener::onDataAvailable(SocketClient *cli)
         } 
         delete evt;		
     }		
-
+#else 
+    std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();
+    if (pEvt) {
+        if (pEvt->decode(mBuffer, count, mFormat)) {		
+            onEvent(pEvt);								
+        }         
+    }
+#endif 
     return true;	
 }
 

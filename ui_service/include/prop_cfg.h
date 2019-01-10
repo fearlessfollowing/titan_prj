@@ -112,6 +112,7 @@
 #define PROP_SD_RESET_GPIO              "sys.sd_reset_gpio"
 
 
+#define PROP_PLAY_SOUND                 "sys.play_sound"
 
 /******************************************************************************************************
  * 模组及HUB涉及的属性
@@ -151,6 +152,11 @@
 #define PROP_BAT_TEMP                   "sys.bat_temp"
 #define PROP_CPU_TEMP                   "sys.cpu_temp"
 #define PROP_GPU_TEMP                   "sys.gpu_temp"
+
+/*
+ * 对于厂测固件 - 设置该属性
+ */
+#define PROP_FACTORY_TEST   "sys.factory_test"
 
 
 /******************************************************************************************************

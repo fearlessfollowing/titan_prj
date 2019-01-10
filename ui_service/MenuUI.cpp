@@ -20,6 +20,7 @@
 ** V3.4         skymixos        2018年11月6日           Photo Delay支持Off
 ** V3.5         skymixos        2018年11月8日           使用新的配置管理器
 ** V3.6         Skymixos        2018年12月29日          新增硬件管理服务
+** V3.7         Skymixos        2019年1月10日           播放声音需要设置属性"sys.play_sound" = true
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -897,13 +898,17 @@ void MenuUI::play_sound(u32 type)
     if (CfgManager::Instance()->getKeyVal("speaker") == 1) {
         if (type >= 0 && type <= sizeof(sound_str) / sizeof(sound_str[0])) {
             char cmd[1024];
-
-            /* Note:
-             * aplay 带 -D hw:1,0 参数时播出的音声会有两声
-             * 去掉-D hw:1,0 参数，插上HDMI时没有声音播放
-             */
-            // snprintf(cmd, sizeof(cmd), "aplay -D hw:1,0 %s", sound_str[type]);
-            // exec_sh(cmd);
+            const char* pPlaySound = property_get(PROP_PLAY_SOUND);
+            
+            if (pPlaySound && !strcmp(pPlaySound, "true")) {
+                /* Note:
+                * aplay 带 -D hw:1,0 参数时播出的音声会有两声
+                * 去掉-D hw:1,0 参数，插上HDMI时没有声音播放
+                */
+                snprintf(cmd, sizeof(cmd), "aplay -D hw:1,0 %s", sound_str[type]);
+                exec_sh(cmd);
+            }
+            
 		} else {
             LOGERR(TAG, "sound type %d exceed", type);
 		}
@@ -1053,7 +1058,7 @@ void MenuUI::disp_msg_box(int type)
         case DISP_NEED_SDCARD: {
             clearArea();
 
-            #if 0
+            #if 1
             dispStr((const u8*)"Please", 48, 8, false, 128);
             dispStr((const u8*)"ensure SD card or", 16, 24, false, 128);
             dispStr((const u8*)"USB disk are inserted", 8, 40, false, 128);
@@ -1141,17 +1146,9 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
 
 		int pos = i % pParentMenu->mSelectInfo.page_max;		// 3
 		switch (pos) {
-			case 0:
-				tmPos.yPos 		= 16;
-				break;
-
-			case 1:
-				tmPos.yPos 		= 32;
-				break;
-			
-			case 2:
-				tmPos.yPos 		= 48;
-				break;
+			case 0: tmPos.yPos = 16; break;
+			case 1: tmPos.yPos = 32; break;
+			case 2: tmPos.yPos = 48; break;
 		}
 
         tmPos.xPos 		= 32;
@@ -3003,69 +3000,66 @@ void MenuUI::procBackKeyEvent()
         }
 
         case MENU_STORAGE: {
-#ifdef ENABLE_STORAGE_MODULE_ON
+        #ifdef ENABLE_STORAGE_MODULE_ON
             property_set(PROP_SYS_MODULE_ON, "false");
             system("power_manager power_off");
-#endif
+        #endif
+
             set_cur_menu_from_exit();            
             break;
         }
 
-#ifdef ENABLE_AWB_CALC 
+
         case MENU_SYS_SETTING: {
             set_cur_menu_from_exit();
+            const char* pFactoryTest = property_get(PROP_FACTORY_TEST);      
+            if (pFactoryTest && !strcmp(pFactoryTest, "true")) {
+                if (tmpState == STATE_IDLE) {                    
+                    u8 uLight = 0;
+                    im->setEnableReport(false);
+                    
+                    /* 发送AWB校正请求 - 如果服务器处于IDLE状态 */                
+                    setLight();
 
-            if (tmpState == STATE_IDLE) {
-                im->setEnableReport(false);
-                /* 发送AWB校正请求 - 如果服务器处于IDLE状态 */
-                
-                setLight();
-
-                if (pm->sendWbCalcReq()) {
-                    LOGDBG(TAG, "-----> Calc Awb Suc.");
-                    #ifdef LED_HIGH_LEVEL   /* 高电平点亮灯 */                 
-                        setLightDirect(FRONT_GREEN | BACK_GREEN);
-                    #else 
-                        setLightDirect(FRONT_GREEN & BACK_GREEN);
-                    #endif
+                    if (pm->sendWbCalcReq()) {
+                        #ifdef LED_HIGH_LEVEL   /* 高电平点亮灯 */ 
+                            uLight = FRONT_GREEN | BACK_GREEN;                
+                        #else 
+                            uLight = FRONT_GREEN & BACK_GREEN;                
+                        #endif
+                            LOGDBG(TAG, "-----> Calc Awb Suc. set val[0x%x]", uLight);
+                    } else {
+                        #ifdef LED_HIGH_LEVEL   /* 高电平点亮灯 */                 
+                            uLight = FRONT_RED | BACK_RED;                
+                        #else 
+                            uLight = FRONT_RED & BACK_RED;                
+                        #endif
+                            LOGDBG(TAG, "-----> Calc Awb Failed. set val[0x%x]", uLight);
+                    }
+                    setLightDirect(uLight);
+                    im->setEnableReport(true);
                 } else {
-                    LOGDBG(TAG, "-----> Calc Awb Failed.");
-                    #ifdef LED_HIGH_LEVEL   /* 高电平点亮灯 */                 
-                        setLightDirect(FRONT_RED | FRONT_RED);
-                    #else 
-                        setLightDirect(FRONT_RED & FRONT_RED);
-                    #endif
-
+                    LOGERR(TAG, "Server is busy, 0x%x", tmpState);
                 }
-                im->setEnableReport(true);
-            } else {
-                LOGERR(TAG, "Server is busy, 0x%x", tmpState);
             }
             break;
         }
-#endif
+
+
         case MENU_UDISK_MODE: {     /* 进入U盘后，按返回键提示用户只能重启才能退出U盘模式 */
             VolumeManager* vm = VolumeManager::Instance();
-
-        #if 0
-            if (vm->checkEnteredUdiskMode()) {
-                oled_disp_type(EXIT_UDISK_MODE);
-            } else {
-                LOGERR(TAG, "Entering Udisk Mode, please Wait...");
-            }
-        #else 
             tipHowtoExitUdisk();
-            
-            msg_util::sleep_ms(3000);
+
+            msg_util::sleep_ms(1000);
 
             if (vm->checkEnterUdiskResult()) {
                 enterUdiskSuc();
             } else {
                 dispEnterUdiskFailed();
             }
-        #endif
             break;
         }
+
 
         default: {
             switch (tmpState) {
@@ -3704,7 +3698,7 @@ void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, std::vector<Volume*>& mVolum
         tmPos.iWidth	= 103;   
         tmPos.iHeight   = 16;   
     #else
-        tmPos.xPos 		= 0;        
+        tmPos.xPos 		= 2;        
         tmPos.iWidth	= 128;     
         tmPos.iHeight   = 16;       
     #endif
@@ -6240,65 +6234,11 @@ bool MenuUI::check_cur_menu_support_key(int iCode)
 }
 
 
-
 bool MenuUI::check_allow_update_top()
 {
     return !menuHasStatusbar(cur_menu);
 }
 
-
-#if 0
-
-/*************************************************************************
-** 方法名称: uiShowBatteryInfo
-** 方法功能: 显示电池信息
-** 入口参数: 
-** 返回值: 0
-** 调 用: 
-**
-*************************************************************************/
-int MenuUI::uiShowBatteryInfo()
-{
-
-    if (mBatInterface->isBatteryExist()) {   /* 电池存在 */
-        int icon;
-        const int x = 110;
-        u8 buf[16];
-
-        if (GET_BATINFO_OK == mBatInterface->getCurBatteryInfo(mBatInfo.get())) {
-            if (mBatInfo->bIsCharge && mBatInfo->uBatLevelPer < 100) {  /* 电池存在,处于充电状态 */
-                icon = ICON_BATTERY_IC_CHARGE_103_0_6_166_16;       
-            } else {    /* 电池存在非充电状态
-             */
-                icon = ICON_BATTERY_IC_FULL_103_0_6_166_16;
-            }
-        } else {
-            icon = ICON_BATTERY_IC_FULL_103_0_6_166_16;
-        }
-		
-        if (check_allow_update_top()) { /* 允许更新电池信息到屏幕上 */
-            if (mBatInfo->uBatLevelPer == 1000) {
-                mBatInfo->uBatLevelPer = 0;
-            }
-			
-            if (mBatInfo->uBatLevelPer >= 100) {
-                snprintf((char *) buf, sizeof(buf), "%d", 100);
-            } else {
-                snprintf((char *)buf, sizeof(buf), "%d", mBatInfo->uBatLevelPer);
-            }
-			
-            dispStrFill(buf, x, 0);   /* 显示电池图标及电量信息 */
-            dispIconByType(icon);
-        }
-    } else {
-        clearArea(103, 0, 25, 16);
-    }
-	
-    setLight(); /* 设置灯 */
-    return 0;
-}
-
-#else 
 
 /*************************************************************************
 ** 方法名称: uiShowBatteryInfo
@@ -6310,6 +6250,8 @@ int MenuUI::uiShowBatteryInfo()
 *************************************************************************/
 int MenuUI::uiShowBatteryInfo(BatterInfo* pBatInfo)
 {
+    const char* pFactoryTest = property_get(PROP_FACTORY_TEST);
+
     if (pBatInfo != NULL) {
         if (pBatInfo->bIsExist) {
             int icon;
@@ -6343,12 +6285,13 @@ int MenuUI::uiShowBatteryInfo(BatterInfo* pBatInfo)
     } else {
         LOGERR(TAG, "---> Invalid Arguments, Please Checked!");
     }
-	
-    setLight(); /* 设置灯 */
+
+    if (NULL == pFactoryTest) {     /* 非工厂模式下根据电量信息来调整灯光 */
+        setLight();     /* 设置灯 */
+    }
     return 0;
 }
 
-#endif
 
 
 
@@ -6839,7 +6782,7 @@ bool MenuUI::checkServerIsBusy()
             break;
         }
     }
-    LOGDBG(TAG, "Server Busy state[%s]", (bRet == true) ? "true": "false");
+    // LOGDBG(TAG, "Server Busy state[%s]", (bRet == true) ? "true": "false");
     return bRet;
 }
 
@@ -6860,6 +6803,7 @@ void MenuUI::setLight()
     }
 
     set_flick_light();	    /* 根据前灯的状态来设置闪烁时的灯颜色 */
+
     if (!checkServerIsBusy() && (cur_menu != MENU_SYS_ERR) && (cur_menu != MENU_LOW_BAT)) {
         setLight(front_light);
     }	
@@ -7042,7 +6986,7 @@ int MenuUI::oled_disp_err(sp<struct _err_type_info_> &mErr)
     return 0;
 }
 
-
+#if 0
 void MenuUI::set_led_power(unsigned int on)
 {
     if (on == 1) {
@@ -7051,6 +6995,7 @@ void MenuUI::set_led_power(unsigned int on)
         setLightDirect(LIGHT_OFF);
     }
 }
+#endif
 
 /*
  * 同步查询 
@@ -8932,65 +8877,6 @@ void MenuUI::handleUpdateMid()
 }
 
 
-#if 0
-
-/*************************************************************************
-** 方法名称: handleCheckBatteryState
-** 方法功能: 检测电池的变化
-** 入口参数: bUpload - 
-** 返 回 值: 无 
-** 调     用: 
-**
-*************************************************************************/
-bool MenuUI::handleCheckBatteryState(bool bUpload)
-{
-    
-    int iResult = GET_BATINFO_OK;
-    int iNextPollTime = BAT_INTERVAL;       /* 下次获取电池信息的时刻 */
-
-    ProtoManager* pm = ProtoManager::Instance();
-    uint64_t serverState = getServerState();
-
-    iResult = mBatInterface->getCurBatteryInfo(mBatInfo.get());
-    switch (iResult) {
-        case GET_BATINFO_ERR_NO_EXIST:
-        case GET_BATINFO_OK: {      /* 获取成功 */
-	
-            uiShowBatteryInfo();	/* 显示电池及电量信息 */
-#if 0
-            if (false == pm->sendUpdateBatteryInfo(m_bat_info_.get())) {
-                LOGERR(TAG, "---> Update Battery Info Failed, please check h_log");
-            }
-#endif
-            if (iResult == GET_BATINFO_OK) {
-                if (is_bat_low()) { /* 电池电量低 */
-                    if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
-                        if (checkServerStateIn(serverState, STATE_RECORD)) {
-                            setCurMenu(MENU_LOW_BAT, MENU_TOP);
-                            addState(STATE_LOW_BAT);
-                            func_low_bat();
-                        }
-                    }
-                }
-            }
-            break;
-        }
-
-        case GET_BATINFO_ERR_BATSTATUS:
-        case GET_BATINFO_ERR_REMAIN_CAP:
-        case GET_BATINFO_ERR_TEMPERATURE: { /* I2C通信失败 */
-            LOGERR(TAG, "--> Battery exist, but communication with it failed.");
-            iNextPollTime = 1;              /* 马上进行一次检查 */
-            break;
-        }
-
-    }
-
-    send_delay_msg(UI_READ_BAT, iNextPollTime);  /* 给UI线程发送读取电池电量的延时消息 */
-    return true;
-}
-
-#else 
 /*************************************************************************
 ** 方法名称: handleCheckBatteryState
 ** 方法功能: 检测电池的变化
@@ -9025,9 +8911,6 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     return true;
 }
 
-#endif
-
-
 
 /*************************************************************************
 ** 方法名称: handleDispLightMsg
@@ -9045,11 +8928,12 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 	bSendUpdate = false;
     uint64_t serverState = getServerState();
 
-	std::unique_lock<std::mutex> lock(mutexState);
+	std::unique_lock<std::mutex> _lock(mutexState);
 	switch (menu) {
 		case MENU_PIC_INFO: {
 			if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS)) {
 	
+                LOGDBG(TAG, "-->handleDispLightMsg: mTakePicDelay = [%d]", mTakePicDelay);
 				if (mTakePicDelay == 0) {
 
                     if (mNeedSendAction) {  /* 暂时用于处理客户端发送拍照请求时，UI不发送拍照请求给camerad */
@@ -9408,10 +9292,14 @@ void MenuUI::send_clear_msg_box(int delay)
 
 void MenuUI::send_update_light(int menu, int interval, bool bLight, int sound_id)
 {
+    const char* pPlaySound = property_get(PROP_PLAY_SOUND);
+
     if (sound_id != -1 && CfgManager::Instance()->getKeyVal("speaker") == 1) {
         flick_light();
         play_sound(sound_id);
-        interval = 0;
+        
+        if (pPlaySound && !strcmp(pPlaySound, "true")) 
+            interval = 0;
     } else if (bLight) {	/* 需要闪灯 */
         flick_light();
     }

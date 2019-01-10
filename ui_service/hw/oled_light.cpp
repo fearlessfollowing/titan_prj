@@ -27,6 +27,7 @@
 
 #define LED_I2C_CONTROL_REG     0x07
 
+#define DEBUG_LED
 
 oled_light::oled_light()
 {
@@ -68,7 +69,7 @@ void oled_light::set_light_val(u8 val)
 {
     u8 orig_val = 0;
 
-    val &= 0x3f;    /* 设置灯的值不能改变模组的供电状态 */
+    // val &= 0x3f;    /* 设置灯的值不能改变模组的供电状态 */
 
     if (mI2CLight->i2c_read(LED_I2C_CONTROL_REG, &orig_val) == 0) {
 

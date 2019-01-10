@@ -37,9 +37,9 @@ int NetlinkHandler::stop()
  * onEvent - 接收到NetlinkEvent事件后，传递给VolumeManager进行处理
  * 
  */
-void NetlinkHandler::onEvent(NetlinkEvent *evt) 
+void NetlinkHandler::onEvent(std::shared_ptr<NetlinkEvent> pEvt) 
 {   
     VolumeManager *vm = VolumeManager::Instance();
-    vm->handleBlockEvent(evt);
+    vm->handleBlockEvent(pEvt);
 }
 

@@ -276,6 +276,7 @@ bool HardwareService::isSysLowBattery()
 
 
 
+
 int HardwareService::serviceLooper()
 {
     fd_set read_fds;
@@ -311,12 +312,12 @@ int HardwareService::serviceLooper()
             continue;
         } else if (!rc) {   /* timeout */
 
-            /* 获取并更新电池信息: 并同步给UI */
+            /* 获取并更新电池信息: 并同步给UI 
+             */
             updateBatteryInfo();
 
             /* 读取并上报温度信息： CPU/GPU, BATTERY, MODULE */
             updateSysTemp();
-
 
             /* 上报电池信息及系统温度 */
             if (reportSysTemp()) {

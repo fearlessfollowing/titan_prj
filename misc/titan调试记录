@@ -589,8 +589,21 @@ kernel/hardware/nvidia/platform/t18x/common/kernel-dts/t18x-common-platforms/teg
 
 
 
+日期：2019年1月10日
+1.新增工厂模式属性: "sys.factory_test"
+工厂模式下:
+在主菜单页面，按下"设置"键再按"返回"键将进入AWB校正，校正成功所有的灯显示绿色；失败显示红色
 
 
+- 拍照参数及挡位
+- 音频
+- 风扇开关              （UI部分OK）
+- python对应的设置项部分
+- 大卡格式化            （OK）
+- 卡的测速功能
+- samba及U盘功能        （可以进samba）
 
+
+清除大量处于TIME_WAIT状态的连接
 
 
