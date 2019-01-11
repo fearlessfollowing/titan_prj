@@ -24,6 +24,7 @@
 ** 426(1)/457(0) -> 模组进入U盘模式
 ** 426(0)/547(0) -> 模组进入正常模式
 ** V3.2         Skymixos        2019年1月10日   卷的挂载卸载交由独立的线程来操作
+** V3.3         Skymixos        2019年1月11日   优化进入U盘模式的过程
 ******************************************************************************************************/
 
 #include <stdio.h>
@@ -78,12 +79,9 @@
 #include <trans/fifo.h>
 #include <sstream>
 
-using namespace std;
-
 
 #define ENABLE_MOUNT_TFCARD_RO
 #define ENABLE_USB_NEW_UDISK_POWER_ON       /* 新的进入U盘模式的上电方式 */
-
 
 
 /*********************************************************************************************
@@ -137,7 +135,6 @@ static Mutex gCurVolLock;
 static Mutex gRemoteVolLock;
 
 
-static Mutex        gHandleBlockEvtLock;        /* 处理块设备事件锁 */
 static Mutex        gMountMutex;
 static Condition    gWaitMountComplete;
 
@@ -279,7 +276,7 @@ static void clearAllunmountPoint()
 
         if (false == isMountpointMounted(cPath)) {
             LOGWARN(TAG, "Remove it [%s]", cPath);
-            string rmCmd = "rm -rf ";
+            std::string rmCmd = "rm -rf ";
             rmCmd += cPath;
             system(rmCmd.c_str());
         }
@@ -311,6 +308,9 @@ VolumeManager* VolumeManager::Instance()
     return sInstance;
 }
 
+
+#define DEFAULT_WORKER_LOOPER_INTERVAL      500     // MS
+#define ENTER_EXIT_UDISK_LOOPER_INTERVAL    50      // MS
 
 
 /*************************************************************************
@@ -353,6 +353,10 @@ VolumeManager::VolumeManager() :
     mSysStorageVolList.clear();
 
     mEventVec.clear();
+    mCacheVec.clear();
+    mEnteringUdisk = false;
+
+    mWorkerLoopInterval = DEFAULT_WORKER_LOOPER_INTERVAL;      /* 500ms */
 
     /* 挂载点初始化 */
     #ifdef ENABLE_MOUNT_TFCARD_RO
@@ -510,7 +514,6 @@ bool VolumeManager::isMountpointMounted(const char *mp)
 }
 
 
-
 bool VolumeManager::waitHubRestComplete()
 {
     const std::string moduleHubBasePath = "/sys/devices/3530000.xhci/usb2";
@@ -649,15 +652,31 @@ bool VolumeManager::checkVolIsMountedByIndex(int iIndex, int iTimeout)
 }
 
 
-/*
- * 最终目标：确保两个HUB都处于上电状态
- * 给一个HUB上电
- */
+
+
+/*************************************************************************
+** 方法名称: enterUdiskMode
+** 方法功能: 进入U盘模式
+** 入口参数: 
+** 返回值:  成功进入返回true;否则返回false
+** 调 用: 
+*************************************************************************/
 bool VolumeManager::enterUdiskMode()
 {
     struct timeval enterTv, exitTv;
-    int iEnterTotalLen = 60;        /* 将整个进入U盘的周期定为15s */
     int iResetHubRetry = 0;
+    int iModulePowerOnTimes = 0;
+    bool bAllModuleEnterUdiskFlag = false;
+    int iSleepWaitTime = 10000;     /* 默认为10s */
+    const char* pPropWaitTime = NULL;
+
+    mEnteringUdisk = true;
+    mCacheVec.clear();
+    mHandledAddUdiskVolCnt = 0;     /* 成功挂载模组的个数 */
+    mAllowExitUdiskMode = false;
+
+    gettimeofday(&enterTv, NULL);   
+
 
     /* 1.检查所有卷的状态，如果非IDLE状态（MOUNTED状态），先进行强制卸载操作
      * 1.将gpio426, gpio457设置为1，0
@@ -667,67 +686,138 @@ bool VolumeManager::enterUdiskMode()
      */
     LOGDBG(TAG, " Enter U-disk Mode now ...");
 
-    mHandledAddUdiskVolCnt = 0;     /* 成功挂载模组的个数 */
+    /*
+     * 1.设置卷管理器的当前工作模式为U盘模式(U盘模式下,当检测到有设备的插入时并不会马上上报给工作线程,而是缓存起来,等待所有的U盘设备都成功起来)
+     */
     setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_UDISK);
     checkAllUdiskIdle();
 
-    /* 通知模组以U盘模式启动 */
+    /* 1.1 通知模组以U盘模式启动 */
     notifyModuleEnterExitUdiskMode(NOTIFY_MODULE_ENTER_UDISK_MODE);
-
-    mAllowExitUdiskMode = false;
-
-    /* 给所有模组断电 */
-    for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
-        modulePwrCtl(getUdiskVolByIndex(i+1), false, 1);
-        msg_util::sleep_ms(500);
-    }
-
+    
     do {
-        resetHub(303, RESET_HIGH_LEVEL, 300);
-        if (waitHubRestComplete()) {
-            LOGDBG(TAG, " -------------- Hub Reset Complete");
+
+        /* 1.2 给所有模组断电(避免模组之前处于上电状态) */
+        for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
+            modulePwrCtl(getUdiskVolByIndex(i+1), false, 1);
+            msg_util::sleep_ms(50);
+        }
+
+        /*
+        * 2.复位HUB和给模组上电
+        */
+
+        /* 2.1 复位HUB */
+        do {
+            resetHub(303, RESET_HIGH_LEVEL, 300);
+            if (waitHubRestComplete()) {
+                LOGDBG(TAG, " -------------- Hub Reset Complete");
+                break;
+            }
+            msg_util::sleep_ms(1000);        
+        } while (iResetHubRetry++ < 3);
+
+
+        /* 2.2 给模组上电 */
+        for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
+            LOGDBG(TAG, " Power on for device[%d]", i);
+            modulePwrCtl(getUdiskVolByIndex(i+1), true, 1);
+            msg_util::sleep_ms(200);      
+        }
+
+        /* 模组上电后,正常情况下大概需要7s才能起来 */
+        pPropWaitTime = property_get(PROP_ENTER_UDISK_WAIT_TIME);
+        if (pPropWaitTime) {
+            iSleepWaitTime = atoi(pPropWaitTime);
+        }        
+        msg_util::sleep_ms(iSleepWaitTime);      
+
+
+        if (checkAllModuleEnterUdisk()) {
+            /* 2.3 检查所有的模组是否已经起来 */
+            bAllModuleEnterUdiskFlag = true;
+            LOGDBG(TAG, "--> Lucky boy, All Module Enter Udisk Mode!");
             break;
         }
-        msg_util::sleep_ms(1000);        
-    } while (iResetHubRetry++ < 3);
-    
-    gettimeofday(&enterTv, NULL);   
+    } while (iModulePowerOnTimes++ < 3);
 
-    for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
-        int iModulePowerOnTimes = 0;
-        for (; iModulePowerOnTimes < 3; iModulePowerOnTimes++) {
-            LOGDBG(TAG, " Power on for device[%d]", i);
-            modulePwrCtl(getUdiskVolByIndex(i+1), true, 1);            
-            if (checkVolIsMountedByIndex(i+1)) {    /* 卷index是从1开始的(非0) */
-                LOGDBG(TAG, "--> Module[%d] Mounted Success!", i+1);
-                break;
-            } else {
-                LOGERR(TAG, "--> Module[%d] Mounted Failed, Restart here", i+1);
-                modulePwrCtl(getUdiskVolByIndex(i+1), false, 1); /* 给模组下电 */
-                msg_util::sleep_ms(500);
-            }
-        }
-
-        if (iModulePowerOnTimes >= 3) {
-            LOGERR(TAG, " Mount Module[%d] Failed, What's wrong!", i);
-        }
+    /* 有模组没有成功进入U盘模式 */
+    if (iModulePowerOnTimes >= 3 && bAllModuleEnterUdiskFlag == false) {
+        LOGERR(TAG, "---> Error: Some Module enter Udisk Mode failed, drop All Udisk NetlinkEvent.");
+        mEnteringUdisk = false;
+        return false;
     }
+
+    flushAllUdiskEvent2Worker();
+
+    /* 所有模组成功进入U盘模式,等待工作线程处理完刷入的所有事件(timeout = 120s) */
+    waitUdiskEvtDealComplete(60);
+
     gettimeofday(&exitTv, NULL);   
+    LOGDBG(TAG, "Enter Udisk Mode Total Used: [%dS,%dMs]", exitTv.tv_sec - enterTv.tv_sec, (exitTv.tv_usec - enterTv.tv_usec) / 1000);
     
-    int iNeedSleepTime = iEnterTotalLen - (exitTv.tv_sec - enterTv.tv_sec);
-    LOGDBG(TAG, " Should Sleep time: %ds", iNeedSleepTime);
-    if (iNeedSleepTime > 0) {
-        sleep(iNeedSleepTime);
+    mEnteringUdisk = false;
+    return checkEnterUdiskResult();
+
+}
+
+bool VolumeManager::checkAllModuleEnterUdisk()
+{
+    const char* modulePaths[] = {
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.1",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.2",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.3",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.4",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.1",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.2",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.3",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.4"
+    };
+
+    int i = 0;
+    int iNum = sizeof(modulePaths) / sizeof(modulePaths[0]);
+    for (; i < iNum; i++) {
+        if (access(modulePaths[i], F_OK)) {
+            LOGERR(TAG, "Usb device[%s] Not Exist", modulePaths[i]);
+            break;
+        }
     }
 
-    return checkEnterUdiskResult();
+    if (i >= iNum)
+        return true;
+    else 
+        return false;
 }
 
 
+void VolumeManager::flushAllUdiskEvent2Worker()
+{
+    std::unique_lock<std::mutex> _lock(mEvtLock);
+    for (auto item: mCacheVec) {
+        mEventVec.push_back(item);
+    }
+    mCacheVec.clear();
+}
+
 
 /*
- * 怎么来确认所有的盘都挂载成功???
+ * 工作线程必须以一次取一个事件的模式工作
  */
+void VolumeManager::waitUdiskEvtDealComplete(int iTimeout)
+{
+    int iWaitTime = 0;
+    do {
+        {
+            std::unique_lock<std::mutex> _lock(mEvtLock);
+            if (mEventVec.empty()) {
+                msg_util::sleep_ms(2000);   /* 等待最后一个事件处理完成 */
+                break;
+            }
+        }
+        msg_util::sleep_ms(1000);
+    } while ((++iWaitTime) < iTimeout);
+}
+
 
 bool VolumeManager::checkEnteredUdiskMode()
 {
@@ -904,10 +994,17 @@ void VolumeManager::unmountCurLocalVol()
 }
 
 
+/*************************************************************************
+** 方法名称: unmountAll
+** 方法功能: 卸载所有处于挂载状态的设备(包括本地设备和模组)
+** 入口参数: 
+** 返回值:  成功进入返回true;否则返回false
+** 调 用: 长按3秒,关机时调用
+** 
+*************************************************************************/
 void VolumeManager::unmountAll()
 {
     u32 i;
-    int iResult = -1;
     Volume* tmpVol = NULL;
 
     if (mCurrentUsedLocalVol) {
@@ -924,42 +1021,9 @@ void VolumeManager::unmountAll()
         }
     }    
 
-#if 1
-    /* 处理TF卡的移除 */
-    {
-        unique_lock<mutex> lock(mRemoteDevLock);
-        for (i = 0; i < mModuleVols.size(); i++) {
-
-            tmpVol = mModuleVols.at(i);
-        
-            LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
-            if (tmpVol) {
-
-                std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();  
-                if (pEvt) {      
-                    pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
-                    pEvt->setAction(NETLINK_ACTION_REMOVE);
-                    pEvt->setSubsys(VOLUME_SUBSYS_USB);
-                    pEvt->setBusAddr(tmpVol->pBusAddr);
-                    pEvt->setDevNodeName(tmpVol->cDevNode);            
-                    iResult = handleBlockEvent(pEvt);
-                    if (iResult) {
-                        LOGDBG(TAG, " Remove Device Failed ...");
-                    }  
-                } else {
-                    LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");                    
-                }
-            }
-        }
+    if (getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) {
+        exitUdiskMode();
     }
-#endif
-  
-    system("echo 0 > /sys/class/gpio/gpio456/value");   /* gpio456 = 0 */
-    system("echo 1 > /sys/class/gpio/gpio478/value");   /* gpio456 = 0 */
-
-    msg_util::sleep_ms(5000);
-
-    system("power_manager power_off");
 }
 
 
@@ -969,17 +1033,16 @@ void VolumeManager::exitUdiskMode()
      * 2.给模组断电
      */
     u32 i;
-    int iResult = -1;
     Volume* tmpVol = NULL;
 
     LOGDBG(TAG, " Exit U-disk Mode now ...");
-    
-    mHandledRemoveUdiskVolCnt = 0;
 
-#if 1
+    mHandledRemoveUdiskVolCnt = 0;
+    mWorkerLoopInterval = ENTER_EXIT_UDISK_LOOPER_INTERVAL; 
+
     /* 处理TF卡的移除 */
     {
-        unique_lock<mutex> lock(mRemoteDevLock);
+        std::unique_lock<std::mutex> _lock(mRemoteDevLock);
         for (i = 0; i < mModuleVols.size(); i++) {
 
             tmpVol = mModuleVols.at(i);
@@ -993,25 +1056,31 @@ void VolumeManager::exitUdiskMode()
                     pEvt->setSubsys(VOLUME_SUBSYS_USB);
                     pEvt->setBusAddr(tmpVol->pBusAddr);
                     pEvt->setDevNodeName(tmpVol->cDevNode);            
-                    iResult = handleBlockEvent(pEvt);
-                    if (iResult) {
-                        LOGDBG(TAG, " Remove Device Failed ...");
-                    }   
+                    {
+                        std::unique_lock<std::mutex> _lock(mCacheEvtLock);
+                        mCacheVec.push_back(pEvt);
+                    }
                 } else {
                     LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");                         
                 }
             }
         }
     }
-#endif
-  
-    // system("echo 0 > /sys/class/gpio/gpio456/value");   /* gpio456 = 0 */
-    // system("echo 1 > /sys/class/gpio/gpio478/value");   /* gpio456 = 0 */
+    
+    flushAllUdiskEvent2Worker();
 
-    msg_util::sleep_ms(6 * 1000);
+    int iTime = 0;
+    do {
+        msg_util::sleep_ms(1000);
+        if (mHandledRemoveUdiskVolCnt >= SYS_TF_COUNT_NUM) {
+            LOGDBG(TAG, "----> All Mounted Cards umount Suc.");
+            break;
+        }
+    } while (iTime++ < 12);
 
-    system("power_manager power_off");
 
+    notifyModuleEnterExitUdiskMode(NOTIFY_MODULE_EXIT_UDISK_MODE);
+    msg_util::sleep_ms(8*1000);     /* 等待模组卸载卡 */
     setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_NORMAL);
 }
 
@@ -1093,7 +1162,7 @@ void VolumeManager::runFileMonitorListener()
             while (readCount >= sizeof(inotifyEvent)) {
                 if (curInotifyEvent->len > 0) {
 
-                    string devNode = "/mnt/";
+                    std::string devNode = "/mnt/";
                     devNode += curInotifyEvent->name;
 
                     if (curInotifyEvent->mask & IN_CREATE) {
@@ -1210,7 +1279,6 @@ std::shared_ptr<NetlinkEvent> VolumeManager::getEvent()
 {
     std::shared_ptr<NetlinkEvent> pEvt = nullptr;
     std::unique_lock<std::mutex> _lock(mEvtLock);
-    LOGDBG(TAG, "--->getEvent: vector size: %d", mEventVec.size());    
     if (mEventVec.empty() == false) {
         pEvt = mEventVec.at(0);
         mEventVec.erase(mEventVec.begin());
@@ -1293,7 +1361,7 @@ void VolumeManager::volWorkerEntry()
                                 /* 如果是TF卡,不需要做如下操作 */
                                 if (volumeIsTfCard(tmpVol) == false) {
 
-                                    string testSpeedPath = tmpVol->pMountPath;
+                                    std::string testSpeedPath = tmpVol->pMountPath;
                                     testSpeedPath + "/.pro_suc";
             
                                     if (access(testSpeedPath.c_str(), F_OK) == 0) {
@@ -1367,8 +1435,7 @@ void VolumeManager::volWorkerEntry()
                 }
             }            
         } else {
-            LOGDBG(TAG, "volWorkerEntry: Nothing to do, just relax some time");
-            msg_util::sleep_ms(500);
+            msg_util::sleep_ms(mWorkerLoopInterval);
         }
     }
     LOGDBG(TAG, "-----> Volume Worker Thread Exit here <------");
@@ -1465,10 +1532,10 @@ bool VolumeManager::stop()
 /*
  * 获取系统中的当前存储设备列表
  */
-vector<Volume*>& VolumeManager::getSysStorageDevList()
+std::vector<Volume*>& VolumeManager::getSysStorageDevList()
 {
-    vector<Volume*>& localVols = getCurSavepathList();
-    vector<Volume*>& remoteVols = getRemoteVols();
+    std::vector<Volume*>& localVols = getCurSavepathList();
+    std::vector<Volume*>& remoteVols = getRemoteVols();
     Volume* tmpVol = NULL;
 
     LOGDBG(TAG, " >>>>>> getSysStorageDevList");
@@ -1522,7 +1589,7 @@ bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int
 {
     bool bResult = true;
 
-    string cmd;
+    std::string cmd;
     cmd = "blkid";
     cmd += " -c /dev/null ";
     cmd += devicePath;
@@ -1647,24 +1714,21 @@ bool VolumeManager::isValidFs(const char* devName, Volume* pVol)
 *************************************************************************/
 int VolumeManager::handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt)
 {
-    /*
-     * 1.根据NetlinkEvent信息来查找对应的卷
-     * 2.根据事件的类型作出（插入，拔出做响应的处理）
-     *  - 插入: 是磁盘还是分区 以及文件系统类型(blkid -c /dev/null /dev/xxx)
-     *  - 拔出: 是磁盘还是分区 以及文件系统类型(blkid -c /dev/null /dev/xxx)
-     * 挂载: 是否需要进行磁盘检查(fsck),处理
-     * 真正挂咋
-     * 卸载: 需要处理卸载不掉的情况(杀掉所有打开文件的进程???))
-     * 挂载成功后/卸载成功后,通知UI(SD/USB attached/detacheed)
-     */
-
-    AutoMutex _l(gHandleBlockEvtLock);
     LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", pEvt->getAction(), pEvt->getBusAddr());
-    postEvent(pEvt);
+    
+    /*
+     * U盘工作模式
+     */
+    if (mEnteringUdisk) {
+        LOGDBG(TAG, ">> VolumeManager work on Udisk Mode, Cache Event here");
+        std::unique_lock<std::mutex> _lock(mCacheEvtLock);
+        mCacheVec.push_back(pEvt);
+    } else {
+        LOGDBG(TAG, ">> VolumeManager work on Norma Mode, Post Event here");
+        postEvent(pEvt);
+    }
     return 0;  
 }
-
-
 
 
 /*************************************************************************
@@ -1675,7 +1739,7 @@ int VolumeManager::handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt)
 ** 调 用: 
 ** 根据卷的传递的地址来改变卷的优先级
 *************************************************************************/
-vector<Volume*>& VolumeManager::getCurSavepathList()
+std::vector<Volume*>& VolumeManager::getCurSavepathList()
 {
     Volume* tmpVol = NULL;
     struct statfs diskInfo;
@@ -1793,7 +1857,7 @@ void VolumeManager::setVolCurPrio(Volume* pVol, std::shared_ptr<NetlinkEvent> pE
 
 void VolumeManager::syncLocalDisk()
 {
-    string cmd = "sync -f ";
+    std::string cmd = "sync -f ";
 
     if (mCurrentUsedLocalVol != NULL) {
         cmd += mCurrentUsedLocalVol->pMountPath;
@@ -1936,7 +2000,7 @@ void VolumeManager::sendSavepathChangeNotify(const char* pSavePath)
 
 void VolumeManager::sendCurrentSaveListNotify()
 {
-    vector<Volume*>& curDevList = getCurSavepathList();
+    std::vector<Volume*>& curDevList = getCurSavepathList();
     ProtoManager* pm = ProtoManager::Instance();
     Volume* tmpVol = NULL;
 
@@ -2021,13 +2085,13 @@ void VolumeManager::setNotifyRecv(sp<ARMessage> notify)
 ** 调 用: 
 ** 
 *************************************************************************/
-void VolumeManager::sendDevChangeMsg2UI(int iAction, int iType, vector<Volume*>& devList)
+void VolumeManager::sendDevChangeMsg2UI(int iAction, int iType, std::vector<Volume*>& devList)
 {
     if (mNotify != nullptr) {
         sp<ARMessage> msg = mNotify->dup();
         msg->set<int>("action", iAction);    
         msg->set<int>("type", iType);    
-        msg->set<vector<Volume*>>("dev_list", devList);
+        msg->set<std::vector<Volume*>>("dev_list", devList);
         msg->post();
     }
 
@@ -2155,6 +2219,7 @@ int VolumeManager::getIneedTfCard(std::vector<int>& vectors)
     return iErrType;
 }
 
+
 u64 VolumeManager::calcRemoteRemainSpace(bool bFactoryMode)
 {
     u64 iTmpMinSize = ~0UL;
@@ -2163,7 +2228,7 @@ u64 VolumeManager::calcRemoteRemainSpace(bool bFactoryMode)
         mReoteRecLiveLeftSize = 1024 * 256;    /* 单位为MB， 256GB */
     } else {
         {
-            unique_lock<mutex> lock(mRemoteDevLock);
+            std::unique_lock<std::mutex> _lock(mRemoteDevLock);
             for (u32 i = 0; i < mModuleVols.size(); i++) {
                 if (iTmpMinSize > mModuleVols.at(i)->uAvail) {
                     iTmpMinSize = mModuleVols.at(i)->uAvail;
@@ -2195,7 +2260,7 @@ void VolumeManager::updateLocalVolSpeedTestResult(int iResult)
         mCurrentUsedLocalVol->iSpeedTest = iResult;
         if (iResult) {
             LOGDBG(TAG, "Speed test suc, create pro_suc Now...");
-            string cmd = "touch ";
+            std::string cmd = "touch ";
             cmd += mCurrentUsedLocalVol->pMountPath;
             cmd += "/.pro_suc";
             system(cmd.c_str());
@@ -2208,7 +2273,7 @@ void VolumeManager::updateRemoteVolSpeedTestResult(Volume* pVol)
 {
     Volume* tmpVol = NULL;
 
-    unique_lock<mutex> lock(mRemoteDevLock); 
+    std::unique_lock<std::mutex> _lock(mRemoteDevLock); 
     for (u32 i = 0; i < mModuleVols.size(); i++) {
         tmpVol = mModuleVols.at(i);
         if (tmpVol && pVol) {
@@ -2224,8 +2289,9 @@ bool VolumeManager::checkAllmSdSpeedOK()
 {
     Volume* tmpVolume = NULL;
     int iExitNum = 0;
+
     {
-        unique_lock<mutex> lock(mRemoteDevLock);
+        std::unique_lock<std::mutex> _lock(mRemoteDevLock);
         for (u32 i = 0; i < mModuleVols.size(); i++) {
             tmpVolume = mModuleVols.at(i);
             if ((tmpVolume->uTotal > 0) && tmpVolume->iSpeedTest) {     /* 总容量大于0,表示卡存在 */
@@ -2242,15 +2308,10 @@ bool VolumeManager::checkAllmSdSpeedOK()
 }
 
 
-
 bool VolumeManager::checkLocalVolSpeedOK()
 {
-    if (mCurrentUsedLocalVol) {
-#ifdef ENABLE_SKIP_SPEED_TEST
-        return true;
-#else         
+    if (mCurrentUsedLocalVol) {       
         return (mCurrentUsedLocalVol->iSpeedTest == 1) ? true : false;
-#endif 
     } else {
         return false;
     }
@@ -2269,7 +2330,7 @@ bool VolumeManager::checkSavepathChanged()
 /*
  * 处理模组上卡的热插拔时间
  */
-int VolumeManager::handleRemoteVolHotplug(vector<sp<Volume>>& volChangeList)
+int VolumeManager::handleRemoteVolHotplug(std::vector<sp<Volume>>& volChangeList)
 {
     Volume* tmpSourceVolume = NULL;
     int iAction = VOLUME_ACTION_UNSUPPORT;
@@ -2280,7 +2341,7 @@ int VolumeManager::handleRemoteVolHotplug(vector<sp<Volume>>& volChangeList)
         sp<Volume> tmpChangedVolume = volChangeList.at(0);
 
         {
-            unique_lock<mutex> lock(mRemoteDevLock); 
+            std::unique_lock<std::mutex> _lock(mRemoteDevLock); 
             for (u32 i = 0; i < mModuleVols.size(); i++) {
                 tmpSourceVolume = mModuleVols.at(i);
                 if (tmpChangedVolume && tmpSourceVolume) {
@@ -2375,10 +2436,10 @@ int VolumeManager::mountVolume(Volume* pVol)
     #else
 
     int status;
-    const char* pMountFlag = NULL;
-    pMountFlag = property_get(PROP_RO_MOUNT_TF);
 
     #if 0
+    const char* pMountFlag = NULL;
+    pMountFlag = property_get(PROP_RO_MOUNT_TF);
     if ((pMountFlag && !strcmp(pMountFlag, "true")) && volumeIsTfCard(pVol)) {
         const char *args[5];
         args[0] = "/bin/mount";
@@ -2569,10 +2630,7 @@ u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
         iStitchBitRate = iTmpOriginBitRate / (1024 * 8 * 1.0f);
         uLocalRecSec = (u32)(getLocalVolLeftSize(false) / iStitchBitRate);
 
-
-
         LOGDBG(TAG, " Local bitrate [%f]Mb/s, Remote bitrate[%f]Mb/s", iStitchBitRate, iOriginBitRate);
-
         LOGDBG(TAG, " --------------- Local Live Left sec %lu, Remote Live Left sec %lu", uLocalRecSec, uRemoteRecSec);
 
         return (uRemoteRecSec > uLocalRecSec) ? uLocalRecSec : uRemoteRecSec;
@@ -2779,7 +2837,7 @@ int VolumeManager::unmountVolume(Volume* pVol, std::shared_ptr<NetlinkEvent> pEv
     AutoMutex _l(pVol->mVolLock);
 
     if (pEvt->getEventSrc() == NETLINK_EVENT_SRC_KERNEL) {
-        string devnode = "/dev/";
+        std::string devnode = "/dev/";
         devnode += pEvt->getDevNodeName();
         LOGDBG(TAG, " umount volume devname[%s], event devname[%s]", pVol->cDevNode, devnode.c_str());
 
@@ -2936,6 +2994,8 @@ void VolumeManager::syncTakePicLeftSapce(u32 uLeftSize)
 }
 
 
+
+
 #if 0
 int VolumeManager::formatFs2Ext4(const char *fsPath, unsigned int numSectors, const char *mountpoint) 
 {
@@ -3072,7 +3132,6 @@ int VolumeManager::formatVolume(Volume* pVol, bool wipe)
     setSavepathChanged(VOLUME_ACTION_REMOVE, pVol);
     // sendDevChangeMsg2UI(VOLUME_ACTION_REMOVE, pVol->iVolSubsys, getCurSavepathList());
     
-
     /*
      * 1.卸载
      * 2.格式化为exfat格式
@@ -3168,16 +3227,16 @@ void VolumeManager::updateRemoteTfsInfo(std::vector<sp<Volume>>& mList)
 }
 
 
-vector<Volume*>& VolumeManager::getRemoteVols()
+std::vector<Volume*>& VolumeManager::getRemoteVols()
 {
-    vector<Volume*>& remoteVols = mModuleVols;
+    std::vector<Volume*>& remoteVols = mModuleVols;
     return remoteVols;
 }
 
 
-vector<Volume*>& VolumeManager::getLocalVols()
+std::vector<Volume*>& VolumeManager::getLocalVols()
 {
-    vector<Volume*>& localVols = mLocalVols;
+    std::vector<Volume*>& localVols = mLocalVols;
     return localVols;
 }
 

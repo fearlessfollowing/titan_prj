@@ -158,6 +158,10 @@
  */
 #define PROP_FACTORY_TEST   "sys.factory_test"
 
+/*
+ * 等待模组进入U盘模式的时间
+ */
+#define PROP_ENTER_UDISK_WAIT_TIME "sys.wait_enter_udisk"
 
 /******************************************************************************************************
  * WIFI固件路径

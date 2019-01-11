@@ -578,7 +578,11 @@ public:
     int         getCurHandleRemoveUdiskVolCnt();
 
     bool        checkEnterUdiskResult();
+    void        waitUdiskEvtDealComplete(int iTimeout);
 
+
+    bool        checkAllModuleEnterUdisk();
+    void        flushAllUdiskEvent2Worker();
 
     void        powerOnOffModuleByIndex(bool bOnOff, int iIndex);
 
@@ -695,16 +699,18 @@ private:
     void                    startWorkThread();
     void                    stopWorkThread();
     void                    volWorkerEntry();
-    std::shared_ptr<NetlinkEvent>   getEvent();
-    // std::vector<std::shared_ptr<NetlinkEvent>> getEvents();
+    std::shared_ptr<NetlinkEvent>        getEvent();
+    std::vector<std::shared_ptr<NetlinkEvent>> getEvents();
     void                    postEvent(std::shared_ptr<NetlinkEvent> pEvt);
 
 
-    int                     mCtrlPipe[2];   // 0 -- read , 1 -- write
-    std::vector<std::shared_ptr<NetlinkEvent>>  mEventVec;
-    std::mutex              mEvtLock;
-
-
+    int                             mCtrlPipe[2];   // 0 -- read , 1 -- write
+    std::vector<sp<NetlinkEvent>>   mEventVec;
+    std::vector<sp<NetlinkEvent>>   mCacheVec;
+    std::mutex                      mEvtLock;
+    std::mutex                      mCacheEvtLock;
+    bool                            mEnteringUdisk;
+    int                             mWorkerLoopInterval;    /* 工作线程的轮询间隔 */
 
 
     int                     mountVolume(Volume* pVol);

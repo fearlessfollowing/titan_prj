@@ -5730,7 +5730,7 @@ void MenuUI::procPowerKeyEvent()
                     if (pm->sendSwitchUdiskModeReq(true)) { /* 请求服务器进入U盘模式 */
 
 
-#if 0
+#if 1
                     #ifdef ENABLE_NET_MANAGER
                         /* 主动切网卡为直接模式 */
                         switchEtherIpMode(0);
@@ -5763,7 +5763,7 @@ void MenuUI::procPowerKeyEvent()
                                                "dhcp-host=192.168.55.1\n"   \
                                                "dhcp-range=192.168.55.10,192.168.55.20,24h\n"   \
                                                "dhcp-option=3,192.168.55.1\n"   \
-                                               "#dhcp-option=option:dns-server,114.114.114.114,8.8.4.4\n";
+                                               "dhcp-option=option:dns-server,114.114.114.114,8.8.4.4\n";
 
 
                         updateFile(DNSMASQ_CONF_PATH, dns_conf.c_str(), dns_conf.length());
@@ -8392,11 +8392,11 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
 
         /* shutdown 关机 */
         if (bNeedShutdown == true) {
-            LOGDBG(TAG, ">>>>>>>>>>>>>>>>>>> Shutdown now");
+            LOGDBG(TAG, ">>>>>>>>>>>>>>>>>>> Shutdown now <<<<<<<<<<<<<<<<<");
             
             /* 关掉OLED显示，避免屏幕上显示东西 */
             mOLEDModule->display_onoff(0);
-            system("shutdown now");
+            system("poweroff");  // shutdown -h now
         }
     }
 }
