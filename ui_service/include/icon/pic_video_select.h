@@ -621,7 +621,6 @@ const u8 live4K_30F_HDMI_Light_78x16[] = {
 	0x3F,0x3F,0x20,0x3F,0x30,0x3F,0x3F,0x3F,0x3F,0x30,0x3F,0x30,0x37,0x37,0x37,0x37,
 	0x3B,0x3C,0x3F,0x30,0x3F,0x3F,0x3C,0x3F,0x3F,0x30,0x3F,0x37,0x30,0x37,0x3F,0x3F,
 	0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,
-
 };
 
 
@@ -799,7 +798,6 @@ const u8 vid_4K60FRTS_Light_78x16[] = {
 	0x3F,0x3F,0x3F,0x3F,0x30,0x3E,0x3E,0x3C,0x3B,0x37,0x3F,0x3F,0x3F,0x3F,0x30,0x3F,
 	0x3F,0x3F,0x3F,0x37,0x37,0x37,0x37,0x38,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,
 	0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,
-
 };
 
 const u8 vid_4K60FRTS_Nor_78x16[] = {
@@ -1091,159 +1089,6 @@ typedef struct stPicVideoCfg {
 } PicVideoCfg;
 
 
-#ifdef ENABLE_USE_ACTION_INFO
-
-/*
- * 8K|3D|OF ICON_INFO
- */
-static ACTION_INFO pic8K3DOFDefault = {
-	MODE_3D,		/* 拼接模式 */
-	40,				/* 每张照片的大小: 36M, 180M */
-	0,				/* 该值现在无效,由photodelay控制 */
-	{	/* Origin */
-		EN_JPEG,	
-		SAVE_DEF,
-		4000,
-		3000,
-		0,			/* 原片的存储位置: 0: nvidia; 1: module; 2: both */
-		{}
-	},
-	{	/* Stitch */
-		EN_JPEG,
-		STITCH_OPTICAL_FLOW,
-		7680,
-		7680,
-		{},
-	}
-};
-
-
-
-/*
- * 8K|OF
- */
-static ACTION_INFO pic8K3DDefault = {
-	MODE_PANO,		/* 拼接模式 */
-	30,				/* 每张照片的大小: 30M, 170M */
-	0,				/* 该值现在无效,由photodelay控制 */
-	{	/* Origin */
-		EN_JPEG,	
-		SAVE_DEF,
-		4000,
-		3000,
-		0,			/* 原片的存储位置: 0: nvidia; 1: module; 2: both */
-		{}
-	},
-	{	/* Stitch */
-		EN_JPEG,
-		STITCH_OPTICAL_FLOW,
-		7680,
-		3840,
-		{},
-	}
-};
-
-
-/*
- * 8K
- */
-static ACTION_INFO pic8KDefault = {
-	MODE_PANO,		/* 拼接模式 */
-	25,				/* 每张照片的大小: 25M, 160M */
-	0,				/* 该值现在无效,由photodelay控制 */
-	{	/* Origin */
-		EN_JPEG,	
-		SAVE_DEF,
-		4000,
-		3000,
-		0,			/* 原片的存储位置: 0: nvidia; 1: module; 2: both */
-		{}
-	},
-	{	/* Stitch */
-		EN_JPEG,
-		STITCH_OFF,
-		0,
-		0,
-		{},
-	}
-};
-
-
-/*
- * AEB
- */
-static ACTION_INFO picAebDefault = {
-	MODE_PANO,				/* 拼接模式 */
-	30,						/* 每张照片的大小: 40M, 80M, 120M, 160M */
-	0,						/* 该值现在无效,由photodelay控制 */
-	{	/* Origin */
-		EN_JPEG,	
-		SAVE_DEF,
-		4000,
-		3000,
-		0,					/* 原片的存储位置: 0: nvidia; 1: module; 2: both */
-		{3, -64, 64, 0}		/* AEB:3, 5, 7, 9 EV及步进值 */
-	},
-	{	/* Stitch */
-		EN_JPEG,
-		STITCH_OFF,
-		0,
-		0,
-		{},
-	}
-};
-
-
-/*
- * Burst
- */
-static ACTION_INFO picBurstDefault = {
-	MODE_PANO,		/* 拼接模式 */
-	150,			/* 每张照片的大小 */
-	0,				/* 该值现在无效,由photodelay控制 */
-	{	/* Origin */
-		EN_JPEG,	
-		SAVE_DEF,
-		4000,
-		3000,
-		0,			/* 原片的存储位置: 0: nvidia; 1: module; 2: both */
-		{0,0,0,10}
-	},
-	{	/* Stitch */
-		EN_JPEG,
-		STITCH_OFF,
-		0,
-		0,
-		{},
-	}
-};
-
-
-/*
- * Customer
- */
-static ACTION_INFO picCustomerDefault = {
-	MODE_PANO,		/* 拼接模式 */
-	30,				/* 每张照片的大小 */
-	0,				/* 该值现在无效,由photodelay控制 */
-	{	/* Origin */
-		EN_JPEG,	
-		SAVE_DEF,
-		4000,
-		3000,
-		0,			/* 原片的存储位置: 0: nvidia; 1: module; 2: both */
-	},
-	{	/* Stitch */
-		EN_JPEG,
-		STITCH_OFF,
-		0,
-		0,
-		{},
-	}
-};
-
-#endif
-
 
 PicVideoCfg pic8K_3D_OF = {
 	pItemName:			TAKE_PIC_MODE_8K_3D_OF,		// pItemName
@@ -1251,11 +1096,7 @@ PicVideoCfg pic8K_3D_OF = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
 	stPos:				{0},						// stPos
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction: 			&pic8K3DOFDefault,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction: 			nullptr,					/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		pic8K3DOFLight_78X16,
@@ -1266,7 +1107,7 @@ PicVideoCfg pic8K_3D_OF = {
 		pic8K3DOF_RAW_Nor_78x16,
 	},
     pNote:              "8K|3D|OF",
-    bDispType:          true,
+    bDispType:          false,
 };
 
 
@@ -1277,13 +1118,7 @@ PicVideoCfg pic8K_3D = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍	
 	stPos:				{0},						// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&pic8K3DDefault,
-#else
 	pStAction:			nullptr,
-#endif
-
 	jsonCmd:			nullptr,	
 	stLightIcon:		{	/* 选中时的图标列表 */
 		pic8K3DLight_78x16,
@@ -1293,36 +1128,32 @@ PicVideoCfg pic8K_3D = {
 		pic8K3DNor_78x16,
 		pic8K3DRAWNor_78X16
 	},
-    pNote:              "8K|OF",
-    bDispType:          true,
+    pNote:              "11K|OF",
+    bDispType:          false,
 };
 
 
 
 PicVideoCfg pic8K = {
-	pItemName:			TAKE_PIC_MODE_8K,		// pItemName
+	pItemName:			TAKE_PIC_MODE_8K,			// pItemName
 	iItemMaxVal:		1,							// iItemMaxVal
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍	
 	stPos:				{0},						// stPos
 
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&pic8KDefault,
-#else 
 	pStAction:			nullptr,
-#endif
 
 	jsonCmd:			nullptr,	
-	stLightIcon:		{	/* 选中时的图标列表 */
+	stLightIcon:		{			/* 选中时的图标列表 */
 		pic8KLight_78x16,
 		pic8KRAWLight_78X16,
 	},
-	stNorIcon:			{	/* 未选中时的图标列表 */
+	stNorIcon:			{			/* 未选中时的图标列表 */
 		pic8KNor_78x16,
 		pic8KRAWNor_78X16
 	},
-    pNote:              "8K",
-    bDispType:          true,
+    pNote:              "11K",
+    bDispType:          false,
 };
 
 
@@ -1332,12 +1163,7 @@ PicVideoCfg picAEB = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	10,							// 10倍
 	stPos:				{0},						// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&picAebDefault,
-#else
 	pStAction:			nullptr,
-#endif
 
 	jsonCmd:			nullptr,
 		
@@ -1373,13 +1199,7 @@ PicVideoCfg picBurst = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	10,							// 10倍	
 	stPos:				{0},						// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&picBurstDefault,
-#else 
 	pStAction:			nullptr,
-#endif
-
 	jsonCmd:			nullptr,	
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picBurstLight_78x16,
@@ -1400,13 +1220,7 @@ PicVideoCfg picCustomer = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,
 	stPos:				{0},						// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&picCustomerDefault,
-#else 
 	pStAction:			nullptr,
-#endif
-
 	jsonCmd:			nullptr,	
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picVidCustmLight_78x16,
@@ -1437,223 +1251,13 @@ PicVideoCfg* gPicAllModeCfgList[] = {
 /******************************** 拍照部分：END **************************************/
 
 
-
-
-#ifdef ENABLE_USE_ACTION_INFO
-
-/*
- * VID_8K_30F_3D
- */
-static ACTION_INFO vid8K_30F_3D_Action = {
-	MODE_3D,
-	15,
-	0,
-	
-	{	/* for test version: ORG_INFO */
-		EN_H264,
-		SAVE_DEF,
-		3840,		/* 3840 */
-		2880,		/* 2160 -> 2880 */
-		1,			/* 0 -> nvidia; 1 -> module; 2 -> both */
-		{ALL_FR_30, 120}	/* 120 -> 100: 温度测试 */
-	},	
-	{	/* STI_INFO */
-		EN_H264,
-		STITCH_OFF,
-		7680,
-		3840,
-		{}
-	},
-	{},
-	{}
-};
-
-static ACTION_INFO vid8K_60F_Action = {
-	MODE_PANO,
-	15,
-	0,
-	
-	{	/* for test version: ORG_INFO */
-		EN_H264,
-		SAVE_DEF,
-		3840,		/* 3840 */
-		2160,		/* 2160 -> 2880 */
-		1,			/* 0 -> nvidia; 1 -> module; 2 -> both */
-		{ALL_FR_60, 120}	/* bitrate: 40 -> 80 -> 120 */
-	},	
-	{	/* STI_INFO */
-		EN_H264,
-		STITCH_OFF,
-		7680,
-		3840,
-		{}
-	},
-	{},
-	{}
-};
-
-static ACTION_INFO vid8K_5F_Action = {
-	MODE_PANO,
-	1,
-	0,
-	
-	{	/* for test version: ORG_INFO */
-		EN_H264,
-		SAVE_DEF,
-		3840,		/* 3840 */
-		2160,		/* 2160 -> 2880 */
-		1,			/* 0 -> nvidia; 1 -> module; 2 -> both */
-		{ALL_FR_5, 10}	/* bitrate: 10Mbit */
-	},	
-	{	/* STI_INFO */
-		EN_H264,
-		STITCH_OFF,
-		7680,
-		3840,
-		{}
-	},
-	{},
-	{}
-};
-
-
-static ACTION_INFO vid6K_60F_3D_Action = {
-	MODE_3D,
-	10,
-	0,
-	{
-		EN_H264,
-		SAVE_DEF,
-		3200,			/* 3840x2880 -> 3200x2400 STATE_IDLE*/
-		2400,
-		1,			/* 0 -> nvidia; 1 -> module; 2 -> both */
-		{ALL_FR_60, 120}
-	},
-	{
-		EN_H264,
-		STITCH_OFF,
-		5760,
-		5760,
-		{}
-	},
-	{},
-	{}
-};
-
-
-/*
- * 4K_120F
- */
-static ACTION_INFO vid4K_120F_3D_Action = {
-	MODE_PANO,
-	12,
-	0,		// 
-	{
-		EN_H264,
-		SAVE_DEF,
-		1920,
-		1440, 		// 1080 -> 1440
-		1,			/* 0 -> nvidia; 1 -> module; 2 -> both */
-		{ALL_FR_120, 120}	// 40 -> 80
-	},
-	{
-		EN_H264,
-		STITCH_OFF,
-		3840,
-		1920,
-		{}
-	},
-	{},
-	{}
-};
-
-static ACTION_INFO vid4K_30F_RTS_Action = {
-	MODE_PANO,
-	8,
-	0,
-	{
-		EN_H264,
-		SAVE_DEF,
-		3840,			/* 根据肖神的提示修改: 4K|PANO 3200x2400@30fps    60M 2018年7月24日 */
-		2160,
-		1,			/* 0 -> nvidia; 1 -> module; 2 -> both */
-		{ALL_FR_30, 60}
-	},
-	{
-		EN_H264,
-		STITCH_NORMAL,
-		3840,
-		1920,
-		{ALL_FR_30, 40}
-	},
-	{},
-	{}
-
-};
-
-static ACTION_INFO vid4K_30F_3D_RTS_Action = {
-	MODE_3D,
-	8,
-	0,
-	{
-		EN_H264,
-		SAVE_DEF,
-		3200,		
-		2400,
-		1,			/* 0 -> nvidia; 1 -> module; 2 -> both */		
-		{ALL_FR_30, 60}		/* ALL_FR_24 -> ALL_FR_30 2018-06-01 */
-	},
-	{
-		EN_H264,
-		STITCH_NORMAL,
-		3840,
-		3840,
-		{ALL_FR_30, 50}		/* 日期：2018年8月14日 - 将拼接码率由80改为50 */
-	},
-	{},
-	{}
-
-};
-
-static ACTION_INFO vid_Customer_Action = {
-	MODE_PANO,
-	8,
-	0,
-	{
-		EN_H264,
-		SAVE_DEF,
-		1920,		/* 根据肖神的提示修改: 4K|3D 1920X1440 - > 3200x2400@30fps    60M */
-		1440,
-		1,			/* 0 -> nvidia; 1 -> module; 2 -> both */		
-		{ALL_FR_30, 60}		/* ALL_FR_24 -> ALL_FR_30 2018-06-01 */
-	},
-	{
-		EN_H264,
-		STITCH_NORMAL,
-		3840,
-		3840,
-		{ALL_FR_30, 50}
-	},
-	{},
-	{}
-};
-
-#endif
-
-
 static PicVideoCfg vid8K_30F_3D_Cfg = {
 	pItemName:			TAKE_VID_MODE_8K_30F_3D,		// pItemName
 	iItemMaxVal:		0,								// iItemMaxVal
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
-	stPos: 				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction: 			&vid8K_30F_3D_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
+	stPos: 				{0},							// stPos 
 	pStAction: 			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd: 			nullptr,
 	stLightIcon: 		{	/* 选中时的图标列表 */
 		vid_8K30F3D_Light_78x16,
@@ -1671,13 +1275,7 @@ static PicVideoCfg vid8K_60F_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid8K_60F_Action,				/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	                            /* 选中时的图标列表 */
 		vid_8K60F_Light_78x16,
@@ -1695,13 +1293,7 @@ static PicVideoCfg vid8K_5F_Cfg = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	0,							// 5倍
 	stPos:				{0},						// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid8K_5F_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,					/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	                        /* 选中时的图标列表 */
 		vid_8K5F_Light_78x16,
@@ -1719,13 +1311,7 @@ static PicVideoCfg vid6K_60F_3D_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid6K_60F_3D_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_6K60F3D_Light_78x16,
@@ -1743,14 +1329,8 @@ static PicVideoCfg vid4K_120F_3D_Cfg = {
 	iItemMaxVal:		0,								// iItemMaxVal
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
-	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid4K_120F_3D_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
+	stPos:				{0},							// stPos 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_4K120F3D_Light_78x16,
@@ -1768,13 +1348,7 @@ static PicVideoCfg vid4K_30F_RTS_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid4K_30F_RTS_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_4K30F_Light_78x16,
@@ -1792,13 +1366,7 @@ static PicVideoCfg vid4K_30F_3D_RTS_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid4K_30F_3D_RTS_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,							/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_4K30F3D_Light_78x16,
@@ -1817,13 +1385,7 @@ static PicVideoCfg vid8K_30F_3D_HDR_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid_Customer_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_8K30F_3D_Hdr_Light_78x16,
@@ -1842,13 +1404,7 @@ static PicVideoCfg vid8K_30F_HDR_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid_Customer_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		vid_8K30F_Hdr_Light_78x16,
@@ -1868,13 +1424,7 @@ static PicVideoCfg vid_Customer_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	0,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&vid_Customer_Action,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picVidCustmLight_78x16,
@@ -1915,163 +1465,13 @@ PicVideoCfg* gVidAllModeCfgList[] = {
 
 
 
-#ifdef ENABLE_USE_ACTION_INFO
-
-/*
- * 4K_30F
- */
-static ACTION_INFO live4K_30F_ActionInfo = {
-	MODE_PANO,
-	0,
-	0,
-	{
-		EN_H264,
-		SAVE_OFF,
-		2560,
-		1440,
-		0,			// test
-		{ALL_FR_30, 20}
-	},
-	{
-		EN_H264,
-		STITCH_NORMAL,	/* 不拼接 */
-		3840,
-		1920,
-		{
-			ALL_FR_30,
-			20,
-			HDMI_OFF,
-			0,
-			{0},
-			{0},
-		}
-	},
-	{},
-	{}
-};
-
-/*
- * 4K_30F_HDMI
- */
-static ACTION_INFO live4K_30F_HDMI_ActionInfo = {
-	MODE_PANO,
-	0,
-	0,
-	{
-		EN_H264,
-		SAVE_OFF,
-		2560,
-		1440,
-		0,		// test
-		
-		{ALL_FR_30, 20}
-	},
-	{
-		EN_H264,
-		STITCH_NORMAL,
-		3840,
-		1920,
-		{
-			ALL_FR_30,
-			20,
-			HDMI_ON,
-			0,
-			{0},
-			{0},
-		}
-	},
-	{},
-	{}
-};
-
-/*
- * 4K_3D
- */
-static ACTION_INFO live4K_30D_ActionInfo = {
-	MODE_3D,
-	0,
-	0,
-	{
-		EN_H264,
-		SAVE_OFF,
-		1920,
-		1440,
-		0,		// test
-		
-		{ALL_FR_30, 20}
-	},
-	{
-		EN_H264,
-		STITCH_NORMAL,
-		3840,
-		3840,
-		{
-			ALL_FR_30,
-			30,
-			HDMI_OFF,
-			0,
-			{0},
-			{0},
-		}
-	},
-	{},
-	{}
-};
-
-/*
- * 4K_3D_HDMI
- */
-static ACTION_INFO live4K_30D_HDMI_ActionInfo = {
-	MODE_3D,			// mode - 拼接模式
-	0,					// size_per_sec
-	0,					// delay
-	{	/* Origin */
-		EN_H264,		// mime
-		SAVE_OFF,		// save_mode
-		1920,			// w
-		1440,			// h
-		0,				// storage loc
-		{
-			ALL_FR_30,	// org_fr
-			20			// org_br
-		}
-	},
-	{	/* Stitch */
-		EN_H264,		// mime
-		STITCH_NORMAL,	// stitch_mode
-		3840,			// w
-		1920,			// h
-		{
-			{
-				ALL_FR_30,	// sti_fr
-				20,			// sti_br
-				HDMI_ON,	// hdmi_on
-				0,			// 
-				{0},
-				{0}
-			},
-		}
-	},
-	{},		// CAM_PROP
-	{}		// AUD_INFO
-};
-
-#endif
-
-
 PicVideoCfg live4K_30F_Cfg = {
 	pItemName:			TAKE_LIVE_MODE_4K_30F,		// pItemName
 	iItemMaxVal:		0,							// iItemMaxVal
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
 	stPos:				{0},						// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&live4K_30F_ActionInfo,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		live4K_30F_Light_78x16,
@@ -2089,12 +1489,7 @@ PicVideoCfg live4K_30F_HDMI_Cfg = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
 	stPos:				{0},						// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&live4K_30F_HDMI_ActionInfo,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
 
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
@@ -2114,13 +1509,7 @@ PicVideoCfg live4K_30F_3D_Cfg = {
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
 	stPos:				{0},						// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&live4K_30D_ActionInfo,			/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		live4K_30F_3D_Light_78x16,
@@ -2139,12 +1528,7 @@ PicVideoCfg live4K_30F_3D_HDMI_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	5,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&live4K_30D_HDMI_ActionInfo,	/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
 
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
@@ -2167,13 +1551,7 @@ PicVideoCfg live_Customer_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	5,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&live4K_30D_HDMI_ActionInfo,	/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
-
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
 		picVidCustmLight_78x16,
@@ -2194,12 +1572,7 @@ PicVideoCfg live_Origin_Cfg = {
 	iCurVal:			0,								// iCurVal
 	iRawStorageRatio:	5,								// 5倍
 	stPos:				{0},							// stPos
-
-#ifdef ENABLE_USE_ACTION_INFO
-	pStAction:			&live4K_30D_HDMI_ActionInfo,	/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#else 
 	pStAction:			nullptr,						/* 默认值,如果由配置文件可以在初始化时使用配置文件的数据替换 */
-#endif
 
 	jsonCmd:			nullptr,
 	stLightIcon:		{	/* 选中时的图标列表 */
