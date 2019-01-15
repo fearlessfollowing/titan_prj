@@ -2227,8 +2227,8 @@ const u8 setPhotoDelayOffNor_96x16[] = {
 
 PIC_ORG aeb3Ev = {3, -64, 64, 0};
 PIC_ORG aeb5Ev = {5, -32, 32, 0};
-PIC_ORG aeb7Ev = {7, -16, 16, 0};
-PIC_ORG aeb9Ev = {9, -10, 10, 0};
+PIC_ORG aeb7Ev = {7, -19, 19, 0};
+PIC_ORG aeb9Ev = {9, -19, 19, 0};
 
 
 typedef struct stIconPos {
@@ -2376,7 +2376,7 @@ SettingItem setFreqItem = {
 	iItemMaxVal:    1,					// iItemMaxVal
 	iCurVal:        0,					// iCurVal
 	bHaveSubMenu:   false,				// bHaveSubMenu
-	pSetItemProc:   NULL,		// pSetItemProc
+	pSetItemProc:   NULL,				// pSetItemProc
 	stPos:          {0,0,0,0},
 	stLightIcon:    { 	/* 选中时的图标列表 */
 		set_frequency_50hz_light_96_16,

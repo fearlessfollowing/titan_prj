@@ -1,0 +1,1 @@
+{"name":"camera._takePicture","parameters":{"delay":0,"origin":{"mime":"jpeg","saveOrigin": true, "width": 5280, "height": 3956}, "stiching": {"mode": "3d_top_left", "height": 10560, "width": 10560, "mime": "jpeg", "algorithm": "opticalFlow"}}}

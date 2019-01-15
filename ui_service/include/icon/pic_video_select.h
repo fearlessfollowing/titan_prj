@@ -1084,14 +1084,14 @@ typedef struct stPicVideoCfg {
 	sp<Json::Value>			jsonCmd;
 	const u8 * 				stLightIcon[PIC_VIDEO_LIVE_ITEM_MAX];	/* 选中时的图标列表 */
 	const u8 * 				stNorIcon[PIC_VIDEO_LIVE_ITEM_MAX];		/* 未选中时的图标列表 */
-    const char *            pNote;                                  /* 字符串形式的挡位 */
+	std::string				pNote;
     bool                    bDispType;                              /* 以图标的形式显示: true; 以字符的形式显示: false */
 } PicVideoCfg;
 
 
 
 PicVideoCfg pic8K_3D_OF = {
-	pItemName:			TAKE_PIC_MODE_8K_3D_OF,		// pItemName
+	pItemName:			TAKE_PIC_MODE_11K_3D_OF,		// pItemName
 	iItemMaxVal: 		1,							// iItemMaxVal
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍
@@ -1106,14 +1106,14 @@ PicVideoCfg pic8K_3D_OF = {
 		pic8K3DOFNor_78X16,
 		pic8K3DOF_RAW_Nor_78x16,
 	},
-    pNote:              "8K|3D|OF",
+    pNote:              "11K|3D|OF",
     bDispType:          false,
 };
 
 
 
 PicVideoCfg pic8K_3D = {
-	pItemName:			TAKE_PIC_MODE_8K_3D,		// pItemName
+	pItemName:			TAKE_PIC_MODE_11K_3D,		// pItemName
 	iItemMaxVal:		1,							// iItemMaxVal
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍	
@@ -1135,7 +1135,7 @@ PicVideoCfg pic8K_3D = {
 
 
 PicVideoCfg pic8K = {
-	pItemName:			TAKE_PIC_MODE_8K,			// pItemName
+	pItemName:			TAKE_PIC_MODE_11K,			// pItemName
 	iItemMaxVal:		1,							// iItemMaxVal
 	iCurVal:			0,							// iCurVal
 	iRawStorageRatio:	5,							// 5倍	
@@ -1189,7 +1189,7 @@ PicVideoCfg picAEB = {
 		picAEB9_RAW_Nor_78X16,
 	},
     pNote:              "AEB",
-    bDispType:          true,
+    bDispType:          false,
 };
 
 
@@ -1210,7 +1210,7 @@ PicVideoCfg picBurst = {
 		picBurstRAWNor_78x16,
 	},
     pNote:              "Burst",
-    bDispType:          true,
+    bDispType:          false,
 };
 
 
@@ -1229,7 +1229,7 @@ PicVideoCfg picCustomer = {
 		picVidCustmNor_78x16,
 	},
     pNote:              "customize",
-    bDispType:          true,
+    bDispType:          false,
 
 };
 
@@ -1464,7 +1464,6 @@ PicVideoCfg* gVidAllModeCfgList[] = {
 /******************************** 直播部分：START **************************************/
 
 
-
 PicVideoCfg live4K_30F_Cfg = {
 	pItemName:			TAKE_LIVE_MODE_4K_30F,		// pItemName
 	iItemMaxVal:		0,							// iItemMaxVal
@@ -1606,6 +1605,8 @@ PicVideoCfg* gLiveAllModeCfgList[] = {
 /* 
  * 默认的参数(当配置文件不存在或者解析配置文件出错时使用)
  */
+#if 0
+
 static const char* pCmdTakePic_8K3DOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
 
 
@@ -1617,7 +1618,24 @@ static const char* pCmdTakePic_AEB 		= "{\"name\":\"camera._takePicture\",\"para
 
 static const char* pCmdTakePic_Burst 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"burst\":{\"enable\":true,\"count\": 10}, \"origin\": {\"mime\": \"jpeg\", \"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}}}";
 
+#else
+
+static const char* pCmdTakePic_11K3DOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 10560, \"width\": 10560, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
+
+static const char* pCmdTakePic_11KOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956}, \"stiching\": {\"mode\": \"pano\", \"height\": 5280, \"width\": 10560, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
+
+static const char* pCmdTakePic_11K 		= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956}}}";
+
+static const char* pCmdTakePic_AEB 		= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"bracket\":{\"enable\":true,\"count\": 9, \"min_ev\": -10, \"max_ev\": 10}, \"origin\": {\"mime\": \"raw+jpeg\", \"saveOrigin\": true, \"width\": 5280, \"height\": 3956}}} ";
+
+static const char* pCmdTakePic_Burst 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"burst\":{\"enable\":true,\"count\": 10}, \"origin\": {\"mime\": \"jpeg\", \"saveOrigin\": true, \"width\": 5280, \"height\": 3956}}}";
+
+#endif
+
+
 static const char* pCmdTakePic_Customer = "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
+
+
 
 
 

@@ -775,7 +775,7 @@ void oled_module::ssd1306_disp_16_str(const u8 *str,const u8 x, const u8 y, bool
                 }
                 col_start += mCharInfo->char_w;
             } else {
-                LOGDBG(TAG,"!!!exceed %d\n",col_start + mCharInfo->char_w);
+                LOGDBG(TAG,"!!!exceed %d\n", col_start + mCharInfo->char_w);
                 goto EXIT;
             }
         }

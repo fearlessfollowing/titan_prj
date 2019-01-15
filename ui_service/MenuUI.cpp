@@ -387,8 +387,10 @@ void MenuUI::init_menu_select()
     mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.select = 0;
     mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_max = mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total;
     mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_num = 1;
+
     cfgPicVidLiveSelectMode(&mMenuInfos[MENU_PIC_SET_DEF], mPicAllItemsList);
     
+
     LOGDBG(TAG, "mPicAllItemsList size = %d", mPicAllItemsList.size());
 
     LOGDBG(TAG, "MENU_PIC_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
@@ -1068,7 +1070,12 @@ void MenuUI::disp_msg_box(int type)
             // dispStr((const u8*)" storage devices...", 8, 32, false, 128);
             // dispStr((const u8*)"Stop pressing button", 8, 48, false, 128);
 
-            dispStr((const u8*)"(1,2,3,4,5,6,7,8)", 23, 32, false, 128);
+            // dispStr((const u8*)"(1,2,3,4,5,6,7,8)", 23, 32, false, 128);
+
+            dispStr((const u8*)"Error 417. Camera", 15, 0, false, 128);
+            dispStr((const u8*)"temperature high.Please", 2, 16, false, 128);
+            dispStr((const u8*)"turn on the fan or take", 2, 32, false, 128);
+            dispStr((const u8*)"a break before continue", 2, 48, false, 128); 
 
             #endif
             break;
@@ -1363,7 +1370,7 @@ void MenuUI::setMenuCfgInit()
     setCommonMenuInit(&mMenuInfos[MENU_SET_PHOTO_DEALY], mPhotoDelayList, gSetPhotoDelayItems, &tmPos);   /* 设置系统菜单初始化 */
 
 
-    #ifdef ENABLE_MENU_AEB	
+#ifdef ENABLE_MENU_AEB	
 
     mMenuInfos[MENU_SET_AEB].priv = static_cast<void*>(&setAebsNvIconInfo);
     mMenuInfos[MENU_SET_AEB].privList = static_cast<void*>(&mAebList);
@@ -1400,7 +1407,7 @@ void MenuUI::setMenuCfgInit()
 
 
     setCommonMenuInit(&mMenuInfos[MENU_SET_AEB], mAebList, gSetAebItems, &tmPos);   /* 设置系统菜单初始化 */
-    #endif
+#endif
 
 
     mMenuInfos[MENU_STORAGE].priv = static_cast<void*>(&storageNvIconInfo);
@@ -1671,22 +1678,50 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
         const char* pItemName = pPicCfg->pItemName;
 
         /* Customer模式: 从配置文件中读取保存的customer */
-        if (!strcmp(pItemName, TAKE_PIC_MODE_CUSTOMER)) {   /* Customer DO nothing */
+        if (!strcmp(pItemName, TAKE_PIC_MODE_CUSTOMER)) {       /* 都是显示"customize" */
             pPicCfg->iCurVal = 0;
-        } else if (!strcmp(pItemName, TAKE_PIC_MODE_AEB)) {
-            int iIndexBase = 0;
+        } else if (!strcmp(pItemName, TAKE_PIC_MODE_AEB)) {     /* AEB */
 
-            /* 根据RAW和AEB当前值来决定 */
-            if (iRawVal) {
-                iIndexBase = 4;
-            }
+            if (pPicCfg->bDispType == true) {   /* 以图标的形式显示 */
+                int iIndexBase = 0;
 
-            pPicCfg->iCurVal = iIndexBase + iAebVal;
-            if (pPicCfg->iCurVal > pPicCfg->iItemMaxVal) {
-                LOGERR(TAG, "Current val [%d], max val[%d]", pPicCfg->iCurVal, pPicCfg->iItemMaxVal);
+                /* 根据RAW和AEB当前值来决定 */
+                if (iRawVal) {
+                    iIndexBase = 4;
+                }
+
+                pPicCfg->iCurVal = iIndexBase + iAebVal;
+                if (pPicCfg->iCurVal > pPicCfg->iItemMaxVal) {
+                    LOGERR(TAG, "Current val [%d], max val[%d]", pPicCfg->iCurVal, pPicCfg->iItemMaxVal);
+                }
+            } else {                            /* 以文字的形式显示 */
+                char cPrefix[128] = {0};
+                if (iRawVal) {
+                    sprintf(cPrefix, "AEB%d|RAW",convIndex2AebNum(iAebVal));
+                } else {
+                    sprintf(cPrefix, "AEB%d", convIndex2AebNum(iAebVal));
+                }
+                pPicCfg->pNote = cPrefix;
             }
         } else {
-            pPicCfg->iCurVal = iRawVal;
+            if (pPicCfg->bDispType == true) {
+                pPicCfg->iCurVal = iRawVal;
+            } else {
+                char cPrefix[128] = {0};
+                sprintf(cPrefix, "%s", (pPicCfg->pNote).c_str());
+                LOGDBG(TAG, "------------------> show[%s]", cPrefix);
+                if (iRawVal) {
+                    if (NULL == strstr(cPrefix, "|RAW")) {
+                        strcat(cPrefix, "|RAW");
+                    }
+                } else {
+                    char* pRawFlag = strstr(cPrefix, "|RAW");
+                    if (pRawFlag) {
+                        memset(pRawFlag, '\0', strlen("|RAW"));
+                    }
+                }
+                pPicCfg->pNote = cPrefix;
+            }
             LOGDBG(TAG, "Current val [%d]", pPicCfg->iCurVal);
         }
 
@@ -1708,7 +1743,7 @@ void MenuUI::printJsonCfg(Json::Value& json)
 
 void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct stPicVideoCfg*>& pItemLists)
 {
-    if (pParentMenu && !pItemLists.size()) {
+    if (pParentMenu && pItemLists.empty()) {
         
         int size = pParentMenu->mSelectInfo.total;
         ICON_POS tmPos = {0, 48, 78, 16};
@@ -1723,14 +1758,21 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
         switch (pParentMenu->iMenuId) {
 
             case MENU_PIC_SET_DEF: {      /* PIC */
+
                 iIndex = cm->getKeyVal("mode_select_pic");
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
 
                 for (int i = 0; i < size; i++) {
 
-                    pSetItems[i]->stPos = tmPos;
-                    sp<Json::Value> pRoot = (sp<Json::Value>)(new Json::Value());
 
+                    pSetItems[i]->stPos = tmPos;
+                    if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
+                        pSetItems[i]->stPos.xPos = 2;
+                        pSetItems[i]->stPos.iWidth = 90;
+                    }
+
+                    sp<Json::Value> pRoot = (sp<Json::Value>)(new Json::Value());
+                    bParseFileFlag = false;
 
                     /* 根据当前项的名称，找到对应的 */
                     cfgItemJsonFilePath = JSON_CFG_FILE_PATH;
@@ -1740,29 +1782,36 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                     LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
                     if (access(path, F_OK) == 0) {
+
                         std::ifstream ifs;  
                         ifs.open(path, std::ios::binary); 
                         
-                        Json::CharReaderBuilder builder;
-                        builder["collectComments"] = false;
-                        JSONCPP_STRING errs;
-                        if (!parseFromStream(builder, ifs, pRoot.get(), &errs)) {
-                            LOGDBG(TAG, "parse [%s] success", path);
-                            pSetItems[i]->jsonCmd = pRoot;
-                            bParseFileFlag = true;
-                        }                        
+                        if (ifs.is_open()) {
+                            LOGDBG(TAG, "---> Open Cfg file[%s] Suc.", path);
+                            Json::CharReaderBuilder builder;
+                            builder["collectComments"] = false;
+                            JSONCPP_STRING errs;
+                            if (parseFromStream(builder, ifs, pRoot.get(), &errs)) {
+                                LOGDBG(TAG, "parse [%s] success", path);
+                                pSetItems[i]->jsonCmd = pRoot;
+                                bParseFileFlag = true;
+                            } else {
+                                LOGERR(TAG, "--> Open Cfg file[%s] suc, but parse error!", path);
+                            }                       
+                            ifs.close();
+                        }
                     }
 
                     if (bParseFileFlag == false) {
                         LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
                         
                         const char* pCommJsonCmd = NULL;
-                        if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_8K_3D_OF)) {
-                            pCommJsonCmd = pCmdTakePic_8K3DOF;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_8K_3D)) {
-                            pCommJsonCmd = pCmdTakePic_8KOF;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_8K)) {
-                            pCommJsonCmd = pCmdTakePic_8K;
+                        if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K_3D_OF)) {
+                            pCommJsonCmd = pCmdTakePic_11K3DOF;
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K_3D)) {
+                            pCommJsonCmd = pCmdTakePic_11KOF;
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K)) {
+                            pCommJsonCmd = pCmdTakePic_11K;
                         } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_AEB)) {
                             pCommJsonCmd = pCmdTakePic_AEB;
                         } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_BURST)) {
@@ -2242,7 +2291,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
         case ACTION_PIC: {	/* 拍照动作： 因为有倒计时,倒计时完成需要检查存储设备还是否存在 */
 
-            LOGDBG(TAG, "=------------->> sendRpc +++ ACTION_PIC");
+            LOGDBG(TAG, "-------------->> sendRpc +++ ACTION_PIC");
             Json::Value* pTakePicJson = NULL;
             
             /* customer和非customer */
@@ -2259,7 +2308,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 mCurTakePicJson = pTmpPicVidCfg->jsonCmd;
                 pTakePicJson = (pTmpPicVidCfg->jsonCmd).get();
 
-            #if 0
+
             #ifdef ENABLE_MENU_AEB
 
                 PIC_ORG* pTmpAeb = NULL;
@@ -2269,11 +2318,9 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 pAebPicVidCfg = getPicVidCfgByName(mPicAllItemsList, TAKE_PIC_MODE_AEB);
                 if (pAebSetItem && pAebPicVidCfg) {
                     pTmpAeb = pAebSetItem->stOrigArg[pAebSetItem->iCurVal];
-                    memcpy(&(pAebPicVidCfg->pStAction->stOrgInfo.stOrgAct.mOrgP), pTmpAeb, sizeof(PIC_ORG));
                     LOGDBG(TAG, "Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", pTmpAeb->hdr_count, pTmpAeb->min_ev, pTmpAeb->max_ev);
-
-                    /* 非Customer模式时，需要更新AEB参数 */
-                    if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {
+                    
+                    if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {     /* 非Customer模式时，需要更新AEB参数 */
                         if ((*pTakePicJson)["parameters"].isMember("bracket")) {
                             (*pTakePicJson)["parameters"]["bracket"]["count"] = pTmpAeb->hdr_count;
                             (*pTakePicJson)["parameters"]["bracket"]["min_ev"] = pTmpAeb->min_ev;
@@ -2283,7 +2330,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 } else {
                     LOGWARN(TAG, "Warnning Aeb Item lossed, please check!!!");
                 }
-            #endif
             #endif
 
                 if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) { /* 非Customer模式根据是否使能RAW来设置origin.mime，Customer模式不用理会该属性 */
@@ -3478,7 +3524,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
 
 void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint64_t serverState)
 {
-#if 1
+#if 0
     Json::FastWriter writer;
     std::string actionStr = writer.write(actionJson);
 
@@ -3890,7 +3936,7 @@ void MenuUI::dispBottomLeftSpace()
 
     if (checkServerStateIn(serverState, STATE_START_PREVIEWING))  { 
         LOGDBG(TAG, "Start Preview state, Clear this area ....");
-        clearArea(78, 48);
+        clearArea(92, 48);  // 78 -> 92
     } else {
         switch (cur_menu) {
             case MENU_PIC_INFO:
@@ -3903,7 +3949,9 @@ void MenuUI::dispBottomLeftSpace()
                 if (!vm->checkLocalVolumeExist() || !(vm->checkAllTfCardExist())) {     /* 不满足存储条件: 没有插大卡或者没有插小卡 */
                 #endif
                     LOGDBG(TAG, "Current menu[%s] have not local stroage device, show none", getMenuName(cur_menu));
-                    dispIconByType(ICON_LIVE_INFO_NONE_7848_50X16);
+                    // dispIconByType(ICON_LIVE_INFO_NONE_7848_50X16);
+
+                    dispStrFill((const u8*)"None", 103, 48);    
                 } else {    /* 条件满足: 显示剩余张数 */
                     /* 如果是拍timelapse显示可拍timelapse的张数
                      * 否则显示可拍的张数
@@ -4603,7 +4651,8 @@ void MenuUI::dispPicVidCfg(PicVideoCfg* pCfg, bool bLight)
             }
             dispIconByLoc(&iconInfo);
         } else {                        /* 以文本的方式显示 */
-            dispStr((const u8 *)pCfg->pNote, pCfg->stPos.xPos, pCfg->stPos.yPos, bLight, pCfg->stPos.iWidth);
+            const char* pDisp = (pCfg->pNote).c_str();
+            dispStr((const u8 *)pDisp, pCfg->stPos.xPos, pCfg->stPos.yPos, bLight, pCfg->stPos.iWidth);
         }
     }
 }
@@ -4638,9 +4687,9 @@ void MenuUI::updateBottomMode(bool bLight)
                 LOGDBG(TAG, "menu[%s] current selected index[%d]", getMenuName(MENU_PIC_SET_DEF), iIndex);
                 
                 LOGDBG(TAG, "menu[%s] total[%d] PIC cfg list len[%d]", 
-                                                                                getMenuName(MENU_PIC_SET_DEF), 
-                                                                                mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total, 
-                                                                                mPicAllItemsList.size());
+                                                                        getMenuName(MENU_PIC_SET_DEF), 
+                                                                        mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total, 
+                                                                        mPicAllItemsList.size());
 
                 if (iIndex >= mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total || iIndex >= mPicAllItemsList.size()) {
                     LOGERR(TAG, "invalid index(%d) on current menu[%s]", iIndex, getMenuName(cur_menu));
@@ -4648,11 +4697,11 @@ void MenuUI::updateBottomMode(bool bLight)
                     pTmpCfg = mPicAllItemsList.at(iIndex);
                     if (pTmpCfg) {
                         LOGDBG(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
-                        cfgPicModeItemCurVal(pTmpCfg);      /* 更新拍照各项的当前值(根据设置系统的值，比如RAW, AEB) */
-                        disp_org_rts(*(pTmpCfg->jsonCmd.get()), 0);
-                        dispPicVidCfg(pTmpCfg, bLight);     /* 显示拍照的挡位 */
+                        cfgPicModeItemCurVal(pTmpCfg);                  /* 更新拍照各项的当前值(根据设置系统的值，比如RAW, AEB) */
+                        disp_org_rts(*(pTmpCfg->jsonCmd.get()), 0);     /* 显示"RTS/GPS"等状态信息 */
+                        dispPicVidCfg(pTmpCfg, bLight);                 /* 显示左下角拍照的挡位 */
                     } else {
-                        LOGERR(TAG, "invalid pointer pTmpCfg");
+                        LOGERR(TAG, "++++> Error: invalid pointer pTmpCfg");
                     }
                 }
             }
@@ -7910,9 +7959,9 @@ int MenuUI::getCurOneGroupPicSize()
 {
     int iSize = 20;
     int iIndex = getMenuSelectIndex(MENU_PIC_SET_DEF);
-    struct stPicVideoCfg* pTmpCfg = mPicAllItemsList.at(iIndex);
 
     #if 0
+    struct stPicVideoCfg* pTmpCfg = mPicAllItemsList.at(iIndex);
     if (pTmpCfg) {
         if (!strcmp(pTmpCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {  /* take picture consutomer */
 
@@ -8662,7 +8711,7 @@ void MenuUI::handleUpdateDevInfo(int iAction, int iType, std::vector<Volume*>& m
 /*
  * TF卡的状态发生变化
  */
-void MenuUI::handleTfStateChanged(std::vector<sp<Volume>>& mTfChangeList)
+void MenuUI::handleTfStateChanged(std::vector<std::shared_ptr<Volume>>& mTfChangeList)
 {
     LOGDBG(TAG, "Tf Card state Changed, Insert/Removed.....");
     VolumeManager* vm = VolumeManager::Instance();
@@ -8890,7 +8939,7 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     int iNextPollTime = BAT_INTERVAL;       /* 下次获取电池信息的时刻 */
     BatterInfo batInfo;
 
-    ProtoManager* pm = ProtoManager::Instance();
+    // ProtoManager* pm = ProtoManager::Instance();
     uint64_t serverState = getServerState();
     std::shared_ptr<HardwareService> hs = HardwareService::Instance();
 
@@ -9165,7 +9214,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             }
 
             case UI_MSG_TF_STATE: {     /* TF卡状态变化: 卡拔出, 卡插入 */
-                std::vector<sp<Volume>> mTfChangeList;
+                std::vector<std::shared_ptr<Volume>> mTfChangeList;
                 if (msg->find<std::vector<sp<Volume>>>("tf_list", &mTfChangeList)) {
                     handleTfStateChanged(mTfChangeList);
                 }
@@ -9375,7 +9424,7 @@ void MenuUI::clearReady()
 void MenuUI::dispLeftNum(const char* pBuf)
 {
     int iLen = strlen(pBuf);
-    int iStartPos = 78;         /* 默认的显示的横坐标为78 */
+    int iStartPos = 92;         /* 默认的显示的横坐标为78 */
 
     switch (iLen) {
         case 1: iStartPos = 122; break;
@@ -9389,7 +9438,7 @@ void MenuUI::dispLeftNum(const char* pBuf)
         default: break;
     }
 
-    clearArea(78, 48);  /* 先清除一下该区域 */
+    clearArea(92, 48);  /* 先清除一下该区域 */
     dispStrFill((const u8 *) pBuf, iStartPos, 48);
 }
 
@@ -9431,7 +9480,7 @@ void MenuUI::enterUdiskSuc()
     dispStr((const u8*)"smb:192.168.1.188", 12, 48, false, 128);
 #else 
     dispStr((const u8*)"Reading storage devices", 0, 16, false, 128);
-    dispStr((const u8*)"ServerIP:192.168.1.188", 0, 32, false, 128);
+    dispStr((const u8*)"ServerIP:192.168.1.188", 2, 32, false, 128);
 #endif
 }
 
@@ -9539,10 +9588,7 @@ void MenuUI::dispReady(bool bDispReady)
         case MENU_VIDEO_INFO: {
             /* 调用存储管理器来判断显示图标 */
             if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* 大卡,小卡都在 */
-
-            #ifdef ENABLE_DEBUG_MODE
                 LOGDBG(TAG, "^++^ All Card is Exist ....");        
-            #endif
                 dispIconByType(ICON_CAMERA_READY_20_16_76_32);
             } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
 
@@ -9722,9 +9768,11 @@ void MenuUI::tipHighTempError(int iErrno)
     } else {
         dispStr((const u8*)"Error 417. Camera", 15, 0, false, 128);
     }
-    dispStr((const u8*)"temperature high.Please", 0, 16, false, 128);
-    dispStr((const u8*)"turn on the fan or take", 0, 32, false, 128);
-    dispStr((const u8*)"a break before continue", 0, 48, false, 128); 
+
+    dispStr((const u8*)"temperature high.Please", 2, 16, false, 128);
+    dispStr((const u8*)"turn on the fan or take", 2, 32, false, 128);
+    dispStr((const u8*)"a break before continue", 2, 48, false, 128); 
+
 }
 
 

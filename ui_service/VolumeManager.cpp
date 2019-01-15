@@ -2330,7 +2330,7 @@ bool VolumeManager::checkSavepathChanged()
 /*
  * 处理模组上卡的热插拔时间
  */
-int VolumeManager::handleRemoteVolHotplug(std::vector<sp<Volume>>& volChangeList)
+int VolumeManager::handleRemoteVolHotplug(std::vector<std::shared_ptr<Volume>>& volChangeList)
 {
     Volume* tmpSourceVolume = NULL;
     int iAction = VOLUME_ACTION_UNSUPPORT;
@@ -2338,9 +2338,8 @@ int VolumeManager::handleRemoteVolHotplug(std::vector<sp<Volume>>& volChangeList
     if (volChangeList.size() > 1) {
         LOGERR(TAG, "Hotplug Remote volume num than 1");
     } else {
-        sp<Volume> tmpChangedVolume = volChangeList.at(0);
-
-        {
+        std::shared_ptr<Volume> tmpChangedVolume = volChangeList.at(0);
+        if (tmpChangedVolume) {
             std::unique_lock<std::mutex> _lock(mRemoteDevLock); 
             for (u32 i = 0; i < mModuleVols.size(); i++) {
                 tmpSourceVolume = mModuleVols.at(i);
@@ -2352,6 +2351,7 @@ int VolumeManager::handleRemoteVolHotplug(std::vector<sp<Volume>>& volChangeList
                         tmpSourceVolume->uTotal     = tmpChangedVolume->uTotal;
                         tmpSourceVolume->uAvail     = tmpChangedVolume->uAvail;
                         tmpSourceVolume->iSpeedTest = tmpChangedVolume->iSpeedTest;
+                        tmpSourceVolume->iVolState  = tmpChangedVolume->iVolState;
                         if (tmpSourceVolume->uTotal > 0) {
                             LOGDBG(TAG, "TF Card Add action");
                             iAction = VOLUME_ACTION_ADD;
@@ -2365,6 +2365,7 @@ int VolumeManager::handleRemoteVolHotplug(std::vector<sp<Volume>>& volChangeList
             }  
         }
     }
+    
     LOGDBG(TAG, " handleRemoteVolHotplug return action: %d", iAction);
     return iAction;
 }

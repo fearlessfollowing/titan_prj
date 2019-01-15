@@ -221,9 +221,9 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 /*
  * 拍照模式名称
  */
-#define TAKE_PIC_MODE_8K_3D_OF      "8k_3d_of"
-#define TAKE_PIC_MODE_8K_3D         "8k_of"
-#define TAKE_PIC_MODE_8K            "8k"
+#define TAKE_PIC_MODE_11K_3D_OF     "11k_3d_of"
+#define TAKE_PIC_MODE_11K_3D        "11k_of"
+#define TAKE_PIC_MODE_11K           "11k"
 #define TAKE_PIC_MODE_AEB           "aeb"
 #define TAKE_PIC_MODE_BURST         "burst"
 #define TAKE_PIC_MODE_CUSTOMER      "pic_customer"

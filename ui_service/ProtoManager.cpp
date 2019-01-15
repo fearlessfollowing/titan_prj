@@ -2119,35 +2119,45 @@ void ProtoManager::handleTfCardChanged(Json::Value& jsonData)
 {
     LOGDBG(TAG, "Get Tfcard Changed....");      
 
-    std::vector<sp<Volume>> storageList;   
+    std::vector<std::shared_ptr<Volume>> storageList;   
     storageList.clear();
 
     /*  
         * {'module': {'storage_total': 61024, 'storage_left': 47748, 'pro_suc': 1, 'index': 1}}
         */
     if (jsonData.isMember("module")) {
-        sp<Volume> tmpVol = std::make_shared<Volume>();
+        std::shared_ptr<Volume> tmpVol = std::make_shared<Volume>();
+        if (tmpVol) {
+            if (jsonData["module"].isMember("index")  && jsonData["module"]["index"].isInt()) {
+                tmpVol->iIndex = jsonData["module"]["index"].asInt();
+            }
 
-        if (jsonData["module"]["index"].isInt()) {
-            tmpVol->iIndex = jsonData["module"]["index"].asInt();
-        }
+            if (jsonData["module"].isMember("storage_total") && jsonData["module"]["storage_total"].isInt()) {
+                tmpVol->uTotal = jsonData["module"]["storage_total"].asInt();
+            }
 
-        if (jsonData["module"]["storage_total"].isInt()) {
-            tmpVol->uTotal = jsonData["module"]["storage_total"].asInt();
-        }
+            if (jsonData["module"].isMember("storage_left") && jsonData["module"]["storage_left"].isInt()) {
+                tmpVol->uAvail = jsonData["module"]["storage_left"].asInt();
+            }
 
-        if (jsonData["module"]["storage_left"].isInt()) {
-            tmpVol->uAvail = jsonData["module"]["storage_left"].asInt();
-        }
+            if (jsonData["module"].isMember("pro_suc") && jsonData["module"]["pro_suc"].isInt()) {
+                tmpVol->iSpeedTest = jsonData["module"]["pro_suc"].asInt();
+            }            
 
-        snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
-        storageList.push_back(tmpVol);
+            if (jsonData["module"].isMember("storage_state") && jsonData["module"]["storage_state"].isInt()) {
+                tmpVol->iVolState = jsonData["module"]["storage_state"].asInt();
+            }  
 
-        if (mNotify) {
-            sp<ARMessage> msg = mNotify->dup();
-            msg->setWhat(UI_MSG_TF_STATE);
-            msg->set<std::vector<sp<Volume>>>("tf_list", storageList);
-            msg->post();   
+            snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
+            storageList.push_back(tmpVol);
+            if (mNotify) {
+                sp<ARMessage> msg = mNotify->dup();
+                msg->setWhat(UI_MSG_TF_STATE);
+                msg->set<std::vector<std::shared_ptr<Volume>>>("tf_list", storageList);
+                msg->post();   
+            }
+        } else {
+            LOGERR(TAG, "--> Malloc Volume Failed.");
         }
     } else {
         LOGDBG(TAG, "[%s:%d] get module json node[module] failed");                               
