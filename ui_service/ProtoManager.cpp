@@ -11,6 +11,7 @@
 ** 日     期: 2018年9月28日
 ** 修改记录:
 ** V1.0			Skymixos		2018-09-28		创建文件，添加注释
+** V2.0         Skymixo         2019-01-16      预览参数支持模板化配置
 ******************************************************************************************************/
 #include <thread>
 #include <sys/ins_types.h>
@@ -21,6 +22,8 @@
 #include <json/json.h>
 #include <json/value.h>
 #include <sstream>
+#include <iostream>
+#include <fstream>
 #include <sys/Mutex.h>
 #include <sys/ProtoManager.h>
 
@@ -101,11 +104,50 @@ ProtoManager* ProtoManager::Instance()
 }
 
 
+
 ProtoManager::ProtoManager(): mSyncReqExitFlag(false), 
                               mAsyncReqExitFlag(false)
 {
     LOGDBG(TAG, "Constructor ProtoManager now ...");
     mCurRecvData.clear();
+
+    /*
+     * 检查是否有用户配置的预览参数模板,如果有加载模板参数
+     */
+    if (access(PREVIEW_JSON_FILE, F_OK) == 0) {
+        std::ifstream ifs;  
+        Json::Value root;
+
+        ifs.open(PREVIEW_JSON_FILE, std::ios::binary); 
+        
+        if (ifs.is_open()) {
+            Json::CharReaderBuilder builder;
+            builder["collectComments"] = false;
+            JSONCPP_STRING errs;
+            if (parseFromStream(builder, ifs, &root, &errs)) {
+                LOGDBG(TAG, "parse [%s] success", PREVIEW_JSON_FILE);
+                /*
+                 * Convert Json to string
+                 */
+                Json::StreamWriterBuilder builder;
+                std::ostringstream osInput;
+                
+                builder.settings_["indentation"] = "";
+                std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+                if (0 == writer->write(root, &osInput)) {
+                    mPreviewArg = osInput.str();
+                } else {
+                    LOGERR(TAG, "--> Error, convert Json 2 string failed");
+                    mPreviewArg = "none";
+                }
+            }    
+            ifs.close();     
+        }
+    } else {
+        LOGDBG(TAG, "---> Preview template file [%s] not exist, use default Value", PREVIEW_JSON_FILE);
+        mPreviewArg = "none";
+    }
+
 }
 
 
@@ -381,8 +423,6 @@ bool ProtoManager::rmServerState(uint64_t saveState)
 }
 
 
-#define PREVIEW_JSON_FILE "/home/nvidia/insta360/etc/preview.json"
-
 
 /* sendStartPreview
  * @param 
@@ -395,118 +435,13 @@ bool ProtoManager::sendStartPreview()
     const char* pPreviewMode = NULL;
     Json::Value jsonRes;   
 
-#if 0
+    std::string sendStr;
 
-    Json::Value root;
-    Json::Value param;
-    Json::Value originParam;
-    Json::Value stitchParam;
-    Json::Value audioParam;
-    Json::Value imageParam;
-
-    std::ostringstream os;
-
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-    std::string resultStr = "";
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-    pPreviewMode = property_get(PROP_PREVIEW_MODE);
-    if (pPreviewMode && !strcmp(pPreviewMode, "3d_top_left")) {
-        originParam[_mime]          = "h264";
-        originParam[_width]         = 1920;
-        originParam[_height]        = 1440;
-        originParam[_frame_rate]    = 30;
-        originParam[_bit_rate]      = 15000;
-        originParam[_save_origin]   = false;
-        originParam[_log_mode]      = 0;
-
-
-        stitchParam[_mime]          = "h264";
-        stitchParam[_width]         = 1920;
-        stitchParam[_height]        = 1920;
-        stitchParam[_frame_rate]    = 30;
-        stitchParam[_bit_rate]      = 1000;
-        stitchParam[_mode]          = pPreviewMode;
-
-    } else {    /* 默认为pano */
-        originParam[_mime]          = "h264";
-        originParam[_width]         = 1920;
-        originParam[_height]        = 1440;
-        originParam[_frame_rate]    = 30;
-        originParam[_bit_rate]      = 15000;
-        originParam[_save_origin]   = false;
-        originParam[_log_mode]      = 0;
-
-        stitchParam[_mime]          = "h264";
-        stitchParam[_width]         = 1920;
-        stitchParam[_height]        = 960;
-        stitchParam[_frame_rate]    = 30;
-        stitchParam[_bit_rate]      = 1000;
-        stitchParam[_mode]          = "pano";        
+    if (mPreviewArg == "none") {
+        sendStr =  "{\"name\": \"camera._startPreview\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"width\":1920,\"height\":1440,\"framerate\":30,\"bitrate\":20000},\"stiching\":{\"mode\":\"pano\",\"map\":\"flat\",\"mime\":\"h264\",\"width\":1920,\"height\":960,\"framerate\":30,\"bitrate\":5000}}}";
+    } else {
+        sendStr = mPreviewArg;
     }
-
-    audioParam[_mime]               = "aac";
-    audioParam[_sample_fmt]         = "s16";
-    audioParam[_channel_layout]     = "stereo";
-    audioParam[_sample_rate]        = 48000;
-    audioParam[_bit_rate]           = 128;
-
-
-#ifdef ENABLE_PREVIEW_STABLE
-    param["stabilization"] = true;
-#else 
-    param["stabilization"] = false;
-#endif
-
-#ifdef ENABLE_PREVIEW_IMAGE_PROPERTY
-    imageParam['sharpness'] = 4
-    // imageParam['wb'] = 0
-    // imageParam['iso_value'] = 0
-    // imageParam['shutter_value']= 0
-    // imageParam['brightness']= 0
-    imageParam['contrast']= 55 #0-255
-    // imageParam['saturation']= 0
-    // imageParam['hue']= 0
-    imageParam['ev_bias'] = 0  // (-96), (-64), (-32), 0, (32), (64), (96)
-    // imageParam['ae_meter']= 0
-    // imageParam['dig_effect']    = 0
-    // imageParam['flicker']       = 0    
-    param["imageProperty"] = imageParam;
-#endif 
-
-    param[_origin] = originParam;
-    param[_stitch] = stitchParam;
-    param[_audio] = audioParam;
-
-    root[_name_] = REQ_START_PREVIEW;
-    root[_param] = param;
-	writer->write(root, &os);
-    sendStr = os.str();
-
-#else 
-    #if 0
-    if (access(PREVIEW_JSON_FILE, F_OK) == 0) {
-        std::ifstream ifs;  
-        ifs.open(PREVIEW_JSON_FILE, std::ios::binary); 
-        
-        Json::CharReaderBuilder builder;
-        builder["collectComments"] = false;
-        JSONCPP_STRING errs;
-        if (!parseFromStream(builder, ifs, pRoot.get(), &errs)) {
-            LOGDBG(TAG, "parse [%s] success", path);
-            pSetItems[i]->jsonCmd = pRoot;
-            bParseFileFlag = true;
-        }    
-        ifs.close();     
-    }
-    #endif 
-
-    std::string sendStr =  "{\"name\": \"camera._startPreview\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"width\":1920,\"height\":1440,\"framerate\":30,\"bitrate\":20000},\"stiching\":{\"mode\":\"pano\",\"map\":\"flat\",\"mime\":\"h264\",\"width\":1920,\"height\":960,\"framerate\":30,\"bitrate\":5000}}}";
-#endif
-
 
     iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
     switch (iResult) {
@@ -528,7 +463,6 @@ bool ProtoManager::sendStartPreview()
     }
     return bRet;
 }
-
 
 
 /* sendStopPreview
@@ -611,7 +545,7 @@ bool ProtoManager::sendStopPreview()
  */
 bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
 {
-    LOGDBG(TAG, "[%s:%d] ---> parseQueryTfcardResult");
+    LOGDBG(TAG, "---> parseQueryTfcardResult");
 
     bool bResult = false;
     mStorageList.clear();
@@ -646,7 +580,7 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
                         }
                     }
 
-                    sprintf(tmpVol->cVolName, "mSD%d", tmpVol->iIndex);
+                    sprintf(tmpVol->cVolName, "SD%d", tmpVol->iIndex);
                     LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d], storage_state[%d]",
                                 tmpVol->cVolName, tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest, tmpVol->iVolState);
 
@@ -820,6 +754,7 @@ bool ProtoManager::sendSpeedTestReq(const char* path)
     return bRet;       
 }
 
+
 bool ProtoManager::sendTakePicReq(Json::Value& takePicReq)
 {
     int iResult = -1;
@@ -902,6 +837,7 @@ bool ProtoManager::sendTakeVideoReq(Json::Value& takeVideoReq)
             }
             break;
         }
+
         default: {  /* 通信错误 */
             LOGERR(TAG, "sendTakeVideoReq -> Maybe Transfer Error");
             bRet = false;
@@ -2148,7 +2084,7 @@ void ProtoManager::handleTfCardChanged(Json::Value& jsonData)
                 tmpVol->iVolState = jsonData["module"]["storage_state"].asInt();
             }  
 
-            snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
+            snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "SD%d", tmpVol->iIndex);
             storageList.push_back(tmpVol);
             if (mNotify) {
                 sp<ARMessage> msg = mNotify->dup();
@@ -2167,7 +2103,7 @@ void ProtoManager::handleTfCardChanged(Json::Value& jsonData)
 
 void ProtoManager::handleTfcardFormatResult(Json::Value& jsonData)
 {
-    LOGDBG(TAG, "Get Notify(mSD Format Info)");
+    LOGDBG(TAG, "Get Notify(SD Format Info)");
 
     sp<Volume> tmpVolume = std::make_shared<Volume>();
     std::vector<sp<Volume>> storageList;
@@ -2221,8 +2157,8 @@ void ProtoManager::handleSpeedTestResult(Json::Value& jsonData)
                 * 外部TF卡的命名规则
                 * 名称: "tf-1","tf-2","tf-3"....
                 */
-                snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "mSD%d", tmpVol->iIndex);
-                LOGDBG(TAG, "mSD card node[%s] info index[%d], speed[%d]",
+                snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "SD%d", tmpVol->iIndex);
+                LOGDBG(TAG, "SD card node[%s] info index[%d], speed[%d]",
                                 tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
 
                 storageList.push_back(tmpVol);

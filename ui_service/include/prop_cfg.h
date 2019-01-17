@@ -215,9 +215,19 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define HTTP_APP_LOG_PATH           "/home/nvidia/insta360/log/http_log"
 #define HTTP_SERVER_LOG_PATH        "/home/nvidia/insta360/log/http_server_log"
 #define TIME_TZ_LOG_PATH            "/home/nvidia/insta360/log/tz_log"
+
+
+/*
+ * 模板参数
+ */
 #define TAKE_PIC_TEMPLET_PATH       "/home/nvidia/insta360/etc/pic_customer.json"
 #define TAKE_VID_TEMPLET_PATH       "/home/nvidia/insta360/etc/vid_customer.json"
 #define TAKE_LIVE_TEMPLET_PATH      "/home/nvidia/insta360/etc/live_customer.json"
+
+#define PREVIEW_JSON_FILE           "/home/nvidia/insta360/etc/preview.json"
+
+
+
 /*
  * 拍照模式名称
  */

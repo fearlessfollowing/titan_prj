@@ -138,6 +138,7 @@ void NetDev::storeCurIp2Saved()
     strcpy(mSaveIpAddr, mCurIpAddr);
 }
 
+
 void NetDev::resumeSavedIp2CurAndPhy(bool bUpPhy)
 {
     LOGDBG(TAG, "saved ip: %s", mSaveIpAddr);

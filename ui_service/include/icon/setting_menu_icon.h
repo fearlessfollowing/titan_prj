@@ -3810,7 +3810,7 @@ ICON_INFO setPhotoDelayNvIconInfo = {
  * 存储的导航页
  */
 ICON_INFO storageNvIconInfo = {
-	0, 16, 25, 48, sizeof(setStorageNv_25x48), setStorageNv_25x48,
+	1, 16, 25, 48, sizeof(setStorageNv_25x48), setStorageNv_25x48,
 };
 
 

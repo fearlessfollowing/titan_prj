@@ -365,16 +365,16 @@ VolumeManager::VolumeManager() :
 
     LOGDBG(TAG, " Umont All device now .....");
 
-    umount2("/mnt/mSD1", MNT_FORCE);
-    umount2("/mnt/mSD2", MNT_FORCE);
-    umount2("/mnt/mSD3", MNT_FORCE);
-    umount2("/mnt/mSD4", MNT_FORCE);
-    umount2("/mnt/mSD5", MNT_FORCE);
-    umount2("/mnt/mSD6", MNT_FORCE);
+    umount2("/mnt/SD1", MNT_FORCE);
+    umount2("/mnt/SD2", MNT_FORCE);
+    umount2("/mnt/SD3", MNT_FORCE);
+    umount2("/mnt/SD4", MNT_FORCE);
+    umount2("/mnt/SD5", MNT_FORCE);
+    umount2("/mnt/SD6", MNT_FORCE);
 
 #ifdef HW_FLATFROM_TITAN
-    umount2("/mnt/mSD7", MNT_FORCE);
-    umount2("/mnt/mSD8", MNT_FORCE);
+    umount2("/mnt/SD7", MNT_FORCE);
+    umount2("/mnt/SD8", MNT_FORCE);
 #endif
 
     umount2("/mnt/sdcard", MNT_FORCE);
@@ -1752,20 +1752,26 @@ std::vector<Volume*>& VolumeManager::getCurSavepathList()
         tmpVol = mLocalVols.at(i);
         if (tmpVol && (tmpVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE) && (tmpVol->iVolState == VOLUME_STATE_MOUNTED) ) { 
 
-            statfs(tmpVol->pMountPath, &diskInfo);
+            if (statfs(tmpVol->pMountPath, &diskInfo)) {
+                LOGERR(TAG, "---> statfs [%s] failed.", tmpVol->pMountPath);
+            } else {
+                u64 blocksize = diskInfo.f_bsize;                                   //每个block里包含的字节数
+                totalsize = blocksize * diskInfo.f_blocks;                          // 总的字节数，f_blocks为block的数目
+                used_size = (diskInfo.f_blocks - diskInfo.f_bfree) * blocksize;     // 可用空间大小
+                used_size = used_size >> 20;
 
-            u64 blocksize = diskInfo.f_bsize;                                   //每个block里包含的字节数
-            totalsize = blocksize * diskInfo.f_blocks;                          // 总的字节数，f_blocks为block的数目
-            used_size = (diskInfo.f_blocks - diskInfo.f_bfree) * blocksize;     // 可用空间大小
-            used_size = used_size >> 20;
+                memset(tmpVol->cVolName, 0, sizeof(tmpVol->cVolName));
+                sprintf(tmpVol->cVolName, "%s", (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "SD0": "usb");
+                tmpVol->uTotal = totalsize >> 20;                 /* 统一将单位转换MB */
+                tmpVol->uAvail = tmpVol->uTotal - used_size;
+                
+                tmpVol->iType = VOLUME_TYPE_NV;
 
-            memset(tmpVol->cVolName, 0, sizeof(tmpVol->cVolName));
-            sprintf(tmpVol->cVolName, "%s", (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb");
-            tmpVol->uTotal = totalsize >> 20;                 /* 统一将单位转换MB */
-            tmpVol->uAvail = tmpVol->uTotal - used_size;
-            tmpVol->iType = VOLUME_TYPE_NV;
-            
-            mCurSaveVolList.push_back(tmpVol);
+                LOGDBG(TAG, "---> Volume[%s] Total[%d]MB, Avail[%d]MB", tmpVol->cVolName, tmpVol->uTotal, tmpVol->uAvail);
+
+                mCurSaveVolList.push_back(tmpVol);
+            }
+
         }
     }
     return mCurSaveVolList;
@@ -1774,16 +1780,16 @@ std::vector<Volume*>& VolumeManager::getCurSavepathList()
 
 bool VolumeManager::volumeIsTfCard(Volume* pVol) 
 {
-    if (!strcmp(pVol->pMountPath, "/mnt/mSD1") 
-        || !strcmp(pVol->pMountPath, "/mnt/mSD2")
-        || !strcmp(pVol->pMountPath, "/mnt/mSD3")
-        || !strcmp(pVol->pMountPath, "/mnt/mSD4")
-        || !strcmp(pVol->pMountPath, "/mnt/mSD5")
-        || !strcmp(pVol->pMountPath, "/mnt/mSD6")
+    if (!strcmp(pVol->pMountPath, "/mnt/SD1") 
+        || !strcmp(pVol->pMountPath, "/mnt/SD2")
+        || !strcmp(pVol->pMountPath, "/mnt/SD3")
+        || !strcmp(pVol->pMountPath, "/mnt/SD4")
+        || !strcmp(pVol->pMountPath, "/mnt/SD5")
+        || !strcmp(pVol->pMountPath, "/mnt/SD6")
 
 #ifdef HW_FLATFROM_TITAN
-        || !strcmp(pVol->pMountPath, "/mnt/mSD7")
-        || !strcmp(pVol->pMountPath, "/mnt/mSD8")
+        || !strcmp(pVol->pMountPath, "/mnt/SD7")
+        || !strcmp(pVol->pMountPath, "/mnt/SD8")
 #endif
         ) {
         return true;
@@ -2178,10 +2184,10 @@ bool VolumeManager::checkAllTfCardExist()
         std::unique_lock<std::mutex> lock(mRemoteDevLock);
         for (u32 i = 0; i < mModuleVols.size(); i++) {
             tmpVolume = mModuleVols.at(i);
-            /*
-             * 新增卡的状态
-             */
-            if (tmpVolume && tmpVolume->uTotal > 0 && (tmpVolume->iVolState == VOL_mSD_OK) ) {     /* 总容量大于0,表示卡存在 */
+
+            /* Card Capacity > 0 And Card State OK */
+            if (tmpVolume && tmpVolume->uTotal > 0 && 
+                    (tmpVolume->iVolState == VOL_MODULE_STATE_OK || tmpVolume->iVolState == VOL_MODULE_STATE_FULL) ) {     
                 iExitNum++;
             }
         }
@@ -2196,10 +2202,9 @@ bool VolumeManager::checkAllTfCardExist()
 
 
 
-
 int VolumeManager::getIneedTfCard(std::vector<int>& vectors)
 {
-    int iErrType = VOL_mSD_OK;
+    int iErrType = VOL_MODULE_STATE_OK;
     Volume* tmpVolume = NULL;
     std::unique_lock<std::mutex> lock(mRemoteDevLock);
     for (u32 i = 0; i < mModuleVols.size(); i++) {
@@ -2207,11 +2212,11 @@ int VolumeManager::getIneedTfCard(std::vector<int>& vectors)
         if (tmpVolume) {
             if (tmpVolume->uTotal <= 0) {   /* 卡不存在 */
                 vectors.push_back(tmpVolume->iIndex);
-                iErrType = VOL_mSD_LOST;
-            } else if (tmpVolume->uTotal > 0 && tmpVolume->iVolState != VOLUME_STATE_OK) {
+                iErrType = VOL_MODULE_STATE_NOCARD;
+            } else if (tmpVolume->uTotal > 0 && (tmpVolume->iVolState != VOL_MODULE_STATE_OK && tmpVolume->iVolState != VOL_MODULE_STATE_FULL)) {
                 vectors.push_back(tmpVolume->iIndex);
-                if (iErrType <= VOL_mSD_WP)
-                    iErrType = VOL_mSD_WP;
+                LOGDBG(TAG, "---> Module[%d] State[%d]", tmpVolume->iIndex, tmpVolume->iVolState);
+                iErrType = tmpVolume->iVolState;
             }
         }
     }
@@ -2416,7 +2421,7 @@ int VolumeManager::mountVolume(Volume* pVol)
 
     LOGDBG(TAG, " >>>>> Filesystem type: %s", pVol->cVolFsType);
 
-    #ifdef ENABLE_USE_SYSTEM_VOL_MOUNTUMOUNT
+#ifdef ENABLE_USE_SYSTEM_VOL_MOUNTUMOUNT
 
     unsigned long flags;
     flags = MS_DIRSYNC | MS_NOATIME;
@@ -2438,7 +2443,7 @@ int VolumeManager::mountVolume(Volume* pVol)
 
     int status;
 
-    #if 0
+#if 0
     const char* pMountFlag = NULL;
     pMountFlag = property_get(PROP_RO_MOUNT_TF);
     if ((pMountFlag && !strcmp(pMountFlag, "true")) && volumeIsTfCard(pVol)) {
@@ -2457,7 +2462,7 @@ int VolumeManager::mountVolume(Volume* pVol)
         args[2] = pVol->pMountPath;
         iRet = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
     }
-    #else 
+#else 
 
     /* 1.第一步都是挂成读写的 */
     const char *args[3];
@@ -2466,7 +2471,7 @@ int VolumeManager::mountVolume(Volume* pVol)
     args[2] = pVol->pMountPath;
     iRet = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
 
-    #endif
+#endif
 
     if (iRet != 0) {
         LOGERR(TAG, "mount failed due to logwrap error");
@@ -2954,7 +2959,7 @@ void VolumeManager::updateVolumeSpace(Volume* pVol)
             
             u32 uBlockSize = diskInfo.f_bsize / 1024;
 
-            #ifdef ENABLE_DEBUG_VOLUME
+#ifdef ENABLE_DEBUG_VOLUME
             LOGDBG(TAG, " stat fs path: %s", pVol->pMountPath);
 
             LOGDBG(TAG, " statfs block size: %d KB", uBlockSize);
@@ -2963,7 +2968,7 @@ void VolumeManager::updateVolumeSpace(Volume* pVol)
 
             LOGDBG(TAG, " statfs Tatol size = %u MB", (diskInfo.f_blocks * uBlockSize) / 1024);
             LOGDBG(TAG, " state Avail size = %u MB", (diskInfo.f_bfree * uBlockSize) / 1024);
-            #endif 
+#endif 
 
             pVol->uTotal = (uBlockSize * diskInfo.f_blocks) / 1024;
             
@@ -3191,7 +3196,6 @@ err_format_exfat:
          * TODO: 通知Web不能走UI消息,当前消息没有处理完,UI不会处这个消息
          */
         // sendDevChangeMsg2UI(VOLUME_ACTION_ADD, pVol->iVolSubsys, getCurSavepathList());
-
     }
 
 err_umount_volume:

@@ -927,15 +927,14 @@ void MenuUI::disp_top_info()
     clearArea(0, 0, 128, 16);
 
     if (CfgManager::Instance()->getKeyVal("wifi_on")) {
-        dispIconByType(ICON_WIFI_OPEN_0_0_16_16);
+        dispIconByLoc(&sbWifiOpenIconInfo);
     } else {
-        dispIconByType(ICON_WIFI_CLOSE_0_0_16_16);
+        dispIconByLoc(&sbWifiCloseIconInfo);
     }
-
 	uiShowStatusbarIp();
-
-
-    // uiShowBatteryInfo( &(HardwareService::Instance()->getSysBatteryInfo()) );
+    
+    BatterInfo batInfo = HardwareService::Instance()->getSysBatteryInfo();
+    uiShowBatteryInfo(&batInfo);
     
     bDispTop = true;
 }
@@ -1435,7 +1434,7 @@ void MenuUI::setMenuCfgInit()
                 );
 
 
-    tmPos.xPos 		= 25;       /* 水平方向的起始坐标 */
+    tmPos.xPos 		= 26;       /* 水平方向的起始坐标 */
     tmPos.yPos 		= 16;
     tmPos.iWidth	= 103;      /* 显示的宽 */
     tmPos.iHeight   = 16;       /* 显示的高 */
@@ -2154,7 +2153,7 @@ void MenuUI::update_sys_info()
 
 void MenuUI::dispSysInfo()
 {
-    int col = 1;
+    int col = 2;
     char buf[32];
 
     read_sn();
@@ -2853,7 +2852,6 @@ void MenuUI::disp_wifi(bool bState, int disp_main)
         set_mainmenu_item(MAINMENU_WIFI, 1);
 		
         if (check_allow_update_top()) {
-            // dispIconByType(ICON_WIFI_OPEN_0_0_16_16);
             dispIconByLoc(&sbWifiOpenIconInfo);
         }
 		
@@ -2874,7 +2872,6 @@ void MenuUI::disp_wifi(bool bState, int disp_main)
         set_mainmenu_item(MAINMENU_WIFI, 0);
 		
         if (check_allow_update_top()) {
-            // dispIconByType(ICON_WIFI_CLOSE_0_0_16_16);
             dispIconByLoc(&sbWifiCloseIconInfo);
         }
 		
@@ -5093,6 +5090,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             } else {
                 LOGERR(TAG, "Current Menu[%s] NV Icon not exist", getMenuName(cur_menu));
             }
+
             dispSettingPage(mStorageList);  /* 显示"右侧"的项: Storage Space; Test Write Speed */
 
         #ifdef ENABLE_STORAGE_MODULE_ON            
@@ -8633,7 +8631,7 @@ bool MenuUI::checkCurMenuShowGps()
 
 void MenuUI::clearGpsState()
 {
-    clearArea(96, 16, 32, 16);
+    clearArea(104, 16, 32, 16);
 }
 
 void MenuUI::drawGpsState()
@@ -9581,8 +9579,7 @@ void MenuUI::dispReady(bool bDispReady)
 {
     VolumeManager* vm = VolumeManager::Instance();
 
-    clearArea(20, 16, 84, 32);
-
+    clearArea(20, 16, 83, 32);
     switch (cur_menu) {
         case MENU_PIC_INFO:
         case MENU_VIDEO_INFO: {
@@ -9591,16 +9588,10 @@ void MenuUI::dispReady(bool bDispReady)
                 LOGDBG(TAG, "^++^ All Card is Exist ....");        
                 dispIconByType(ICON_CAMERA_READY_20_16_76_32);
             } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
-
-            #ifdef ENABLE_DEBUG_MODE
                 LOGDBG(TAG, "Warnning Need TF Card ....");
-            #endif
                 dispInNeedTfCard();
             } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
-
-            #ifdef ENABLE_DEBUG_MODE
                 LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
-            #endif
                 dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
             }            
             break;
@@ -9665,44 +9656,70 @@ void MenuUI::dispInNeedTfCard()
     char cIndex[128] = {0};
     std::vector<int> cards;
     int iStartPos = 20;
+    int iLineOneStartPos = 34;
+    int iDispLen  = 0;
 
     VolumeManager* vm = VolumeManager::Instance();
-
     cards.clear();
-
-
     vm->getIneedTfCard(cards);
 
-    dispStr((const u8*)"No mSD card", 27, 16, false, 104 - 27);
-
     if (cards.size() > 0) {
-        LOGDBG(TAG, "card size: %d", cards.size());
+        LOGDBG(TAG, "Lost Card Size: %d", cards.size());
 
-        if (cards.size() >= SYS_TF_COUNT_NUM) {             /* 8 */
-            sprintf(cIndex, "%s", "(1-8)");
-            iStartPos = 49;
-        } else if (cards.size() <= SYS_TF_COUNT_NUM -1) {   /* <=7 */
-            cIndex[0] = '(';
-            u32 i;
-            for (i = 0; i < cards.size(); i++) {
-                cIndex[i*2 + 1] = cards.at(i) + '0';
-                cIndex[i*2 + 2] = ',';
+        switch (cards.size()) {
+            case 8: {
+                iLineOneStartPos = 34;
+                iStartPos = 49;
+                sprintf(cIndex, "%s", "(1-8)");                
+                dispStr((const u8*)"No SD card", iLineOneStartPos, 16);        
+                dispStr((const u8*)cIndex, iStartPos, 32);                
+                break;
             }
-            cIndex[(i-1)*2 + 2] = ')';
 
-            LOGDBG(TAG, "Lost mSD List: %s", cIndex);
+            case 7: {
+                char cTip[128] = {0};
+                sprintf(cTip, "No SD card(%d,", cards.at(0));
+                u32 i = 0;
+                for (i = 1; i < cards.size(); i++) {
+                    cIndex[i*2 - 2] = cards.at(i) + '0';
+                    if (i == cards.size() - 1)
+                        cIndex[i*2 - 1] = ')';                    
+                    else 
+                        cIndex[i*2 - 1] = ',';                    
+                }
 
-            switch (cards.size()) {
-                case 7:
-                case 6: iStartPos = 23; break;
-                case 5: iStartPos = 29; break;
-                case 4: iStartPos = 35; break;
-                case 3: iStartPos = 41; break;
-                case 2: iStartPos = 47; break;
-                case 1: iStartPos = 53; break;
+                dispStr((const u8*)cTip, 25, 16);        
+                dispStr((const u8*)cIndex, 25, 32);                
+                break;
+            }
+
+            default: {
+                iLineOneStartPos = 34;
+                cIndex[0] = '(';
+                u32 i;
+                for (i = 0; i < cards.size(); i++) {
+                    cIndex[i*2 + 1] = cards.at(i) + '0';
+                    cIndex[i*2 + 2] = ',';
+                }
+                cIndex[(i-1)*2 + 2] = ')';
+
+                LOGDBG(TAG, "Lost mSD List: %s", cIndex);     
+
+                switch (cards.size()) {
+                    case 6: iStartPos = 23; break;
+                    case 5: iStartPos = 29; break;
+                    case 4: iStartPos = 35; break;
+                    case 3: iStartPos = 41; break;
+                    case 2: iStartPos = 47; break;
+                    case 1: iStartPos = 53; break;
+                }
+                dispStr((const u8*)"No SD card", iLineOneStartPos, 16);        
+                dispStr((const u8*)cIndex, iStartPos, 32);
+                break;
             }
         }
-        dispStr((const u8*)cIndex, iStartPos, 32, false, 104 - iStartPos);
+    } else {
+        LOGERR(TAG, "--> No need SD Card, what's wrong!");
     }
 }
 

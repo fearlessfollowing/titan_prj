@@ -182,10 +182,7 @@ public:
     bool            sendSavePathChangeReq(const char* savePath);
 
     /* 发送存储设备列表 
-     * TODO:以后实现
      */
-    // bool            sendStorageListReq(Json::Value& storageListReq);
-
     bool            sendStorageListReq(const char* devList);
 
 #if 0
@@ -206,6 +203,8 @@ public:
 
     /* 白平衡校正 */
     bool            sendWbCalcReq();
+
+
 
     /*------------------------------------- 设置页 -----------------------------------
      * 1.设置视频分段
@@ -242,6 +241,9 @@ private:
     std::vector<sp<Volume>> mStorageList;
 
     sp<ARMessage>           mNotify;
+
+    std::string             mPreviewArg;        /* 预览参数: 优先读取配置文件中的预览参数;如果没有将使用默认的预览参数 */
+
 
                     ProtoManager();
 

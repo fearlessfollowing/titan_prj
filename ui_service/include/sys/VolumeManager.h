@@ -169,7 +169,7 @@ static Volume gSysVols[] = {
     {   /* SD卡 - 3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-1.1,usb1-2.1",      /* USB3.0设备,或者USB2.0设备 */
-        .pMountPath     = "/mnt/sdcard",
+        .pMountPath     = "/mnt/SD0",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},                      /* 动态生成 */
         .cDevNode       = {0},
@@ -228,7 +228,7 @@ static Volume gSysVols[] = {
     {   /* mSD1 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.4",                         
-        .pMountPath     = "/mnt/mSD1",
+        .pMountPath     = "/mnt/SD1",
         .iPwrCtlGpio    = 243,
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -249,7 +249,7 @@ static Volume gSysVols[] = {
     {   /* mSD2 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.1",
-        .pMountPath     = "/mnt/mSD2",
+        .pMountPath     = "/mnt/SD2",
         .iPwrCtlGpio    = 244,        
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -270,7 +270,7 @@ static Volume gSysVols[] = {
     {   /* mSD3 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.2",
-        .pMountPath     = "/mnt/mSD3",
+        .pMountPath     = "/mnt/SD3",
         .iPwrCtlGpio    = 245,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -291,7 +291,7 @@ static Volume gSysVols[] = {
     {   /* mSD4 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.3",
-        .pMountPath     = "/mnt/mSD4",
+        .pMountPath     = "/mnt/SD4",
         .iPwrCtlGpio    = 246,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -312,7 +312,7 @@ static Volume gSysVols[] = {
     {   /* mSD5 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.4",
-        .pMountPath     = "/mnt/mSD5",
+        .pMountPath     = "/mnt/SD5",
         .iPwrCtlGpio    = 247,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -333,7 +333,7 @@ static Volume gSysVols[] = {
     {   /* mSD6 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.1",
-        .pMountPath     = "/mnt/mSD6",
+        .pMountPath     = "/mnt/SD6",
         .iPwrCtlGpio    = 240,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -356,7 +356,7 @@ static Volume gSysVols[] = {
     {   /* mSD7 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.2",
-        .pMountPath     = "/mnt/mSD7",
+        .pMountPath     = "/mnt/SD7",
         .iPwrCtlGpio    = 241,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -377,7 +377,7 @@ static Volume gSysVols[] = {
     {   /* mSD8 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.3",
-        .pMountPath     = "/mnt/mSD8",
+        .pMountPath     = "/mnt/SD8",
         .iPwrCtlGpio    = 242,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -411,31 +411,7 @@ enum {
     VOL_mSD_LOST = 2,
 };
 
-#if 0
 
-typedef struct stPwrCtl {
-	int 	iModulePwrCtl1;			/* 控制模组1上电的GPIO */
-	int 	iModulePwrCtl2;			/* 控制模组2上电的GPIO */
-	int 	iModulePwrCtl3;			/* 控制模组3上电的GPIO */
-	int 	iModulePwrCtl4;			/* 控制模组4上电的GPIO */
-	int 	iModulePwrCtl5;			/* 控制模组5上电的GPIO */
-	int 	iModulePwrCtl6;			/* 控制模组6上电的GPIO */
-	int 	iModulePwrCtl7;			/* 控制模组7上电的GPIO */
-	int 	iModulePwrCtl8;			/* 控制模组8上电的GPIO */
-
-	int		iResetHubNum;			/* 使用的HUB个数 */
-	int		iHub1ResetGpio;			/* HUB1复位的GPIO */
-	int		iHub2ResetGpio;			/* HUB2复位的GPIO */
-	int 	iHubResetLevel;			/* 复位的电平级别: 1 - 高电平复位; 0 - 低电平复位 */
-	int		iHubResetDuration;		/* Hub复位的时长(单位为ms) */
-
-	int		iModuleNum;				/* 系统中模组的个数 */
-	int		iModulePwrOnLevel;		/* 模组上电的电平级别: 1:高电平有效; 0:低电平有效 */
-	int 	iModulePwrInterval;		/* 模组间上电间隔 */
-
-	char	cPwrOnSeq[8];			/* 模组的上电顺序 */
-} PwrCtl;
-#endif
 
 enum {
 	RESET_LOW_LEVEL = 0,
@@ -448,6 +424,20 @@ enum {
     NOTIFY_MODULE_ENTER_UDISK_MODE = 0x11,
     NOTIFY_MODULE_EXIT_UDISK_MODE
 };
+
+
+/*
+ * SD1-SD8的状态
+ */
+enum {
+    VOL_MODULE_STATE_OK = 0,            /* 正常 */
+    VOL_MODULE_STATE_NOCARD,            /* 无卡 */
+    VOL_MODULE_STATE_FULL,              /* 卡满 */
+    VOL_MODULE_STATE_INVALID_FORMAT,
+    VOL_MODULE_STATE_WP,
+    VOL_MODULE_STATE_OTHER_ERROR 
+};
+
 
 
 class NetlinkEvent;
