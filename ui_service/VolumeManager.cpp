@@ -377,7 +377,7 @@ VolumeManager::VolumeManager() :
     umount2("/mnt/SD8", MNT_FORCE);
 #endif
 
-    umount2("/mnt/sdcard", MNT_FORCE);
+    umount2("/mnt/SD0", MNT_FORCE);
     umount2("/mnt/udisk1", MNT_FORCE);
     umount2("/mnt/udisk2", MNT_FORCE);
 
@@ -398,7 +398,6 @@ VolumeManager::VolumeManager() :
 
     /* 根据类型将各个卷加入到系统多个Vector中 */
     for (u32 i = 0; i < sizeof(gSysVols) / sizeof(gSysVols[0]); i++) {
-
         tmpVol = &gSysVols[i];  
         mVolumes.push_back(tmpVol);
 
@@ -411,6 +410,12 @@ VolumeManager::VolumeManager() :
     }
 
     LOGDBG(TAG, "--> Module num = %d", mModuleVolNum);
+
+    /*
+     * 重新复位下接SD卡的HUB
+     */
+    resetHub(390, RESET_HIGH_LEVEL, 100);
+
 
 #ifdef ENABLE_CACHE_SERVICE
     CacheService::Instance();
@@ -1796,8 +1801,29 @@ bool VolumeManager::volumeIsTfCard(Volume* pVol)
     } else {
         return false;
     }
-
 }
+
+
+bool VolumeManager::judgeIsTfCardByName(const char* name)
+{
+    if (!strcmp(name, "SD1") 
+        || !strcmp(name, "SD2")
+        || !strcmp(name, "SD3")
+        || !strcmp(name, "SD4")
+        || !strcmp(name, "SD5")
+        || !strcmp(name, "SD6")
+
+#ifdef HW_FLATFROM_TITAN
+        || !strcmp(name, "SD7")
+        || !strcmp(name, "SD8")
+#endif
+        ) {
+        return true;
+    } else {
+        return false;
+    }    
+}
+
 
 
 bool VolumeManager::changeMountMethod(const char* mode)

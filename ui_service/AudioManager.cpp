@@ -11,6 +11,7 @@
 ** 日     期: 2018年11月19日
 ** 修改记录:
 ** V1.0			Skymixos			2018-11-19		创建文件
+** V2.0         Skymixos            2019-01-18      增加Speaker,Recorder的初始化
 ******************************************************************************************************/
 
 #include <dirent.h>
@@ -288,10 +289,47 @@ int AudioManager::loadRes2Cache(const char* fileName)
 #endif
 
 
+void AudioManager::initSpeaker()
+{
+    LOGDBG(TAG, "---> Speaker init here...");
+    system("amixer cset -c tegrasndt186ref name=\"I2S1 Mux\" 20");
+    system("amixer cset -c tegrasndt186ref name=\"MIXER1-1 Mux\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"Adder1 RX1\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"Mixer Enable\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"ADMAIF1 Mux\" 11");
+    system("amixer cset -c tegrasndt186ref name=\"x Int Spk Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Speaker Playback Volume\" 100");
+    system("amixer cset -c tegrasndt186ref name=\"x Headphone Jack Switch\" 0");
+    system("amixer sset -c tegrasndt186ref 'MIXER1-1 Mux' 'ADMAIF1'");
+    system("amixer sset -c tegrasndt186ref 'I2S1 Mux' 'MIXER1-1'");
+    system("amixer cset -c 1 name=\"x Speaker Playback Volume\" 100");
+}
+
+
+
+void AudioManager::initRecorder()
+{
+
+}
+
+
+
 void AudioManager::init()
 {
+    const char* pPropAudio = NULL;
+
+    pPropAudio = property_get(PROP_USE_AUDIO);
+
     /* 选择播放设备 */
     defaultPlayDev = DEFAULT_PALY_DEVICE;
+
+    initSpeaker();
+    initRecorder();
+
+    if (!pPropAudio || !strcmp(pPropAudio, "false")) {
+        property_set(PROP_USE_AUDIO, "true");
+    }
+
 
     /* 预加载wav文件(mmap) */
 #ifdef ENABLE_CACHE_AUDIO_FILE

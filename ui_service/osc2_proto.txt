@@ -593,3 +593,12 @@ Response:
 说明:
 "index": -1:表示格式化所有的小卡; [1-6]表示格式化指定的卡
 "state": "done":成功; "error":操作失败
+
+
+不带音频的预览参数:
+{"name": "camera._startPreview","parameters":{"origin":{"mime":"h264","width":1920,"height":1440,"framerate":30,"bitrate":20000},"stiching":{"mode":"pano","map":"flat","mime":"h264","width":1920,"height":960,"framerate":30,"bitrate":5000}}}
+
+带音频的预览参数:
+{"name": "camera._startPreview","parameters":{"origin":{"mime":"h264","width":1920,"height":1440,"framerate":30,"bitrate":20000},"stiching":{"mode":"pano","map":"flat","mime":"h264","width":1920,"height":960,"framerate":30,"bitrate":5000},"audio":{"mime":"aac", "sampleFormat":"s16", "channelLayout":"stereo","samplerate":48000, "bitrate":128}}}
+
+

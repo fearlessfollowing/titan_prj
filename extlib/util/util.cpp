@@ -192,4 +192,32 @@ out_close:
     return -1;
 }
 
+int updateFile(const char* filePath, const char* content, int iSize)
+{
+    int iFd = -1;
+    int iWrLen = 0;
+
+    if (NULL == filePath) return -1;
+    if (NULL == content) return -1;
+    if (iSize <= 0) return -1;
+
+    if (access(filePath, F_OK) == 0) {
+        unlink(filePath);
+    }
+
+    iFd = open(filePath, O_RDWR | O_CREAT, 0666);
+    if (iFd < 0) {
+        LOGERR(TAG, "open [%s] failed", filePath);
+        return -1;
+    }
+
+    iWrLen = write(iFd, content, iSize);
+    if (iWrLen != iSize) {
+        LOGWARN(TAG, "Write size not equal actual sizep[%d: %d]", iWrLen, iSize);
+    }
+
+    close(iFd);
+    return 0;
+}
+
 

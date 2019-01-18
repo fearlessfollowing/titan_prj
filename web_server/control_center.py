@@ -9,6 +9,7 @@
 # 2018年9月29日     skymixos                V1.0.01         添加响应UI请求的接口  
 # 2018年10月24日    skymixos                V1.0.7          与camerad的同步请求的超时时间设置为70s
 # 2018年11月22日    skymixos                V1.0.8          查询TF卡失败时不清除心跳包中小卡信息
+# 2019年1月18日     skymixos                V1.0.9          修复App拍照时无倒计时BUG
 ######################################################################################################
 
 from threading import Semaphore
@@ -1418,14 +1419,11 @@ class control_center:
         return read_info
 
 
+    # camera_take_pic_done
+    # 只是camerad接收到了命令而已
     def camera_take_pic_done(self, req = None):
         Info('camera_take_pic_done')
-        self._client_take_pic = False 
-        
-        if StateMachine.checkStateIn(config.STATE_TAKE_CAPTURE_IN_PROCESS):
-            StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
-
-        StateMachine.addServerState(config.STATE_PIC_STITCHING)
+        # self._client_take_pic = False 
 
 
     def camera_take_pic_fail(self, err = -1):
@@ -3525,16 +3523,21 @@ class control_center:
     # 返回值: 
     def pic_notify(self, param):
         Info('[-------Notify Message -------] pic_notify param {}'.format(param))
+
         if StateMachine.checkStateIn(config.STATE_TAKE_CAPTURE_IN_PROCESS):
             StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
 
         if StateMachine.checkStateIn(config.STATE_PIC_STITCHING):
             StateMachine.rmServerState(config.STATE_PIC_STITCHING)
 
+        if self._client_take_pic == True:
+            self._client_take_pic = False
+
         if param[_state] == config.DONE:
             self.send_oled_type(config.CAPTURE_SUC)
         else:
             self.send_oled_type_err(config.CAPTURE_FAIL, self.get_err_code(param))
+
 
 
     # 方法名称: reset_notify

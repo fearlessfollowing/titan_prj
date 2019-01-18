@@ -282,7 +282,7 @@ static ERR_CODE_DETAIL mErrDetails[] = {
     {433, "No Storage",         ICON_CARD_EMPTY128_64},
     {434, "Speed Low",          ICON_SPEEDTEST06128_64},
     {414, " ",                  ICON_ERROR_414128_64},
-    {311, "mSD insufficient",   ICON_STORAGE_INSUFFICIENT128_64},
+    {311, "SD insufficient",   ICON_STORAGE_INSUFFICIENT128_64},
 
     // add for live rec finish
     {390, " ",                  ICON_LIV_REC_INSUFFICIENT_128_64128_64},
@@ -312,35 +312,6 @@ static SYS_ERROR mSysErr[] = {
     {RESET_ALL,             "1001"},
     {START_FORCE_IDLE,      "1002"}
 };
-
-
-int updateFile(const char* filePath, const char* content, int iSize)
-{
-    int iFd = -1;
-    int iWrLen = 0;
-
-    if (NULL == filePath) return -1;
-    if (NULL == content) return -1;
-    if (iSize <= 0) return -1;
-
-    if (access(filePath, F_OK) == 0) {
-        unlink(filePath);
-    }
-
-    iFd = open(filePath, O_RDWR | O_CREAT, 0666);
-    if (iFd < 0) {
-        LOGDBG(TAG, "open [%s] failed", filePath);
-        return -1;
-    }
-
-    iWrLen = write(iFd, content, iSize);
-    if (iWrLen != iSize) {
-        LOGWARN(TAG, "Write size not equal actual sizep[%d: %d]", iWrLen, iSize);
-    }
-
-    close(iFd);
-    return 0;
-}
 
 
 /*************************************************************************
@@ -407,6 +378,7 @@ void MenuUI::init_menu_select()
     mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.select = 0;
     mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_max = mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total;
     mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_num = 1;
+
     cfgPicVidLiveSelectMode(&mMenuInfos[MENU_VIDEO_SET_DEF], mVidAllItemsList);
     
     LOGDBG(TAG, "mVidAllItemsList size = %d", mVidAllItemsList.size());
@@ -470,17 +442,6 @@ void MenuUI::init()
     mOLEDLight = std::make_shared<oled_light>();
     CHECK_NE(mOLEDLight, nullptr);
 
-
-    LOGDBG(TAG, "Create System Battery Manager Object...");
-
-
-#if 0
-    mBatInterface = std::make_shared<BatteryManager>();
-    CHECK_NE(mBatInterface, nullptr);
-
-    mBatInfo = std::make_shared<BatterInfo>();
-    CHECK_NE(mBatInfo, nullptr);
-#endif
 
     LOGDBG(TAG, "Create System Info Object...");
     mReadSys = std::make_shared<SYS_INFO>();
@@ -1084,7 +1045,7 @@ void MenuUI::disp_msg_box(int type)
 
             #if 1
             clearArea();
-            dispStr((const u8*)"Please ensure mSD", 16, 8, false, 128);
+            dispStr((const u8*)"Please ensure SD", 16, 8, false, 128);
             dispStr((const u8*)"cards exist and query", 8, 24, false, 128);
             dispStr((const u8*)"storage space first...", 6, 40, false, 128);
             #else
@@ -1763,7 +1724,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
 
                 for (int i = 0; i < size; i++) {
 
-
                     pSetItems[i]->stPos = tmPos;
                     if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
                         pSetItems[i]->stPos.xPos = 2;
@@ -1845,9 +1805,15 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                 for (int i = 0; i < size; i++) {
                     
                     pSetItems[i]->stPos = tmPos;
+                    if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
+                        pSetItems[i]->stPos.xPos = 1;
+                        // pSetItems[i]->stPos.iWidth = 90;
+                    }
+
                     pSetItems[i]->iCurVal = 0;
                     sp<Json::Value> pRoot = (sp<Json::Value>)(new Json::Value());
-
+                    bParseFileFlag = false;
+                    
                     cfgItemJsonFilePath = JSON_CFG_FILE_PATH;
                     cfgItemJsonFilePath +=  pSetItems[i]->pItemName;
                     cfgItemJsonFilePath += ".json";
@@ -1862,7 +1828,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         Json::CharReaderBuilder builder;
                         builder["collectComments"] = false;
                         JSONCPP_STRING errs;
-                        if (!parseFromStream(builder, ifs, pRoot.get(), &errs)) {
+                        if (parseFromStream(builder, ifs, pRoot.get(), &errs)) {
                             LOGDBG(TAG, "parse [%s] success", path);
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
@@ -1917,7 +1883,9 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
             case MENU_LIVE_SET_DEF: {
                 iIndex = cm->getKeyVal("mode_select_live");
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
+                
                 for (int i = 0; i < size; i++) {
+                    bParseFileFlag = false;
                     pSetItems[i]->stPos = tmPos;
                     pSetItems[i]->iCurVal = 0;
                     sp<Json::Value> pRoot = (sp<Json::Value>)(new Json::Value());
@@ -1937,7 +1905,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         Json::CharReaderBuilder builder;
                         builder["collectComments"] = false;
                         JSONCPP_STRING errs;
-                        if (!parseFromStream(builder, ifs, pRoot.get(), &errs)) {
+                        if (parseFromStream(builder, ifs, pRoot.get(), &errs)) {
                             LOGDBG(TAG, "parse [%s] success", path);
                             pSetItems[i]->jsonCmd = pRoot;
                             bParseFileFlag = true;
@@ -2197,12 +2165,12 @@ bool MenuUI::checkVidLiveStorageSpeed()
                 LOGDBG(TAG, "All Card Speed is OK, very good !!");
             } else {
                 /* 提示警告 */
-                LOGWARN(TAG, "mSD speed is OK, but Local Storage speed is bad");
+                LOGWARN(TAG, "SD speed is OK, but Local Storage speed is bad");
             }
             return true;
         } else {
             /* 直接进入 */
-            LOGDBG(TAG, "mSD Need Speed Test ....");
+            LOGDBG(TAG, "SD Need Speed Test ....");
             if (mSpeedTestUpdateFlag) {
                 mSpeedTestUpdateFlag = false;
                 property_set(PROP_SPEED_TEST_COMP_FLAG, "false");
@@ -3946,8 +3914,6 @@ void MenuUI::dispBottomLeftSpace()
                 if (!vm->checkLocalVolumeExist() || !(vm->checkAllTfCardExist())) {     /* 不满足存储条件: 没有插大卡或者没有插小卡 */
                 #endif
                     LOGDBG(TAG, "Current menu[%s] have not local stroage device, show none", getMenuName(cur_menu));
-                    // dispIconByType(ICON_LIVE_INFO_NONE_7848_50X16);
-
                     dispStrFill((const u8*)"None", 103, 48);    
                 } else {    /* 条件满足: 显示剩余张数 */
                     /* 如果是拍timelapse显示可拍timelapse的张数
@@ -4171,9 +4137,9 @@ void MenuUI::dispSettingPage(std::vector<struct stSetItem*>& setItemsList)
 void MenuUI::dispTipStorageDevSpeedTest() 
 {
     clearArea();
-    dispStr((const u8*)"Need to test you", 16, 8, false, 128);
-    dispStr((const u8*)"storage device speed", 8, 24, false, 128);    
-    dispStr((const u8*)"press power to continue", 0, 40, false, 128);
+    dispStr((const u8*)"Need to test you", 18, 16);
+    dispStr((const u8*)"storage device speed", 8, 32);    
+    dispStr((const u8*)"press power to continue", 1, 48);
 }
 
 
@@ -4187,12 +4153,12 @@ void MenuUI::dispTfCardIsFormatting(int iType)
     char msg[128] = {0};
 
     if (iType == -1) {
-        sprintf(msg, "%s", "All mSD card");
+        sprintf(msg, "%s", "All SD card");
     } else {
-        sprintf(msg, "mSD card %d", iType);
+        sprintf(msg, "SD card %d", iType);
     }
-    dispStr((const u8*)msg, 28, 24, false, 128);
-    dispStr((const u8*)"is formatting ...", 20, 40, false, 128);
+    dispStr((const u8*)msg, 28, 24);
+    dispStr((const u8*)"is formatting ...", 20, 40);
 }
 
 
@@ -4203,17 +4169,17 @@ void MenuUI::dispTfcardFormatReuslt(int iResult, int iIndex)
 
     if (ERROR_FORMAT_SUC == iResult) {    /* 成功 */
         if (iIndex == -1) {
-            sprintf(msg, "%s", "All mSD card");
+            sprintf(msg, "%s", "All SD card");
         } else {
-            sprintf(msg, "mSD card %d", iIndex);
+            sprintf(msg, "SD card %d", iIndex);
         }
         dispStr((const u8*)msg, 32, 24, false, 128);
         dispStr((const u8*)"formatted success", 16, 40, false, 128);
     } else {    /* 失败 */
         if (iIndex == -1) {
-            sprintf(msg, "%s", "All mSD card");
+            sprintf(msg, "%s", "All SD card");
         } else {
-            sprintf(msg, "mSD card %d", iIndex);
+            sprintf(msg, "SD card %d", iIndex);
         }
         dispStr((const u8*)msg, 32, 24, false, 128);
         dispStr((const u8*)"formatted failed", 16, 40, false, 128);
@@ -4222,9 +4188,9 @@ void MenuUI::dispTfcardFormatReuslt(int iResult, int iIndex)
 
 void MenuUI::dispWriteSpeedTest()
 {
-    dispStr((const u8*)"Testing...", 36, 16, false, 128);
-    dispStr((const u8*)"do not remove your", 12, 32, false, 128);
-    dispStr((const u8*)"storage device please", 8, 48, false, 128);
+    dispStr((const u8*)"Testing...", 36, 16);
+    dispStr((const u8*)"do not remove your", 12, 32);
+    dispStr((const u8*)"storage device please", 8, 48);
 }
 
 void MenuUI::dispFormatSd()
@@ -4256,19 +4222,19 @@ void MenuUI::startFormatDevice()
     LOGDBG(TAG, "Volume name [%s]", tmpStorageItem->pStVolumeInfo->cVolName);
     
     /* 选中的是小卡 */
-    if (!strncmp(tmpStorageItem->pStVolumeInfo->cVolName, "mSD", strlen("mSD"))) {    /* 根据名称来区别是小卡还是大卡 */
+    if (vm->judgeIsTfCardByName(tmpStorageItem->pStVolumeInfo->cVolName)) {
         int iMode = getMenuSelectIndex(MENU_TF_FORMAT_SELECT);
-        LOGDBG(TAG, "Format mSD Method [%s]", (iIndex == 0) ? "Format One TF Card": "Format All TF Card");
+        LOGDBG(TAG, "Format SD Method [%s]", (iIndex == 0) ? "Format One TF Card": "Format All TF Card");
 
         tmpFormatSelectItem = gTfFormatSelectItems[iMode];
         if (!strcmp(tmpFormatSelectItem->pItemName, SET_ITEM_NAME_TF_FOMART_THIS_CARD)) {
             
             /* 格式化一张卡 */
-            LOGDBG(TAG, "Format mSD Card [%s]", tmpStorageItem->pStVolumeInfo->cVolName);
+            LOGDBG(TAG, "Format SD Card [%s]", tmpStorageItem->pStVolumeInfo->cVolName);
             iTfIndex = tmpStorageItem->pStVolumeInfo->iIndex;
         } else {
             /* 格式化所有的卡 */
-            LOGDBG(TAG, "Format All mSD Card");
+            LOGDBG(TAG, "Format All SD Card");
             iTfIndex = -1;
         }
 
@@ -4277,37 +4243,7 @@ void MenuUI::startFormatDevice()
 
         ProtoManager* pm = ProtoManager::Instance();
         int iResult = pm->sendFormatmSDReq(iTfIndex);
-
-        #if 0
-        switch (iResult) {
-            case ERROR_FORMAT_FAILED:
-            case ERROR_FORMAT_SUC: {    /* 格式化卡成功 */
-
-                dispTfcardFormatReuslt(iResult, iTfIndex);
-
-                /* 等待一会,重新进入MENU_TF_FORMAT_SELECT菜单 */
-                msg_util::sleep_ms(1500);
-                setCurMenu(MENU_TF_FORMAT_SELECT);
-                // mFormartState = true;
-                break;
-            }
-
-            case ERROR_FORMAT_REQ_FAILED: { /* 请求失败， */
-                LOGERR(TAG, "Format TF Card request failed...");
-                setCurMenu(MENU_FORMAT_INDICATION);
-                break;
-            }
-
-            case ERROR_FORMAT_STATE_NOT_ALLOW: {    /* 状态不允许 */
-                LOGERR(TAG, "Format TF Card Server State Not Allowed ...");
-                setCurMenu(MENU_FORMAT_INDICATION);
-                break;
-            }
-        }
-        #else 
         dispTfcardFormatReuslt(iResult, iTfIndex);
-        #endif
-
 
     } else {    /* 大卡或USB设备 */
         LOGDBG(TAG, "Format Native USB Device");
@@ -4417,10 +4353,12 @@ void MenuUI::dispStorageItem(struct stStorageItem* pStorageItem, bool bSelected)
         used_size = pStorageItem->pStVolumeInfo->uTotal - (pStorageItem->pStVolumeInfo->uAvail + iRemainSpace);
     }
 
-#ifdef ENABLE_DEBUG_SET_PAGE
-        LOGDBG(TAG, "dispStorageItem item name [%s], selected[%s]", 
-                        pStorageItem->stVolumeInfo.cVolName, (bSelected == true) ? "yes": "no");
-#endif
+    LOGDBG(TAG, "dispStorageItem item name [%s], selected[%s], Total size[%d]M, Used size[%d]M", 
+                            pStorageItem->pStVolumeInfo->cVolName, 
+                            (bSelected == true) ? "yes": "no",
+                            pStorageItem->pStVolumeInfo->uTotal,
+                            used_size
+                            );
 
     convStorageSize2Str(STORAGE_UNIT_MB, pStorageItem->pStVolumeInfo->uTotal, cTotal, 8);
     convStorageSize2Str(STORAGE_UNIT_MB, used_size, cUsed, 8);
@@ -4456,16 +4394,11 @@ void MenuUI::dispShowStoragePage(SetStorageItem** storageList)
     
 
     /* 重新显示正页时，清除整个页 */
-    #ifdef ENABLE_SHOW_SPACE_NV
+#ifdef ENABLE_SHOW_SPACE_NV
     clearArea(25, 16);
-    #else 
+#else 
     clearArea(0, 16);
-    #endif
-
-    #ifdef ENABLE_DEBUG_SET_PAGE
-	/* 5/3 = 1 8 (3, 6, 5) 5 = (1*3) + 2 */
-    LOGDBG(TAG, "start %d end  %d select %d ", start, end, iIndex);
-    #endif
+#endif
 
     if (mSelect->total) {
         while (start < end) {
@@ -4498,20 +4431,13 @@ void MenuUI::dispShowStoragePage(SetStorageItem** storageList)
 }
 
 
-void MenuUI::disp_org_rts(sp<struct _action_info_> &mAct, int hdmi)
-{
-    disp_org_rts((int) (mAct->stOrgInfo.save_org != SAVE_OFF),
-                 (int) (mAct->stStiInfo.stich_mode != STITCH_OFF), hdmi);
-}
-
-
 bool MenuUI::checkHaveGpsSignal()
 {
     bool bHaveSignal = false;
     switch (mGpsState) {
         case 0:
         case 1: {
-            bHaveSignal = false;
+            bHaveSignal = false;    
             break;
         }
 
@@ -4524,6 +4450,40 @@ bool MenuUI::checkHaveGpsSignal()
     return bHaveSignal;
 }
 
+
+void MenuUI::dispGpsRtsInfo(Json::Value& jsonCmd)
+{
+    bool bHaveGpsSignal = false;
+    bool bHaveRts = false;
+
+    bHaveGpsSignal = checkHaveGpsSignal();
+
+    if (jsonCmd.isMember("name") && jsonCmd.isMember("parameters")) {
+        if (!strcmp(jsonCmd["name"].asCString(), "camera._startLive")) {
+            if (jsonCmd["parameters"].isMember("stiching")) {
+                if (jsonCmd["parameters"]["stiching"].isMember("fileSave")) {
+                    if (true == jsonCmd["parameters"]["stiching"]["fileSave"].asBool()) {
+                        bHaveRts = true;
+                    }
+                } 
+            } 
+        } else {
+            if (jsonCmd["parameters"].isMember("stiching"))
+                bHaveRts = true;              
+        }
+    } else {
+        LOGERR(TAG, "++++++++>> Invalid Json command");
+    }
+
+    drawGpsState(bHaveGpsSignal);
+    drawRTS(bHaveRts);
+}
+
+
+#if 0
+/*
+ * 下个版本移除
+ */
 void MenuUI::disp_org_rts(Json::Value& jsonCmd, int hdmi)
 {
     int org = 0, rts = 0;
@@ -4612,6 +4572,8 @@ void MenuUI::disp_org_rts(int org, int rts, int hdmi)
         }
     }
 }
+#endif
+
 
 
 void MenuUI::disp_qr_res(bool high)
@@ -4673,8 +4635,8 @@ void MenuUI::updateBottomMode(bool bLight)
     switch (cur_menu) {
         case MENU_PIC_INFO:
         case MENU_PIC_SET_DEF: {
-            if (mClientTakePicUpdate == true) {   /* 客户端有传递ACTION_INFO, 显示客户端传递的ACTION_INFO */
-                disp_org_rts(mControlPicJsonCmd, 0);
+            if (mClientTakePicUpdate == true) {   /* 客户端有传递ACTION_INFO, 显示客户端传递的ACTION_INFO */                
+                dispGpsRtsInfo(mControlPicJsonCmd);                
                 dispIconByLoc(&remoteControlIconInfo);
             } else {
 
@@ -4695,7 +4657,7 @@ void MenuUI::updateBottomMode(bool bLight)
                     if (pTmpCfg) {
                         LOGDBG(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
                         cfgPicModeItemCurVal(pTmpCfg);                  /* 更新拍照各项的当前值(根据设置系统的值，比如RAW, AEB) */
-                        disp_org_rts(*(pTmpCfg->jsonCmd.get()), 0);     /* 显示"RTS/GPS"等状态信息 */
+                        dispGpsRtsInfo(*(pTmpCfg->jsonCmd.get()));
                         dispPicVidCfg(pTmpCfg, bLight);                 /* 显示左下角拍照的挡位 */
                     } else {
                         LOGERR(TAG, "++++> Error: invalid pointer pTmpCfg");
@@ -4711,7 +4673,7 @@ void MenuUI::updateBottomMode(bool bLight)
 
             if (true == mTakeVideInTimelapseMode) {   /* timelapse拍摄: 本地拍Timelapse及客户端控制拍摄timelapse */
                 LOGDBG(TAG, "Show Bottom Video Mode ---> Timelapse[remote control]");                
-                disp_org_rts(mControlVideoJsonCmd, 0);
+                dispGpsRtsInfo(mControlVideoJsonCmd);
                 
                 if (true == mClientTakeVideoUpdate) {   /* 客户端请求发送拍timelapse */
                     dispIconByLoc(&remoteControlIconInfo);
@@ -4722,11 +4684,10 @@ void MenuUI::updateBottomMode(bool bLight)
             } else if (mClientTakeVideoUpdate == true) {   /* 来自客户端直播请求 */
                 LOGDBG(TAG, "Show Bottom Video Mode ---> Client control[remote control]");
                 
+                dispGpsRtsInfo(mControlVideoJsonCmd);
                 if (takeVideoIsAgeingMode()) {
-                    disp_org_rts(mControlVideoJsonCmd, 0);
                     dispAgingStr();
                 } else {
-                    disp_org_rts(mControlVideoJsonCmd, 0);
                     dispIconByLoc(&remoteControlIconInfo);
                 }
                 
@@ -4749,11 +4710,9 @@ void MenuUI::updateBottomMode(bool bLight)
 
                     pTmpCfg = mVidAllItemsList.at(iIndex);
                     if (pTmpCfg) {
-
                         LOGDBG(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
 
-                        disp_org_rts(*(pTmpCfg->jsonCmd.get()), 0);
-
+                        dispGpsRtsInfo(*(pTmpCfg->jsonCmd.get()));
                         dispPicVidCfg(pTmpCfg, bLight); /* 显示配置 */
                     } else {
                         LOGERR(TAG, "invalid pointer pTmpCfg");
@@ -4768,11 +4727,8 @@ void MenuUI::updateBottomMode(bool bLight)
         case MENU_LIVE_SET_DEF: {
 
             if (mClientTakeLiveUpdate == true) {   /* 来自客户端直播请求 */
-
-                disp_org_rts(mControlLiveJsonCmd, 0);
-                
+                dispGpsRtsInfo(mControlLiveJsonCmd);
                 dispIconByLoc(&remoteControlIconInfo);
-
             } else {
                 iIndex = getMenuSelectIndex(MENU_LIVE_SET_DEF);
 
@@ -4789,7 +4745,7 @@ void MenuUI::updateBottomMode(bool bLight)
                     pTmpCfg = mLiveAllItemsList.at(iIndex);
                     if (pTmpCfg) {
                         LOGDBG(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
-                        disp_org_rts(*(pTmpCfg->jsonCmd.get()), 0);
+                        dispGpsRtsInfo(*(pTmpCfg->jsonCmd.get()));
                         dispPicVidCfg(pTmpCfg, bLight); /* 显示配置 */
                     } else {
                         LOGERR(TAG, "invalid pointer pTmpCfg");
@@ -5561,10 +5517,10 @@ void MenuUI::procSetMenuKeyEvent()
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);
 
-    #ifdef ENABLE_MENU_AEB            
+#ifdef ENABLE_MENU_AEB            
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_AEB)) {       /* AEB -> 点击确认将进入选择子菜单中 */
             setCurMenu(MENU_SET_AEB);
-    #endif            
+#endif            
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_PHDEALY)) {   /* PhotoDelay -> 进入MENU_PHOTO_DELAY子菜单 */
             setCurMenu(MENU_SET_PHOTO_DEALY);
@@ -5776,12 +5732,9 @@ void MenuUI::procPowerKeyEvent()
                      */
                     if (pm->sendSwitchUdiskModeReq(true)) { /* 请求服务器进入U盘模式 */
 
-
-#if 1
-                    #ifdef ENABLE_NET_MANAGER
                         /* 主动切网卡为直接模式 */
-                        switchEtherIpMode(0);
-                    #endif
+                        if (NULL == property_get("sys.unswitch_ip"))
+                            switchEtherIpMode(0);
 
                         /** 重启dnsmasq服务
                          * 使用新的dnsmasq.conf配置
@@ -5816,7 +5769,6 @@ void MenuUI::procPowerKeyEvent()
                         updateFile(DNSMASQ_CONF_PATH, dns_conf.c_str(), dns_conf.length());
 
                         property_set("ctl.start", "dnsmasq");
-#endif
                         oled_disp_type(ENTER_UDISK_MODE);
                     } else {
                         LOGWARN(TAG, "Server Not Allow enter Udisk mode");
@@ -5889,8 +5841,7 @@ void MenuUI::procPowerKeyEvent()
         }
 
 
-    #ifdef ENABLE_MENU_AEB	
-
+#ifdef ENABLE_MENU_AEB	
         case MENU_SET_AEB: {
             /* 获取MENU_SET_PHOTO_DELAY的Select_info.select的全局索引值,用该值来更新 */
             iIndex = getMenuSelectIndex(MENU_SET_AEB);
@@ -5902,7 +5853,7 @@ void MenuUI::procPowerKeyEvent()
             procBackKeyEvent();
             break;
         }
-    #endif 
+#endif 
 		
         case MENU_SYS_SETTING: {     /* "设置"菜单按下Power键的处理 */
             procSetMenuKeyEvent();     
@@ -5991,7 +5942,8 @@ void MenuUI::procPowerKeyEvent()
             break;
         }
 			
-#ifdef ENABLE_MENU_STITCH_BOX		
+#ifdef ENABLE_MENU_STITCH_BOX	
+
         case MENU_STITCH_BOX: {
             if (!bStiching) {
                 set_cur_menu_from_exit();
@@ -6003,14 +5955,12 @@ void MenuUI::procPowerKeyEvent()
         
         case MENU_SHOW_SPACE: { /* 如果选中的SD卡或者USB硬盘进入格式化指示菜单 */
             int iIndex = getMenuSelectIndex(MENU_SHOW_SPACE);
+            VolumeManager* vm = VolumeManager::Instance();
 
             /* 选中的项是TF卡 */
-            if (!strncmp(gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName, "mSD", strlen("mSD"))) {
-                
-                LOGDBG(TAG, "You selected [%s] Card!!", gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName);                
-                
+            if (vm->judgeIsTfCardByName(gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName)) {
+                LOGDBG(TAG, "You selected [%s] Card!!", gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName);                                
                 setCurMenu(MENU_TF_FORMAT_SELECT);      /* 进入格式化模式选择菜单 */
-
             } else {    
                 if (mFormartState == true) {
                     mFormartState = false;
@@ -6019,7 +5969,6 @@ void MenuUI::procPowerKeyEvent()
             }
             break;
         }
-
 
         case MENU_TF_FORMAT_SELECT: {
             if (mFormartState == true) {
@@ -6287,6 +6236,7 @@ bool MenuUI::check_allow_update_top()
 }
 
 
+
 /*************************************************************************
 ** 方法名称: uiShowBatteryInfo
 ** 方法功能: 显示电池信息
@@ -6299,8 +6249,8 @@ int MenuUI::uiShowBatteryInfo(BatterInfo* pBatInfo)
 {
     const char* pFactoryTest = property_get(PROP_FACTORY_TEST);
 
-    if (pBatInfo != NULL) {
-        if (pBatInfo->bIsExist) {
+    if (check_allow_update_top()) {
+        if (pBatInfo && pBatInfo->bIsExist) {
             int icon;
             const int x = 110;
             u8 buf[16];
@@ -6311,40 +6261,27 @@ int MenuUI::uiShowBatteryInfo(BatterInfo* pBatInfo)
                 icon = ICON_BATTERY_IC_FULL_103_0_6_166_16;
             }
 
-            if (check_allow_update_top()) { /* 允许更新电池信息到屏幕上 */
-                if (pBatInfo->uBatLevelPer == 1000) {
-                    pBatInfo->uBatLevelPer = 0;
-                }
-                
-                if (pBatInfo->uBatLevelPer >= 100) {
-                    snprintf((char *) buf, sizeof(buf), "%d", 100);
-                } else {
-                    snprintf((char *)buf, sizeof(buf), "%d", pBatInfo->uBatLevelPer);
-                }
-                
-                dispStrFill(buf, x, 0);   /* 显示电池图标及电量信息 */
-                dispIconByType(icon);
+            if (pBatInfo->uBatLevelPer == 1000) {
+                pBatInfo->uBatLevelPer = 0;
             }
-
+            
+            if (pBatInfo->uBatLevelPer >= 100) {
+                snprintf((char *) buf, sizeof(buf), "%d", 100);
+            } else {
+                snprintf((char *)buf, sizeof(buf), "%d", pBatInfo->uBatLevelPer);
+            }
+            
+            dispStrFill(buf, x, 0);   /* 显示电池图标及电量信息 */
+            dispIconByType(icon);
         } else {
             clearArea(103, 0, 25, 16);
         }
-    } else {
-        LOGERR(TAG, "---> Invalid Arguments, Please Checked!");
     }
 
     if (NULL == pFactoryTest) {     /* 非工厂模式下根据电量信息来调整灯光 */
         setLight();     /* 设置灯 */
     }
     return 0;
-}
-
-
-
-
-bool MenuUI::check_state_preview()
-{
-    return check_state_equal(STATE_PREVIEW);
 }
 
 
@@ -6586,49 +6523,6 @@ void MenuUI::disp_tl_count(int count)
         } else {
             LOGERR(TAG, "tl count error state 0x%x", serverState);
         }
-    }
-}
-
-void MenuUI::minus_cam_state(u64 state)
-{
-    rm_state(state);
-
-    if (check_state_equal(STATE_IDLE)) {
-        reset_last_info();
-        switch (state) {
-            case STATE_CALIBRATING:
-            case STATE_START_GYRO:
-            case STATE_START_QR:
-            case STATE_NOISE_SAMPLE:
-                set_cur_menu_from_exit();
-                break;
-
-            default:
-                setCurMenu(MENU_TOP);
-                break;
-        }
-    } else if (check_state_preview()) {
-        switch (cur_menu) {
-            case MENU_PIC_INFO:
-            case MENU_VIDEO_INFO:
-                dispReady();
-                break;
-
-            case MENU_LIVE_INFO:
-                dispReady();
-                break;
-
-            case MENU_QR_SCAN:
-                set_cur_menu_from_exit();
-                break;
-
-            default:
-                //force pic menu
-                setCurMenu(MENU_PIC_INFO);
-                break;
-        }
-    } else {
-        LOGWARN(TAG," minus error Server State 0x%x state 0x%x", getServerState(), state);
     }
 }
 
@@ -7724,7 +7618,7 @@ int MenuUI::oled_disp_type(int type)
 			
         case QR_FINISH_CORRECT:
             play_sound(SND_QR);
-            minus_cam_state(STATE_START_QR);
+            // minus_cam_state(STATE_START_QR);
             break;
 			
         case QR_FINISH_ERROR:
@@ -8352,28 +8246,12 @@ void MenuUI::handleKeyMsg(int iAppKey)
 	if (check_cur_menu_support_key(iAppKey)) {	
 		
         switch (iAppKey) {
-            case APP_KEY_UP:        /* "UP"键的处理 */
-                procUpKeyEvent();
-                break;
-            
-            case APP_KEY_DOWN:		/* "DOWN"键的处理 */
-                procDownKeyEvent();
-                break;
-            
-            case APP_KEY_BACK:		/* "BACK"键的处理 */
-                procBackKeyEvent();
-                break;
-            
-            case APP_KEY_SETTING:	/* "Setting"键的处理 */
-                procSettingKeyEvent();
-                break;
-            
-            case APP_KEY_POWER:	/* "POWER"键的处理 */
-                procPowerKeyEvent();
-                break;
-
-            default:
-                break;
+            case APP_KEY_UP:        procUpKeyEvent(); break;    /* "UP"键的处理 */
+            case APP_KEY_DOWN:      procDownKeyEvent(); break;  /* "DOWN"键的处理 */
+            case APP_KEY_BACK:      procBackKeyEvent(); break;  /* "BACK"键的处理 */
+            case APP_KEY_SETTING:   procSettingKeyEvent(); break;  /* "Setting"键的处理 */
+            case APP_KEY_POWER:     procPowerKeyEvent(); break; /* "POWER"键的处理 */
+            default: break;
         }
     } else {
         LOGDBG(TAG, "cur menu[%s] not support cur key[%d]", getMenuName(cur_menu), iAppKey);
@@ -8640,6 +8518,16 @@ void MenuUI::drawGpsState()
     dispStr((const u8*)"GPS", 104, 16, false, 24);    
 }
 
+
+
+void MenuUI::drawGpsState(bool bShow)
+{
+    clearArea(104, 16, 24, 16);
+    if (bShow) {
+        dispStr((const u8*)"GPS", 104, 16);    
+    }
+}
+
 void MenuUI::drawRTS(bool bShow)
 {
     clearArea(104, 32, 24, 16);        
@@ -8772,7 +8660,7 @@ void MenuUI::handleSppedTest(std::vector<sp<Volume>>& mSpeedTestList)
     u32 i = 0;
     u8 xStarPos = 0;
 
-    sprintf(cMsg, "%s", "mSD ");
+    sprintf(cMsg, "%s", "SD ");
 
     for (i = 0; i < testFailedList.size(); i++) {
         memset(cTmp, 0, sizeof(cTmp));
@@ -8978,6 +8866,8 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 	std::unique_lock<std::mutex> _lock(mutexState);
 	switch (menu) {
 		case MENU_PIC_INFO: {
+            
+            LOGDBG(TAG, "-----> mTakePicDelay[%d], server state[0x%x]", mTakePicDelay, serverState);
 			if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS)) {
 	
                 LOGDBG(TAG, "-->handleDispLightMsg: mTakePicDelay = [%d]", mTakePicDelay);
@@ -8994,7 +8884,8 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 					if (menu == cur_menu) {
 						disp_sec(mTakePicDelay, 52, 24);	/* 显示倒计时的时间 */
 					}
-					/* 倒计时时根据当前cap_dela y的值,只在	CAPTURE中播放一次, fix bug1147 */
+
+					/* 倒计时时根据当前cap_delay的值,只在	CAPTURE中播放一次, fix bug1147 */
 					send_update_light(menu, INTERVAL_1HZ, true, SND_ONE_T);
 				}
                 mTakePicDelay--;
@@ -9703,7 +9594,7 @@ void MenuUI::dispInNeedTfCard()
                 }
                 cIndex[(i-1)*2 + 2] = ')';
 
-                LOGDBG(TAG, "Lost mSD List: %s", cIndex);     
+                LOGDBG(TAG, "Lost SD List: %s", cIndex);     
 
                 switch (cards.size()) {
                     case 6: iStartPos = 23; break;
@@ -9738,11 +9629,13 @@ void MenuUI::dispProcessing()
 
 void MenuUI::clearArea(u8 x, u8 y, u8 w, u8 h)
 {
+    LOGDBG(TAG, "-----> clear Area[%d, %d, %d, %d]", x, y, w, h);
     mOLEDModule->clear_area(x, y, w, h);
 }
 
 void MenuUI::clearArea(u8 x, u8 y)
 {
+    LOGDBG(TAG, "-----> clear Area[%d, %d]", x, y);
     mOLEDModule->clear_area(x, y);
 }
 
@@ -9797,7 +9690,7 @@ void MenuUI::tipNomSDCard()
 {
     clearArea();
     dispStr((const u8*)"Error 310.", 37, 16, false, 128);
-    dispStr((const u8*)"No mSD card", 30, 32, false, 128);
+    dispStr((const u8*)"No SD card", 30, 32, false, 128);
 }
 
 
@@ -9822,7 +9715,7 @@ void MenuUI::tipmSDcardSpeedInsufficient()
 
     switch (iNum) {
         case 1: {
-            sprintf(cLineOne, "Error 313. mSD card(%d)", cUnSpeedIndex[0]);
+            sprintf(cLineOne, "Error 313. SD card(%d)", cUnSpeedIndex[0]);
             sprintf(cLineTwo, "speed insufficient.");
             dispStr((const u8*)cLineOne, 0, 0, false, 128);
             dispStr((const u8*)cLineTwo, 16, 16, false, 128);
@@ -9830,7 +9723,7 @@ void MenuUI::tipmSDcardSpeedInsufficient()
         }
 
         case 2: {
-            sprintf(cLineOne, "Error 313. mSD card");
+            sprintf(cLineOne, "Error 313. SD card");
             sprintf(cLineTwo, "(%d,%d)speed insufficient.", cUnSpeedIndex[0], cUnSpeedIndex[1]);
             dispStr((const u8*)cLineOne, 9, 0, false, 128);
             dispStr((const u8*)cLineTwo, 1, 16, false, 128);
@@ -9838,7 +9731,7 @@ void MenuUI::tipmSDcardSpeedInsufficient()
         }
 
         case 3: {
-            sprintf(cLineOne, "Error 313. mSD card(%d,", cUnSpeedIndex[0]);
+            sprintf(cLineOne, "Error 313. SD card(%d,", cUnSpeedIndex[0]);
             sprintf(cLineTwo, "%d,%d)speed insufficient.", cUnSpeedIndex[1], cUnSpeedIndex[2]);
             dispStr((const u8*)cLineOne, 0, 0, false, 128);
             dispStr((const u8*)cLineTwo, 4, 16, false, 128);
@@ -9848,7 +9741,7 @@ void MenuUI::tipmSDcardSpeedInsufficient()
         case 4:
         case 5:
         case 6: {
-            sprintf(cLineOne, "Error 313.mSD card(%d,%d", cUnSpeedIndex[0], cUnSpeedIndex[1]);
+            sprintf(cLineOne, "Error 313.SD card(%d,%d", cUnSpeedIndex[0], cUnSpeedIndex[1]);
             sprintf(cLineTwo, ",%d,%d)speed insufficient.", cUnSpeedIndex[2], cUnSpeedIndex[3]);
             dispStr((const u8*)cLineOne, 0, 0, false, 128);
             dispStr((const u8*)cLineTwo, 1, 16, false, 128);
@@ -9856,7 +9749,7 @@ void MenuUI::tipmSDcardSpeedInsufficient()
         }
 
         default: {  /* 默认按一张卡处理 */
-            sprintf(cLineOne, "Error 313. mSD card(6)");
+            sprintf(cLineOne, "Error 313. SD card(6)");
             sprintf(cLineTwo, "speed insufficient.");
             dispStr((const u8*)cLineOne, 0, 0, false, 128);
             dispStr((const u8*)cLineTwo, 16, 16, false, 128);

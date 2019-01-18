@@ -224,6 +224,7 @@ void HardwareService::updateBatteryInfo()
                 property_set(PROP_BAT_TEMP, cBatTemp);
                 break;
             }
+            
             case GET_BATINFO_ERR_NO_EXIST: {
                 mBatInfo->dBatTemp = INVALID_TMP_VAL;
                 break;

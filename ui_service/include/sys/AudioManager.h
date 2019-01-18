@@ -103,6 +103,10 @@ public:
 private:
                 AudioManager();
     void        init();
+
+    void        initSpeaker();      /* 初始化扬声器 */
+    void        initRecorder();     /* 录音设备初始化 */
+
     void        deinit();
 
 #ifdef ENABLE_CACHE_AUDIO_FILE

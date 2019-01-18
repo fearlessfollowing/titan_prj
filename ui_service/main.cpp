@@ -12,6 +12,7 @@
 ** 修改记录:
 ** V1.0			Skymixos		2018-06-05		创建文件，添加注释
 ** V2.0         Skymixos        2018年11月14日   增加主线程主动退出流程
+** V3.0         Skymixos        2019年1月18日    增加ulimited
 ******************************************************************************************************/
 
 #include <util/msg_util.h>
@@ -85,6 +86,9 @@ int main(int argc ,char *argv[])
 
     registerSig(signalHandler);
     // signal(SIGPIPE, pipe_signal_handler);
+
+    system("ulimit -c unlimited");
+    system("echo /home/nvidia/core.%e > /proc/sys/kernel/core_pattern");
 
     iRet = __system_properties_init();	/* 属性区域初始化 */
     if (iRet) {

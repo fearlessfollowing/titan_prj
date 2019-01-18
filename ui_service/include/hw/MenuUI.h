@@ -575,7 +575,6 @@ private:
 
     void    dispFormatSd();
 
-    bool    check_state_preview();
     bool    check_state_equal(u64 state);
     bool    check_state_in(u64 state);
 
@@ -586,19 +585,16 @@ private:
 
     
     void    disp_org_rts(int org,int rts,int hdmi = -1);
-    void    disp_org_rts(sp<struct _action_info_> &mAct,int hdmi = -1);
 
+    void    dispGpsRtsInfo(Json::Value& jsonCmd);
 
     void    init_cfg_select();
 
     void    disp_msg_box(int type);
-
     bool    checkServerAllowTakePic();
 
 
     int     oled_reset_disp(int type);
-
-    void    format(const char *src,const char *path,int trim_err_icon,int err_icon,int suc_icon);
 
     void    disp_ageing();
 
@@ -611,8 +607,6 @@ private:
     void    disp_err_str(int type);
     void    disp_err_code(int code,int back_menu);
     void    disp_top_info();
-
-    // int     uiShowBatteryInfo();
 
     int     uiShowBatteryInfo(BatterInfo* pBatInfo);
 
@@ -637,6 +631,7 @@ private:
     
     void    play_sound(u32 type);
     void    send_update_light(int menu, int interval,bool bLight = false,int sound_id = -1);
+    
     void    write_p(int p, int val);
 
 
@@ -674,7 +669,7 @@ private:
     bool    syncQueryTfCard();
 
     void    add_state(u64 state);
-    void    minus_cam_state(u64 state);
+
     void    disp_tl_count(int count);
     void    set_tl_count(int count);
     void    rm_state(u64 state);
@@ -737,6 +732,8 @@ private:
     void    handleGpsState();
     void    drawGpsState();
     void    clearGpsState();
+
+    void    drawGpsState(bool bShow);
     void    drawRTS(bool bShow);
     void    dispInNeedTfCard();
 
@@ -989,7 +986,6 @@ private:
     int     convIndex2AebNum(int iIndex);
 
 
-
     /********************************************* 按键处理 ****************************************************/
 	void    commUpKeyProc();
     void    commDownKeyProc();
@@ -1003,7 +999,6 @@ private:
 	 * 显示
 	 */
 	void    uiShowStatusbarIp();			/* 显示IP地址 */
-
     void    dispTfCardIsFormatting(int iType);
 
 	/*

@@ -136,6 +136,7 @@ ProtoManager::ProtoManager(): mSyncReqExitFlag(false),
                 std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
                 if (0 == writer->write(root, &osInput)) {
                     mPreviewArg = osInput.str();
+                    LOGDBG(TAG, "----> Load Preview arguments from[%s] Suc.", PREVIEW_JSON_FILE);
                 } else {
                     LOGERR(TAG, "--> Error, convert Json 2 string failed");
                     mPreviewArg = "none";

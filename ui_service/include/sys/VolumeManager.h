@@ -513,7 +513,7 @@ public:
 
     void        setSavepathChanged(Volume* pVol);
     bool        volumeIsTfCard(Volume* pVol);
-
+    bool        judgeIsTfCardByName(const char* name);
 
     bool        changeMountMethod(const char* mode);
 

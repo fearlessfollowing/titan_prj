@@ -108,9 +108,7 @@
 
 #define PROP_MAX_DISK_SLOT_NUM	        10
 
-
 #define PROP_SD_RESET_GPIO              "sys.sd_reset_gpio"
-
 
 #define PROP_PLAY_SOUND                 "sys.play_sound"
 
@@ -162,6 +160,15 @@
  * 等待模组进入U盘模式的时间
  */
 #define PROP_ENTER_UDISK_WAIT_TIME "sys.wait_enter_udisk"
+
+
+/*
+ * 使用音频的全局开关: 打开 - true
+ * 2019年1月18日
+ */
+#define PROP_USE_AUDIO  "sys.use_audio"
+
+
 
 /******************************************************************************************************
  * WIFI固件路径
