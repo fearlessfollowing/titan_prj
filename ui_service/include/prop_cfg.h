@@ -329,8 +329,20 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 
 
 #define SYS_TF_COUNT_NUM            8
-
-
 #define SYS_MAX_BTN_NUM             5
+
+
+
+#define HOSTAPD_SERVICE             "hostapd"
+#define HOSTAPD_SERVICE_STATE       "init.svc.hostapd"
+#define START_SERVICE               "ctl.start"
+#define STOP_SERVICE                "ctl.stop"
+
+#define SERVICE_STATE_RESTARTING    "restarting"    
+#define SERVICE_STATE_RUNNING       "running"
+
+#define SERVICE_STATE_STOPPING      "stopping"
+#define SERVICE_STATE_STOPPED       "stopped"
+
 
 #endif /* PRO2_OSC_CODE_CODE_CORE_INCLUDE_PROP_CFG_H_ */

@@ -2883,9 +2883,7 @@ void MenuUI::handleWifiAction()
         return;
     } else {
 #endif
-        /*
-         * 检查启动WIFI热点的情况（PROP_WIFI_AP_STATE） 
-         */
+
         if (cm->getKeyVal("wifi_on") == 1) {
             LOGERR(TAG, "set KEY_WIFI_ON -> 0");
             iCmd = NETM_CLOSE_NETDEV;
@@ -2902,9 +2900,9 @@ void MenuUI::handleWifiAction()
         msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
         msg->post();
 
-        msg_util::sleep_ms(500);
+        msg_util::sleep_ms(100);
 
-        LOGDBG(TAG, "Current wifi state [%s]", property_get(PROP_WIFI_AP_STATE));
+        LOGDBG(TAG, "Current wifi state [%s]", property_get("init.svc.hostapd"));
 
         cm->setKeyVal("wifi_on", iSetVal);
         disp_wifi(bShowWifiIcon, 1);
@@ -8866,7 +8864,7 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 	std::unique_lock<std::mutex> _lock(mutexState);
 	switch (menu) {
 		case MENU_PIC_INFO: {
-            
+
             LOGDBG(TAG, "-----> mTakePicDelay[%d], server state[0x%x]", mTakePicDelay, serverState);
 			if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS)) {
 	

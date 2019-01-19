@@ -37,6 +37,7 @@
 #include <sys/CfgManager.h>
 #include <system_properties.h>
 #include <fstream>
+#include <sys/stat.h>
 
 #include <log/log_wrapper.h>
 
@@ -198,17 +199,34 @@ void CfgManager::startUpSysCtl()
     system("/sbin/sysctl -p");
 }
 
+#define SWAP_FILE_PATH "/swap/sfile"
+
+void CfgManager::startSysSwap()
+{
+    LOGDBG(TAG, "-----> start swap func <----");
+    if (access(SWAP_FILE_PATH, F_OK) == 0) {
+        
+        LOGDBG(TAG, "---> Startup swap function here...");
+        chmod(SWAP_FILE_PATH, 0600);
+	    system("mkswap /swap/sfile");
+	    system("swapon /swap/sfile");
+
+    } else {
+        LOGERR(TAG, "---> Swap Partition File[%s] not exist!", SWAP_FILE_PATH);
+    }
+}
+
+
 
 void CfgManager::init()
 {
     mCallback = nullptr;
     mRootCfg.clear();
 
-    /*
-     * 启动sysctl
-     */
+    /** 启动sysctl */
     startUpSysCtl();
 
+    /** 启用交换分区 */
 
 
     if (access(USER_CFG_PARAM_FILE, F_OK)) {

@@ -49,7 +49,9 @@ private:
     bool                    loadCfgFormFile(Json::Value& root, const char* pFile);
     void                    init();
     void                    deinit();
-    void                    startUpSysCtl();    
+    void                    startUpSysCtl();
+    void                    startSysSwap();
+        
     void                    genDefaultCfg();
     void                    syncCfg2File(const char* pCfgFile, Json::Value& curCfg);
 

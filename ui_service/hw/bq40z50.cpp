@@ -101,7 +101,6 @@ BatteryManager::BatteryManager()
         LOGERR(TAG, "--> Read bq40z50 work mode suc. mode[0x%x]", uBatMode);
         mBatMode = uBatMode;
     }
-
 }
 
 BatteryManager::~BatteryManager()

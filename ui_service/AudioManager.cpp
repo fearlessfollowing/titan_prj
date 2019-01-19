@@ -309,6 +309,51 @@ void AudioManager::initSpeaker()
 
 void AudioManager::initRecorder()
 {
+    LOGDBG(TAG, "---> Record init here...");
+    system("amixer cset -c tegrasndt186ref name=\"x DMIC Switch\" \"DMIC2\"");
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC R2 Mux\" \"DMIC2\"");
+    // #amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC2"
+    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC R2 Mux\" \"DMIC R1\"");
+    // #amixer cset -c tegrasndt186ref name="x Mono ADC L2 Mux" "DMIC L2"
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC1 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC1 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXL ADC2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXR ADC2 Switch\" 1");
+
+    // # amixer cset -c tegrasndt186ref name="x IN1 Mode Control" 0
+    system("amixer cset -c tegrasndt186ref name=\"x IN1 Boost\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x ADC Capture Volume\" 50 50");
+    system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST1 Switch\" 0");
+    system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST1 Switch\" 0");
+    system("amixer sset -c tegrasndt186ref \"ADMAIF1 Mux\" \"I2S1\"");
+    system("amixer sset -c tegrasndt186ref \"I2S1 Mux\" \"ADMAIF1\"");
+
+
+    system("amixer cset -c tegrasndt186ref name=\"x DMIC Switch\" \"DMIC2\"");
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC R2 Mux\" \"DMIC2\"");
+    // #amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC2"
+    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC R2 Mux\" \"DMIC R1\"");
+    // #amixer cset -c tegrasndt186ref name="x Mono ADC L2 Mux" "DMIC L2"
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC1 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC1 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC2 Switch\" 1");
+
+    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXL ADC2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXR ADC2 Switch\" 1");
+
+    // # amixer cset -c tegrasndt186ref name="x IN1 Mode Control" 0
+    system("amixer cset -c tegrasndt186ref name=\"x IN1 Boost\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x ADC Capture Volume\" 50 50");
+    system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST1 Switch\" 0");
+    system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST2 Switch\" 1");
+    system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST1 Switch\" 0");
+    system("amixer sset -c tegrasndt186ref \"ADMAIF1 Mux\" \"I2S1\"");
 
 }
 
@@ -329,7 +374,6 @@ void AudioManager::init()
     if (!pPropAudio || !strcmp(pPropAudio, "false")) {
         property_set(PROP_USE_AUDIO, "true");
     }
-
 
     /* 预加载wav文件(mmap) */
 #ifdef ENABLE_CACHE_AUDIO_FILE

@@ -384,7 +384,6 @@ VolumeManager::VolumeManager() :
     /* 删除/mnt/下未挂载的目录，已经挂载了的不处理（实时上update_check已经将升级设备挂载了） */
     clearAllunmountPoint();
 
-
     /*
      * 初始化与模组交互的两个GPIO
      */
@@ -411,11 +410,8 @@ VolumeManager::VolumeManager() :
 
     LOGDBG(TAG, "--> Module num = %d", mModuleVolNum);
 
-    /*
-     * 重新复位下接SD卡的HUB
-     */
-    resetHub(390, RESET_HIGH_LEVEL, 100);
-
+    /** 重新复位下接SD卡的HUB */
+    resetHub(390, RESET_HIGH_LEVEL, 500);
 
 #ifdef ENABLE_CACHE_SERVICE
     CacheService::Instance();

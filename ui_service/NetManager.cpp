@@ -12,6 +12,7 @@
 ** 修改记录:
 ** V1.0			Skymixos		2018-06-05		创建文件，添加注释
 ** V2.0			Skymixos		2018-12-27		将dhcp服务的启停转到init.rc中处理
+** V2.1         Skymixos        2019-01-19      将Wifi的启停交由monitor负责(通过属性系统控制)
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -300,7 +301,6 @@ void NetDev::getIpByDhcp()
     system("killall udhcpc");
     sprintf(cmd, "udhcpc %s &", mDevName.c_str());
 #endif
-
     system(cmd);	
 }
 
@@ -474,40 +474,52 @@ WiFiNetDev::~WiFiNetDev()
 int WiFiNetDev::netdevOpen()
 {
 	char cmd[512] = {0};
-	u32 i;
+	u32 i = 0;
 	int iResult;
 
-	if (getWiFiWorkMode() == WIFI_WORK_MODE_AP) {
-		
+    LOGDBG(TAG, "--> Startup Wifi device +++");
+
+	if (getWiFiWorkMode() == WIFI_WORK_MODE_AP) {		
 		system("echo 2 > /sys/module/bcmdhd/parameters/op_mode");	/* 通知固件工作在AP模式 */
-		
-		memset(cmd, 0, sizeof(cmd));
+        const char* pHostapd = NULL;
 
-#ifdef ENABLE_DEBUG_HOSTAPD
-		sprintf(cmd, "hostapd -B %s > /home/nvidia/insta360/log/wifi.log", WIFI_TMP_AP_CONFIG_FILE);
-#else 
-		sprintf(cmd, "hostapd -B %s", WIFI_TMP_AP_CONFIG_FILE);
-#endif
+        /*
+         * 如果hostapd服务已经处于running状态,先停止再启动
+         */
+        pHostapd = property_get(HOSTAPD_SERVICE_STATE);
+        if (pHostapd && strcmp(pHostapd, SERVICE_STATE_STOPPED)) {
+            LOGDBG(TAG, "---> hostapd service state[%s], stop it first", pHostapd);
+            property_set(STOP_SERVICE, HOSTAPD_SERVICE);
+            msg_util::sleep_ms(500);
+        }
 
-		for (i = 0; i < 3; i++) {
-			iResult = system(cmd);
-			if (!iResult) 
-				break;
-			msg_util::sleep_ms(500);
-		}
+        LOGDBG(TAG, "++++ start hostapd service now ++++");
 
-		if (i >= 3) { 
-			LOGDBG(TAG, "NetManager: startup hostapd Failed, reason(%d)", iResult);
-			property_set(PROP_WIFI_AP_STATE, "false");
-		} else {
-		
-			LOGDBG(TAG, "NetManager: startup hostapd Sucess");
-			property_set(PROP_WIFI_AP_STATE, "true");
-			setCurIpAddr(WLAN0_DEFAULT_IP, true);
-		}		
+        do {
+            /*
+             * 启动hostpad服务
+             */
+            property_set(START_SERVICE, HOSTAPD_SERVICE);
+            msg_util::sleep_ms(500);
+            pHostapd = property_get(HOSTAPD_SERVICE_STATE);
+            LOGDBG(TAG, "----> start hostapd result[%s]", pHostapd);
 
-	} else {
-		system("echo 0 > /sys/module/bcmdhd/parameters/op_mode");	/* 通知固件工作在STA模式 */
+            if (pHostapd && (!strcmp(pHostapd, SERVICE_STATE_RUNNING) || !strcmp(pHostapd, SERVICE_STATE_RESTARTING))) {
+			    LOGDBG(TAG, "NetManager: startup hostapd Sucess");
+			    setCurIpAddr(WLAN0_DEFAULT_IP, true);            
+                break;
+            } else {
+                LOGERR(TAG, "--> start hostapd failed, times[%d]", i);
+            }
+        } while (i++ < 3);
+
+        if (i >= 3) {
+            LOGERR(TAG, "+++++>>> Error: Startup hostapd service Failed, please check again");
+            property_set(STOP_SERVICE, HOSTAPD_SERVICE);
+        }
+
+	} else {    /* 通知固件工作在STA模式 */
+		system("echo 0 > /sys/module/bcmdhd/parameters/op_mode");	
 	}
 	return 0;
 }
@@ -515,10 +527,10 @@ int WiFiNetDev::netdevOpen()
 
 int WiFiNetDev::netdevClose()
 {
-	system("killall hostapd");
+    property_set("ctl.stop", "hostapd");
+    msg_util::sleep_ms(500);
 	setCurIpAddr(OFF_IP, true);
 	system("ifconfig wlan0 down");
-	property_set(PROP_WIFI_AP_STATE, "false");
 	return 0;
 }
 
