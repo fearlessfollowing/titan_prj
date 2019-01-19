@@ -205,7 +205,7 @@ void CfgManager::startSysSwap()
 {
     LOGDBG(TAG, "-----> start swap func <----");
     if (access(SWAP_FILE_PATH, F_OK) == 0) {
-        
+
         LOGDBG(TAG, "---> Startup swap function here...");
         chmod(SWAP_FILE_PATH, 0600);
 	    system("mkswap /swap/sfile");
@@ -227,7 +227,7 @@ void CfgManager::init()
     startUpSysCtl();
 
     /** 启用交换分区 */
-
+    startSysSwap();
 
     if (access(USER_CFG_PARAM_FILE, F_OK)) {
         LOGDBG(TAG, "User Configure[%s] not exist", USER_CFG_PARAM_FILE);
