@@ -234,6 +234,11 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define PREVIEW_JSON_FILE           "/home/nvidia/insta360/etc/preview.json"
 
 
+/*
+ * 交换分区文件路径
+ */
+#define SWAP_FILE_PATH              "/swap/sfile"
+
 
 /*
  * 拍照模式名称

@@ -185,12 +185,7 @@ public:
      */
     bool            sendStorageListReq(const char* devList);
 
-#if 0
-    /*
-     * 更新电池电量信息
-     */
-    bool            sendUpdateBatteryInfo(BAT_INFO* pBatInfo);
-#endif
+    bool            sendUpdateSysTempReq(Json::Value& param);
 
     /* 噪声采样 */
     bool            sendStartNoiseSample();

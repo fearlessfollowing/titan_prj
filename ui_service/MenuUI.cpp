@@ -4478,102 +4478,6 @@ void MenuUI::dispGpsRtsInfo(Json::Value& jsonCmd)
 }
 
 
-#if 0
-/*
- * 下个版本移除
- */
-void MenuUI::disp_org_rts(Json::Value& jsonCmd, int hdmi)
-{
-    int org = 0, rts = 0;
-
-    if (jsonCmd.isMember("name")) {
-
-        if (!strcmp(jsonCmd["name"].asCString(), "camera._takePicture")) {  /* 拍照 */
-            if (checkHaveGpsSignal()) 
-                org = 1;
-            else 
-                org = 0;
-
-            if (jsonCmd["parameters"].isMember("stiching"))
-                rts = 1;      
-
-        } else if (!strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
-            if (checkHaveGpsSignal()) 
-                org = 1;
-            else
-                org = 0;
-
-            if (jsonCmd["parameters"].isMember("stiching"))
-                rts = 1;        
-
-        } else if (!strcmp(jsonCmd["name"].asCString(), "camera._startLive")) {
-
-            if (checkHaveGpsSignal())
-                org = 1;
-            else 
-                org = 0;
-
-            if (jsonCmd["parameters"].isMember("stiching")) {
-                if (jsonCmd["parameters"]["stiching"].isMember("fileSave")) {
-                    if (true == jsonCmd["parameters"]["stiching"]["fileSave"].asBool()) {
-                        rts = 1;
-                    }
-                } 
-            } 
-        }
-
-    } else {
-        LOGERR(TAG, "Invalid Json command!");
-    }
-
-    disp_org_rts(org, rts, hdmi);
-}
-
-
-void MenuUI::disp_org_rts(int org, int rts, int hdmi)
-{
-    int new_org_rts = 0;
-
-    if (org == 1) {
-        if (rts == 1) {
-            new_org_rts = 0;
-        } else {
-            new_org_rts = 1;
-        }
-    } else {
-        if (rts == 1) {
-            new_org_rts = 2;
-        } else {
-            new_org_rts = 3;
-        }
-    }
-
-    {
-        switch (new_org_rts) {
-            case 0:
-                drawGpsState();
-                drawRTS(true);
-                break;
-            case 1:
-                drawGpsState();
-                drawRTS(false);
-                break;
-            case 2:
-                clearGpsState();
-                drawRTS(true);
-                break;
-            case 3:
-                clearGpsState();
-                drawRTS(false);
-                break;
-            SWITCH_DEF_ERROR(new_org_rts)
-        }
-    }
-}
-#endif
-
-
-
 void MenuUI::disp_qr_res(bool high)
 {
     if (high) {
@@ -4623,28 +4527,31 @@ void MenuUI::dispPicVidCfg(PicVideoCfg* pCfg, bool bLight)
 **		bLight - 是否高亮显示
 ** 返回值: 无
 ** 调 用: 
-** 
+** "remote control"是用图标还是文字显示,通过属性"sys.disp_use_icon" = "true"
 *************************************************************************/
 void MenuUI::updateBottomMode(bool bLight)
 {
     u32 iIndex;
     struct stPicVideoCfg* pTmpCfg = NULL;
+    const char* pDispIconProp = property_get("sys.disp_use_icon");
 
     switch (cur_menu) {
         case MENU_PIC_INFO:
         case MENU_PIC_SET_DEF: {
             if (mClientTakePicUpdate == true) {   /* 客户端有传递ACTION_INFO, 显示客户端传递的ACTION_INFO */                
-                dispGpsRtsInfo(mControlPicJsonCmd);                
-                dispIconByLoc(&remoteControlIconInfo);
+                dispGpsRtsInfo(mControlPicJsonCmd);
+                if (pDispIconProp && !strcmp(pDispIconProp, "true")) {
+                    dispIconByLoc(&remoteControlIconInfo);
+                } else {    /* (2, 48, 90, 16) */
+                    dispStr((const u8*)"remote control", 2, 48, false, 90);                    
+                }
             } else {
 
                 /* 根据当前选择的挡位进行显示 */
                 iIndex = getMenuSelectIndex(MENU_PIC_SET_DEF);    /* 得到菜单的索引值 */
 
                 LOGDBG(TAG, "menu[%s] current selected index[%d]", getMenuName(MENU_PIC_SET_DEF), iIndex);
-                
-                LOGDBG(TAG, "menu[%s] total[%d] PIC cfg list len[%d]", 
-                                                                        getMenuName(MENU_PIC_SET_DEF), 
+                LOGDBG(TAG, "menu[%s] total[%d] PIC cfg list len[%d]",  getMenuName(MENU_PIC_SET_DEF), 
                                                                         mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total, 
                                                                         mPicAllItemsList.size());
 
@@ -4680,15 +4587,13 @@ void MenuUI::updateBottomMode(bool bLight)
                 }
 
             } else if (mClientTakeVideoUpdate == true) {   /* 来自客户端直播请求 */
-                LOGDBG(TAG, "Show Bottom Video Mode ---> Client control[remote control]");
-                
+                LOGDBG(TAG, "Show Bottom Video Mode ---> Client control[remote control]");                
                 dispGpsRtsInfo(mControlVideoJsonCmd);
-                if (takeVideoIsAgeingMode()) {
+                if (takeVideoIsAgeingMode()) {  /* "老化"模式, 显示"Aging Mode" */
                     dispAgingStr();
                 } else {
                     dispIconByLoc(&remoteControlIconInfo);
                 }
-                
             } else {
 
                 /* 根据菜单中选择的挡位进行显示 */
@@ -4726,14 +4631,18 @@ void MenuUI::updateBottomMode(bool bLight)
 
             if (mClientTakeLiveUpdate == true) {   /* 来自客户端直播请求 */
                 dispGpsRtsInfo(mControlLiveJsonCmd);
-                dispIconByLoc(&remoteControlIconInfo);
+                if (pDispIconProp && !strcmp(pDispIconProp, "true")) {
+                    dispIconByLoc(&remoteControlIconInfo);
+                } else {
+                    dispStr((const u8*)"remote control", 2, 48, false, 90);                     
+                }
             } else {
                 iIndex = getMenuSelectIndex(MENU_LIVE_SET_DEF);
 
-                LOGDBG(TAG, "menu[%s] current selected index[%d]", getMenuName(MENU_LIVE_SET_DEF), iIndex);
-                
-                LOGDBG(TAG, "menu[%s] total[%d] pic cfg list len[%d]", 
-                            getMenuName(MENU_LIVE_SET_DEF), mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total, mLiveAllItemsList.size());
+                LOGDBG(TAG, "menu[%s] current selected index[%d]", getMenuName(MENU_LIVE_SET_DEF), iIndex);                
+                LOGDBG(TAG, "menu[%s] total[%d] pic cfg list len[%d]",  getMenuName(MENU_LIVE_SET_DEF), 
+                                                                        mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total, 
+                                                                        mLiveAllItemsList.size());
 
 
                 if (iIndex >= mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total || iIndex >= mLiveAllItemsList.size()) {
@@ -4744,7 +4653,7 @@ void MenuUI::updateBottomMode(bool bLight)
                     if (pTmpCfg) {
                         LOGDBG(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
                         dispGpsRtsInfo(*(pTmpCfg->jsonCmd.get()));
-                        dispPicVidCfg(pTmpCfg, bLight); /* 显示配置 */
+                        dispPicVidCfg(pTmpCfg, bLight);     /* 显示配置 */
                     } else {
                         LOGERR(TAG, "invalid pointer pTmpCfg");
                     }
@@ -4760,7 +4669,6 @@ void MenuUI::updateBottomMode(bool bLight)
 void MenuUI::disp_sec(int sec,int x,int y)
 {
     char buf[32];
-
     snprintf(buf,sizeof(buf), "%ds ", sec);
     dispStr((const u8 *)buf, x, y);
 }
@@ -8865,12 +8773,9 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 	switch (menu) {
 		case MENU_PIC_INFO: {
 
-            LOGDBG(TAG, "-----> mTakePicDelay[%d], server state[0x%x]", mTakePicDelay, serverState);
 			if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS)) {
 	
-                LOGDBG(TAG, "-->handleDispLightMsg: mTakePicDelay = [%d]", mTakePicDelay);
 				if (mTakePicDelay == 0) {
-
                     if (mNeedSendAction) {  /* 暂时用于处理客户端发送拍照请求时，UI不发送拍照请求给camerad */
                         sendRpc(ACTION_PIC);
                     }
@@ -9627,13 +9532,13 @@ void MenuUI::dispProcessing()
 
 void MenuUI::clearArea(u8 x, u8 y, u8 w, u8 h)
 {
-    LOGDBG(TAG, "-----> clear Area[%d, %d, %d, %d]", x, y, w, h);
+    // LOGDBG(TAG, "-----> clear Area[%d, %d, %d, %d]", x, y, w, h);
     mOLEDModule->clear_area(x, y, w, h);
 }
 
 void MenuUI::clearArea(u8 x, u8 y)
 {
-    LOGDBG(TAG, "-----> clear Area[%d, %d]", x, y);
+    // LOGDBG(TAG, "-----> clear Area[%d, %d]", x, y);
     mOLEDModule->clear_area(x, y);
 }
 

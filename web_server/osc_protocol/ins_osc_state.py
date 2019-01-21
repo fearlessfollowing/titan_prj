@@ -336,7 +336,7 @@ class osc_state(threading.Thread):
     def handle_save_path_change(self, content):
         self.set_save_path(content)
 
-    def handle_battery(self,content):
+    def handle_battery(self, content):
         self.set_battery_info(content)
 
     def aquire_sem(self):

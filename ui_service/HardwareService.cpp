@@ -19,6 +19,7 @@
 ** sys.bat_temp                 电池温度
 ** sys.cpu_temp                 CPU温度
 ** sys.gpu_temp                 GPU温度
+** V3.1         Skymixos        2019-01-21      将更新电池信息和温度信息合并
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -52,16 +53,11 @@
 
 #define CPU_TEMP_PATH           "/sys/class/thermal/thermal_zone2/temp"
 #define GPU_TEMP_PATH           "/sys/class/thermal/thermal_zone1/temp"
-
-#define INVALID_TMP_VAL         1000.0f
-#define BAT_LOW_VAL             (5)
-
-
 #define PROP_POLL_SYS_PERIOD    "sys.poll_period"
 
 
-// #define ENABLE_DEBUG_TMPSERVICE
-
+#define INVALID_TMP_VAL         1000.0f
+#define BAT_LOW_VAL             (5)
 
 
 bool HardwareService::mHaveInstance = false;
@@ -159,10 +155,10 @@ void HardwareService::getNvTemp()
     property_set(PROP_CPU_TEMP, cCpuBuf);
     property_set(PROP_GPU_TEMP, cGpuBuf);
 
-
 #ifdef ENABLE_DEBUG_TMPSERVICE
     LOGDBG(TAG, "CPU temp[%f]C, GPU temp[%f]C", mCpuTmp, mGpuTmp);
 #endif
+
 }
 
 
@@ -196,14 +192,31 @@ void HardwareService::getModuleTemp()
 #endif
 }
 
-
-bool HardwareService::reportSysTemp()
+#if 0
+"_battery": {"battery_charge": 0, "battery_level": 1000, "int_tmp": 0.0, "tmp": 0.0}
+#endif 
+bool HardwareService::reportSysTempAndBatInfo()
 {   
-    Json::Value param;
-    param["nv_temp"] = MAX_VAL(mCpuTmp, mGpuTmp);
-    param["bat_temp"] = mBatteryTmp;
-    param["module_temp"] = mModuleTmp;
-    // return ProtoManager::Instance()->sendUpdateSysTempReq(param);
+    Json::Value root;
+    Json::Value temp;
+    Json::Value bat;
+
+    temp["nv_temp"]        = MAX_VAL(mCpuTmp, mGpuTmp);
+    temp["bat_temp"]       = mBatInfo->dBatTemp;
+    temp["module_temp"]    = mModuleTmp;
+
+    bat["battery_charge"]  = (mBatInfo->bIsCharge == true) ? 1: 0;
+    if (mBatInfo->bIsExist == false) {
+        bat["battery_level"]  = 1000;
+    } else {
+        bat["battery_level"]  = mBatInfo->uBatLevelPer;        
+    }
+    bat["tmp"] = mBatInfo->dBatTemp;
+
+    root["temp"] = temp;
+    root["bat"]  = bat;
+
+    return ProtoManager::Instance()->sendUpdateSysTempReq(root);
 }
 
 
@@ -276,8 +289,6 @@ bool HardwareService::isSysLowBattery()
 }
 
 
-
-
 int HardwareService::serviceLooper()
 {
     fd_set read_fds;
@@ -321,7 +332,7 @@ int HardwareService::serviceLooper()
             updateSysTemp();
 
             /* 上报电池信息及系统温度 */
-            if (reportSysTemp()) {
+            if (reportSysTempAndBatInfo()) {
                 // LOGDBG(TAG, "Report Sys Temperature Suc.");
             }
         }

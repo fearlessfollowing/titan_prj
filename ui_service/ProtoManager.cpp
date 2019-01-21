@@ -24,16 +24,17 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
-#include <sys/Mutex.h>
 #include <sys/ProtoManager.h>
 
 #include <log/log_wrapper.h>
+
 
 /*********************************************************************************************
  *  输出日志的TAG(用于刷选日志)
  *********************************************************************************************/
 #undef    TAG
 #define   TAG "ProtoManager"
+
 
 /*********************************************************************************************
  *  宏定义
@@ -76,6 +77,9 @@
 #define REQ_SET_OPTIONS             "camera._setOptions"
 #define REQ_AWB_CALC                "camera._calibrationAwb"
 
+
+#define REQ_UPDATE_SYS_TEMP         "camera._updateSysTemp"
+
 /*********************************************************************************************
  *  外部函数
  *********************************************************************************************/
@@ -85,9 +89,9 @@
  *  全局变量
  *********************************************************************************************/
 ProtoManager *ProtoManager::sInstance = NULL;
-static Mutex gProtoManagerMutex;
-static Mutex gSyncReqMutex;
 
+static std::mutex gProtoManagerMutex;
+static std::mutex gSyncReqMutex;
 static const std::string gReqUrl = "http://127.0.0.1:20000/ui/commands/execute";
 static const char* gPExtraHeaders = "Content-Type:application/json\r\nReq-Src:ProtoManager\r\n";     // Req-Src:ProtoManager\r\n
 
@@ -97,12 +101,11 @@ Json::Value* ProtoManager::mSaveSyncReqRes = NULL;
 
 ProtoManager* ProtoManager::Instance() 
 {
-    AutoMutex _l(gProtoManagerMutex);
+    std::unique_lock<std::mutex> _lock(gProtoManagerMutex);
     if (!sInstance)
         sInstance = new ProtoManager();
     return sInstance;
 }
-
 
 
 ProtoManager::ProtoManager(): mSyncReqExitFlag(false), 
@@ -166,7 +169,8 @@ ProtoManager::~ProtoManager()
 int ProtoManager::sendHttpSyncReq(const std::string &url, Json::Value* pJsonRes, 
                                     const char* pExtraHeaders, const char* pPostData)
 {
-	AutoMutex _l(gSyncReqMutex);
+
+    std::unique_lock<std::mutex> _lock(gSyncReqMutex);
 
     mg_mgr mgr;
     mSaveSyncReqRes = pJsonRes;
@@ -212,14 +216,6 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
         case MG_EV_HTTP_REPLY: {
 		    // LOGDBG(TAG, "Got reply:\n%.*s\n", (int)hm->body.len, hm->body.p);
             if (mSaveSyncReqRes) {
-                #if 0
-                Json::Reader reader;
-                if (!reader.parse(std::string(hm->body.p, hm->body.len), (*mSaveSyncReqRes), false)) {
-                    LOGERR(TAG, "Parse Http Reply Failed!");
-                    mSyncReqErrno = PROTO_MANAGER_REQ_PARSE_REPLY_FAIL;
-                }
-                #else 
-
                 Json::CharReaderBuilder builder;
                 builder["collectComments"] = false;
                 JSONCPP_STRING errs;
@@ -228,8 +224,6 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
                     LOGERR(TAG, "Parse Http Reply Failed!");
                     mSyncReqErrno = PROTO_MANAGER_REQ_PARSE_REPLY_FAIL;
                 }
-                #endif
-
             } else {
                 LOGERR(TAG, "Invalid mSaveSyncReqRes, maybe client needn't reply results");
             }
@@ -653,6 +647,73 @@ bool ProtoManager::sendQueryTfCard()
     return bRet;
 }
 
+#if 0
+std::string ProtoManager::convertJson2String(Json::Value& param)
+{
+    std::ostringstream osInput;
+    std::string resultStr = "";
+    std::string sendStr = "";
+    Json::StreamWriterBuilder builder;   
+
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+
+    writer->write(root, &osInput);
+    sendStr = osInput.str();
+}
+#endif
+
+
+
+bool ProtoManager::sendUpdateSysTempReq(Json::Value& param)
+{
+    int iResult = -1;
+    bool bRet = false;
+
+    Json::Value jsonRes;   
+    Json::Value root;
+
+    std::ostringstream osInput;
+    std::ostringstream osOutput;
+
+    std::string resultStr = "";
+    std::string sendStr = "";
+    Json::StreamWriterBuilder builder;
+
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+
+    root[_name_] = REQ_UPDATE_SYS_TEMP;
+    root[_param] = param;
+
+	writer->write(root, &osInput);
+    sendStr = osInput.str();
+
+    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
+    switch (iResult) {
+        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
+            #if 1
+            writer->write(jsonRes, &osOutput);
+            resultStr = osOutput.str();
+            LOGDBG(TAG, "sendUpdateSysTempReq -> request Result: %s", resultStr.c_str());
+            #endif
+            if (jsonRes.isMember(_state)) {
+                if (jsonRes[_state] == _done) {     
+                    bRet = true;
+                }
+            } else {
+                bRet = false;
+            }
+            break;
+        }
+        default: {  /* 通信错误 */
+            LOGERR(TAG, "sendUpdateSysTempReq -> Maybe Transfer Error");
+            bRet = false;
+        }
+    }
+    return bRet; 
+}
+
 
 bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
 {
@@ -681,6 +742,7 @@ bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
     iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
     switch (iResult) {
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
+
             /* 解析响应值来判断是否允许 */
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
@@ -1148,60 +1210,6 @@ bool ProtoManager::sendStorageListReq(const char* devList)
     }
     return bRet;     
 }
-
-#if 0
-bool ProtoManager::sendUpdateBatteryInfo(BAT_INFO* pBatInfo)
-{
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value root;
-    Json::Value jsonRes;   
-    Json::Value param;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-    param["battery_level"]  = pBatInfo->battery_level;
-    param["battery_charge"] = (pBatInfo->bCharge == true) ? 1: 0;
-    param["int_tmp"]        =  pBatInfo->int_tmp;
-    param["tmp"]            =  pBatInfo->tmp;  
-
-    root[_name_]         = REQ_UPDATE_BAT_INFO;
-    root[_param]        = param;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendUpdateBatteryInfo -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendUpdateBatteryInfo -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;     
-}
-#endif
 
 
 bool ProtoManager::sendStartNoiseSample()
@@ -2207,7 +2215,6 @@ void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
 
 bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 {
-
     switch (iMsgType) {
         case MSG_DISP_TYPE: {	/* 通信UI线程显示指定UI */
             handleDispType(jsonData);

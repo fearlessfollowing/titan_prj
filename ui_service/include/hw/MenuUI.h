@@ -583,9 +583,6 @@ private:
     void    set_back_menu(int item,int menu);
     int     get_back_menu(int item);
 
-    
-    void    disp_org_rts(int org,int rts,int hdmi = -1);
-
     void    dispGpsRtsInfo(Json::Value& jsonCmd);
 
     void    init_cfg_select();
@@ -678,8 +675,6 @@ private:
     void    restore_all();
 
     void    set_cur_menu_from_exit();
-
-    void    disp_org_rts(Json::Value& jsonCmd, int hdmi);
 	
     void    exit_sys_err();
 

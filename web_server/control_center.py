@@ -92,7 +92,7 @@ ACTION_FORMAT_TFCARD = 201
 ACTION_QUIT_UDISK_MODE = 202
 
 ORG_OVER = 'originOver'
-KEY_STABLIZATION='stabilization'
+KEY_STABLIZATION = 'stabilization'
 
 ERROR_CODE ='error_code'
 
@@ -2330,13 +2330,15 @@ class control_center:
 
 
     def cameraUiUpdateSysTemp(self, req):
-        # Info('[------- UI Req: cameraUiUpdateSysTemp ------] req: {}'.format(req))      
+        Info('[------- UI Req: cameraUiUpdateSysTemp ------] req: {}'.format(req))      
         res = OrderedDict()
         res[_name] = req[_name]
         res[_state] = config.DONE   
 
+        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.HANDLE_BAT, req[_param]["bat"]))
+
         # 将温度信息更新到心跳包中
-        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.UPDATE_SYS_TEMP, req[_param]))
+        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.UPDATE_SYS_TEMP, req[_param]["temp"]))
 
         return json.dumps(res) 
 

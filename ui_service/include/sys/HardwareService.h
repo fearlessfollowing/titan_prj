@@ -30,7 +30,7 @@ private:
     int             mCtrlPipe[2]; // 0 -- read , 1 -- write
 
     int             serviceLooper();
-    bool            reportSysTemp();
+    bool            reportSysTempAndBatInfo();
     void            writePipe(int p, int val);
     
     void            getNvTemp();
