@@ -289,6 +289,12 @@ int AudioManager::loadRes2Cache(const char* fileName)
 #endif
 
 
+#if 0
+rt5639_dmic_put: RT5639_DMIC1 ****
+rt5639_dmic_put: RT5639_DMIC2 ****
+#endif 
+
+
 void AudioManager::initSpeaker()
 {
     LOGDBG(TAG, "+++++++++++++++++++> Speaker init here <+++++++++++++++++++++++++++++");

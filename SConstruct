@@ -57,8 +57,8 @@ com_env.Program('out/update_app', update_app_obj)
 
 
 ############################ power_manager ##################################
-#power_obj = SConscript('./ui_service/power/SConscript')
-#com_env.Program('./out/power_manager', power_obj)
+power_obj = SConscript('./ui_service/power/SConscript')
+com_env.Program('./out/power_manager', power_obj)
 
 ############################ pwr_ctl ##################################
 #pwr_obj = SConscript('./ui_service/pwr_ctl/SConscript')

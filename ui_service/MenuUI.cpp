@@ -3698,6 +3698,7 @@ void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, std::vector<Volume*>& mVolum
             case 1: tmPos.yPos = 32; break;
             case 2: tmPos.yPos = 48; break;
         }
+        
     #ifdef ENABLE_SHOW_SPACE_NV
         tmPos.xPos 		= 27;   
         tmPos.iWidth	= 103;   
