@@ -2187,11 +2187,7 @@ bool MenuUI::checkVidLiveStorageSpeed()
  */
 bool MenuUI::takeVideoIsAgeingMode()
 {
-#ifdef ENABLE_AGEING_MODE
     return mAgingMode;    
-#else 
-    return false;
-#endif
 }
 
 
@@ -9188,7 +9184,7 @@ void MenuUI::dispIconByLoc(const ICON_INFO* pInfo)
 
 void MenuUI::dispAgingStr()
 {
-    dispStr((const u8*)"Aging Mode", 0, 48, false, 78);
+    dispStr((const u8*)"Aging Mode", 2, 48, false, 80);
 }
 
 

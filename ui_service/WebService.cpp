@@ -96,7 +96,6 @@ static Mutex gStateMachineManagerLock;
  *********************************************************************************************/
 
 
-
 StateMachineManager* StateMachineManager::Instance() 
 {
     AutoMutex _l(gStateMachineManagerLock);

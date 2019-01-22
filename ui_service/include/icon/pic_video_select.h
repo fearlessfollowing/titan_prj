@@ -1541,9 +1541,6 @@ PicVideoCfg live4K_30F_3D_HDMI_Cfg = {
 };
 
 
-
-
-
 PicVideoCfg live_Customer_Cfg = {
 	pItemName:			TAKE_LIVE_MODE_CUSTOMER,		// pItemName
 	iItemMaxVal:		0,								// iItemMaxVal
@@ -1605,21 +1602,6 @@ PicVideoCfg* gLiveAllModeCfgList[] = {
 /* 
  * 默认的参数(当配置文件不存在或者解析配置文件出错时使用)
  */
-#if 0
-
-static const char* pCmdTakePic_8K3DOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
-
-
-static const char* pCmdTakePic_8KOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"pano\", \"height\": 3840, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
-
-static const char* pCmdTakePic_8K 		= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}}}";
-
-static const char* pCmdTakePic_AEB 		= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"bracket\":{\"enable\":true,\"count\": 9, \"min_ev\": -10, \"max_ev\": 10}, \"origin\": {\"mime\": \"raw+jpeg\", \"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}}} ";
-
-static const char* pCmdTakePic_Burst 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"burst\":{\"enable\":true,\"count\": 10}, \"origin\": {\"mime\": \"jpeg\", \"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}}}";
-
-#else
-
 static const char* pCmdTakePic_11K3DOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 10560, \"width\": 10560, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
 
 static const char* pCmdTakePic_11KOF 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956}, \"stiching\": {\"mode\": \"pano\", \"height\": 5280, \"width\": 10560, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
@@ -1630,12 +1612,7 @@ static const char* pCmdTakePic_AEB 		= "{\"name\":\"camera._takePicture\",\"para
 
 static const char* pCmdTakePic_Burst 	= "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"burst\":{\"enable\":true,\"count\": 10}, \"origin\": {\"mime\": \"jpeg\", \"saveOrigin\": true, \"width\": 5280, \"height\": 3956}}}";
 
-#endif
-
-
 static const char* pCmdTakePic_Customer = "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
-
-
 
 
 

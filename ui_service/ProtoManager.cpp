@@ -692,7 +692,7 @@ bool ProtoManager::sendUpdateSysTempReq(Json::Value& param)
     iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
     switch (iResult) {
         case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            #if 1
+            #if 0
             writer->write(jsonRes, &osOutput);
             resultStr = osOutput.str();
             LOGDBG(TAG, "sendUpdateSysTempReq -> request Result: %s", resultStr.c_str());

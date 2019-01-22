@@ -291,7 +291,7 @@ int AudioManager::loadRes2Cache(const char* fileName)
 
 void AudioManager::initSpeaker()
 {
-    LOGDBG(TAG, "---> Speaker init here...");
+    LOGDBG(TAG, "+++++++++++++++++++> Speaker init here <+++++++++++++++++++++++++++++");
     system("amixer cset -c tegrasndt186ref name=\"I2S1 Mux\" 20");
     system("amixer cset -c tegrasndt186ref name=\"MIXER1-1 Mux\" 1");
     system("amixer cset -c tegrasndt186ref name=\"Adder1 RX1\" 1");
@@ -309,7 +309,8 @@ void AudioManager::initSpeaker()
 
 void AudioManager::initRecorder()
 {
-    LOGDBG(TAG, "---> Record init here...");
+    LOGDBG(TAG, "++++++++++++++++++++> Record init here <++++++++++++++++++++++++++++");
+    
     system("amixer cset -c tegrasndt186ref name=\"x DMIC Switch\" \"DMIC2\"");
     system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC R2 Mux\" \"DMIC2\"");
     // #amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC2"
@@ -369,6 +370,8 @@ void AudioManager::init()
     defaultPlayDev = DEFAULT_PALY_DEVICE;
 
     initSpeaker();
+    msg_util::sleep_ms(500);
+    
     initRecorder();
 
     if (!pPropAudio || !strcmp(pPropAudio, "false")) {

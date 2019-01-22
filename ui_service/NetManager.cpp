@@ -481,6 +481,8 @@ int WiFiNetDev::netdevOpen()
 
 	if (getWiFiWorkMode() == WIFI_WORK_MODE_AP) {		
 		system("echo 2 > /sys/module/bcmdhd/parameters/op_mode");	/* 通知固件工作在AP模式 */
+
+#if 0
         const char* pHostapd = NULL;
 
         /*
@@ -517,6 +519,31 @@ int WiFiNetDev::netdevOpen()
             LOGERR(TAG, "+++++>>> Error: Startup hostapd service Failed, please check again");
             property_set(STOP_SERVICE, HOSTAPD_SERVICE);
         }
+#else
+		memset(cmd, 0, sizeof(cmd));
+
+#ifdef ENABLE_DEBUG_HOSTAPD
+		sprintf(cmd, "hostapd -B %s > /home/nvidia/insta360/log/wifi.log", WIFI_TMP_AP_CONFIG_FILE);
+#else 
+		sprintf(cmd, "hostapd -B %s", WIFI_TMP_AP_CONFIG_FILE);
+#endif
+
+		for (i = 0; i < 3; i++) {
+			iResult = system(cmd);
+			if (!iResult) 
+				break;
+			msg_util::sleep_ms(500);
+		}
+
+		if (i >= 3) { 
+			LOGDBG(TAG, "NetManager: startup hostapd Failed, reason(%d)", iResult);
+			property_set(PROP_WIFI_AP_STATE, "false");
+		} else {
+			LOGDBG(TAG, "NetManager: startup hostapd Sucess");
+			property_set(PROP_WIFI_AP_STATE, "true");
+			setCurIpAddr(WLAN0_DEFAULT_IP, true);
+		}	
+#endif
 
 	} else {    /* 通知固件工作在STA模式 */
 		system("echo 0 > /sys/module/bcmdhd/parameters/op_mode");	
@@ -527,7 +554,12 @@ int WiFiNetDev::netdevOpen()
 
 int WiFiNetDev::netdevClose()
 {
+#if 0
     property_set("ctl.stop", "hostapd");
+#else
+	system("killall hostapd");
+#endif
+ 
     msg_util::sleep_ms(500);
 	setCurIpAddr(OFF_IP, true);
 	system("ifconfig wlan0 down");
