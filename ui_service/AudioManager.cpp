@@ -292,23 +292,49 @@ int AudioManager::loadRes2Cache(const char* fileName)
 #if 0
 rt5639_dmic_put: RT5639_DMIC1 ****
 rt5639_dmic_put: RT5639_DMIC2 ****
+
+/usr/local/bin/speaker_init.sh
+
 #endif 
 
+
+#define SPEAKER_INIT_SCRIPT "/usr/local/bin/speaker_init.sh"
+#define IN1P_RECORD_INIT    "/usr/local/bin/in1p_record_setup.sh"
+#define IN1N_RECORD_INIT    "/usr/local/bin/in1n_record_setup.sh"
 
 void AudioManager::initSpeaker()
 {
     LOGDBG(TAG, "+++++++++++++++++++> Speaker init here <+++++++++++++++++++++++++++++");
-    system("amixer cset -c tegrasndt186ref name=\"I2S1 Mux\" 20");
-    system("amixer cset -c tegrasndt186ref name=\"MIXER1-1 Mux\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"Adder1 RX1\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"Mixer Enable\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"ADMAIF1 Mux\" 11");
-    system("amixer cset -c tegrasndt186ref name=\"x Int Spk Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Speaker Playback Volume\" 100");
-    system("amixer cset -c tegrasndt186ref name=\"x Headphone Jack Switch\" 0");
-    system("amixer sset -c tegrasndt186ref 'MIXER1-1 Mux' 'ADMAIF1'");
-    system("amixer sset -c tegrasndt186ref 'I2S1 Mux' 'MIXER1-1'");
-    system("amixer cset -c 1 name=\"x Speaker Playback Volume\" 100");
+    bool bDeaultInit = true;
+
+    if (access(SPEAKER_INIT_SCRIPT, F_OK) == 0) {
+        char line[1024];
+
+        chmod(SPEAKER_INIT_SCRIPT, S_IXUSR|S_IXGRP|S_IXOTH);    
+        FILE* fp = popen(SPEAKER_INIT_SCRIPT, "r");
+        if (fp) {
+            while (fgets(line, sizeof(line), fp) != NULL) {
+                LOGDBG(TAG, "%s", line);
+            }     
+            pclose(fp);
+            bDeaultInit = false;
+        }
+    }
+    
+    if (bDeaultInit) {
+        LOGDBG(TAG, "---> speaker init script[%s] no exist, use default init.", SPEAKER_INIT_SCRIPT);
+        system("amixer cset -c tegrasndt186ref name=\"I2S1 Mux\" 20");
+        system("amixer cset -c tegrasndt186ref name=\"MIXER1-1 Mux\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"Adder1 RX1\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"Mixer Enable\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"ADMAIF1 Mux\" 11");
+        system("amixer cset -c tegrasndt186ref name=\"x Int Spk Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Speaker Playback Volume\" 100");
+        system("amixer cset -c tegrasndt186ref name=\"x Headphone Jack Switch\" 0");
+        system("amixer sset -c tegrasndt186ref 'MIXER1-1 Mux' 'ADMAIF1'");
+        system("amixer sset -c tegrasndt186ref 'I2S1 Mux' 'MIXER1-1'");
+        system("amixer cset -c 1 name=\"x Speaker Playback Volume\" 100");
+    }
 }
 
 
@@ -316,52 +342,83 @@ void AudioManager::initSpeaker()
 void AudioManager::initRecorder()
 {
     LOGDBG(TAG, "++++++++++++++++++++> Record init here <++++++++++++++++++++++++++++");
-    
-    system("amixer cset -c tegrasndt186ref name=\"x DMIC Switch\" \"DMIC2\"");
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC R2 Mux\" \"DMIC2\"");
-    // #amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC2"
-    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC R2 Mux\" \"DMIC R1\"");
-    // #amixer cset -c tegrasndt186ref name="x Mono ADC L2 Mux" "DMIC L2"
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC1 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC1 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXL ADC2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXR ADC2 Switch\" 1");
 
-    // # amixer cset -c tegrasndt186ref name="x IN1 Mode Control" 0
-    system("amixer cset -c tegrasndt186ref name=\"x IN1 Boost\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x ADC Capture Volume\" 50 50");
-    system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST1 Switch\" 0");
-    system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST1 Switch\" 0");
-    system("amixer sset -c tegrasndt186ref \"ADMAIF1 Mux\" \"I2S1\"");
-    system("amixer sset -c tegrasndt186ref \"I2S1 Mux\" \"ADMAIF1\"");
+    int iIn1p = access(IN1P_RECORD_INIT, F_OK);
+    int iIn1n = access(IN1N_RECORD_INIT, F_OK);
+
+    if (iIn1p || iIn1n) {
+        LOGDBG(TAG, "Record init script not exist, use default init");
+
+        system("amixer cset -c tegrasndt186ref name=\"x DMIC Switch\" \"DMIC2\"");
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC R2 Mux\" \"DMIC2\"");
+        // #amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC2"
+        system("amixer cset -c tegrasndt186ref name=\"x Mono ADC R2 Mux\" \"DMIC R1\"");
+        // #amixer cset -c tegrasndt186ref name="x Mono ADC L2 Mux" "DMIC L2"
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC1 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC1 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXL ADC2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXR ADC2 Switch\" 1");
+
+        // # amixer cset -c tegrasndt186ref name="x IN1 Mode Control" 0
+        system("amixer cset -c tegrasndt186ref name=\"x IN1 Boost\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x ADC Capture Volume\" 50 50");
+        system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST1 Switch\" 0");
+        system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST1 Switch\" 0");
+        system("amixer sset -c tegrasndt186ref \"ADMAIF1 Mux\" \"I2S1\"");
+        system("amixer sset -c tegrasndt186ref \"I2S1 Mux\" \"ADMAIF1\"");
 
 
-    system("amixer cset -c tegrasndt186ref name=\"x DMIC Switch\" \"DMIC2\"");
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC R2 Mux\" \"DMIC2\"");
-    // #amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC2"
-    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC R2 Mux\" \"DMIC R1\"");
-    // #amixer cset -c tegrasndt186ref name="x Mono ADC L2 Mux" "DMIC L2"
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC1 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC1 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x DMIC Switch\" \"DMIC2\"");
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC R2 Mux\" \"DMIC2\"");
+        // #amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC2"
+        system("amixer cset -c tegrasndt186ref name=\"x Mono ADC R2 Mux\" \"DMIC R1\"");
+        // #amixer cset -c tegrasndt186ref name="x Mono ADC L2 Mux" "DMIC L2"
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC1 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC1 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXR ADC2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Stereo ADC MIXL ADC2 Switch\" 1");
 
-    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXL ADC2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXR ADC2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXL ADC2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x Mono ADC MIXR ADC2 Switch\" 1");
 
-    // # amixer cset -c tegrasndt186ref name="x IN1 Mode Control" 0
-    system("amixer cset -c tegrasndt186ref name=\"x IN1 Boost\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x ADC Capture Volume\" 50 50");
-    system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST1 Switch\" 0");
-    system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST2 Switch\" 1");
-    system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST1 Switch\" 0");
-    system("amixer sset -c tegrasndt186ref \"ADMAIF1 Mux\" \"I2S1\"");
+        // # amixer cset -c tegrasndt186ref name="x IN1 Mode Control" 0
+        system("amixer cset -c tegrasndt186ref name=\"x IN1 Boost\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x ADC Capture Volume\" 50 50");
+        system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x RECMIXR BST1 Switch\" 0");
+        system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST2 Switch\" 1");
+        system("amixer cset -c tegrasndt186ref name=\"x RECMIXL BST1 Switch\" 0");
+        system("amixer sset -c tegrasndt186ref \"ADMAIF1 Mux\" \"I2S1\"");    
+    } else {
+        char line[1024] = {0};        
+        chmod(IN1P_RECORD_INIT, S_IXUSR|S_IXGRP|S_IXOTH);
+        chmod(IN1N_RECORD_INIT, S_IXUSR|S_IXGRP|S_IXOTH);                  
 
+        LOGDBG(TAG, "============>> Init IN1P <<========================\n");
+        FILE* fpIn1p = popen(IN1P_RECORD_INIT, "r");
+        if (fpIn1p) {
+            while (fgets(line, sizeof(line), fpIn1p) != NULL) {
+                LOGDBG(TAG, "%s", line);
+            }     
+            pclose(fpIn1p);
+        }
+
+        msg_util::sleep_ms(100);
+
+
+        LOGDBG(TAG, "============>> Init IN1N <<========================");
+        FILE* fpIn1n = popen(IN1N_RECORD_INIT, "r");
+        if (fpIn1n) {
+            while (fgets(line, sizeof(line), fpIn1n) != NULL) {
+                LOGDBG(TAG, "%s", line);
+            }     
+            pclose(fpIn1n);
+        }
+    }
 }
 
 
@@ -376,6 +433,7 @@ void AudioManager::init()
     defaultPlayDev = DEFAULT_PALY_DEVICE;
 
     initSpeaker();
+
     msg_util::sleep_ms(500);
     
     initRecorder();

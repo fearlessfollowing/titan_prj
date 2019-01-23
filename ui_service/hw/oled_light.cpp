@@ -65,6 +65,9 @@ void oled_light::resume_led_status()
 }
 
 
+
+
+
 void oled_light::set_light_val(u8 val)
 {
     u8 orig_val = 0;
@@ -97,7 +100,7 @@ void oled_light::set_light_val(u8 val)
 
 void oled_light::close_all()
 {
-    mI2CLight->i2c_write_byte(LED_I2C_REG, 0);
+    mI2CLight->i2c_write_byte(LED_I2C_REG, 0x3f);
 }
 
 
@@ -105,7 +108,7 @@ void oled_light::close_all()
 void oled_light::setAllLight(int iOnOff)
 {
     u8 orig_val = 0;
-
+    
     if (mI2CLight->i2c_read(LED_I2C_REG, &orig_val) == 0) {
 
         if (iOnOff == 1) {  /* On */
@@ -123,6 +126,59 @@ void oled_light::setAllLight(int iOnOff)
         LOGERR(TAG, ">>>> read i2c 0x2 failed...");
     }
 
+}
+
+
+int oled_light::factory_test(int icnt)
+{
+	
+	/* 所有的灯:  白,红,绿,蓝  循环三次,间隔1s 
+ 	 * 白: 0x00
+ 	 * 红: 0x36
+ 	 * 绿: 0x2e
+ 	 * 蓝: 0x1b
+ 	 * 全灭: 0x3f
+ 	 */
+ 	int iRet = 0;
+
+	LOGDBG(TAG, "factory_test ....");
+
+	if (icnt < 3)
+		icnt = 3;
+	
+    for (int i = 0; i < icnt; i++) {
+        if (mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x00) != 0) {
+			LOGERR(TAG," oled write val 0x%x fail", 0x00);
+			iRet = -1;
+		}
+			
+		msg_util::sleep_ms(1000);
+		
+        if (mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x3d) != 0) {
+			LOGERR(TAG," oled write val 0x%x fail", 0x36);
+			iRet = -1;
+		}
+			
+		msg_util::sleep_ms(1000);
+		
+        if (mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x2e) != 0) {
+			LOGERR(TAG," oled write val 0x%x fail", 0x2e);
+			iRet = -1;
+		}
+			
+		msg_util::sleep_ms(1000);
+		
+        if (mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x1b) != 0) {
+			LOGERR(TAG," oled write val 0x%x fail", 0x1b);
+			iRet = -1;
+		}	
+		
+		msg_util::sleep_ms(1000);
+        mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x03f);
+
+	}
+
+	return iRet;
 }
 
 

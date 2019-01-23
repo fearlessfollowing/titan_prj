@@ -8,24 +8,24 @@ class ins_i2c;
 
 class oled_light {
 public:
-    explicit oled_light();
-    ~oled_light();
+    explicit    oled_light();
+                ~oled_light();
 
-    void set_light_val(u8 val);
-	int factory_test(int icnt = 3);
+    void        set_light_val(u8 val);
+	int         factory_test(int icnt = 3);
 
-    void setAllLight(int iOnOff);
+    void        setAllLight(int iOnOff);
 
 
     /* 保存恢复灯的状态 */
-    void suspend_led_status();
-    void resume_led_status();
+    void        suspend_led_status();
+    void        resume_led_status();
 
-    void close_all();
+    void        close_all();
 
 private:
-    void init();
-    void deinit();
+    void        init();
+    void        deinit();
 
     u8 mRestoreLedVal = 0;
     u8 light_restore_val = 0x7;

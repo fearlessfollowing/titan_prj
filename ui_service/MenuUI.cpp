@@ -9370,7 +9370,10 @@ void MenuUI::dispReady(bool bDispReady)
 {
     VolumeManager* vm = VolumeManager::Instance();
 
-    clearArea(20, 16, 83, 32);
+    if (cur_menu == MENU_PIC_INFO || cur_menu == MENU_VIDEO_INFO 
+        || cur_menu == MENU_LIVE_INFO) {
+        clearArea(20, 16, 83, 32);
+    }
     switch (cur_menu) {
         case MENU_PIC_INFO:
         case MENU_VIDEO_INFO: {

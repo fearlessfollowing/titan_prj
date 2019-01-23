@@ -87,3 +87,8 @@ ui_service_env.Program('./out/ui_service', ui_service_obj)
 #kern_log_obj = SConscript('./kern_log/SConscript')
 #com_env.Program('./out/kern_log', kern_log_obj)
 
+
+
+############################ factory_test ##################################
+factory_test_obj = SConscript('./ui_service/factory_test/SConscript')
+com_env.Program('./out/factory_test', factory_test_obj)

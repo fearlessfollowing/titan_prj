@@ -9,7 +9,7 @@
 #include <hw/oled_light.h>
 #include <common/include_common.h>
 #include <hw/oled_module.h>
-#include <trans.h>
+#include <sys/ins_types.h>
 
 enum {
 	FACTORY_CMD_EXIT = 1,
@@ -24,9 +24,9 @@ public:
 	FactoryTest();
 	~FactoryTest();
 
-        void set_light_direct(u8 val);
+    void set_light_direct(u8 val);
 
-        void set_light(u8 val);
+    void set_light(u8 val);
 
 	void oledTest();
 	void awbTest();
@@ -37,28 +37,13 @@ private:
 
 	int awbCorrectTest();
 
-	//std::thread th_msg_;
 	sp<oled_light> mOLEDLight;
-        sp<oled_module> mOLEDModule;
+    sp<oled_module> mOLEDModule;
 	
-	//sp<ARLooper> mLooper;
-        //sp<ARHandler> mHandler;
-	
-	// sp<InputManager> mInputManager;
-        // sp<ARMessage> mNotify;
-
-
-	/* 传输层 */
-	sp<Trans>	mTrans;
-
-	//void init_handler_thread();
 
 	void init();
 	void deinit();
 
-    u8 last_light = 0;
-    u8 fli_light = 0;
-    u8 front_light;
 };
 
 
