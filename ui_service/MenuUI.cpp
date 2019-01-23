@@ -674,8 +674,11 @@ void MenuUI::subSysInit()
     sp<ARMessage> devNotify = obtainMessage(UI_UPDATE_DEV_INFO);
     VolumeManager* volInstance = VolumeManager::Instance();
     if (volInstance) {
-        LOGDBG(TAG, "+++++++++ Start Vold(2.5) Manager +++++++++");
+        LOGDBG(TAG, "+++++++++ Start Vold Manager For Titan +++++++++");
         volInstance->setNotifyRecv(devNotify);
+        volInstance->setSavepathChangedCb(MenuUI::savePathChangeCb);
+        volInstance->setSaveListNotifyCb(MenuUI::saveListNotifyCb);
+        volInstance->setNotifyHotplugCb(MenuUI::storageHotplugCb);
         volInstance->start();
     }
 
@@ -4755,6 +4758,66 @@ void MenuUI::showSpaceQueryTfCallback()
     dispShowStoragePage(gStorageInfoItems);
 
 }
+
+
+void MenuUI::savePathChangeCb(const char* pSavePath)
+{
+    LOGDBG(TAG, "---> savePathChangeCb");
+    std::string savePathStr;
+    Json::Value savePathRoot;
+    std::ostringstream osOutput; 
+    Json::StreamWriterBuilder builder;
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+    ProtoManager* pm = ProtoManager::Instance();
+    pm->sendSavePathChangeReq(pSavePath);
+}
+
+void MenuUI::saveListNotifyCb()
+{
+    LOGDBG(TAG, "---> saveListNotifyCb");
+    std::vector<Volume*>& curDevList = VolumeManager::Instance()->getCurSavepathList();
+    ProtoManager* pm = ProtoManager::Instance();
+    Volume* tmpVol = NULL;
+
+    Json::Value curDevListRoot;
+    Json::Value jarray;
+    std::ostringstream osOutput;    
+    std::string devListStr = "";
+    Json::StreamWriterBuilder builder;
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+
+
+    for (u32 i = 0; i < curDevList.size(); i++) {
+	    Json::Value	tmpNode;        
+        tmpVol = curDevList.at(i);
+        tmpNode["dev_type"] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
+        tmpNode["path"] = tmpVol->pMountPath;
+        tmpNode["name"] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
+        jarray.append(tmpNode);
+    }
+
+    curDevListRoot["dev_list"] = jarray;
+
+	writer->write(curDevListRoot, &osOutput);
+    devListStr = osOutput.str();    
+
+    LOGDBG(TAG, "Current Save List: %s", devListStr.c_str());
+    
+    pm->sendStorageListReq(devListStr.c_str());
+}
+
+void MenuUI::storageHotplugCb(sp<ARMessage>& msg, int iAction, int iType, std::vector<Volume*>& devList)
+{
+    LOGDBG(TAG, "---> storageHotplugCb");    
+    sp<ARMessage> notifyMsg = msg->dup();
+    notifyMsg->set<int>("action", iAction);    
+    notifyMsg->set<int>("type", iType);    
+    notifyMsg->set<std::vector<Volume*>>("dev_list", devList);
+    notifyMsg->post();
+}
+
 
 
 /*************************************************************************

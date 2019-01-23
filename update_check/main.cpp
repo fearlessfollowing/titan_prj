@@ -60,10 +60,13 @@
 #include <util/md5.h>
 #include <system_properties.h>
 #include <string>
+#include <hw/ins_gpio.h>
 
 #include <sys/types.h>
 #include <dirent.h>
 #include <prop_cfg.h>
+
+#include <util/util.h>
 
 #include <log/log_wrapper.h>
 
@@ -509,90 +512,6 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
 }
 
 
-#ifdef HW_PLATFORM_TITAN	
-
-static int exportGpio(int iGpio)
-{
-	char gpioPath[512] = {0};
-	sprintf(gpioPath, "/sys/class/gpio/gpio%d", iGpio);
-
-	LOGDBG(TAG, "check gpio path: %s", gpioPath);
-
-	if (access(gpioPath, F_OK)) {	/* Not export */
-		char cmd[512] = {0};
-		sprintf(cmd, "echo %d > /sys/class/gpio/export", iGpio);
-		LOGDBG(TAG, "export cmd: %s", cmd);
-		if (system(cmd)) return -1;
-	}
-	return 0;
-}
-
-
-static void resetIC(int iGpio)
-{
-	char gpioPath[512] = {0};
-	char directionPath[512] = {0};
-	char valPath[512] = {0};
-
-	sprintf(gpioPath, "/sys/class/gpio/gpio%d", iGpio);
-	sprintf(directionPath, "/sys/class/gpio/gpio%d/direction", iGpio);
-	sprintf(valPath, "/sys/class/gpio/gpio%d/value", iGpio);
-
-	std::string sGpioDirectionPath(directionPath);
-	std::string setOutputcmd = "echo out > " + sGpioDirectionPath;
-	LOGDBG(TAG, "set output cmd: %s", setOutputcmd.c_str());
-	system(setOutputcmd.c_str());
-
-	std::string sGpioValPath(valPath);
-	std::string setValCmd = "echo 1 > " + sGpioValPath;
-	LOGDBG(TAG, "set val cmd: %s", setValCmd.c_str());
-	system(setValCmd.c_str());
-
-	msg_util::sleep_ms(100);
-
-	setValCmd = "echo 0 > " + sGpioValPath;
-	LOGDBG(TAG, "set val cmd: %s", setValCmd.c_str());
-	system(setValCmd.c_str());
-}
-#endif
-
-/*
- * Titan这部分还未确定
- * 暂时默认的为gpio298
- * 属性名: sys.sd_reset_gpio
- */
-static void resetSdSlot()
-{
-	LOGDBG(TAG, "Reset SD Slot First");
-
-#ifdef HW_PLATFORM_TITAN	
-	int iDefaultSdResetGpio = 298;
-	const char* pSdResetProp = NULL;
-	
-	/* 从属性系统文件中获取USB转SD卡芯片使用的复位引脚 */
-	pSdResetProp = property_get(PROP_SD_RESET_GPIO);
-	if (pSdResetProp) {
-		iDefaultSdResetGpio = atoi(pSdResetProp);
-		LOGDBG(TAG, "Use Property Sd Reset GPIO: %d", iDefaultSdResetGpio);
-	}
-
-	/* 检查该GPIO是否已经导出 */
-	exportGpio(iDefaultSdResetGpio);
-
-	/* 复位芯片 */
-	resetIC(iDefaultSdResetGpio);
-
-#else	/* PRO2 */
-	
-	/* 直接设置I2C电源控制部分 */
-	system("i2cset -f -y 0 0x77 0x3 0x40");
-	msg_util::sleep_ms(500);
-	system("i2cset -f -y 0 0x77 0x3 0x70");
-
-#endif
-}
-
-
 /*************************************************************************
 ** 方法名称: main
 ** 方法功能: check_update服务的入口
@@ -631,7 +550,7 @@ int main(int argc, char **argv)
 
 
 	/** 复位一下SD卡模块，使得在有SD卡的情况下可以识别到 */
-	resetSdSlot();
+	resetUsb2SdSlot();
 
 	/** 启动卷管理器,用于挂载升级设备 */
     VolumeManager* vm = VolumeManager::Instance();

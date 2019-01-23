@@ -48,12 +48,6 @@ enum {
     DOWN = 1,
 };
 
-enum {
-    CtrlPipe_Shutdown = 0,                  /* 关闭管道通知: 线程退出时使用 */
-    CtrlPipe_Wakeup   = 1,                  /* 唤醒消息: 长按监听线程执行完依次检测后会睡眠等待唤醒消息的到来 */
-    CtrlPipe_Cancel   = 2,                  /* 取消消息: 通知长按监听线程取消本次监听,说明按键已经松开 */
-};
-
 
 #define LONG_PRESS_MSEC     (2000)
 #define SHORT_PRESS_THOR	(100)	        // 100ms
@@ -137,19 +131,6 @@ InputManager::InputManager(): mBtnReportCallback(nullptr), mNotify(nullptr)
 InputManager::~InputManager()
 {
     LOGDBG(TAG, "deconstructor InputManager");
-}
-
-
-void InputManager::writePipe(int p, int val)
-{
-    char c = (char)val;
-    int  rc;
-
-    rc = write(p, &c, 1);
-    if (rc != 1) {
-        LOGDBG(TAG, "Error writing to control pipe (%s) val %d", strerror(errno), val);
-        return;
-    }
 }
 
 

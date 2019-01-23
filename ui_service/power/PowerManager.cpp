@@ -52,12 +52,6 @@ enum {
 	CMD_POWER_MAX
 };
 
-enum {
-	RESET_LOW_LEVEL = 0,
-	RESET_HIGH_LEVEL = 1,
-	RESET_MAX_LEVEL,
-};
-
 
 typedef struct stPwrCtl {
 	int 	iModulePwrCtl1;			/* 控制模组1上电的GPIO */

@@ -70,7 +70,6 @@ public:
 
 private:
     						InputManager();
-	void 					writePipe(int p, int val);
 	int 					openDevice(const char *device);
 
 	int 					inputEventLoop();

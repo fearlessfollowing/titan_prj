@@ -56,10 +56,6 @@ src += [config.LIBLOG + '/log_wrapper.cpp']
 
 src += [config.LIBCUTILS + '/system_properties.c']
 
-
-com_env['CXXFLAGS'] += ' -I' + config.UI_SERVICE + '/include'
-com_env['LINKFLAGS'] += '-L ' + config.UI_SERVICE 
-com_env['LINKFLAGS'] += ' -lrt -lpthread -ljsoncpp'
 UI_SERVICE_obj = com_env.Object(src)
 
 Return('UI_SERVICE_obj')

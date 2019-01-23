@@ -19,6 +19,12 @@ default: \
     LOGERR(TAG,"error item %d",item);\
     abort();
 
+enum {
+    CtrlPipe_Shutdown = 0,                  /* 关闭管道通知: 线程退出时使用 */
+    CtrlPipe_Wakeup   = 1,                  /* 唤醒消息: 长按监听线程执行完依次检测后会睡眠等待唤醒消息的到来 */
+    CtrlPipe_Cancel   = 2,                  /* 取消消息: 通知长按监听线程取消本次监听,说明按键已经松开 */
+};
+
 
 bool sh_isbig(void);
 int read_line(int fd, void *vptr, int maxlen);
@@ -33,5 +39,20 @@ int ins_rm_file(const char *name);
 int create_socket(const char *name, int type, mode_t perm);
 
 int updateFile(const char* filePath, const char* content, int iSize);
+
+void resetUsb2SdSlot();
+
+bool resetGpio(int iGPioNum, int iResetLevel, int iResetDuration);
+
+bool setGpioOutputState(int iGpioNum, int iOutputState);
+
+void writePipe(int p, int val);
+
+void coldboot(const char *path);
+
+bool isMountpointMounted(const char *mp);
+
+void clearAllunmountPoint();
+
 
 #endif //PROJECT_UTIL_H

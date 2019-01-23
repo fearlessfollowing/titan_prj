@@ -412,14 +412,6 @@ enum {
 };
 
 
-
-enum {
-	RESET_LOW_LEVEL = 0,
-	RESET_HIGH_LEVEL = 1,
-	RESET_MAX_LEVEL,
-};
-
-
 enum {
     NOTIFY_MODULE_ENTER_UDISK_MODE = 0x11,
     NOTIFY_MODULE_EXIT_UDISK_MODE
@@ -447,6 +439,10 @@ class NetlinkEvent;
  * 3.UI设置gpio，然后给模组上电
  * 4.全部模组挂载成功，
  */
+
+using savePathChangedCallback = std::function<void (const char* pSavePath)>;
+using saveListNotifyCallback = std::function<void ()>;
+using notifyHotplugCallback = std::function<void (sp<ARMessage>& msg, int iAction, int iType, std::vector<Volume*>& devList)>;
 
 /*
  * 底层: 接收Netlink消息模式, 监听设备文件模式
@@ -619,6 +615,14 @@ public:
 
     static VolumeManager *Instance();
 
+    /***************************************************************************************
+     * Callback
+     ***************************************************************************************/
+    void        setSavepathChangedCb(savePathChangedCallback cb) { mSavePathChangeCallback =  cb;}
+    void        setSaveListNotifyCb(saveListNotifyCallback cb) { mSaveListNotifyCallback =  cb;}
+    void        setNotifyHotplugCb(notifyHotplugCallback cb) { mStorageHotplugCallback =  cb;}
+
+
 private:
 
     int                     mListenerMode;                  /* 监听模式 */
@@ -703,6 +707,10 @@ private:
     int                             mWorkerLoopInterval;    /* 工作线程的轮询间隔 */
 
 
+    savePathChangedCallback         mSavePathChangeCallback;
+    saveListNotifyCallback          mSaveListNotifyCallback;
+    notifyHotplugCallback           mStorageHotplugCallback;
+
     int                     mountVolume(Volume* pVol);
 
     int                     doUnmount(const char *path, bool force);
@@ -735,6 +743,7 @@ private:
     bool                    checkVolIsMountedByIndex(int iIndex, int iTimeout = 6000);
 
     void                    modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel);   
+
 public:
     void                    runFileMonitorListener();
 };

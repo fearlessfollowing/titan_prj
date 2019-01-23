@@ -718,6 +718,8 @@ private:
 
     bool    checkIsTakeTimelpaseInCustomer();
 
+
+
 /******************************************************************************************************
  * 初始化类
  ******************************************************************************************************/
@@ -1005,6 +1007,12 @@ private:
     void    handleTfStateChanged(std::vector<sp<Volume>>& mTfChangeList);
 
     void    showSpaceQueryTfCallback();
+
+
+    /********************************************* 回调 ****************************************************/
+    static void    savePathChangeCb(const char* pSavePath);
+    static void    saveListNotifyCb();
+    static void    storageHotplugCb(sp<ARMessage>& msg, int iAction, int iType, std::vector<Volume*>& devList);
 
 private:
 

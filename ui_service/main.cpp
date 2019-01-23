@@ -34,35 +34,20 @@
 #include <prop_cfg.h>
 #include <log/log_wrapper.h>
 #include <trans/fifo.h>
+
+#include <util/util.h>
+
 #include <common/check.h>
 
 
 #undef  TAG
 #define TAG         "uiService"
 
-#define TITAN_VER    "V0.0.1"
+#define TITAN_VER    "V0.0.17"
 
-
-enum {
-    CtrlPipe_Shutdown = 1,                  
-    CtrlPipe_Wakeup   = 2,                  
-};
 
 
 static int mCtrlPipe[2];    // 0 -- read , 1 -- write
-
-
-static void writePipe(int p, int val)
-{
-    char c = (char)val;
-    int  rc;
-
-    rc = write(p, &c, 1);
-    if (rc != 1) {
-        LOGDBG(TAG, "Error writing to control pipe (%s) val %d", strerror(errno), val);
-        return;
-    }
-}
 
 
 static void signalHandler(int sig) 
@@ -97,9 +82,8 @@ int main(int argc ,char *argv[])
     }
 
     LogWrapper::init("/home/nvidia/insta360/log", "ui_log", true);
-    property_set(PROP_TITAN_VER, TITAN_VER);
 
-    LOGDBG(TAG, "\n>>>>>>>>>>>>>>>>>>>>>>> Start ui_service now, Version [%s] <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", property_get(PROP_TITAN_VER));
+    LOGDBG(TAG, "\n>>> Start ui_service now, Firm Version [%s], CompileInfo[%s - %s] <<<<<<<<<<<<\n", property_get(PROP_SYS_FIRM_VER), __DATE__, __TIME__);
 
     {
         /* 构造MenuUI对象 */

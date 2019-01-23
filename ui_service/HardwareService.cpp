@@ -64,12 +64,6 @@ bool HardwareService::mHaveInstance = false;
 static std::mutex gInstanceLock;
 static std::shared_ptr<HardwareService> gInstance;
 
-enum {
-    CtrlPipe_Shutdown = 0,                  /* 关闭管道通知: 线程退出时使用 */
-    CtrlPipe_Wakeup   = 1,                  /* 唤醒消息: 长按监听线程执行完依次检测后会睡眠等待唤醒消息的到来 */
-    CtrlPipe_Cancel   = 2,                  /* 取消消息: 通知长按监听线程取消本次监听,说明按键已经松开 */
-};
-
 std::shared_ptr<HardwareService>& HardwareService::Instance()
 {
     {

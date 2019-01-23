@@ -47,12 +47,6 @@
 #define TAG "TranManager"
 
 
-enum {
-    CtrlPipe_Shutdown = 0,                  
-    CtrlPipe_Wakeup   = 1,                  
-    CtrlPipe_Cancel   = 2,                  
-};
-
 
 #define RECV_HEAD_LEN   8 
 #define DATA_LEN_OFFSET 4

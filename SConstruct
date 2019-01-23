@@ -25,8 +25,11 @@ com_env.Append(CCCOMSTR  ='CC <============================================ $SOU
 com_env.Append(CXXCOMSTR ='CXX <=========================================== $SOURCES')
 #com_env.Append(LINKCOMSTR='Link Target $SOURCES')
 
+ui_service_env = com_env.Clone()
+
 
 Export('com_env')
+Export('ui_service_env')
 
 ############################# Monitor ######################################
 monitor_obj = SConscript('./init/SConscript')
@@ -37,8 +40,9 @@ MONITOR_OBJS = monitor_obj
 
 
 ############################ update_check ##################################
-#update_check_obj = SConscript('./update_check/SConscript')
-#com_env.Program('out/update_check', update_check_obj)
+update_check_env = com_env.Clone()
+update_check_obj = SConscript('./update_check/SConscript')
+update_check_env.Program('out/update_check', update_check_obj)
 
 
 ############################ update_app ####################################
@@ -67,6 +71,7 @@ com_env.Program('./out/power_manager', power_obj)
 
 ############################ ui_service ##################################
 ui_service_env = com_env.Clone()
+ui_service_env.Append(CXXFLAGS= '-DUSE_TRAN_SEND_MSG')
 ui_service_env.Append(LIBS=['sqlite3'])
 #ui_service_env.Append(LIBS=['tinyxml2'])
 ui_service_obj = SConscript('./ui_service/SConscript')

@@ -25,6 +25,11 @@
 ** 426(0)/547(0) -> 模组进入正常模式
 ** V3.2         Skymixos        2019年1月10日   卷的挂载卸载交由独立的线程来操作
 ** V3.3         Skymixos        2019年1月11日   优化进入U盘模式的过程
+** V3.4         Skymixos        2019年1月23日   将卷管理器的通知以回调的形式派发，以满足update_check和ui_service
+**                                             的兼容
+** V3.5(TODO)
+** 1.深度格式化
+** 2.剩余量计算的配置化
 ******************************************************************************************************/
 
 #include <stdio.h>
@@ -39,7 +44,6 @@
 #include <sys/ioctl.h>
 #include <dirent.h>
 #include <string>
-#include <stdlib.h>
 #include <vector>
 
 #include <sys/vfs.h>   
@@ -50,6 +54,7 @@
 #include <dirent.h>
 
 #include <util/msg_util.h>
+#include <util/util.h>
 #include <util/ARMessage.h>
 
 #include <sys/Process.h>
@@ -98,18 +103,10 @@
 #define EPOLL_COUNT 		20
 #define MAXCOUNT 			500
 #define EPOLL_SIZE_HINT 	8
-
-enum {
-    CtrlPipe_Shutdown = 0,                  /* 关闭管道通知: 线程退出时使用 */
-    CtrlPipe_Wakeup   = 1,                  /* 唤醒消息: 长按监听线程执行完依次检测后会睡眠等待唤醒消息的到来 */
-    CtrlPipe_Cancel   = 2,                  /* 取消消息: 通知长按监听线程取消本次监听,说明按键已经松开 */
-};
-
-
+#define DEFAULT_WORKER_LOOPER_INTERVAL      500     // MS
+#define ENTER_EXIT_UDISK_LOOPER_INTERVAL    50      // MS
 
 #define MKFS_EXFAT          "/usr/local/bin/mkexfatfs"
-
-#define USE_TRAN_SEND_MSG                   /* 编译update_check时需要注释掉该宏 */
 
 
 /*********************************************************************************************
@@ -135,157 +132,6 @@ static Mutex gCurVolLock;
 static Mutex gRemoteVolLock;
 
 
-static Mutex        gMountMutex;
-static Condition    gWaitMountComplete;
-
-
-/*********************************************************************************************
- *  内部函数定义
- *********************************************************************************************/
-
-
-
-
-/*************************************************************************
-** 方法名称: do_coldboot
-** 方法功能: 往指定目录的uevent下写入add来达到模拟设备"冷启动"的效果
-** 入口参数: 
-**      d   - 目录
-**      lvl - 级层
-** 返回值:   无
-** 调 用:   coldboot
-*************************************************************************/
-static void do_coldboot(DIR *d, int lvl)
-{
-    struct dirent *de;
-    int dfd, fd;
-
-    dfd = dirfd(d);
-
-    fd = openat(dfd, "uevent", O_WRONLY);
-    if(fd >= 0) {
-        write(fd, "add\n", 4);
-        close(fd);
-    }
-
-    while((de = readdir(d))) {
-        DIR *d2;
-
-        if (de->d_name[0] == '.')
-            continue;
-
-        if (de->d_type != DT_DIR && lvl > 0)
-            continue;
-
-        fd = openat(dfd, de->d_name, O_RDONLY | O_DIRECTORY);
-        if(fd < 0)
-            continue;
-
-        d2 = fdopendir(fd);
-        if(d2 == 0)
-            close(fd);
-        else {
-            do_coldboot(d2, lvl + 1);
-            closedir(d2);
-        }
-    }
-}
-
-
-/*************************************************************************
-** 方法名称: coldboot
-** 方法功能: 对指定的路径进行冷启动操作（针对/sys/下的已经存在设备文件部分，让内核
-**          重新发送新增设备事件），方便卷管理器进行挂载
-** 入口参数: 
-**      mountPath - 需要执行冷启动的路径
-** 返回值:   无
-** 调 用: 
-** 卷管理器是通过接收内核通知（设备插入，拔出消息来进行卷的挂载和卸载操作），但是
-** 卷管理器启动时，已经有一些设备已经生成，对于已经产生的设备在/sys/xxx下会有
-** 对应的目录结构，通过往其中uevent文件中写入add来模拟一次设备的插入来完成设备
-** 的挂载
-*************************************************************************/
-static void coldboot(const char *path)
-{
-    DIR *d = opendir(path);
-    if (d) {
-        do_coldboot(d, 0);
-        closedir(d);
-    }
-}
-
-
-bool isMountpointMounted(const char *mp)
-{
-    char device[256];
-    char mount_path[256];
-    char rest[256];
-    FILE *fp;
-    char line[1024];
-
-    if (!(fp = fopen("/proc/mounts", "r"))) {
-        LOGERR(TAG, "Error opening /proc/mounts (%s)", strerror(errno));
-        return false;
-    }
-
-    while (fgets(line, sizeof(line), fp)) {
-        line[strlen(line)-1] = '\0';
-        sscanf(line, "%255s %255s %255s\n", device, mount_path, rest);
-        if (!strcmp(mount_path, mp)) {
-            fclose(fp);
-            return true;
-        }
-    }
-
-    fclose(fp);
-    return false;
-}
-
-
-/*************************************************************************
-** 方法名称: clearAllunmountPoint
-** 方法功能: 清除指定目录下的非挂载点目录和普通文件
-** 入口参数: 
-** 返 回 值:   无
-** 调    用: 
-*************************************************************************/
-static void clearAllunmountPoint()
-{
-    char cPath[256] = {0};
-    sprintf(cPath, "%s", "/mnt");
-
-    DIR *dir = opendir(cPath);
-    if (!dir)
-        return;
-    
-    int iParentLen = strlen(cPath); 
-    cPath[iParentLen++] = '/';
-    
-    struct dirent* de;
-    
-    while ((de = readdir(dir))) {
-
-        int iLen = strlen(cPath); 
-        if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") || strlen(de->d_name) + iLen + 1 >= PATH_MAX)
-            continue;
-
-        cPath[iParentLen] = 0;
-        strcat(cPath, de->d_name);
-
-        LOGDBG(TAG, "Current Path name: %s", cPath);
-
-        if (false == isMountpointMounted(cPath)) {
-            LOGWARN(TAG, "Remove it [%s]", cPath);
-            std::string rmCmd = "rm -rf ";
-            rmCmd += cPath;
-            system(rmCmd.c_str());
-        }
-    }
-    closedir(dir);
-}
-
-
-
 
 /*********************************************************************************************
  *  类方法
@@ -309,8 +155,7 @@ VolumeManager* VolumeManager::Instance()
 }
 
 
-#define DEFAULT_WORKER_LOOPER_INTERVAL      500     // MS
-#define ENTER_EXIT_UDISK_LOOPER_INTERVAL    50      // MS
+
 
 
 /*************************************************************************
@@ -358,10 +203,15 @@ VolumeManager::VolumeManager() :
 
     mWorkerLoopInterval = DEFAULT_WORKER_LOOPER_INTERVAL;      /* 500ms */
 
+    mSavePathChangeCallback = nullptr;
+    mSaveListNotifyCallback = nullptr;
+    mStorageHotplugCallback = nullptr;
+
+
     /* 挂载点初始化 */
-    #ifdef ENABLE_MOUNT_TFCARD_RO
+#ifdef ENABLE_MOUNT_TFCARD_RO
     property_set(PROP_RO_MOUNT_TF, "true");     /* 只读的方式挂载TF卡 */    
-    #endif
+#endif
 
     LOGDBG(TAG, " Umont All device now .....");
 
@@ -410,8 +260,15 @@ VolumeManager::VolumeManager() :
 
     LOGDBG(TAG, "--> Module num = %d", mModuleVolNum);
 
-    /** 重新复位下接SD卡的HUB */
+    /** 
+     * 1.先让USB2SD卡处于Reset状态
+     * 2.重新复位下接SD卡的HUB 
+     * 3.最后让USB2SD卡退出Reset状态
+     */
+
     resetHub(390, RESET_HIGH_LEVEL, 500);
+    
+    resetUsb2SdSlot();
 
 #ifdef ENABLE_CACHE_SERVICE
     CacheService::Instance();
@@ -515,6 +372,14 @@ bool VolumeManager::isMountpointMounted(const char *mp)
 }
 
 
+
+/*************************************************************************
+** 方法名称: waitHubRestComplete
+** 方法功能: 等待USB HUB复位完成(通过sys检测对应的动态文件是否生成来判定)
+** 入口参数: 
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
 bool VolumeManager::waitHubRestComplete()
 {
     const std::string moduleHubBasePath = "/sys/devices/3530000.xhci/usb2";
@@ -529,7 +394,14 @@ bool VolumeManager::waitHubRestComplete()
 }
 
 
-
+/*************************************************************************
+** 方法名称: notifyModuleEnterExitUdiskMode
+** 方法功能: 通知模组进退U盘模式(通过设置两个GPIO引脚的电平状态)
+** 入口参数: 
+**  iMode  - 进退标识
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
 void VolumeManager::notifyModuleEnterExitUdiskMode(int iMode)
 {
     switch (iMode) {
@@ -555,6 +427,18 @@ void VolumeManager::notifyModuleEnterExitUdiskMode(int iMode)
     }
 }
 
+
+
+/*************************************************************************
+** 方法名称: resetHub
+** 方法功能: 复位USB Hub
+** 入口参数: 
+**  iResetGpio  - 控制HUB复位的GPIO引脚编号
+**  iResetLevel - 复位的级别(高/低电平有效)
+**  iResetDuration - 复位的时间
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
 void VolumeManager::resetHub(int iResetGpio, int iResetLevel, int iResetDuration)
 {
 	int iRet = gpio_request(iResetGpio);
@@ -574,6 +458,16 @@ void VolumeManager::resetHub(int iResetGpio, int iResetLevel, int iResetDuration
 }
 
 
+/*************************************************************************
+** 方法名称: modulePwrCtl
+** 方法功能: 模组的上下电控制(U盘模式下)
+** 入口参数: 
+**  pVol        - 卷对象指针
+**  onOff       - 开关标志
+**  iPwrOnLevel - 高/低电平有效
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
 void VolumeManager::modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel)
 {
 	int pCtlGpio = pVol->iPwrCtlGpio;
@@ -594,6 +488,7 @@ void VolumeManager::modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel)
 		}
 	}
 }
+
 
 
 /*
@@ -762,6 +657,15 @@ bool VolumeManager::enterUdiskMode()
 
 }
 
+
+
+/*************************************************************************
+** 方法名称: checkAllModuleEnterUdisk
+** 方法功能: 检查是否所有的模组进入了U盘模式(通过检测USB设备的生成状况来判定)
+** 入口参数: 
+** 返回值:   成功返回true;否则返回false
+** 调 用: 
+*************************************************************************/
 bool VolumeManager::checkAllModuleEnterUdisk()
 {
     const char* modulePaths[] = {
@@ -791,6 +695,14 @@ bool VolumeManager::checkAllModuleEnterUdisk()
 }
 
 
+
+/*************************************************************************
+** 方法名称: flushAllUdiskEvent2Worker
+** 方法功能: 清空工作线程工作队列中所有的U盘事件
+** 入口参数: 
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
 void VolumeManager::flushAllUdiskEvent2Worker()
 {
     std::unique_lock<std::mutex> _lock(mEvtLock);
@@ -1231,7 +1143,7 @@ bool VolumeManager::initFileMonitor()
 }
 
 
-
+#if 0
 void writePipe(int p, int val)
 {
     char c = (char)val;
@@ -1243,6 +1155,7 @@ void writePipe(int p, int val)
         return;
     }
 }
+#endif
 
 
 void VolumeManager::startWorkThread()
@@ -1376,10 +1289,8 @@ void VolumeManager::volWorkerEntry()
 
                                     LOGDBG(TAG, "-------- Current save path: %s", getLocalVolMountPath());
 
-                                #ifdef USE_TRAN_SEND_MSG
                                     sendCurrentSaveListNotify();
                                     sendDevChangeMsg2UI(VOLUME_ACTION_ADD, tmpVol->iVolSubsys, getCurSavepathList());
-                                #endif
 
                                 /* 当有卡插入并且成功挂载后,扫描卡中的文件并写入数据库中 */
                                 #ifdef ENABLE_CACHE_SERVICE
@@ -1414,11 +1325,9 @@ void VolumeManager::volWorkerEntry()
                                 setVolCurPrio(tmpVol, pEvt); /* 重新修改该卷的优先级 */
                                 setSavepathChanged(VOLUME_ACTION_REMOVE, tmpVol);   /* 检查是否修改当前的存储路径 */
 
-                            #ifdef USE_TRAN_SEND_MSG                        
                                 sendCurrentSaveListNotify();
                                 /* 发送存储设备移除,及当前存储设备路径的消息 */
                                 sendDevChangeMsg2UI(VOLUME_ACTION_REMOVE, tmpVol->iVolSubsys, getCurSavepathList());
-                            #endif
                             }
                         } else {    /* 卸载失败,卷仍处于挂载状态 */
                             LOGDBG(TAG, " Unmount Failed!!");
@@ -1997,70 +1906,29 @@ void VolumeManager::setSavepathChanged(int iAction, Volume* pVol)
     }
 
     if (mBsavePathChanged == true) {
-
-    #ifdef USE_TRAN_SEND_MSG
         if (mCurrentUsedLocalVol) {            
             sendSavepathChangeNotify(mCurrentUsedLocalVol->pMountPath);
         } else {
             sendSavepathChangeNotify("none");
-        }
-    #endif
-    
+        }    
     }
 }
 
-
-#ifdef USE_TRAN_SEND_MSG
 
 void VolumeManager::sendSavepathChangeNotify(const char* pSavePath)
 {
-    std::string savePathStr;
-    Json::Value savePathRoot;
-    std::ostringstream osOutput; 
-    Json::StreamWriterBuilder builder;
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-    ProtoManager* pm = ProtoManager::Instance();
-    pm->sendSavePathChangeReq(pSavePath);
+    if (mSavePathChangeCallback) {
+        mSavePathChangeCallback(pSavePath);
+    }
 }
-
-
 
 void VolumeManager::sendCurrentSaveListNotify()
 {
-    std::vector<Volume*>& curDevList = getCurSavepathList();
-    ProtoManager* pm = ProtoManager::Instance();
-    Volume* tmpVol = NULL;
-
-    Json::Value curDevListRoot;
-    Json::Value jarray;
-    std::ostringstream osOutput;    
-    std::string devListStr = "";
-    Json::StreamWriterBuilder builder;
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-
-    for (u32 i = 0; i < curDevList.size(); i++) {
-	    Json::Value	tmpNode;        
-        tmpVol = curDevList.at(i);
-        tmpNode["dev_type"] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
-        tmpNode["path"] = tmpVol->pMountPath;
-        tmpNode["name"] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
-        jarray.append(tmpNode);
+    if (mSaveListNotifyCallback) {
+        mSaveListNotifyCallback();
     }
-
-    curDevListRoot["dev_list"] = jarray;
-
-	writer->write(curDevListRoot, &osOutput);
-    devListStr = osOutput.str();    
-
-    LOGDBG(TAG, "Current Save List: %s", devListStr.c_str());
-    
-    pm->sendStorageListReq(devListStr.c_str());
 }
 
-#endif
 
 /*************************************************************************
 ** 方法名称: listVolumes
@@ -2100,7 +1968,6 @@ void VolumeManager::setNotifyRecv(sp<ARMessage> notify)
 }
 
 
-#ifdef USE_TRAN_SEND_MSG
 
 /*************************************************************************
 ** 方法名称: sendDevChangeMsg2UI
@@ -2115,17 +1982,10 @@ void VolumeManager::setNotifyRecv(sp<ARMessage> notify)
 *************************************************************************/
 void VolumeManager::sendDevChangeMsg2UI(int iAction, int iType, std::vector<Volume*>& devList)
 {
-    if (mNotify != nullptr) {
-        sp<ARMessage> msg = mNotify->dup();
-        msg->set<int>("action", iAction);    
-        msg->set<int>("type", iType);    
-        msg->set<std::vector<Volume*>>("dev_list", devList);
-        msg->post();
+    if (mStorageHotplugCallback) {
+        mStorageHotplugCallback(mNotify, iAction, iType, devList);
     }
-
 }
-
-#endif
 
 
 /*************************************************************************
