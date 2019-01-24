@@ -206,7 +206,7 @@ static Volume gSysVols[] = {
 
     {   /* Udisk2 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
-        .pBusAddr       = "usb2-3",           /* 3.0 */
+        .pBusAddr       = "usb1-2.3",           /* 3.0 */
         .pMountPath     = "/mnt/udisk2",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
@@ -568,11 +568,14 @@ public:
 
 
     bool        checkAllModuleEnterUdisk();
+    bool        checkAllModuleExitUdisk();    
     void        flushAllUdiskEvent2Worker();
 
     void        powerOnOffModuleByIndex(bool bOnOff, int iIndex);
 
     u32         calcTakeLiveRecLefSec(Json::Value& jsonCmd);
+
+    u32         evlOneGrpPicSzByCmd(Json::Value& takePicCmd);
 
     /*
      * 录像/直播存片 时间接口

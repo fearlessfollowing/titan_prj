@@ -27,6 +27,7 @@
 ** V3.3         Skymixos        2019年1月11日   优化进入U盘模式的过程
 ** V3.4         Skymixos        2019年1月23日   将卷管理器的通知以回调的形式派发，以满足update_check和ui_service
 **                                             的兼容
+** V3.5         Skymixos        2019年01月24日  fixup进入U盘模式的队列中进入退出U盘事件
 ** V3.5(TODO)
 ** 1.深度格式化
 ** 2.剩余量计算的配置化
@@ -155,9 +156,6 @@ VolumeManager* VolumeManager::Instance()
 }
 
 
-
-
-
 /*************************************************************************
 ** 方法名称: VolumeManager
 ** 方法功能: 卷管理器构造函数
@@ -265,9 +263,7 @@ VolumeManager::VolumeManager() :
      * 2.重新复位下接SD卡的HUB 
      * 3.最后让USB2SD卡退出Reset状态
      */
-
     resetHub(390, RESET_HIGH_LEVEL, 500);
-    
     resetUsb2SdSlot();
 
 #ifdef ENABLE_CACHE_SERVICE
@@ -567,7 +563,6 @@ bool VolumeManager::enterUdiskMode()
     const char* pPropWaitTime = NULL;
 
     mEnteringUdisk = true;
-    mCacheVec.clear();
     mHandledAddUdiskVolCnt = 0;     /* 成功挂载模组的个数 */
     mAllowExitUdiskMode = false;
 
@@ -596,8 +591,21 @@ bool VolumeManager::enterUdiskMode()
         /* 1.2 给所有模组断电(避免模组之前处于上电状态) */
         for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
             modulePwrCtl(getUdiskVolByIndex(i+1), false, 1);
-            msg_util::sleep_ms(50);
+            msg_util::sleep_ms(10);
         }
+
+        /*
+         * TODO: 等待所有的设备退出U-Disk模式，避免后面mCacheVec clean后又有新的退出事件产生
+         */
+        int i = 0;
+        do {
+            if (checkAllModuleExitUdisk()) {
+                LOGDBG(TAG, "--> All Module had exit U-Disk Mode");
+                break;
+            }
+            msg_util::sleep_ms(100);
+        } while (i++ < 3);
+
 
         /*
         * 2.复位HUB和给模组上电
@@ -614,6 +622,8 @@ bool VolumeManager::enterUdiskMode()
         } while (iResetHubRetry++ < 3);
 
 
+        mCacheVec.clear();
+        
         /* 2.2 给模组上电 */
         for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
             LOGDBG(TAG, " Power on for device[%d]", i);
@@ -634,6 +644,8 @@ bool VolumeManager::enterUdiskMode()
             bAllModuleEnterUdiskFlag = true;
             LOGDBG(TAG, "--> Lucky boy, All Module Enter Udisk Mode!");
             break;
+        } else {
+
         }
     } while (iModulePowerOnTimes++ < 3);
 
@@ -695,10 +707,40 @@ bool VolumeManager::checkAllModuleEnterUdisk()
 }
 
 
+bool VolumeManager::checkAllModuleExitUdisk()
+{
+    const char* modulePaths[] = {
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.1",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.2",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.3",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.4",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.1",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.2",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.3",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.4"
+    };
+
+    int i = 0;
+    int iNum = sizeof(modulePaths) / sizeof(modulePaths[0]);
+    for (; i < iNum; i++) {
+        if (access(modulePaths[i], F_OK) == 0) {
+            LOGERR(TAG, "Usb device[%s] Not Quit", modulePaths[i]);
+            break;
+        }
+    }
+
+    if (i >= iNum)
+        return true;
+    else 
+        return false;
+}
+
+
 
 /*************************************************************************
 ** 方法名称: flushAllUdiskEvent2Worker
 ** 方法功能: 清空工作线程工作队列中所有的U盘事件
+**          (U-Disk event was Cached in mCacheVec)
 ** 入口参数: 
 ** 返回值:   无
 ** 调 用: 
@@ -706,6 +748,7 @@ bool VolumeManager::checkAllModuleEnterUdisk()
 void VolumeManager::flushAllUdiskEvent2Worker()
 {
     std::unique_lock<std::mutex> _lock(mEvtLock);
+    LOGDBG(TAG, "Current CacheVec Events(%d)", mCacheVec.size());
     for (auto item: mCacheVec) {
         mEventVec.push_back(item);
     }
@@ -2525,6 +2568,29 @@ u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
         return (uRemoteRecSec > uLocalRecSec) ? uLocalRecSec : uRemoteRecSec;
     }
 
+    return 0;
+}
+
+
+#if 0
+
+11k_3d_of       raw
+11k_of          raw
+11k             raw
+aeb3,5,7,9      raw
+burst           raw
+
+timelapse
+
+#endif 
+
+u32 VolumeManager::evlOneGrpPicSzByCmd(Json::Value& jsonCmd)
+{
+    if (!strcmp(jsonCmd["name"].asCString(), "camera._takePicture") 
+        || !strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
+    } else {
+        
+    }
     return 0;
 }
 

@@ -931,3 +931,317 @@ numid=578,iface=MIXER,name='x Speaker Playback Volume'
 in1p_record_setup.sh
 
 in1n_record_setup.sh
+
+
+关于R28.2.1一个通道(IN1P, IN1N),有一个声道没有声音的问题分析：
+基本确定是system.img的问题
+1.是uImage的问题?
+  System.img使用pro2,Image使用titan，一切正常
+
+2.是rootfs的问题?
+  Image使用titan, rootfs使用pro2
+
+
+Q: 录音10s,自动退出?
+A: 没有使用初始化脚本去初始化音频(如in1p_record_setup.sh, in1n_record_setup.sh)
+
+
+Titan跑pro2镜像时的系统中进程:
+F S UID        PID  PPID  C PRI  NI ADDR SZ WCHAN  STIME TTY          TIME CMD
+4 S root         1     0  1  80   0 - 38707 SyS_ep 01:36 ?        00:00:05 /sbin/init tegra_keep_boot_clocks
+1 S root         2     0  0  80   0 -     0 kthrea 01:36 ?        00:00:00 [kthreadd]
+1 S root         3     2  0  80   0 -     0 smpboo 01:36 ?        00:00:00 [ksoftirqd/0]
+1 S root         5     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/0:0H]
+5 S root         6     2  0  80   0 -     0 worker 01:36 ?        00:00:02 [kworker/u12:0]
+1 S root         7     2  0  80   0 -     0 rcu_gp 01:36 ?        00:00:00 [rcu_preempt]
+1 S root         8     2  0  80   0 -     0 rcu_gp 01:36 ?        00:00:00 [rcu_sched]
+1 S root         9     2  0  80   0 -     0 rcu_gp 01:36 ?        00:00:00 [rcu_bh]
+1 S root        10     2  0 -40   - -     0 smpboo 01:36 ?        00:00:00 [migration/0]
+5 S root        11     2  0 -40   - -     0 smpboo 01:36 ?        00:00:00 [watchdog/0]
+5 S root        12     2  0  80   0 -     0 kthrea 01:36 ?        00:00:00 [watchdog/1]
+1 S root        13     2  0 -40   - -     0 kthrea 01:36 ?        00:00:00 [migration/1]
+1 S root        14     2  0  80   0 -     0 kthrea 01:36 ?        00:00:00 [ksoftirqd/1]
+1 S root        16     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/1:0H]
+5 S root        17     2  0  80   0 -     0 kthrea 01:36 ?        00:00:00 [watchdog/2]
+1 S root        18     2  0 -40   - -     0 kthrea 01:36 ?        00:00:00 [migration/2]
+1 S root        19     2  0  80   0 -     0 kthrea 01:36 ?        00:00:00 [ksoftirqd/2]
+1 S root        20     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/2:0]
+1 S root        21     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/2:0H]
+5 S root        22     2  0 -40   - -     0 smpboo 01:36 ?        00:00:00 [watchdog/3]
+1 S root        23     2  0 -40   - -     0 smpboo 01:36 ?        00:00:00 [migration/3]
+1 S root        24     2  0  80   0 -     0 smpboo 01:36 ?        00:00:00 [ksoftirqd/3]
+1 S root        25     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/3:0]
+5 S root        27     2  0 -40   - -     0 smpboo 01:36 ?        00:00:00 [watchdog/4]
+1 S root        28     2  0 -40   - -     0 smpboo 01:36 ?        00:00:00 [migration/4]
+1 S root        29     2  0  80   0 -     0 smpboo 01:36 ?        00:00:00 [ksoftirqd/4]
+1 S root        30     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/4:0]
+1 S root        31     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/4:0H]
+5 S root        32     2  0 -40   - -     0 smpboo 01:36 ?        00:00:00 [watchdog/5]
+1 S root        33     2  0 -40   - -     0 smpboo 01:36 ?        00:00:00 [migration/5]
+1 S root        34     2  0  80   0 -     0 smpboo 01:36 ?        00:00:00 [ksoftirqd/5]
+1 S root        36     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/5:0H]
+5 S root        37     2  0  80   0 -     0 devtmp 01:36 ?        00:00:00 [kdevtmpfs]
+1 S root        38     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [netns]
+1 S root        39     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [perf]
+1 S root        40     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/55-mc_statu]
+1 S root        41     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [writeback]
+1 S root        42     2  0  85   5 -     0 ksm_sc 01:36 ?        00:00:00 [ksmd]
+1 S root        43     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [crypto]
+1 S root        44     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root        45     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [kblockd]
+1 S root        46     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [ata_sff]
+1 S root        48     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [devfreq_wq]
+1 S root        49     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/424-30c0000]
+1 S root        50     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/431-max7762]
+1 S root        51     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/5:1]
+1 S root        52     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [cfg80211]
+1 S root        54     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [watchdogd]
+1 S root        55     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/u12:1]
+5 S root        56     2  0  80   - -     0 nvmap_ 01:36 ?        00:00:00 [nvmap-bz]
+1 S root        58     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [rpciod]
+1 S root        59     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [host_low_prio_w]
+1 S root        60     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/62-host_syn]
+1 S root        61     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/63-host_sta]
+1 S root        84     2  0  80   0 -     0 kswapd 01:36 ?        00:00:00 [kswapd0]
+1 S root        85     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [vmstat]
+1 S root        86     2  0  80   0 -     0 fsnoti 01:36 ?        00:00:00 [fsnotify_mark]
+1 S root        87     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [nfsiod]
+1 S root       105     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [kthrotld]
+1 S root       106     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/0:1]
+1 S root       107     2  0  58   - -     0 kthrea 01:36 ?        00:00:00 [tegradc.0/a]
+1 S root       108     2  0  58   - -     0 kthrea 01:36 ?        00:00:00 [tegradc.0/b]
+1 S root       109     2  0  58   - -     0 kthrea 01:36 ?        00:00:00 [tegradc.0/c]
+1 S root       110     2  0  58   - -     0 kthrea 01:36 ?        00:00:00 [tegradc.0/d]
+1 S root       111     2  0  58   - -     0 kthrea 01:36 ?        00:00:00 [tegradc.0/e]
+1 S root       112     2  0  58   - -     0 kthrea 01:36 ?        00:00:00 [tegradc.0/f]
+1 S root       113     2  0  58   - -     0 kthrea 01:36 ?        00:00:00 [tegradc.0/sl]
+1 S root       114     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/69-15210000]
+1 S root       115     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/3:1]
+1 S root       116     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/1:1]
+1 S root       117     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/u12:2]
+1 S root       118     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/73-gk20a_st]
+1 S root       119     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       120     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       121     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       122     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       123     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       124     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       125     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       126     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       127     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       128     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       129     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       130     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       131     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       132     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       133     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       134     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       135     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       136     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       137     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       138     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       139     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       140     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       141     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       142     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+1 S root       143     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/252-1521000]
+1 S root       144     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [tmp451]
+1 S root       145     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/u13:0]
+1 S root       146     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [nvme]
+1 S root       147     2  0  80   0 -     0 scsi_e 01:36 ?        00:00:00 [scsi_eh_0]
+1 S root       148     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [scsi_tmf_0]
+1 S root       149     2  0  80   0 -     0 scsi_e 01:36 ?        00:00:00 [scsi_eh_1]
+1 S root       150     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [scsi_tmf_1]
+1 S root       151     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/u12:3]
+1 S root       152     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/u12:4]
+1 S root       155     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [uether]
+1 S root       156     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/54-tegra_rt]
+1 S root       157     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [dm_bufio_cache]
+1 S root       158     2  0 -40   - -     0 cpufre 01:36 ?        00:00:00 [cfinteractive]
+1 S root       164     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [binder]
+1 S root       165     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/77-b150000.]
+1 S root       167     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/78-b150000.]
+1 S root       169     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/78-b150000.]
+1 S root       170     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/52-b000000.]
+1 S root       171     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/81-c150000.]
+1 S root       172     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/53-d230000.]
+1 S root       185     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/92-gpcdma.0]
+1 S root       186     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/93-gpcdma.1]
+1 S root       187     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/94-gpcdma.2]
+1 S root       188     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/95-gpcdma.3]
+1 S root       189     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/96-gpcdma.4]
+1 S root       190     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/97-gpcdma.5]
+1 S root       191     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/98-gpcdma.6]
+1 S root       192     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/99-gpcdma.7]
+1 S root       193     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/100-gpcdma.]
+1 S root       194     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/101-gpcdma.]
+1 S root       195     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/102-gpcdma.]
+1 S root       196     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/103-gpcdma.]
+1 S root       197     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/104-gpcdma.]
+1 S root       198     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/105-gpcdma.]
+1 S root       199     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/106-gpcdma.]
+1 S root       200     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/107-gpcdma.]
+1 S root       201     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/108-gpcdma.]
+1 S root       202     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/109-gpcdma.]
+1 S root       203     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/110-gpcdma.]
+1 S root       204     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/111-gpcdma.]
+1 S root       205     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/112-gpcdma.]
+1 S root       206     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/113-gpcdma.]
+1 S root       207     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/114-gpcdma.]
+1 S root       208     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/115-gpcdma.]
+1 S root       209     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/116-gpcdma.]
+1 S root       210     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/117-gpcdma.]
+1 S root       211     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/118-gpcdma.]
+1 S root       212     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/119-gpcdma.]
+1 S root       213     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/120-gpcdma.]
+1 S root       214     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/121-gpcdma.]
+1 S root       215     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/122-gpcdma.]
+1 S root       216     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/123-gpcdma.]
+1 S root       217     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/1:2]
+1 S root       219     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/u13:1]
+1 S root       220     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [ipv6_addrconf]
+1 S root       221     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/64-150c0000]
+1 S root       222     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [deferwq]
+1 S root       223     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/60-3530000.]
+1 S root       224     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/34-3210000.]
+1 S root       225     2  0  80   0 -     0 kthrea 01:36 ?        00:00:00 [spi0]
+1 S root       226     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/35-c260000.]
+1 S root       227     2  0  80   0 -     0 kthrea 01:36 ?        00:00:00 [spi1]
+1 S root       228     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/36-3240000.]
+1 S root       229     2  0  80   0 -     0 kthrea 01:36 ?        00:00:00 [spi3]
+1 S root       230     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/60-xotg]
+1 S root       231     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/3:1H]
+1 S root       233     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/65-15700000]
+1 S root       234     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/2:1H]
+1 S root       235     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/22-3460000.]
+1 S root       236     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/23-3440000.]
+1 S root       237     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+5 S root       238     2  0  58   - -     0 mmc_qu 01:36 ?        00:00:03 [mmcqd/0]
+1 S root       239     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+5 S root       240     2  0  58   - -     0 mmc_qu 01:36 ?        00:00:00 [mmcqd/0boot0]
+1 S root       241     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+5 S root       242     2  0  58   - -     0 mmc_qu 01:36 ?        00:00:00 [mmcqd/0boot1]
+1 S root       243     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [bioset]
+5 S root       244     2  0  58   - -     0 mmc_qu 01:36 ?        00:00:00 [mmcqd/0rpmb]
+1 S root       245     2  0   9   - -     0 irq_th 01:36 ?        00:00:00 [irq/24-3400000.]
+1 S root       246     2  0  80   0 -     0 kjourn 01:36 ?        00:00:00 [jbd2/mmcblk0p1-]
+1 S root       247     2  0  60 -20 -     0 rescue 01:36 ?        00:00:00 [ext4-rsv-conver]
+1 S root       270     2  0  80   0 -     0 kaudit 01:36 ?        00:00:00 [kauditd]
+1 S root       278     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/4:2]
+4 S root       279     1  0  80   0 -  5203 SyS_ep 01:36 ?        00:00:00 /lib/systemd/systemd-journald
+1 S root       283     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/3:2]
+4 S root       307     1  0  80   0 -  3134 SyS_ep 01:36 ?        00:00:00 /lib/systemd/systemd-udevd
+1 S root       317     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/2:2]
+1 S root       392     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/0:1H]
+1 S root       396     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/4:1H]
+4 S root       399     1  0  80   0 -  1602 hrtime 01:36 ?        00:00:00 /usr/sbin/cron -f
+4 S root       406     1  0  80   0 -   984 SyS_ep 01:36 ?        00:00:00 /lib/systemd/systemd-logind
+4 S root       411     1  0  80   0 - 59030 poll_s 01:36 ?        00:00:00 /usr/sbin/ModemManager
+4 S root       437     1  0  80   0 - 58931 poll_s 01:36 ?        00:00:00 /usr/lib/accountsservice/accounts-daemon
+4 S syslog     439     1  0  80   0 - 56463 poll_s 01:36 ?        00:00:00 /usr/sbin/rsyslogd -n
+4 S root       482     1  0  80   0 -  3943 SyS_ep 01:36 ?        00:00:00 /usr/sbin/cupsd -l
+4 S root       485     1  0  80   0 -  1166 sigsus 01:36 ?        00:00:00 /usr/sbin/anacron -dsq
+1 S root       514     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/5:3]
+1 S root       531     2  0  80   0 -     0 sleep_ 01:36 ?        00:00:00 [file-storage]
+4 S gpsd       566     1  0  70 -10 -  1701 poll_s 01:36 ?        00:00:00 /usr/sbin/gpsd -N
+4 S whoopsie   578     1  0  80   0 - 61362 poll_s 01:36 ?        00:00:00 /usr/bin/whoopsie -f
+4 S message+   583     1  0  80   0 -  1812 SyS_ep 01:36 ?        00:00:00 /usr/bin/dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation
+4 S root       587     1  0  80   0 -  1963 poll_s 01:36 ?        00:00:00 /usr/sbin/ofonod -P ril,hfp_bluez5,hfp_bluez4,bluez5,bluez4,hfp_ag_bluez4,hfp_ag_bluez5 -d --nodetach
+4 S lp         589   482  0  80   0 -  2905 pipe_w 01:36 ?        00:00:00 /usr/lib/cups/notifier/dbus dbus://
+4 S avahi      590     1  0  80   0 -  1518 poll_s 01:36 ?        00:00:00 avahi-daemon: running [tegra-ubuntu-2.local]
+4 S lp         591   482  0  80   0 -  2905 pipe_w 01:36 ?        00:00:00 /usr/lib/cups/notifier/dbus dbus://
+4 S root       595     1  0  80   0 - 69240 poll_s 01:36 ?        00:00:00 /usr/sbin/NetworkManager --no-daemon
+1 S avahi      607   590  0  80   0 -  1453 unix_s 01:36 ?        00:00:00 avahi-daemon: chroot helper
+4 S root       632     1  0  80   0 -  2442 poll_s 01:36 ?        00:00:00 /usr/sbin/sshd -D
+4 S root       639     1  0  80   0 - 41656 poll_s 01:36 ?        00:00:00 /usr/sbin/cups-browsed
+4 S root       643     1  0  80   0 - 59434 poll_s 01:36 ?        00:00:00 /usr/lib/policykit-1/polkitd --no-debug
+1 S root       644     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/1:1H]
+4 S root       693     1  0  80   0 - 58129 poll_s 01:36 ?        00:00:00 /usr/sbin/lightdm
+4 S root       702   693  0  80   0 - 12606021 poll_s 01:36 tty7  00:00:01 /usr/lib/xorg/Xorg -core :0 -seat seat0 -auth /var/run/lightdm/root/:0 -nolisten tcp vt7 -novtswitch
+1 D root       725     2  0  80   0 -     0 gk20a_ 01:36 ?        00:00:00 [nvgpu_channel_p]
+1 S root       753     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/5:1H]
+0 S root       851     1  0  80   0 -  8832 skb_re 01:36 ?        00:00:00 /usr/sbin/nvcamera-daemon
+4 S root       855     1  0  80   0 -  3072 skb_re 01:36 ?        00:00:00 /usr/sbin/argus_daemon
+1 S root       859     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/0:4]
+4 S root       883   693  0  80   0 - 39821 wait   01:36 ?        00:00:00 lightdm --session-child 12 15
+4 S nvidia     897     1  0  80   0 -  1659 SyS_ep 01:36 ?        00:00:00 /lib/systemd/systemd --user
+5 S nvidia     901   897  0  80   0 -  2810 sigtim 01:36 ?        00:00:00 (sd-pam)
+4 S nvidia     907   883  0  80   0 -  2375 poll_s 01:36 ?        00:00:00 /sbin/upstart --user
+1 S nvidia    1005   907  0  80   0 -  1984 poll_s 01:36 ?        00:00:00 upstart-udev-bridge --daemon --user
+1 S nvidia    1014   907  0  80   0 -  1653 SyS_ep 01:36 ?        00:00:00 dbus-daemon --fork --session --address=unix:abstract=/tmp/dbus-fHff29HByH
+1 S nvidia    1046   907  0  80   0 - 41944 poll_s 01:36 ?        00:00:00 gnome-keyring-daemon --start --components pkcs11,secrets
+4 S root      1054   595  0  80   0 -  1296 poll_s 01:36 ?        00:00:00 /sbin/dhclient -d -q -sf /usr/lib/NetworkManager/nm-dhcp-helper -pf /var/run/dhclient-eth0.pid -lf /var/lib/NetworkManager/dhclie
+1 S nvidia    1073   907  0  80   0 -  1949 poll_s 01:36 ?        00:00:00 upstart-dbus-bridge --daemon --session --user --bus-name session
+1 S nvidia    1077   907  0  80   0 -  1949 poll_s 01:36 ?        00:00:00 upstart-dbus-bridge --daemon --system --user --bus-name system
+1 S nvidia    1078   907  0  80   0 -  2079 poll_s 01:36 ?        00:00:00 upstart-file-bridge --daemon --user
+1 S nvidia    1081   907  0  80   0 - 95615 poll_s 01:36 ?        00:00:00 /usr/bin/ibus-daemon --daemonize --xim
+0 S nvidia    1098   907  0  80   0 - 58264 poll_s 01:36 ?        00:00:00 /usr/lib/gvfs/gvfsd
+0 S nvidia    1107  1081  0  80   0 - 58544 poll_s 01:36 ?        00:00:00 /usr/lib/ibus/ibus-dconf
+0 S nvidia    1108  1081  0  80   0 - 80988 poll_s 01:36 ?        00:00:00 /usr/lib/ibus/ibus-ui-gtk3
+0 S nvidia    1110   907  0  80   0 - 72673 poll_s 01:36 ?        00:00:00 /usr/lib/ibus/ibus-x11 --kill-daemon
+0 S nvidia    1124   907  0  80   0 - 76546 poll_s 01:36 ?        00:00:00 /usr/lib/at-spi2-core/at-spi-bus-launcher
+0 S nvidia    1130  1124  0  80   0 -  1480 SyS_ep 01:36 ?        00:00:00 /usr/bin/dbus-daemon --config-file=/etc/at-spi2/accessibility.conf --nofork --print-address 3
+0 S nvidia    1132   907  0  80   0 - 39374 poll_s 01:36 ?        00:00:00 /usr/lib/at-spi2-core/at-spi2-registryd --use-gnome-session
+4 S root      1142     1  0  80   0 -  1335 poll_s 01:36 tty1     00:00:00 /sbin/agetty --noclear tty1 linux
+4 S root      1143     1  0  80   0 -  2696 wait   01:36 ttyS0    00:00:00 /bin/login -f
+0 S nvidia    1146  1081  0  80   0 - 40076 poll_s 01:36 ?        00:00:00 /usr/lib/ibus/ibus-engine-simple
+1 S nvidia    1177   907  0  80   0 - 38390 poll_s 01:36 ?        00:00:00 gpg-agent --homedir /home/nvidia/.gnupg --use-standard-socket --daemon
+0 S nvidia    1198   907  0  80   0 - 163046 poll_s 01:36 ?       00:00:00 /usr/lib/unity-settings-daemon/unity-settings-daemon
+0 S nvidia    1199   907  0  80   0 - 83732 poll_s 01:36 ?        00:00:00 /usr/lib/aarch64-linux-gnu/bamf/bamfdaemon
+0 S nvidia    1202   907  0  80   0 - 113066 poll_s 01:36 ?       00:00:00 /usr/lib/aarch64-linux-gnu/hud/hud-service
+0 S nvidia    1209   907  0  80   0 - 100359 poll_s 01:36 ?       00:00:00 /usr/lib/gnome-session/gnome-session-binary --session=ubuntu
+0 S nvidia    1215   907  0  80   0 - 109916 poll_s 01:36 ?       00:00:00 /usr/lib/aarch64-linux-gnu/unity/unity-panel-service
+4 S root      1232     1  0  80   0 - 68768 poll_s 01:36 ?        00:00:00 /usr/lib/upower/upowerd
+0 S nvidia    1246   907  0  80   0 - 38435 poll_s 01:36 ?        00:00:00 /usr/lib/dconf/dconf-service
+0 S nvidia    1266   907  0  80   0 - 206028 poll_s 01:36 ?       00:00:03 compiz
+0 S nvidia    1273   907  0  80   0 - 77204 poll_s 01:36 ?        00:00:00 /usr/lib/aarch64-linux-gnu/indicator-messages/indicator-messages-service
+0 S nvidia    1274   907  0  80   0 - 76921 poll_s 01:36 ?        00:00:00 /usr/lib/aarch64-linux-gnu/indicator-bluetooth/indicator-bluetooth-service
+0 S nvidia    1275   907  0  80   0 - 77511 poll_s 01:36 ?        00:00:00 /usr/lib/aarch64-linux-gnu/indicator-power/indicator-power-service
+0 S nvidia    1276   907  0  80   0 - 231615 poll_s 01:36 ?       00:00:00 /usr/lib/aarch64-linux-gnu/indicator-datetime/indicator-datetime-service
+0 S nvidia    1279   907  0  80   0 - 113979 poll_s 01:36 ?       00:00:00 /usr/lib/aarch64-linux-gnu/indicator-keyboard/indicator-keyboard-service --use-gtk
+0 S nvidia    1282   907  0  80   0 - 144420 poll_s 01:36 ?       00:00:00 /usr/lib/aarch64-linux-gnu/indicator-sound/indicator-sound-service
+0 S nvidia    1283   907  0  80   0 - 103037 poll_s 01:36 ?       00:00:00 /usr/lib/aarch64-linux-gnu/indicator-printers/indicator-printers-service
+0 S nvidia    1287   907  0  80   0 - 118003 poll_s 01:36 ?       00:00:00 /usr/lib/aarch64-linux-gnu/indicator-session/indicator-session-service
+0 S nvidia    1291   907  0  80   0 - 63020 poll_s 01:36 ?        00:00:00 /usr/lib/aarch64-linux-gnu/indicator-application/indicator-application-service
+0 S nvidia    1317   907  0  80   0 - 94124 poll_s 01:36 ?        00:00:00 /usr/lib/evolution/evolution-source-registry
+1 S nvidia    1332   907  0  69 -11 - 93636 poll_s 01:36 ?        00:00:00 /usr/bin/pulseaudio --start --log-target=syslog
+4 S colord    1333     1  0  80   0 - 59976 poll_s 01:36 ?        00:00:00 /usr/lib/colord/colord
+4 S rtkit     1338     1  0  81   1 - 38140 poll_s 01:36 ?        00:00:00 /usr/lib/rtkit/rtkit-daemon
+0 S nvidia    1376   907  0  80   0 - 141711 poll_s 01:36 ?       00:00:00 /usr/lib/evolution/evolution-calendar-factory
+1 S root      1384     2  0  80   0 -     0 worker 01:36 ?        00:00:00 [kworker/u12:5]
+4 S lp        1388   482  0  80   0 -  2905 pipe_w 01:36 ?        00:00:00 /usr/lib/cups/notifier/dbus dbus://
+4 S lp        1389   482  0  80   0 -  2905 pipe_w 01:36 ?        00:00:00 /usr/lib/cups/notifier/dbus dbus://
+0 S nvidia    1396  1376  0  80   0 - 170825 poll_s 01:36 ?       00:00:00 /usr/lib/evolution/evolution-calendar-factory-subprocess --factory contacts --bus-name org.gnome.evolution.dataserver.Subprocess.
+0 S nvidia    1414  1209  0  80   0 - 64601 poll_s 01:36 ?        00:00:00 /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1
+0 S nvidia    1418  1209  0  80   0 - 101416 poll_s 01:36 ?       00:00:00 /usr/lib/unity-settings-daemon/unity-fallback-mount-helper
+0 S nvidia    1419  1209  3  80   0 - 251471 poll_s 01:36 ?       00:00:11 /usr/bin/gnome-software --gapplication-service
+0 S nvidia    1422  1209  0  80   0 - 137108 poll_s 01:36 ?       00:00:01 nautilus -n
+0 S nvidia    1424   907  0  80   0 - 127451 poll_s 01:36 ?       00:00:00 /usr/lib/evolution/evolution-addressbook-factory
+0 S nvidia    1426  1209  0  80   0 - 111328 poll_s 01:36 ?       00:00:00 nm-applet
+0 S nvidia    1427  1376  0  80   0 - 172544 poll_s 01:36 ?       00:00:00 /usr/lib/evolution/evolution-calendar-factory-subprocess --factory local --bus-name org.gnome.evolution.dataserver.Subprocess.Bac
+0 S nvidia    1454   907  0  80   0 - 58232 poll_s 01:36 ?        00:00:00 /usr/lib/gvfs/gvfs-udisks2-volume-monitor
+0 S nvidia    1466  1424  0  80   0 - 182421 poll_s 01:36 ?       00:00:00 /usr/lib/evolution/evolution-addressbook-factory-subprocess --factory local --bus-name org.gnome.evolution.dataserver.Subprocess.
+0 S nvidia    1470   907  0  80   0 - 57640 poll_s 01:36 ?        00:00:00 /usr/lib/gvfs/gvfs-goa-volume-monitor
+0 S nvidia    1488   907  0  80   0 - 58100 poll_s 01:36 ?        00:00:00 /usr/lib/gvfs/gvfs-gphoto2-volume-monitor
+0 S nvidia    1507   907  0  80   0 - 57647 poll_s 01:36 ?        00:00:00 /usr/lib/gvfs/gvfs-mtp-volume-monitor
+0 S nvidia    1520   907  0  80   0 - 84897 poll_s 01:36 ?        00:00:00 /usr/lib/gvfs/gvfs-afc-volume-monitor
+4 S nvidia    1572  1143  0  80   0 -  1944 wait   01:36 ttyS0    00:00:00 -bash
+0 S nvidia    1586   907  0  80   0 - 77463 poll_s 01:36 ?        00:00:00 /usr/lib/gvfs/gvfsd-trash --spawner :1.5 /org/gtk/gvfs/exec_spaw/0
+0 S nvidia    1606   907  0  80   0 - 39254 poll_s 01:36 ?        00:00:00 /usr/lib/gvfs/gvfsd-metadata
+4 S root      1610  1572  0  80   0 -  2542 wait   01:36 ttyS0    00:00:00 su
+4 S root      1611  1610  0  80   0 -  1660 wait_w 01:36 ttyS0    00:00:00 bash
+0 S nvidia    1697  1209  0  80   0 - 90747 poll_s 01:36 ?        00:00:00 zeitgeist-datahub
+0 S nvidia    1704   907  0  80   0 -   468 wait   01:36 ?        00:00:00 /bin/sh -c /usr/lib/aarch64-linux-gnu/zeitgeist/zeitgeist-maybe-vacuum; /usr/bin/zeitgeist-daemon
+0 S nvidia    1708  1704  0  80   0 - 94107 poll_s 01:36 ?        00:00:00 /usr/bin/zeitgeist-daemon
+0 S nvidia    1715   907  0  80   0 - 65834 poll_s 01:36 ?        00:00:00 /usr/lib/aarch64-linux-gnu/zeitgeist-fts
+1 S root      1756     2  0  60 -20 -     0 worker 01:36 ?        00:00:00 [kworker/3:2H]
+4 S root      1765   632  0  80   0 -  3402 poll_s 01:37 ?        00:00:00 sshd: nvidia [priv]
+5 R nvidia    1794  1765  0  80   0 -  3402 -      01:37 ?        00:00:00 sshd: nvidia@pts/16
+0 S nvidia    1795  1794  0  80   0 -  1944 wait   01:37 pts/16   00:00:00 -bash
+4 S root      1809  1795  0  80   0 -  2542 wait   01:37 pts/16   00:00:00 su
+4 S root      1810  1809  0  80   0 -  1664 wait   01:37 pts/16   00:00:00 bash
+0 S nvidia    1829  1209  0  80   0 - 83838 poll_s 01:37 ?        00:00:00 update-notifier
+1 S root      1853     2  0  80   0 -     0 worker 01:37 ?        00:00:00 [kworker/u12:6]
+0 S nvidia    1862  1209  0  80   0 - 95888 poll_s 01:38 ?        00:00:00 /usr/lib/aarch64-linux-gnu/deja-dup/deja-dup-monitor
+1 S root      1902     2  0  80   0 -     0 worker 01:38 ?        00:00:00 [kworker/3:3]
+4 R root      1912  1810  0  80   0 -  2102 -      01:42 pts/16   00:00:00 ps -lef
