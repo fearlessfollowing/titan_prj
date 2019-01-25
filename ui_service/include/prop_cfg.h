@@ -3,7 +3,7 @@
 
 
 #ifndef HW_VENDOR
-#define HW_VENDOR   "Insta360"
+#define HW_VENDOR       "Insta360"
 #endif
 
 #ifndef HW_PLATFORM
@@ -27,9 +27,11 @@
 
 #define OFF_IP								"0.0.0.0"
 
-/*
- * 系统使用的属性
- */
+
+
+/******************************************************************************************************
+ *                          ---- 系统属性 -----
+ ******************************************************************************************************/
 #define PROP_SYS_AP_SSID			    "sys.wifi_ssid"
 #define PROP_SYS_AP_PESUDO_SN		    "sys.wifi_pesu_sn"
 #define PROP_SYS_AP_PASSWD			    "sys.wifi_passwd"
@@ -85,9 +87,6 @@
 #define PROP_HUB_RESET_INTERVAL         "sys.hub_reset"
 #define PROP_CAM_POWER_INTERVAL         "sys.cam_pinterval"
 
-#define PROP_SYS_DISK_NUM 			    "sys.disk_cnt"
-#define PROP_SYS_DISK_RW			    "sys.disk_rw"
-
 
 #define PROP_SYS_MODULE_ON              "sys.module_on"
 
@@ -112,9 +111,9 @@
 
 #define PROP_PLAY_SOUND                 "sys.play_sound"
 
-/******************************************************************************************************
+/*
  * 模组及HUB涉及的属性
- ******************************************************************************************************/
+ */
 #define PROP_MODULE_HUB_NUM			    "sys.hub_reset_num"
 #define PROP_HUB_RESET_GPIO1		    "sys.hub_reset_gpio1"
 #define PROP_HUB_RESET_GPIO2		    "sys.hub_reset_gpio2"
@@ -166,82 +165,78 @@
  * 使用音频的全局开关: 打开 - true
  * 2019年1月18日
  */
-#define PROP_USE_AUDIO  "sys.use_audio"
+#define PROP_USE_AUDIO                  "sys.use_audio"
 
 
 /*
  * 模拟硬件按键的时间间隔
  */
-#define PROP_PRESS_INTERVAL "sys.press_interval"
+#define PROP_PRESS_INTERVAL             "sys.press_interval"
+
+
+
 
 /******************************************************************************************************
- * WIFI固件路径
+ *                          ---- 路径配置 -----
  ******************************************************************************************************/
-#define BCMDHD_DRIVER_PATH 		    "/home/nvidia/insta360/wifi/bcmdhd.ko"
-#define WIFI_RAND_NUM_CFG 		    "/home/nvidia/insta360/etc/.wifi_rand_sn"
-#define SYS_TMP 				    "/home/nvidia/insta360/etc/sys_tmp"
+#define BCMDHD_DRIVER_PATH 		        "/home/nvidia/insta360/wifi/bcmdhd.ko"
+#define WIFI_RAND_NUM_CFG 		        "/home/nvidia/insta360/etc/.wifi_rand_sn"
+#define SYS_TMP 				        "/home/nvidia/insta360/etc/sys_tmp"
 
-#define SYS_SN_PATH                 "/home/nvidia/insta360/etc/sn"
+#define SYS_SN_PATH                     "/home/nvidia/insta360/etc/sn"
 
-
-#if 0
-const char *rom_ver_file = "/home/nvidia/insta360/etc/pro_version";
-const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
-#endif
-
-
-#define JSON_CFG_FILE_PATH          "/home/nvidia/insta360/etc/"
+#define JSON_CFG_FILE_PATH              "/home/nvidia/insta360/etc/"
 
 /* 
  * FIFO路径
  */
-#define  FIFO_FROM_CLIENT		    "/home/nvidia/insta360/fifo/fifo_read_client"
-#define  FIFO_TO_CLIENT			    "/home/nvidia/insta360/fifo/fifo_write_client"
-#define  ETC_RESOLV_PATH            "/etc/resolv.conf"
+#define  FIFO_FROM_CLIENT		        "/home/nvidia/insta360/fifo/fifo_read_client"
+#define  FIFO_TO_CLIENT			        "/home/nvidia/insta360/fifo/fifo_write_client"
+#define  ETC_RESOLV_PATH                "/etc/resolv.conf"
 
 
 /*
  * 路径
  */
-#define VER_FULL_PATH 			    "/home/nvidia/insta360/etc/.sys_ver"
-#define VER_FULL_TMP_PATH		    "/home/nvidia/insta360/etc/.sys_tmp_ver"
-#define VER_BUILD_PATH 			    "/home/nvidia/insta360/etc/pro_build_version"
+#define VER_FULL_PATH 			        "/home/nvidia/insta360/etc/.sys_ver"
+#define VER_FULL_TMP_PATH		        "/home/nvidia/insta360/etc/.sys_tmp_ver"
+#define VER_BUILD_PATH 			        "/home/nvidia/insta360/etc/pro_build_version"
 
 /*
  * 配置参数路径
  */
-#define USER_CFG_PARAM_PATH         "/home/nvidia/insta360/etc/user_cfg"
-#define DEF_CFG_PARAM_PATH          "/home/nvidia/insta360/etc/def_cfg"
-#define WIFI_CFG_PARAM_PATH         "/home/nvidia/insta360/etc/wifi_cfg"
-#define DEF_CFG_PARAM_FILE          "/home/nvidia/insta360/etc/def_cfg.json"
-#define USER_CFG_PARAM_FILE         "/home/nvidia/insta360/etc/user_cfg.json"
+#define USER_CFG_PARAM_PATH             "/home/nvidia/insta360/etc/user_cfg"
+#define DEF_CFG_PARAM_PATH              "/home/nvidia/insta360/etc/def_cfg"
+#define WIFI_CFG_PARAM_PATH             "/home/nvidia/insta360/etc/wifi_cfg"
+#define DEF_CFG_PARAM_FILE              "/home/nvidia/insta360/etc/def_cfg.json"
+#define USER_CFG_PARAM_FILE             "/home/nvidia/insta360/etc/user_cfg.json"
 
-#define DNSMASQ_CONF_PATH           "/etc/dnsmasq.conf"
+#define DNSMASQ_CONF_PATH               "/etc/dnsmasq.conf"
 
 /*
  * 日志存放路径名
  */
-#define PRO2_SERVICE_LOG_PATH       "/home/nvidia/insta360/log/p_log"
-#define UPDATE_APP_LOG_PATH         "/home/nvidia/insta360/log/ua_log" 
-#define HTTP_APP_LOG_PATH           "/home/nvidia/insta360/log/http_log"
-#define HTTP_SERVER_LOG_PATH        "/home/nvidia/insta360/log/http_server_log"
-#define TIME_TZ_LOG_PATH            "/home/nvidia/insta360/log/tz_log"
+#define PRO2_SERVICE_LOG_PATH           "/home/nvidia/insta360/log/p_log"
+#define UPDATE_APP_LOG_PATH             "/home/nvidia/insta360/log/ua_log" 
+#define HTTP_APP_LOG_PATH               "/home/nvidia/insta360/log/http_log"
+#define HTTP_SERVER_LOG_PATH            "/home/nvidia/insta360/log/http_server_log"
+#define TIME_TZ_LOG_PATH                "/home/nvidia/insta360/log/tz_log"
 
 
 /*
  * 模板参数
  */
-#define TAKE_PIC_TEMPLET_PATH       "/home/nvidia/insta360/etc/pic_customer.json"
-#define TAKE_VID_TEMPLET_PATH       "/home/nvidia/insta360/etc/vid_customer.json"
-#define TAKE_LIVE_TEMPLET_PATH      "/home/nvidia/insta360/etc/live_customer.json"
+#define TAKE_PIC_TEMPLET_PATH           "/home/nvidia/insta360/etc/pic_customer.json"
+#define TAKE_VID_TEMPLET_PATH           "/home/nvidia/insta360/etc/vid_customer.json"
+#define TAKE_LIVE_TEMPLET_PATH          "/home/nvidia/insta360/etc/live_customer.json"
 
-#define PREVIEW_JSON_FILE           "/home/nvidia/insta360/etc/preview.json"
+#define PREVIEW_JSON_FILE               "/home/nvidia/insta360/etc/preview.json"
 
 
 /*
  * 交换分区文件路径
  */
-#define SWAP_FILE_PATH              "/swap/sfile"
+#define SWAP_FILE_PATH                  "/swap/sfile"
 
 
 /*
@@ -343,21 +338,8 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 
 
 
-
-#define HOSTAPD_SERVICE             "hostapd"
-#define HOSTAPD_SERVICE_STATE       "init.svc.hostapd"
-#define START_SERVICE               "ctl.start"
-#define STOP_SERVICE                "ctl.stop"
-
-#define SERVICE_STATE_RESTARTING    "restarting"    
-#define SERVICE_STATE_RUNNING       "running"
-
-#define SERVICE_STATE_STOPPING      "stopping"
-#define SERVICE_STATE_STOPPED       "stopped"
-
-
 /***************************************************************************
- * 硬件相关配置
+ *                          ----- 硬件相关配置 ------
  ***************************************************************************/
 #define SYS_TF_COUNT_NUM            8
 #define SYS_MAX_BTN_NUM             5
@@ -371,5 +353,18 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
  * USB转SD卡芯片的复位引脚
  */
 #define USB_TO_SD_RESET_GPIO        298
+
+
+
+#define HOSTAPD_SERVICE             "hostapd"
+#define HOSTAPD_SERVICE_STATE       "init.svc.hostapd"
+#define START_SERVICE               "ctl.start"
+#define STOP_SERVICE                "ctl.stop"
+
+#define SERVICE_STATE_RESTARTING    "restarting"    
+#define SERVICE_STATE_RUNNING       "running"
+
+#define SERVICE_STATE_STOPPING      "stopping"
+#define SERVICE_STATE_STOPPED       "stopped"
 
 #endif /* PRO2_OSC_CODE_CODE_CORE_INCLUDE_PROP_CFG_H_ */
