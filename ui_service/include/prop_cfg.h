@@ -244,7 +244,7 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
  * 拍照模式名称
  */
 #define TAKE_PIC_MODE_11K_3D_OF         "11k_3d_of"
-#define TAKE_PIC_MODE_11K_3D            "11k_of"
+#define TAKE_PIC_MODE_11K_OF            "11k_of"
 #define TAKE_PIC_MODE_11K               "11k"
 #define TAKE_PIC_MODE_AEB               "aeb"
 #define TAKE_PIC_MODE_BURST             "burst"
@@ -267,13 +267,18 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define TAKE_LIVE_MODE_CUSTOMER          "live_customer"
 
 
-#define TAKE_VID_MODE_8K_30F_3D         "vid_8k_30f_3d"
-#define TAKE_VID_MODE_8K_60F            "vid_8k_60f"
-#define TAKE_VID_MODE_8K_5F             "vid_8k_5f"
-#define TAKE_VID_MODE_6K_60F_3D         "vid_6k_60f_3d"
-#define TAKE_VID_MODE_4K_120F_3D        "vid_4k_120f_3d"
-#define TAKE_VID_4K_30F_RTS             "vid_4k_30f_rts"
+#define TAKE_VID_MODE_10K_30F_3D         "vid_10k_30f_3d"
+#define TAKE_VID_MODE_3K_240F_3D         "vid_3k_240f_3d"
+#define TAKE_VID_MODE_11K_30F            "vid_11k_30f"
+#define TAKE_VID_MODE_8K_60F             "vid_8k_60f"
+#define TAKE_VID_MODE_5K2_120F           "vid_5k2_120f"
+#define TAKE_VID_8K_5F                   "vid_8k_5f"
+#define TAKE_VID_MODE_8K30F3D_10BIT      "vid_8k30f3d_10bit"
+#define TAKE_VID_MODE_8K30F_10BIT        "vid_8k30f_10bit"
+
+
 #define TAKE_VID_4K_30F_3D_RTS          "vid_4k_30f_3d_rts"
+#define TAKE_VID_4K_30F_RTS             "vid_4k_30f_rts"
 
 #define TAKE_VID_8K_30F_3D_HDR          "vid_8k_30f_3d_hdr"
 #define TAKE_VID_8K_30F_HDR             "vid_8k_30f_hdr"
@@ -333,9 +338,6 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define SET_ITEM_NAME_AEB9          "aeb9"
 
 
-#define SYS_TF_COUNT_NUM            8
-#define SYS_MAX_BTN_NUM             5
-
 
 
 #define HOSTAPD_SERVICE             "hostapd"
@@ -349,5 +351,21 @@ const char *build_ver_file = "/home/nvidia/insta360/etc/pro_build_version";
 #define SERVICE_STATE_STOPPING      "stopping"
 #define SERVICE_STATE_STOPPED       "stopped"
 
+
+/***************************************************************************
+ * 硬件相关配置
+ ***************************************************************************/
+#define SYS_TF_COUNT_NUM            8
+#define SYS_MAX_BTN_NUM             5
+
+/*
+ * USB转SD芯片所在的HUB的复位gpio（跟底部USB3.0是一路）
+ */
+#define SD_USB_HUB_RESET_GPIO       390
+
+/*
+ * USB转SD卡芯片的复位引脚
+ */
+#define USB_TO_SD_RESET_GPIO        298
 
 #endif /* PRO2_OSC_CODE_CODE_CORE_INCLUDE_PROP_CFG_H_ */

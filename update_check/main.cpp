@@ -549,8 +549,19 @@ int main(int argc, char **argv)
 	LOGDBG(TAG, "get prop: [sys.tf_mount_ro] = %s", property_get(PROP_RO_MOUNT_TF));
 
 
-	/** 复位一下SD卡模块，使得在有SD卡的情况下可以识别到 */
-	resetUsb2SdSlot();
+	int iDefaultSdResetGpio = USB_TO_SD_RESET_GPIO;
+	const char* pSdResetProp = NULL;
+	
+	/* 从属性系统文件中获取USB转SD卡芯片使用的复位引脚 */
+	pSdResetProp = property_get(PROP_SD_RESET_GPIO);
+	if (pSdResetProp) {
+		iDefaultSdResetGpio = atoi(pSdResetProp);
+		LOGDBG(TAG, "Use Property Sd Reset GPIO: %d", iDefaultSdResetGpio);
+	}
+
+    setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_HIGH);
+    resetHub(SD_USB_HUB_RESET_GPIO, RESET_HIGH_LEVEL, 500);
+    setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_LOW);
 
 	/** 启动卷管理器,用于挂载升级设备 */
     VolumeManager* vm = VolumeManager::Instance();
@@ -678,7 +689,7 @@ int main(int argc, char **argv)
 
 						disp_update_error(iType);
 						disp_start_reboot(5);
-						start_reboot();
+                        system("reboot");
 					}
 				} else {
 					LOGDBG(TAG, "Update file is Not regular file, delete it");

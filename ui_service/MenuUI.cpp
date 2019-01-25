@@ -872,7 +872,7 @@ void MenuUI::play_sound(u32 type)
                 * 去掉-D hw:1,0 参数，插上HDMI时没有声音播放
                 */
                 snprintf(cmd, sizeof(cmd), "aplay -D hw:1,0 %s", sound_str[type]);
-                exec_sh(cmd);
+                system(cmd);
             }
             
 		} else {
@@ -1770,7 +1770,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         const char* pCommJsonCmd = NULL;
                         if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K_3D_OF)) {
                             pCommJsonCmd = pCmdTakePic_11K3DOF;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K_3D)) {
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K_OF)) {
                             pCommJsonCmd = pCmdTakePic_11KOF;
                         } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K)) {
                             pCommJsonCmd = pCmdTakePic_11K;
@@ -1842,25 +1842,27 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
                         
                         const char* pCommJsonCmd = NULL;
-                        if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K_30F_3D)) {
-                            pCommJsonCmd = pCmdTakeVid_8K30F3D;
+                        if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_10K_30F_3D)) {
+                            pCommJsonCmd = pCmdTakeVid_10K30F3D;
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_3K_240F_3D)) {
+                            pCommJsonCmd = pCmdTakeVid_3K240F3D;
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_11K_30F)) {
+                            pCommJsonCmd = pCmdTakeVid_11K30F;
                         } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K_60F)) {
                             pCommJsonCmd = pCmdTakeVid_8K60F;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K_5F)) {
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_5K2_120F)) {
+                            pCommJsonCmd = pCmdTakeVid_5_2K120F;
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_8K_5F)) {
                             pCommJsonCmd = pCmdTakeVid_8K5F;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_6K_60F_3D)) {
-                            pCommJsonCmd = pCmdTakeVid_6K60F3D;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_4K_120F_3D)) {
-                            pCommJsonCmd = pCmdTakeVid_4K120F3D;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_4K_30F_RTS)) {
-                            pCommJsonCmd = pCmdTakeVid_4K30FRTS;
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K30F3D_10BIT)) {
+                            pCommJsonCmd = pCmdTakeVid_8K30F3D_10bit;
+
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K30F_10BIT)) {
+                            pCommJsonCmd = pCmdTakeVid_8K30F_10bit;
                         } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_4K_30F_3D_RTS)) {
                             pCommJsonCmd = pCmdTakeVid_4K30F3DRTS;
-
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_8K_30F_3D_HDR)) {
-                            pCommJsonCmd = pCmdTakeVid_8K30F3DHDR;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_8K_30F_HDR)) {
-                            pCommJsonCmd = pCmdTakeVid_8K30FHDR;
+                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_4K_30F_RTS)) {
+                            pCommJsonCmd = pCmdTakeVid_4K30FRTS;
                         } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MOD_CUSTOMER)) {
                             pCommJsonCmd = pCmdTakeVid_Customer;
                         }                     
@@ -2665,13 +2667,13 @@ void MenuUI::read_ver_info()
     char file_name[64];
 
 	/* 读取系统的版本文件:  */
-    if (check_path_exist(VER_FULL_PATH))  {
+    if (access(VER_FULL_PATH, F_OK) == 0)  {
         snprintf(file_name, sizeof(file_name), "%s", VER_FULL_PATH);
     } else {
         memset(file_name, 0, sizeof(file_name));
     }
 
-    if (strlen(file_name)  > 0)  {
+    if (strlen(file_name) > 0)  {
         int fd = open(file_name, O_RDONLY);
         CHECK_NE(fd, -1);
 
@@ -4807,6 +4809,8 @@ void MenuUI::saveListNotifyCb()
     
     pm->sendStorageListReq(devListStr.c_str());
 }
+
+
 
 void MenuUI::storageHotplugCb(sp<ARMessage>& msg, int iAction, int iType, std::vector<Volume*>& devList)
 {
@@ -8256,7 +8260,7 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
     }
 
 
-    if (iAppKey == APP_KEY_POWER) {
+    if (iAppKey == APP_KEY_POWER && (cur_menu != MENU_UDISK_MODE)) {
 
         LOGDBG(TAG, "Are you want Power off Machine ...");
         

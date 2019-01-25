@@ -54,5 +54,7 @@ bool isMountpointMounted(const char *mp);
 
 void clearAllunmountPoint();
 
+void resetHub(int iResetGpio, int iResetLevel, int iResetDuration);
+
 
 #endif //PROJECT_UTIL_H

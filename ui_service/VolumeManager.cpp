@@ -263,8 +263,23 @@ VolumeManager::VolumeManager() :
      * 2.重新复位下接SD卡的HUB 
      * 3.最后让USB2SD卡退出Reset状态
      */
-    resetHub(390, RESET_HIGH_LEVEL, 500);
-    resetUsb2SdSlot();
+	int iDefaultSdResetGpio = USB_TO_SD_RESET_GPIO;
+	const char* pSdResetProp = NULL;
+	
+	/* 从属性系统文件中获取USB转SD卡芯片使用的复位引脚 */
+	pSdResetProp = property_get(PROP_SD_RESET_GPIO);
+	if (pSdResetProp) {
+		iDefaultSdResetGpio = atoi(pSdResetProp);
+		LOGDBG(TAG, "Use Property Sd Reset GPIO: %d", iDefaultSdResetGpio);
+	}
+
+    setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_HIGH);
+    LOGINFO(TAG, "Reset Usb2Sd IC first!");
+    resetHub(SD_USB_HUB_RESET_GPIO, RESET_HIGH_LEVEL, 500);
+    LOGINFO(TAG, "Resume Usb2Sd IC In normal state, hope it work normally^^");
+
+    setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_LOW);
+
 
 #ifdef ENABLE_CACHE_SERVICE
     CacheService::Instance();
@@ -424,6 +439,7 @@ void VolumeManager::notifyModuleEnterExitUdiskMode(int iMode)
 }
 
 
+#if 0
 
 /*************************************************************************
 ** 方法名称: resetHub
@@ -452,6 +468,7 @@ void VolumeManager::resetHub(int iResetGpio, int iResetLevel, int iResetDuration
 		gpio_direction_output(iResetGpio, 1);
 	}
 }
+#endif
 
 
 /*************************************************************************

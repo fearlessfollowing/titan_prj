@@ -733,10 +733,6 @@ private:
     bool                    formatVolume2Exfat(Volume* pVol);
     bool                    formatVolume2Ext4(Volume* pVol);
 
-
-    void                    resetHub(int iResetGpio, int iResetLevel, int iResetDuration);
-
-    void                    resetHub();
     bool                    waitHubRestComplete();
 
     void                    notifyModuleEnterExitUdiskMode(int iMode);

@@ -9,55 +9,17 @@
 #define DEST_BIN_PATH DEST_PATH"bin/"
 
 
-#define UPDATE_A12_FULL_PATH UPDATE_PATH_A"sys_dsp_rom.devfw"
-#define UPDATE_A12_VERSION_PATH UPDATE_PATH_A"version.txt"
-#define UPDATE_A12_RES_FILE "/sdcard/module_upgrade_result.txt"
-#define UPDATE_A12_RES_KEY "rspcode:"
-#define UPDATE_A12_RES_DES "description:"
-
-#define UPDATE_APP_NAME "update_app.zip"
-#define UPDATE_APP_FULL_ZIP UPDATE_BASE_PATH"update_app.zip"
-#define UPDATE_APP_FOLD UPDATE_BASE_PATH"app/"
-
-#define UPDATE_APP_BIN_FULL_NAME UPDATE_APP_FOLD"update_app"
-
-
-#define UPDATE_APP_CONTENT_NAME "pro_update.zip"
-#define UPDATE_APP_CONTENT_NAME_FULL_ZIP UPDATE_BASE_PATH"pro_update.zip"
-
 #define DEF_CID (100)
 #define DEF_MID (101)
 
-// int exec_sh(const char *str);
-extern int exec_sh(const char *str);
-extern bool check_path_exist(const char *path);
-
-//bool check_path_access(const char *path,int mode);
-bool check_path_exist(const char *path);
-bool check_path_rx(const char *path);
-bool check_path_r(const char *path);
-bool check_path_w(const char *path);
-int update_item(const char *src, const char *dest);
-int update_sd_item(const char *src, const char *dest);
-int update_path(const char *src, const char *dest);
 unsigned int bytes_to_int(const u8 *buf);
 void int_to_bytes(u8 *buf,unsigned int val);
-void dump_bytes(u8 *buf,u32 len,const char * str);
-
-int rm_file(const char *name);
-int chmod_x(const char *name);
-int chmod_777(const char *name);
-int chmod_path_777(const char *name);
 
 int tar_zip(const char *zip_name, const char* dest_path);
 bool gen_file(const char *name, u32 file_size, FILE *fp_read);
-int kill_app(const char *app_name);
-int move_bin(const char *src,const char *dest);
-int remount_sys();
-int start_reboot();
-void start_app_directly();
-int update_test_itself();
+
 bool is_bat_enough();
+
 void str_trim(char* pStr);
 
 enum {

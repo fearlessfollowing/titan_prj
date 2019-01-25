@@ -102,26 +102,6 @@ static PwrCtl gPwrCtl = {
 };
 
 
-static bool resetHub(int iResetGpio, int iResetLevel, int iResetDuration)
-{
-	int iRet = gpio_request(iResetGpio);
-	if (iRet) {
-		fprintf(stderr, "request gpio failed[%d]\n", iResetGpio);
-	}
-
-	if (RESET_HIGH_LEVEL == iResetLevel) {	/* 高电平复位 */
-		gpio_direction_output(iResetGpio, 1);
-		msg_util::sleep_ms(iResetDuration);
-		gpio_direction_output(iResetGpio, 0);
-	} else {	/* 低电平复位 */
-		gpio_direction_output(iResetGpio, 0);
-		msg_util::sleep_ms(iResetDuration);
-		gpio_direction_output(iResetGpio, 1);
-	}
-	return true;
-}
-
-
 static void modulePwrCtl(PwrCtl* pPwrCtl, int iModuleIndex, bool onOff, int iPwrOnLevel)
 {
 	int* pCtlGpio = NULL;

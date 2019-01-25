@@ -10,46 +10,17 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include <json/json.h>
+#include <json/value.h>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+
 #include <system_properties.h>
 #include <log/log_wrapper.h>
 
 #define TAG "util_test"
 
-
-#if 1
-int exec_sh(const char *str)
-{
-    int status = system(str);
-    int iRet = -1;
-
-    if (-1 == status) {
-        LOGERR(TAG, "system %s error\n", str);
-    } else {
-    
-        // printf("exit status value = [0x%x]\n", status);
-        if (WIFEXITED(status)) {
-            if (0 == WEXITSTATUS(status)) {
-                iRet = 0;
-            } else {
-                LOGERR(TAG, "%s fail script exit code: %d\n", str,WEXITSTATUS(status));
-            }
-        } else {
-            LOGERR(TAG, "exit status %s error  = [%d]\n",str, WEXITSTATUS(status));
-        }
-    }
-    return iRet;
-}
-#endif
-
-//bigedian or litteledian
-bool sh_isbig(void)
-{
-    static union {
-        unsigned short _s;
-        u8 _c;
-    } __u = { 1 };
-    return __u._c == 0;
-}
 
 int read_line(int fd, void *vptr, int maxlen)
 {
@@ -80,53 +51,6 @@ int read_line(int fd, void *vptr, int maxlen)
     *ptr = 0;
     return(n);
 }
-
-bool check_path_access(const char *path,int mode)
-{
-    bool bRet = false;
-    if (access(path,mode) == -1) {
-//        DBG_ERR("%s acces mode %d fail\n",path,mode);
-    } else {
-        bRet = true;
-    }
-    return bRet;
-}
-
-bool check_path_exist(const char *path)
-{
-    return check_path_access(path,F_OK);
-}
-
-int move_cmd(const char *src,const char *dest)
-{
-    int ret;
-    char cmd[1024];
-
-    snprintf(cmd,sizeof(cmd),"mv %s %s",src,dest);
-
-    ret = exec_sh(cmd);
-    if (ret != 0) {
-        LOGERR(TAG,"move cmd %s error\n",cmd);
-    }
-    return exec_sh(cmd);
-}
-
-
-
-int ins_rm_file(const char *name)
-{
-    char cmd[1024];
-    int ret = 0;
-    if (check_path_exist(name)) {
-        snprintf(cmd, sizeof(cmd),"rm -rf %s", name);
-        ret = exec_sh(cmd);
-        if (ret != 0) {
-            LOGERR(TAG, "rm file %s error",name);
-        }
-    }
-    return ret;
-}
-
 
 
 /*
@@ -241,9 +165,15 @@ bool resetGpio(int iGPioNum, int iResetLevel, int iResetDuration)
 }
 
 
+void resetHub(int iResetGpio, int iResetLevel, int iResetDuration)
+{
+    resetGpio(iResetGpio, iResetLevel, iResetDuration);
+}
+
+
 void resetUsb2SdSlot()
 {
-	int iDefaultSdResetGpio = 298;
+	int iDefaultSdResetGpio = USB_TO_SD_RESET_GPIO;
 	const char* pSdResetProp = NULL;
 	
 	/* 从属性系统文件中获取USB转SD卡芯片使用的复位引脚 */
@@ -338,6 +268,7 @@ void coldboot(const char *path)
     }
 }
 
+
 bool isMountpointMounted(const char *mp)
 {
     char device[256];
@@ -405,4 +336,17 @@ void clearAllunmountPoint()
         }
     }
     closedir(dir);
+}
+
+
+bool convJsonObj2String(Json::Value& json, std::string& resultStr)
+{
+    std::ostringstream osInput;    
+    Json::StreamWriterBuilder builder;
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+	
+    writer->write(json, &osInput);
+    resultStr = osInput.str();
+    return true;
 }

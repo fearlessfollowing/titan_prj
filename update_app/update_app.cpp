@@ -413,7 +413,7 @@ static int section_cp(const char* update_root_path, sp<UPDATE_SECTION> & section
 
 		/* 将该文件拷贝到section->dst_path下 */
 		snprintf(cmd, sizeof(cmd), "cp -pfR %s %s", src_path, dst_path);
-		if (exec_sh(cmd) != 0) {
+		if (system(cmd) != 0) {
 			LOGERR(TAG, "section_cp cmd %s error", cmd);
 			iRet = -1;
 		} else {	/* 拷贝成功,确保文件具备执行权限 */
@@ -1124,8 +1124,7 @@ static void handleUpdateSuc()
 
 	/* 2018年8月20日：禁止avahi-demon服务，避免分配169.254.xxxx的IP */
 	// system("mv /etc/avahi /");
-	
-	// start_reboot();			
+			
 	system("reboot");
 }	
 

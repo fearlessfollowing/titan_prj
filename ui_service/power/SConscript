@@ -10,6 +10,8 @@ src = Glob('*.cpp')
 src += [config.UI_SERVICE + '/hw/ins_i2c.cpp']
 src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
 
+src += [config.UTIL + '/util.cpp']
+
 src += [config.LIBLOG + '/logd_write.c']
 src += [config.LIBLOG + '/log_event_write.c']
 src += [config.LIBLOG + '/logprint.c']
@@ -20,8 +22,6 @@ src += [config.LIBLOG + '/log_wrapper.cpp']
 
 src += [config.LIBCUTILS + '/system_properties.c']
 
-
-com_env['CXXFLAGS'] += ' -I' + config.UI_SERVICE + '/include'
 power_obj = com_env.Object(src)
 
 Return('power_obj')
