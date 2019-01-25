@@ -45,6 +45,12 @@ update_check_obj = SConscript('./update_check/SConscript')
 update_check_env.Program('out/update_check', update_check_obj)
 
 
+############################ event_sender ##################################
+event_sender_obj = SConscript('./tools/input/SConscript')
+com_env.Program('./out/event_sender', event_sender_obj)
+
+
+
 ############################ update_app ####################################
 update_app_obj = SConscript('./update_app/SConscript')
 com_env.Program('out/update_app', update_app_obj)

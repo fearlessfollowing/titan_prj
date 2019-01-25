@@ -1245,3 +1245,6 @@ F S UID        PID  PPID  C PRI  NI ADDR SZ WCHAN  STIME TTY          TIME CMD
 0 S nvidia    1862  1209  0  80   0 - 95888 poll_s 01:38 ?        00:00:00 /usr/lib/aarch64-linux-gnu/deja-dup/deja-dup-monitor
 1 S root      1902     2  0  80   0 -     0 worker 01:38 ?        00:00:00 [kworker/3:3]
 4 R root      1912  1810  0  80   0 -  2102 -      01:42 pts/16   00:00:00 ps -lef
+
+
+setprop sys.stab_on false

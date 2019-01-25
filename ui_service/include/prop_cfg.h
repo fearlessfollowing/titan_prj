@@ -169,6 +169,10 @@
 #define PROP_USE_AUDIO  "sys.use_audio"
 
 
+/*
+ * 模拟硬件按键的时间间隔
+ */
+#define PROP_PRESS_INTERVAL "sys.press_interval"
 
 /******************************************************************************************************
  * WIFI固件路径

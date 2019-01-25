@@ -69,10 +69,7 @@ enum {
     //messagebox keep at the end mAebList
     MENU_DISP_MSG_BOX,          // 28
     MENU_MAX,                   // 29
-
 };
-
-
 
 
 enum {
@@ -88,30 +85,20 @@ enum {
 
 typedef struct _select_info_ {
     int last_select;		/* 上次选中的项 */
-	
     int select;				/* 当前选中的项（在当前页中的索引） */
-	
     int cur_page;			/* 选项所在的页 */
-
     u32 total;				/* 真个含有的项数 */
-
     int page_max;			/* 一页含有的项数 */
-
     int page_num;			/* 含有的页数 */
-    
 } SELECT_INFO;
 
 
 
 typedef struct _menu_info_ {
-	
     int 		back_menu;
-	
     SELECT_INFO mSelectInfo;
     const int 	mSupportkeys[SYS_MAX_BTN_NUM];
-
 	int 		iMenuId;	/* 菜单的ID */
-    
 	void*		priv;		/* 菜单的私有数据 */
     void*       privList; 
 } MENU_INFO;

@@ -32,7 +32,6 @@ int read_line(int fd, void *vptr, int maxlen)
     for (n = 1; n < maxlen; n++) {
         again:
         if ((rc = read(fd, &c, 1)) == 1) {
-            //not add '\n' to buf
             if (c == '\n' || c == '\r')
                 break;
             *ptr++ = c;
@@ -64,7 +63,6 @@ int create_socket(const char *name, int type, mode_t perm)
 {
     struct sockaddr_un addr;
     int fd, ret;
-
 
     fd = socket(PF_UNIX, type, 0);
     if (fd < 0) {
@@ -185,7 +183,6 @@ void resetUsb2SdSlot()
 
 	resetGpio(iDefaultSdResetGpio, RESET_HIGH_LEVEL, 200);    
 }
-
 
 void writePipe(int p, int val)
 {
@@ -337,7 +334,6 @@ void clearAllunmountPoint()
     }
     closedir(dir);
 }
-
 
 bool convJsonObj2String(Json::Value& json, std::string& resultStr)
 {

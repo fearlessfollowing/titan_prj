@@ -450,8 +450,9 @@ int InputManager::inputEventLoop()
             } else {
 						
                 #ifdef DEBUG_INPUT_MANAGER
-                LOGDBG(TAG, "get event %04x %04x %08x new_time %ld",
-                            event.type, event.code, event.value, msg_util::get_cur_time_us());
+                key_ts = event.time.tv_sec * 1000000LL + event.time.tv_usec;                
+                LOGDBG(TAG, "get event %04x %04x %08x new_time %ld ms",
+                            event.type, event.code, event.value, key_ts / 1000);
 
                 #endif
 
@@ -465,7 +466,7 @@ int InputManager::inputEventLoop()
                     int iIntervalMs =  key_interval / 1000;
 
                     #ifdef DEBUG_INPUT_MANAGER
-                    LOGDBG(TAG, " event.code is 0x%x, interval = %d ms\n", event.code, iIntervalMs);
+                    LOGDBG(TAG, " event.code is 0x%x, event.value[%d], interval = %d ms\n", event.code, event.value, iIntervalMs);
                     #endif
 
                     switch (event.value) {
@@ -489,10 +490,11 @@ int InputManager::inputEventLoop()
                                 } else {
                                     LOGWARN(TAG, "up key mismatch(0x%x ,0x%x)", event.code, last_down_key);
                                 }
+                            } else {
+                                LOGDBG(TAG, "----> ignore this event here...")
                             }
                             last_key_ts = key_ts;
                             last_down_key = -1;
-
                             break;
                         }
 								
