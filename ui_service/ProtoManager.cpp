@@ -1,5 +1,5 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2 Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: ProtoManager.cpp
 ** 功能描述: 协议管理器(提供大部分与服务器交互的协议接口),整个UI程序当作是一个http client
@@ -11,7 +11,8 @@
 ** 日     期: 2018年9月28日
 ** 修改记录:
 ** V1.0			Skymixos		2018-09-28		创建文件，添加注释
-** V2.0         Skymixo         2019-01-16      预览参数支持模板化配置
+** V2.0         Skymixos        2019-01-16      预览参数支持模板化配置
+** V2.1         Skymixos        2019-01-26      优化代码结构
 ******************************************************************************************************/
 #include <thread>
 #include <sys/ins_types.h>
@@ -165,7 +166,6 @@ ProtoManager::ProtoManager(): mSyncReqExitFlag(false),
         mPreviewJson[_who_req] = REQUEST_BY_UI;
         mPreviewJson[_param] = param;
     }
-
 }
 
 
@@ -173,8 +173,6 @@ ProtoManager::~ProtoManager()
 {
 
 }
-
-
 
 
 /*
@@ -194,10 +192,6 @@ int ProtoManager::sendHttpSyncReq(const std::string &url, Json::Value* pJsonRes,
     struct mg_connection* connection = mg_connect_http(&mgr, onSyncHttpEvent, 
                                                         url.c_str(), pExtraHeaders, pPostData);
 	mg_set_protocol_http_websocket(connection);
-
-	// LOGDBG(TAG, "Send http request URL: %s", url.c_str());
-	// LOGDBG(TAG, "Extra Headers: %s", pExtraHeaders);
-	// LOGDBG(TAG, "Post data: %s", pPostData);
 
     setSyncReqExitFlag(false);
 
@@ -228,7 +222,6 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
         }
 	
         case MG_EV_HTTP_REPLY: {
-		    // LOGDBG(TAG, "Got reply:\n%.*s\n", (int)hm->body.len, hm->body.p);
             if (mSaveSyncReqRes) {
                 Json::CharReaderBuilder builder;
                 builder["collectComments"] = false;
@@ -298,6 +291,14 @@ bool ProtoManager::sendSyncRequest(Json::Value& requestJson, syncReqResultCallba
 }
 
 
+/*************************************************************************
+** 方法名称: getServerStateCb
+** 方法功能: 获取服务器的状态回调
+** 入口参数:
+**      resultJson - 查询结果
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::getServerStateCb(Json::Value& resultJson)
 {
     bool bRet = false;
@@ -313,11 +314,14 @@ bool ProtoManager::getServerStateCb(Json::Value& resultJson)
     return bRet;    
 }
 
-/* getServerState
- * @param
- * 获取服务器的状态
- * 成功返回值大于0
- */
+
+/*************************************************************************
+** 方法名称: getServerState
+** 方法功能: 获取服务器的状态
+** 入口参数: saveState - 存储服务器状态的指针
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::getServerState(uint64_t* saveState)
 {
     bool bRet = false;
@@ -337,6 +341,15 @@ bool ProtoManager::getServerState(uint64_t* saveState)
     return bRet;
 }
 
+
+
+/*************************************************************************
+** 方法名称: setServerState
+** 方法功能: 设置服务器的状态
+** 入口参数: saveState - 待设置的服务器状态
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::setServerState(uint64_t saveState)
 {    
     Json::Value jsonRes;   
@@ -353,6 +366,14 @@ bool ProtoManager::setServerState(uint64_t saveState)
     return sendSyncRequest(root);
 }
 
+
+/*************************************************************************
+** 方法名称: rmServerState
+** 方法功能: 移除服务器的状态
+** 入口参数: saveState - 待移除的服务器状态
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::rmServerState(uint64_t saveState)
 {    
     Json::Value jsonRes;   
@@ -371,20 +392,26 @@ bool ProtoManager::rmServerState(uint64_t saveState)
 
 
 
-/* sendStartPreview
- * @param 
- * 发送启动预览请求
- */
+/*************************************************************************
+** 方法名称: sendStartPreview
+** 方法功能: 发送预览请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStartPreview()
 {
     return sendSyncRequest(mPreviewJson);
 }
 
 
-/* sendStopPreview
- * @param 
- * 发送停止预览请求
- */
+/*************************************************************************
+** 方法名称: sendStopPreview
+** 方法功能: 发送停止预览请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStopPreview()
 {
     Json::Value root;
@@ -392,31 +419,15 @@ bool ProtoManager::sendStopPreview()
     return sendSyncRequest(root);
 }
 
-#if 0
-{
-    "name":"camera._queryStorage",
-    "results":{
-        "module":[
-            {"index":1,"pro_suc":1,"storage_left":41490,"storage_total":60874, "storage_state": 0/1},
-            {"index":2,"pro_suc":1,"storage_left":60521,"storage_total":60874},
-            {"index":3,"pro_suc":1,"storage_left":41760,"storage_total":60874},
-            {"index":4,"pro_suc":1,"storage_left":41707,"storage_total":60874},
-            {"index":5,"pro_suc":1,"storage_left":60753,"storage_total":60874},
-            {"index":6,"pro_suc":1,"storage_left":41125,"storage_total":60874},
-            {"index":7,"pro_suc":1,"storage_left":41483,"storage_total":60874},
-            {"index":8,"pro_suc":1,"storage_left":60545,"storage_total":60874}
-        ],
-        "storagePath":"/mnt/udisk1"
-    },
-    "sequence":15,
-    "state":"done"}
-
-#endif
 
 
-/*
- * TF卡的查询结果
- */
+/*************************************************************************
+** 方法名称: parseQueryTfcardResult
+** 方法功能: 解析查询的TF卡信息
+** 入口参数: jsonData - TF卡信息
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
 {
     LOGDBG(TAG, "---> parseQueryTfcardResult");
@@ -474,6 +485,13 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
 
 
 
+/*************************************************************************
+** 方法名称: queryTfcardCb
+** 方法功能: 查询TF卡请求回调(查询成功时被调用)
+** 入口参数: resultJson - TF卡信息
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::queryTfcardCb(Json::Value& resultJson)
 {
     bool bRet = false;    
@@ -492,19 +510,30 @@ bool ProtoManager::queryTfcardCb(Json::Value& resultJson)
 }
 
 
-
+/*************************************************************************
+** 方法名称: sendQueryTfCard
+** 方法功能: 同步查询卡信息
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendQueryTfCard()
 {
     Json::Value root;
     Json::Value param;
     root[_param] = param;
     root[_name_] = REQ_QUERY_TF_CARD;
-
     return sendSyncRequest(root, queryTfcardCb);
 }
 
 
-
+/*************************************************************************
+** 方法名称: sendUpdateSysTempReq
+** 方法功能: 更新系统的温度及电池信息
+** 入口参数: param - 温度及电池信息
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendUpdateSysTempReq(Json::Value& param)
 {
     Json::Value root;
@@ -515,6 +544,13 @@ bool ProtoManager::sendUpdateSysTempReq(Json::Value& param)
 }
 
 
+/*************************************************************************
+** 方法名称: sendSetCustomLensReq
+** 方法功能: 设置镜头参数
+** 入口参数: customParam - 温度及电池信息
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
 {
     Json::Value root;
@@ -524,6 +560,13 @@ bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
 }
 
 
+/*************************************************************************
+** 方法名称: sendSpeedTestReq
+** 方法功能: 发送测速请求
+** 入口参数: path - 待测速的存储设备路径
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendSpeedTestReq(const char* path)
 {
     Json::Value root;
@@ -536,18 +579,40 @@ bool ProtoManager::sendSpeedTestReq(const char* path)
 }
 
 
+/*************************************************************************
+** 方法名称: sendTakePicReq
+** 方法功能: 拍照请求
+** 入口参数: takePicReq - 拍照参数Json
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendTakePicReq(Json::Value& takePicReq)
 {
     return sendSyncRequest(takePicReq);   
 }
 
 
+
+/*************************************************************************
+** 方法名称: sendTakeVideoReq
+** 方法功能: 启动录像请求
+** 入口参数: takeVideoReq - 录像参数Json
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendTakeVideoReq(Json::Value& takeVideoReq)
 {
     return sendSyncRequest(takeVideoReq);      
 }
 
 
+/*************************************************************************
+** 方法名称: sendStopVideoReq
+** 方法功能: 停止录像请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStopVideoReq()
 {
     Json::Value root;
@@ -555,11 +620,27 @@ bool ProtoManager::sendStopVideoReq()
     return sendSyncRequest(root);    
 }
 
+
+/*************************************************************************
+** 方法名称: sendStartLiveReq
+** 方法功能: 启动直播请求
+** 入口参数: takeLiveReq - 直播参数
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStartLiveReq(Json::Value& takeLiveReq)
 {
     return sendSyncRequest(takeLiveReq);       
 }
 
+
+/*************************************************************************
+** 方法名称: sendStopLiveReq
+** 方法功能: 停止直播请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStopLiveReq()
 {
     Json::Value root;   
@@ -568,6 +649,13 @@ bool ProtoManager::sendStopLiveReq()
 }
 
 
+/*************************************************************************
+** 方法名称: sendStichCalcReq
+** 方法功能: 发送拼接校准请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStichCalcReq()
 {
     Json::Value root;
@@ -579,9 +667,15 @@ bool ProtoManager::sendStichCalcReq()
     return sendSyncRequest(root);       
 }
 
-/*
- * 更新当前的存储设备
- */
+
+
+/*************************************************************************
+** 方法名称: sendSavePathChangeReq
+** 方法功能: 发送更新当前存储路径请求
+** 入口参数: savePath - 新的存储路径
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendSavePathChangeReq(const char* savePath)
 {
     Json::Value root;
@@ -593,6 +687,14 @@ bool ProtoManager::sendSavePathChangeReq(const char* savePath)
     return sendSyncRequest(root);  
 }
 
+
+/*************************************************************************
+** 方法名称: sendStorageListReq
+** 方法功能: 发送当前存储设备列表请求
+** 入口参数: devList - 当前存储设备列表
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStorageListReq(const char* devList)
 {
     Json::Value root;
@@ -602,6 +704,13 @@ bool ProtoManager::sendStorageListReq(const char* devList)
 }
 
 
+/*************************************************************************
+** 方法名称: sendStartNoiseSample
+** 方法功能: 发送噪声采样请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStartNoiseSample()
 {
     Json::Value root;
@@ -610,6 +719,13 @@ bool ProtoManager::sendStartNoiseSample()
 }
 
 
+/*************************************************************************
+** 方法名称: sendGyroCalcReq
+** 方法功能: 发送陀螺仪校准请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendGyroCalcReq()
 {
     Json::Value root;
@@ -618,6 +734,14 @@ bool ProtoManager::sendGyroCalcReq()
 }
 
 
+
+/*************************************************************************
+** 方法名称: sendLowPowerReq
+** 方法功能: 发送低电请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendLowPowerReq()
 {
     Json::Value root;
@@ -626,6 +750,13 @@ bool ProtoManager::sendLowPowerReq()
 }
 
 
+/*************************************************************************
+** 方法名称: sendWbCalcReq
+** 方法功能: 发送白平衡校正请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendWbCalcReq()
 {
     Json::Value root;
@@ -634,12 +765,27 @@ bool ProtoManager::sendWbCalcReq()
 }
 
 
+/*************************************************************************
+** 方法名称: sendSetOptionsReq
+** 方法功能: 发送设置Options请求
+** 入口参数: optionsReq - Options参数
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendSetOptionsReq(Json::Value& optionsReq)
 {
     return sendSyncRequest(optionsReq);       
 }
 
 
+
+/*************************************************************************
+** 方法名称: sendSwitchUdiskModeReq
+** 方法功能: 发送进/退U盘模式请求
+** 入口参数: bEnterExitFlag - 进入/退出U盘模式标志
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendSwitchUdiskModeReq(bool bEnterExitFlag)
 {
     Json::Value root;
@@ -656,15 +802,18 @@ bool ProtoManager::sendSwitchUdiskModeReq(bool bEnterExitFlag)
 }
 
 
-/*
- * sendUpdateRecordLeftSec
- * @param   uRecSec - 已录像的时长
- *          uLeftRecSecs - 可录像的剩余时长
- *          uLiveSec - 已直播的时长
- *          uLiveRecLeftSec - 可直播录像的剩余时长
- * 
- * 更新已录像/直播的时长及剩余时长
- */
+
+/*************************************************************************
+** 方法名称: sendUpdateRecordLeftSec
+** 方法功能: 发送更新录像/直播时间请求
+** 入口参数: 
+**      uRecSec - 已录像的时长
+**      uLeftRecSecs - 可录像的剩余时长
+**      uLiveSec - 已直播的时长
+**      uLiveRecLeftSec - 可直播录像的剩余时长
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uLiveSec, u32 uLiveRecLeftSec)
 {
     Json::Value root;
@@ -680,11 +829,15 @@ bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uL
 }
 
 
-/*
- * sendUpdateTakeTimelapseLeft
- * @param leftVal - 剩余张数
- * 更新能拍timelapse的剩余张数
- */
+
+/*************************************************************************
+** 方法名称: sendUpdateTakeTimelapseLeft
+** 方法功能: 发送更新可拍timelapse张数请求
+** 入口参数: 
+**      leftVal - 可拍timelapse张数
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendUpdateTakeTimelapseLeft(u32 leftVal)
 {
     Json::Value root;
@@ -697,6 +850,14 @@ bool ProtoManager::sendUpdateTakeTimelapseLeft(u32 leftVal)
 }
 
 
+/*************************************************************************
+** 方法名称: sendStateSyncReq
+** 方法功能: 发送同步请求
+** 入口参数: 
+**      pReqSyncInfo - 同步参数
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::sendStateSyncReq(REQ_SYNC* pReqSyncInfo)
 {
     Json::Value root;
@@ -714,6 +875,14 @@ bool ProtoManager::sendStateSyncReq(REQ_SYNC* pReqSyncInfo)
 }
 
 
+/*************************************************************************
+** 方法名称: getGpsStateCb(static)
+** 方法功能: 查询GPS状态成功回调
+** 入口参数: 
+**      resultJson - 查询结果信息
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::getGpsStateCb(Json::Value& resultJson)
 {
     bool bResult = false;
@@ -732,6 +901,13 @@ bool ProtoManager::getGpsStateCb(Json::Value& resultJson)
 }
 
 
+/*************************************************************************
+** 方法名称: sendQueryGpsState
+** 方法功能: 发送查询GPS状态请求
+** 入口参数: 无
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 int ProtoManager::sendQueryGpsState()
 {
     int iResult = -1;
@@ -745,6 +921,15 @@ int ProtoManager::sendQueryGpsState()
 }
 
 
+
+/*************************************************************************
+** 方法名称: formatTfcardCb
+** 方法功能: 格式化TF卡回调
+** 入口参数: 
+**      resultJson - 格式化结果
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 bool ProtoManager::formatTfcardCb(Json::Value& resultJson)
 {
     int iResult = -1;    
@@ -771,11 +956,15 @@ bool ProtoManager::formatTfcardCb(Json::Value& resultJson)
     return true;    
 }
 
-/*
- * 返回值: 
- *  成功返回0
- *  失败: 通信失败返回-1; 状态不允许返回-2
- */
+
+/*************************************************************************
+** 方法名称: sendFormatmSDReq
+** 方法功能: 发送格式化TF卡请求
+** 入口参数: 
+**      iIndex - 卡索引(-1代表全部的卡)
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
 int ProtoManager::sendFormatmSDReq(int iIndex)
 {
     int iResult = -1;   

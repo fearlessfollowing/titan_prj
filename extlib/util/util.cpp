@@ -346,3 +346,51 @@ bool convJsonObj2String(Json::Value& json, std::string& resultStr)
     resultStr = osInput.str();
     return true;
 }
+
+
+bool loadJsonFromFile(std::string filePath, Json::Value* root)
+{
+    bool bResult = false;
+    const char* path = filePath.c_str();
+
+    if (access(path, F_OK) == 0) {
+        std::ifstream ifs;  
+        ifs.open(path, std::ios::binary); 
+        
+        if (ifs.is_open()) {
+            LOGDBG(TAG, "---> Open Cfg file[%s] Suc.", path);
+            Json::CharReaderBuilder builder;
+            builder["collectComments"] = false;
+            JSONCPP_STRING errs;
+            if (parseFromStream(builder, ifs, root, &errs)) {
+                LOGDBG(TAG, "parse [%s] success", path);
+                bResult = true;
+            } else {
+                LOGERR(TAG, "--> Open Cfg file[%s] suc, but parse error!", path);
+            }                       
+            ifs.close();
+        }
+    }
+
+    return bResult;    
+}
+
+
+bool loadJsonFromString(std::string jsonStr, Json::Value* root)
+{
+    bool bResult = false;
+    Json::CharReaderBuilder builder;
+    builder["collectComments"] = false;
+    JSONCPP_STRING errs;
+    Json::CharReader* reader = builder.newCharReader();
+    if (reader->parse(jsonStr.data(), jsonStr.data() + jsonStr.size(), root, &errs)) {
+        LOGDBG(TAG, "parse [%s] success", jsonStr.c_str());
+        bResult = true;
+    } else {
+        LOGERR(TAG, "Parse Json String Failed!");
+        root = NULL;
+    }    
+    return bResult;
+}
+
+

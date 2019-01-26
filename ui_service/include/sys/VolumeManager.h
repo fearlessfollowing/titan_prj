@@ -218,7 +218,7 @@ static Volume gSysVols[] = {
         .iPrio          = VOLUME_PRIO_LOW,
 
         .iVolState      = VOLUME_STATE_INIT,
-        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_DISABLED,      /* 机身顶部的USB接口: 默认为禁止状态 */         
+        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,      /* 机身顶部的USB接口: 默认为禁止状态 */         
         
         .uTotal         = 0,
         .uAvail         = 0,
@@ -468,7 +468,6 @@ public:
     int         handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt);
     void        unmountCurLocalVol();
 
-    void        listVolumes();
     int         unmountVolume(Volume* pVol, std::shared_ptr<NetlinkEvent> pEvt, bool force);
     int         formatVolume(Volume* pVol, bool wipe = false);
     
@@ -575,7 +574,7 @@ public:
 
     u32         calcTakeLiveRecLefSec(Json::Value& jsonCmd);
 
-    u32         evlOneGrpPicSzByCmd(Json::Value& takePicCmd);
+    u32         evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd);
 
     /*
      * 录像/直播存片 时间接口
@@ -617,6 +616,9 @@ public:
     void        convSec2TimeStr(u64 secs, char* strBuf, int iLen);
 
     static VolumeManager *Instance();
+
+
+    void        loadPicVidStorageCfgBill();
 
     /***************************************************************************************
      * Callback

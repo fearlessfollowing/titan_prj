@@ -59,4 +59,8 @@ void resetHub(int iResetGpio, int iResetLevel, int iResetDuration);
 
 bool convJsonObj2String(Json::Value& json, std::string& resultStr);
 
+bool loadJsonFromFile(std::string filePath, Json::Value* root);
+
+bool loadJsonFromString(std::string jsonStr, Json::Value* root);
+
 #endif //PROJECT_UTIL_H

@@ -1,0 +1,57 @@
+{
+    "name":"takePictureEvl",
+    "11k_3d_of":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size": 40,            
+        "misc_size": 20
+    },
+    "11k_of":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "11k":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "aeb3":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "aeb5":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "aeb7":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "aeb9":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "burst":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "timelapse":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    }
+}

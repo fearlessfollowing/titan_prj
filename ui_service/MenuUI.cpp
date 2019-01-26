@@ -1743,25 +1743,9 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                     const char* path = cfgItemJsonFilePath.c_str();
                     LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
-                    if (access(path, F_OK) == 0) {
-
-                        std::ifstream ifs;  
-                        ifs.open(path, std::ios::binary); 
-                        
-                        if (ifs.is_open()) {
-                            LOGDBG(TAG, "---> Open Cfg file[%s] Suc.", path);
-                            Json::CharReaderBuilder builder;
-                            builder["collectComments"] = false;
-                            JSONCPP_STRING errs;
-                            if (parseFromStream(builder, ifs, pRoot.get(), &errs)) {
-                                LOGDBG(TAG, "parse [%s] success", path);
-                                pSetItems[i]->jsonCmd = pRoot;
-                                bParseFileFlag = true;
-                            } else {
-                                LOGERR(TAG, "--> Open Cfg file[%s] suc, but parse error!", path);
-                            }                       
-                            ifs.close();
-                        }
+                    if (loadJsonFromFile(cfgItemJsonFilePath, pRoot.get())) {
+                        bParseFileFlag = true;   
+                        pSetItems[i]->jsonCmd = pRoot;                                                 
                     }
 
                     if (bParseFileFlag == false) {
@@ -1782,16 +1766,8 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                             pCommJsonCmd = pCmdTakePic_Customer;
                         } 
                         
-                        Json::CharReaderBuilder builder;
-                        builder["collectComments"] = false;
-                        JSONCPP_STRING errs;
-                        Json::CharReader* reader = builder.newCharReader();
-                        if (reader->parse(pCommJsonCmd, pCommJsonCmd + strlen(pCommJsonCmd), pRoot.get(), &errs)) {
-                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
+                        if (loadJsonFromString(pCommJsonCmd, pRoot.get())) {
                             pSetItems[i]->jsonCmd = pRoot;
-                        } else {
-                            LOGERR(TAG, "Parse Json String Failed!");
-                            pSetItems[i]->jsonCmd = NULL;
                         }
                     }
 
@@ -1823,19 +1799,9 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                     const char* path = cfgItemJsonFilePath.c_str();
                     LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
-
-                    if (access(path, F_OK) == 0) {
-                        std::ifstream ifs;  
-                        ifs.open(path, std::ios::binary); 
-                    
-                        Json::CharReaderBuilder builder;
-                        builder["collectComments"] = false;
-                        JSONCPP_STRING errs;
-                        if (parseFromStream(builder, ifs, pRoot.get(), &errs)) {
-                            LOGDBG(TAG, "parse [%s] success", path);
-                            pSetItems[i]->jsonCmd = pRoot;
-                            bParseFileFlag = true;
-                        }                        
+                    if (loadJsonFromFile(cfgItemJsonFilePath, pRoot.get())) {
+                        bParseFileFlag = true;   
+                        pSetItems[i]->jsonCmd = pRoot;                                              
                     }
 
                     if (bParseFileFlag == false) {
@@ -1867,16 +1833,8 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                             pCommJsonCmd = pCmdTakeVid_Customer;
                         }                     
 
-                        Json::CharReaderBuilder builder;
-                        builder["collectComments"] = false;
-                        JSONCPP_STRING errs;
-                        Json::CharReader* reader = builder.newCharReader();
-                        if (reader->parse(pCommJsonCmd, pCommJsonCmd + strlen(pCommJsonCmd), pRoot.get(), &errs)) {
-                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
+                        if (loadJsonFromString(pCommJsonCmd, pRoot.get())) {
                             pSetItems[i]->jsonCmd = pRoot;
-                        } else {
-                            LOGERR(TAG, "Parse Json String Failed!");
-                            pSetItems[i]->jsonCmd = NULL;
                         }
                     }
 
@@ -1903,18 +1861,9 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
 
                     LOGDBG(TAG, "TakeLive [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
 
-                    if (access(path, F_OK) == 0) {
-                        std::ifstream ifs;  
-                        ifs.open(path, std::ios::binary); 
-
-                        Json::CharReaderBuilder builder;
-                        builder["collectComments"] = false;
-                        JSONCPP_STRING errs;
-                        if (parseFromStream(builder, ifs, pRoot.get(), &errs)) {
-                            LOGDBG(TAG, "parse [%s] success", path);
-                            pSetItems[i]->jsonCmd = pRoot;
-                            bParseFileFlag = true;
-                        }                        
+                    if (loadJsonFromFile(cfgItemJsonFilePath, pRoot.get())) {
+                        bParseFileFlag = true;
+                        pSetItems[i]->jsonCmd = pRoot;                                              
                     }
 
                     if (bParseFileFlag == false) {
@@ -1938,16 +1887,8 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         }
                         #endif
 
-                        Json::CharReaderBuilder builder;
-                        builder["collectComments"] = false;
-                        JSONCPP_STRING errs;
-                        Json::CharReader* reader = builder.newCharReader();
-                        if (reader->parse(pCommJsonCmd, pCommJsonCmd + strlen(pCommJsonCmd), pRoot.get(), &errs)) {
-                            LOGDBG(TAG, "parse [%s] success", pCommJsonCmd);
+                        if (loadJsonFromString(pCommJsonCmd, pRoot.get())) {
                             pSetItems[i]->jsonCmd = pRoot;
-                        } else {
-                            LOGERR(TAG, "Parse Json String Failed!");
-                            pSetItems[i]->jsonCmd = NULL;
                         }
                     }
                     pItemLists.push_back(pSetItems[i]);

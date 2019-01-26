@@ -87,7 +87,6 @@
 
 
 #define ENABLE_MOUNT_TFCARD_RO
-#define ENABLE_USB_NEW_UDISK_POWER_ON       /* 新的进入U盘模式的上电方式 */
 
 
 /*********************************************************************************************
@@ -104,8 +103,8 @@
 #define EPOLL_COUNT 		20
 #define MAXCOUNT 			500
 #define EPOLL_SIZE_HINT 	8
-#define DEFAULT_WORKER_LOOPER_INTERVAL      500     // MS
-#define ENTER_EXIT_UDISK_LOOPER_INTERVAL    50      // MS
+#define DEFAULT_WORKER_LOOPER_INTERVAL      500     // Ms
+#define ENTER_EXIT_UDISK_LOOPER_INTERVAL    50      // Ms
 
 #define MKFS_EXFAT          "/usr/local/bin/mkexfatfs"
 
@@ -122,14 +121,13 @@ extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit
 VolumeManager *VolumeManager::sInstance = NULL;
 u32 VolumeManager::lefSpaceThreshold = 1024U;
 
-static Mutex gVolumeManagerMutex;
+static std::mutex gVolumeManagerMutex;
 static Mutex gRecLeftMutex;
 static Mutex gLiveRecLeftMutex;
 static Mutex gRecMutex;
 static Mutex gLiveRecMutex;
 static Mutex gTimelapseLock;
 
-static Mutex gCurVolLock;
 static Mutex gRemoteVolLock;
 
 
@@ -149,7 +147,7 @@ static Mutex gRemoteVolLock;
 *************************************************************************/
 VolumeManager* VolumeManager::Instance() 
 {
-    AutoMutex _l(gVolumeManagerMutex);
+    std::unique_lock<std::mutex> _lock(gVolumeManagerMutex);    
     if (!sInstance)
         sInstance = new VolumeManager();
     return sInstance;
@@ -281,12 +279,30 @@ VolumeManager::VolumeManager() :
     setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_LOW);
 
 
+    /*
+     * 加载拍照,录像各模式下存储配置清单
+     */
+    loadPicVidStorageCfgBill();
+
+
 #ifdef ENABLE_CACHE_SERVICE
     CacheService::Instance();
 #endif 
 
     LOGDBG(TAG, " Construtor VolumeManager Done...");
 }
+
+#define EVL_TAKE_PIC_BILL   "/home/nvidia/insta360/etc/evlTakepicSz.json"
+
+void VolumeManager::loadPicVidStorageCfgBill()
+{
+    if (access(EVL_TAKE_PIC_BILL, F_OK) == 0) {     /* 使用配置文件 */
+        
+    } else {    /* 生成默认的配置 */
+
+    }
+}
+
 
 
 void VolumeManager::checkAllUdiskIdle()
@@ -439,38 +455,6 @@ void VolumeManager::notifyModuleEnterExitUdiskMode(int iMode)
 }
 
 
-#if 0
-
-/*************************************************************************
-** 方法名称: resetHub
-** 方法功能: 复位USB Hub
-** 入口参数: 
-**  iResetGpio  - 控制HUB复位的GPIO引脚编号
-**  iResetLevel - 复位的级别(高/低电平有效)
-**  iResetDuration - 复位的时间
-** 返回值:   无
-** 调 用: 
-*************************************************************************/
-void VolumeManager::resetHub(int iResetGpio, int iResetLevel, int iResetDuration)
-{
-	int iRet = gpio_request(iResetGpio);
-	if (iRet) {
-		LOGERR(TAG, "request gpio failed[%d]", iResetGpio);
-	}
-
-	if (RESET_HIGH_LEVEL == iResetLevel) {	/* 高电平复位 */
-		gpio_direction_output(iResetGpio, 1);
-		msg_util::sleep_ms(iResetDuration);
-		gpio_direction_output(iResetGpio, 0);
-	} else {	/* 低电平复位 */
-		gpio_direction_output(iResetGpio, 0);
-		msg_util::sleep_ms(iResetDuration);
-		gpio_direction_output(iResetGpio, 1);
-	}
-}
-#endif
-
-
 /*************************************************************************
 ** 方法名称: modulePwrCtl
 ** 方法功能: 模组的上下电控制(U盘模式下)
@@ -585,13 +569,6 @@ bool VolumeManager::enterUdiskMode()
 
     gettimeofday(&enterTv, NULL);   
 
-
-    /* 1.检查所有卷的状态，如果非IDLE状态（MOUNTED状态），先进行强制卸载操作
-     * 1.将gpio426, gpio457设置为1，0
-     * 2.调用power_manager power_on给所有的模组上电
-     * 3.等待所有的模组挂上
-     * 4.检查是否所有的模组都挂载成功
-     */
     LOGDBG(TAG, " Enter U-disk Mode now ...");
 
     /*
@@ -1203,21 +1180,6 @@ bool VolumeManager::initFileMonitor()
 }
 
 
-#if 0
-void writePipe(int p, int val)
-{
-    char c = (char)val;
-    int  rc;
-
-    rc = write(p, &c, 1);
-    if (rc != 1) {
-        LOGDBG(TAG, "Error writing to control pipe (%s) val %d", strerror(errno), val);
-        return;
-    }
-}
-#endif
-
-
 void VolumeManager::startWorkThread()
 {
     LOGDBG(TAG, "---> Start Volume Worker thread!");
@@ -1289,10 +1251,6 @@ void VolumeManager::volWorkerEntry()
     
     while (true) {
         std::shared_ptr<NetlinkEvent> pEvt = getEvent();
-
-        /* 
-         * 检查工作队列中是否有事件,如果有处理事件 
-         */
         if (pEvt) {
             LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> volWorkerEntry Handle Event(action: %d, bus: %s) <<<<<<<<<<<<<<<", pEvt->getAction(), pEvt->getBusAddr());
             Volume* tmpVol = NULL;
@@ -1990,38 +1948,6 @@ void VolumeManager::sendCurrentSaveListNotify()
 }
 
 
-/*************************************************************************
-** 方法名称: listVolumes
-** 方法功能: 列出系统中所有的卷
-** 入口参数: 
-** 返回值: 无 
-** 调 用: 
-** 
-*************************************************************************/
-void VolumeManager::listVolumes()
-{
-    Volume* tmpVol = NULL;
-
-    for (u32 i = 0; i < mModuleVols.size(); i++) {
-        tmpVol = mModuleVols.at(i);
-        if (tmpVol) {
-            LOGDBG(TAG, "Volume type: %s", (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "VOLUME_SUBSYS_SD": "VOLUME_SUBSYS_USB" );
-            LOGDBG(TAG, "Volume bus: %s", tmpVol->pBusAddr);
-            LOGDBG(TAG, "Volume mountpointer: %s", tmpVol->pMountPath);
-            LOGDBG(TAG, "Volume devnode: %s", tmpVol->cDevNode);
-
-            LOGDBG(TAG, "Volume Type %d", tmpVol->iType);
-            LOGDBG(TAG, "Volume index: %d", tmpVol->iIndex);
-            LOGDBG(TAG, "Volume state: %d", tmpVol->iVolState);
-
-            LOGDBG(TAG, "Volume total %d MB", tmpVol->uTotal);
-            LOGDBG(TAG, "Volume avail: %d MB", tmpVol->uAvail);
-            LOGDBG(TAG, "Volume speed: %d MB", tmpVol->iSpeedTest);
-        }
-    }
-}
-
-
 void VolumeManager::setNotifyRecv(sp<ARMessage> notify)
 {
     mNotify = notify;
@@ -2591,6 +2517,8 @@ u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
 
 #if 0
 
+Client: 11K_3D_OF, 11K_OF, 
+
 11k_3d_of       raw
 11k_of          raw
 11k             raw
@@ -2599,22 +2527,149 @@ burst           raw
 
 timelapse
 
+1.origin的mime决定是否有raw，还是简单的jpeg
+2.stitcher有两种(3d, pano), 两种照片的拼接大小
+3.bracket,需要确定3,5,7,9的大小
+4.burst
+5.timelapse
+
+static const char* pCmdTakePic_11K3DOF 	= 
+{
+    "name":"camera._takePicture",
+    "parameters":{
+        "delay":0,
+        "origin":{"mime":"jpeg","saveOrigin": true, "width": 5280, "height": 3956}, 
+        "stiching": {"mode": "3d_top_left", "height": 10560, "width": 10560, "mime": "jpeg", "algorithm": "opticalFlow"}
+    }
+};
+
+static const char* pCmdTakePic_11KOF 	= 
+{
+    "name":"camera._takePicture",
+    "parameters":{
+        "delay":0,
+        "origin":{"mime":"jpeg","saveOrigin": true, "width": 5280, "height": 3956}, 
+        "stiching": {"mode": "pano", "height": 5280, "width": 10560, "mime": "jpeg", "algorithm": "opticalFlow"}
+    }
+};
+
+static const char* pCmdTakePic_11K 		= 
+{
+    "name":"camera._takePicture",
+    "parameters":{
+        "delay":0,
+        "origin":{"mime":"jpeg","saveOrigin": true, "width": 5280, "height": 3956}
+    }
+};
+
+static const char* pCmdTakePic_AEB 		= 
+{
+    "name":"camera._takePicture",
+    "parameters":{
+        "delay":0,
+        "bracket":{"enable":true,"count": 9, "min_ev": -10, "max_ev": 10}, 
+        "origin": {"mime": "raw+jpeg", "saveOrigin": true, "width": 5280, "height": 3956}
+    }
+};
+
+static const char* pCmdTakePic_Burst 	= 
+{
+    "name":
+    "camera._takePicture",
+    "parameters":{
+        "delay":0,
+        "burst":{"enable":true,"count": 10}, 
+        "origin": {"mime": "jpeg", "saveOrigin": true, "width": 5280, "height": 3956}
+    }
+};
+
+static const char* pCmdTakePic_Customer = "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
+
+
+{
+    "name":"takePictureEvl",
+    "11k_3d_of":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size": 40,            
+        "misc_size": 20
+    },
+    "11k_of":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "11k":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "aeb3":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "aeb5":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "aeb7":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "aeb9":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "burst":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    },
+    "timelapse":{
+        "raw_storage_loc":0,
+        "other_storage_loc":0,       
+        "raw_size":40,
+        "misc_size": 20
+    }
+}
 #endif 
 
-u32 VolumeManager::evlOneGrpPicSzByCmd(Json::Value& jsonCmd)
+
+/*************************************************************************
+** 方法名称: evaluateOneGrpPicSzByCmd
+** 方法功能: 评估一组拍照需占用的存储空间大小(根据指定的拍照命令)
+** 入口参数: 
+**      jsonCmd - 拍照命令
+** 返回值:   一组照片大致的占用空间(单位为MB)
+** 调 用: 
+*************************************************************************/
+u32 VolumeManager::evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd)
 {
-    if (!strcmp(jsonCmd["name"].asCString(), "camera._takePicture") 
-        || !strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
-    } else {
-        
+    /*
+     * 普通拍照
+     */
+    if (jsonCmd.isMember("name") && !strcmp(jsonCmd["name"].asCString(), "camera._takePicture")) {
+
     }
     return 0;
 }
 
 
+
 int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
 {
-    int iUnitSize = 25;     /* 默认为20MB */
+    int iUnitSize = 25;         /* 默认为20MB */
     int iTfCardUnitSize = -1;
     u64 uLocalVolSize = 0;
     u64 uRemoteVolSize = 0;
