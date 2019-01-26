@@ -2,6 +2,9 @@
 #ifndef PROJECT_UTIL_H
 #define PROJECT_UTIL_H
 
+#include <json/json.h>
+#include <json/value.h>
+
 #ifdef ENABLE_ABORT
 #define SWITCH_DEF_ERROR(item) \
 default: \
@@ -30,8 +33,6 @@ bool sh_isbig(void);
 int read_line(int fd, void *vptr, int maxlen);
 int exec_sh(const char *str);
 bool check_path_exist(const char *path);
-int move_cmd(const char *src, const char *dest);
-int create_dir(const char *path);
 
 bool check_dev_speed_good(const char *path);
 int ins_rm_file(const char *name);
@@ -56,5 +57,6 @@ void clearAllunmountPoint();
 
 void resetHub(int iResetGpio, int iResetLevel, int iResetDuration);
 
+bool convJsonObj2String(Json::Value& json, std::string& resultStr);
 
 #endif //PROJECT_UTIL_H

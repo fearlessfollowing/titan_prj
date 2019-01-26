@@ -21,7 +21,7 @@
 #include <sys/VolumeManager.h>
 
 #include <prop_cfg.h>
-
+#include <mutex>
 #include <json/value.h>
 #include <json/json.h>
 
@@ -70,7 +70,10 @@
 #define _sample_rate        "samplerate"
 #define _file_type          "fileType"
 
+#define _who_req            "requestSrc"
 
+
+#define REQUEST_BY_UI       "ui"
 
 // 此处必须用function类，typedef再后面函数指针赋值无效
 using ReqCallback = std::function<void (std::string)>;
@@ -103,6 +106,8 @@ enum {
     MSG_SWITCH_MOUNT_MODE = 37,
     MSG_TEST_SPEED_RES = 33,
 };
+
+using syncReqResultCallback = std::function<bool (Json::Value& resultJson)>;
 
 
 /*
@@ -148,8 +153,6 @@ public:
     /* 格式化小卡： 单独格式化一张;或者格式化所有(进入格式化之前需要禁止InputManager上报) */
     int             sendFormatmSDReq(int iIndex);
 
-    /* 解析查询小卡的结果 */
-    bool            parseQueryTfcardResult(Json::Value& jsonData);
 
     /* 查询小卡的容量信息 */
     bool            sendQueryTfCard();
@@ -219,13 +222,14 @@ public:
 
     void            setNotifyRecv(sp<ARMessage> notify);
 
+
 private:
 
     static ProtoManager*    sInstance;
 
 
     static int              mSyncReqErrno;
-    Mutex                   mSyncReqLock;
+    std::mutex              mSyncReqLock;
     bool                    mSyncReqExitFlag; 
 
     bool                    mAsyncReqExitFlag;
@@ -238,7 +242,11 @@ private:
     sp<ARMessage>           mNotify;
 
     std::string             mPreviewArg;        /* 预览参数: 优先读取配置文件中的预览参数;如果没有将使用默认的预览参数 */
-
+    Json::Value             mPreviewJson;
+    
+    uint16_t                mServerState;
+    int                     mGpsState;
+    int                     mFormatTfResult;
 
                     ProtoManager();
 
@@ -267,6 +275,16 @@ private:
     void            handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode);
     void            handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode);
 
+    bool            sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack = nullptr);
+
+    /* 解析查询小卡的结果 */
+    static bool     parseQueryTfcardResult(Json::Value& jsonData);
+
+    /********************************** Callback ***************************************/
+    static bool     getServerStateCb(Json::Value& resultJson);
+    static bool     getGpsStateCb(Json::Value& resultJson);
+    static bool     formatTfcardCb(Json::Value& resultJson);
+    static bool     queryTfcardCb(Json::Value& resultJson);
 };
 
 

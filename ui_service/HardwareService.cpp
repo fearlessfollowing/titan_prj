@@ -341,6 +341,7 @@ int HardwareService::serviceLooper()
     }
 
     LOGDBG(TAG, "---> exit serviceLooper normally.");
+    return true;
 }
 
 

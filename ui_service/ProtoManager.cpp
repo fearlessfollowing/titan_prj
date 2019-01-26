@@ -19,11 +19,11 @@
 #include <mutex>
 #include <common/sp.h>
 #include <iostream>
-#include <json/json.h>
-#include <json/value.h>
+
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <util/util.h>
 #include <sys/ProtoManager.h>
 
 #include <log/log_wrapper.h>
@@ -127,29 +127,43 @@ ProtoManager::ProtoManager(): mSyncReqExitFlag(false),
             Json::CharReaderBuilder builder;
             builder["collectComments"] = false;
             JSONCPP_STRING errs;
-            if (parseFromStream(builder, ifs, &root, &errs)) {
+            if (parseFromStream(builder, ifs, &mPreviewJson, &errs)) {
                 LOGDBG(TAG, "parse [%s] success", PREVIEW_JSON_FILE);
                 /*
                  * Convert Json to string
                  */
                 Json::StreamWriterBuilder builder;
                 std::ostringstream osInput;
-                
-                builder.settings_["indentation"] = "";
-                std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-                if (0 == writer->write(root, &osInput)) {
-                    mPreviewArg = osInput.str();
-                    LOGDBG(TAG, "----> Load Preview arguments from[%s] Suc.", PREVIEW_JSON_FILE);
-                } else {
-                    LOGERR(TAG, "--> Error, convert Json 2 string failed");
-                    mPreviewArg = "none";
-                }
+                mPreviewJson[_who_req] = REQUEST_BY_UI;
             }    
             ifs.close();     
         }
     } else {
         LOGDBG(TAG, "---> Preview template file [%s] not exist, use default Value", PREVIEW_JSON_FILE);
-        mPreviewArg = "none";
+        Json::Value param;
+        Json::Value origin;
+        Json::Value stitcher;
+        Json::Value audio;
+
+        origin["mime"] = "h264";
+        origin["width"] = 1920;
+        origin["height"] = 1440;
+        origin["framerate"] = 30;
+        origin["bitrate"] = 20000;
+
+        stitcher["mode"] = "pano";
+        stitcher["map"] = "flat";
+        stitcher["mime"] = "h264";
+        stitcher["width"] = 1920;
+        stitcher["height"] = 960;
+        stitcher["framerate"] = 30;
+        stitcher["bitrate"] = 5000;
+        param["origin"] = origin;
+        param["stiching"] = stitcher;
+
+        mPreviewJson["name"] = REQ_START_PREVIEW;
+        mPreviewJson[_who_req] = REQUEST_BY_UI;
+        mPreviewJson[_param] = param;
     }
 
 }
@@ -248,6 +262,57 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
 }
 
 
+bool ProtoManager::sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack)
+{
+    int iResult = -1;
+    bool bRet = false;    
+    Json::Value jsonRes;  
+    Json::Value root = requestJson;
+    root[_who_req] = REQUEST_BY_UI;    
+    std::string sendStr = "";
+
+    convJsonObj2String(root, sendStr);
+    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
+    switch (iResult) {
+        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
+            if (callBack) {     /* 有回调函数,优先使用回调函数来解析 */
+                bRet = callBack(jsonRes);
+            } else {            /* 无回调函数,使用简单的解析 */
+                if (jsonRes.isMember(_state)) {
+                    if (jsonRes[_state] == _done) {
+                        bRet = true;
+                    }
+                } else {
+                    bRet = false;
+                }
+            }
+            break;
+        }
+
+        default: {  /* 通信错误 */
+            LOGERR(TAG, "sendSyncRequest -> Maybe Transfer Error");
+            bRet = false;
+        }
+    }
+    return bRet;    
+}
+
+
+bool ProtoManager::getServerStateCb(Json::Value& resultJson)
+{
+    bool bRet = false;
+
+    if (resultJson.isMember(_state)) {
+        if (resultJson[_state] == _done) {
+            ProtoManager::Instance()->mServerState = resultJson["value"].asUInt64();
+            bRet = true;
+        }
+    } else {
+        bRet = false;
+    }
+    return bRet;    
+}
+
 /* getServerState
  * @param
  * 获取服务器的状态
@@ -255,166 +320,53 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
  */
 bool ProtoManager::getServerState(uint64_t* saveState)
 {
-    int iResult = -1;
     bool bRet = false;
 
     Json::Value jsonRes;   
     Json::Value root;
     Json::Value param;
 
-    std::ostringstream osInput;
-    std::ostringstream osOutput;  
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
     param[_method] = "get";      /* 获取服务器的状态 */
-
     root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
 
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            // LOGDBG(TAG, "getServerState -> request Result: %s", resultStr.c_str());
-
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    *saveState = jsonRes["value"].asUInt64();
-                    bRet = true;
-                    // LOGDBG(TAG, "Get Server State: 0x%x", *saveState);
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "getServerState -> Maybe Transfer Error");
-            bRet = false;
-        }
+    bRet = sendSyncRequest(root, getServerStateCb);
+    if (bRet) {
+        *saveState = mServerState;
     }
     return bRet;
 }
 
 bool ProtoManager::setServerState(uint64_t saveState)
-{
-    int iResult = -1;
-    bool bRet = false;
-    
+{    
     Json::Value jsonRes;   
     Json::Value root;
     Json::Value param;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;    
-
-    std::string resultStr = "";
     std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_method] = "set";      /* 设置服务器的状态 */
     param[_state] = saveState;
-
     root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
 
     LOGDBG(TAG, "Add state: 0x%x", saveState);
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "setServerState -> request Result: %s", resultStr.c_str());
-
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "setServerState -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;
+    return sendSyncRequest(root);
 }
 
 bool ProtoManager::rmServerState(uint64_t saveState)
-{
-    int iResult = -1;
-    bool bRet = false;
-    
+{    
     Json::Value jsonRes;   
     Json::Value root;
     Json::Value param;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;    
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_method] = "clear";      /* 设置服务器的状态 */
     param[_state] = saveState;
 
     root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
 
     LOGDBG(TAG, "Clear state: 0x%x", saveState);
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "rmServerState -> request Result: %s", resultStr.c_str());
-
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "rmServerState -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;
+    return sendSyncRequest(root);
 }
 
 
@@ -425,38 +377,7 @@ bool ProtoManager::rmServerState(uint64_t saveState)
  */
 bool ProtoManager::sendStartPreview()
 {
-    int iResult = -1;
-    bool bRet = false;
-    const char* pPreviewMode = NULL;
-    Json::Value jsonRes;   
-
-    std::string sendStr;
-
-    if (mPreviewArg == "none") {
-        sendStr =  "{\"name\": \"camera._startPreview\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"width\":1920,\"height\":1440,\"framerate\":30,\"bitrate\":20000},\"stiching\":{\"mode\":\"pano\",\"map\":\"flat\",\"mime\":\"h264\",\"width\":1920,\"height\":960,\"framerate\":30,\"bitrate\":5000}}}";
-    } else {
-        sendStr = mPreviewArg;
-    }
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;
+    return sendSyncRequest(mPreviewJson);
 }
 
 
@@ -466,51 +387,9 @@ bool ProtoManager::sendStartPreview()
  */
 bool ProtoManager::sendStopPreview()
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
     Json::Value root;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-
     root[_name_] = REQ_STOP_PREVIEW;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendStopPreview -> request Result: %s", resultStr.c_str());
-
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendStopPreview -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;
+    return sendSyncRequest(root);
 }
 
 #if 0
@@ -543,7 +422,7 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
     LOGDBG(TAG, "---> parseQueryTfcardResult");
 
     bool bResult = false;
-    mStorageList.clear();
+    ProtoManager::Instance()->mStorageList.clear();
 
     if (jsonData.isMember("state") && jsonData.isMember("results")) {
         if (jsonData["state"] == "done") {
@@ -579,7 +458,7 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
                     LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d], storage_state[%d]",
                                 tmpVol->cVolName, tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest, tmpVol->iVolState);
 
-                    mStorageList.push_back(tmpVol);
+                    ProtoManager::Instance()->mStorageList.push_back(tmpVol);
 
                 }
                 bResult = true; 
@@ -594,523 +473,110 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
 }
 
 
+
+bool ProtoManager::queryTfcardCb(Json::Value& resultJson)
+{
+    bool bRet = false;    
+    VolumeManager* vm = VolumeManager::Instance();    
+    if (resultJson.isMember(_state)) {
+        if (resultJson[_state] == _done) {     /* 调用卷管理器来更新TF卡的信息 */
+            if (parseQueryTfcardResult(resultJson)) {
+                bRet = true;
+                vm->updateRemoteTfsInfo(ProtoManager::Instance()->mStorageList);
+            }
+        }
+    } else {
+        bRet = false;
+    }
+    return bRet;  
+}
+
+
+
 bool ProtoManager::sendQueryTfCard()
 {
-    int iResult = -1;
-    bool bRet = false;
-    VolumeManager* vm = VolumeManager::Instance();
-
-    Json::Value jsonRes;   
     Json::Value root;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-
+    Json::Value param;
+    root[_param] = param;
     root[_name_] = REQ_QUERY_TF_CARD;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
 
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendQueryTfCard -> request Result: %s", resultStr.c_str());
-
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     /* 调用卷管理器来更新TF卡的信息 */
-                    if (parseQueryTfcardResult(jsonRes)) {
-                        bRet = true;
-                        vm->updateRemoteTfsInfo(mStorageList);
-                    }
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendStopPreview -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;
+    return sendSyncRequest(root, queryTfcardCb);
 }
-
-#if 0
-std::string ProtoManager::convertJson2String(Json::Value& param)
-{
-    std::ostringstream osInput;
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;   
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-    writer->write(root, &osInput);
-    sendStr = osInput.str();
-}
-#endif
 
 
 
 bool ProtoManager::sendUpdateSysTempReq(Json::Value& param)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
     Json::Value root;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
     root[_name_] = REQ_UPDATE_SYS_TEMP;
     root[_param] = param;
 
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            #if 0
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendUpdateSysTempReq -> request Result: %s", resultStr.c_str());
-            #endif
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendUpdateSysTempReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet; 
+    return sendSyncRequest(root);
 }
 
 
 bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
     Json::Value root;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-
     root[_name_] = REQ_SET_CUSTOMER_PARAM;
     root[_param] = customParam["parameters"]["properties"];
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendSetCustomLensReq -> request Result: %s", resultStr.c_str());
-
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     /* 调用卷管理器来更新TF卡的信息 */
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendSetCustomLensReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;    
+    return sendSyncRequest(root);  
 }
 
 
 bool ProtoManager::sendSpeedTestReq(const char* path)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
     Json::Value root;
     Json::Value param;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_path] = path;
     root[_name_] = REQ_SPEED_TEST;
     root[_param] = param;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendSpeedTestReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendSpeedTestReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;       
+    return sendSyncRequest(root);        
 }
 
 
 bool ProtoManager::sendTakePicReq(Json::Value& takePicReq)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-	writer->write(takePicReq, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendTakePicReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendTakePicReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;   
+    return sendSyncRequest(takePicReq);   
 }
 
 
 bool ProtoManager::sendTakeVideoReq(Json::Value& takeVideoReq)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-	writer->write(takeVideoReq, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendTakeVideoReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendTakeVideoReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;      
+    return sendSyncRequest(takeVideoReq);      
 }
 
 
 bool ProtoManager::sendStopVideoReq()
 {
-    int iResult = -1;
-    bool bRet = false;
-
     Json::Value root;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-    root[_name_] = REQ_STOP_REC;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendStopVideoReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendStopVideoReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;     
+    root[_name_] = REQ_STOP_REC; 
+    return sendSyncRequest(root);    
 }
-
-/*
- * 检查是否允许进入U盘模式(同步请求)
- */
-#if 0
-{
-    "name": "camera._change_udisk_mode",
-    "parameters": {
-        "mode":1            # 进入U盘模式
-    }
-}
-#endif
-
 
 bool ProtoManager::sendStartLiveReq(Json::Value& takeLiveReq)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-	writer->write(takeLiveReq, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendTakeLiveReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendTakeLiveReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;      
+    return sendSyncRequest(takeLiveReq);       
 }
-
 
 bool ProtoManager::sendStopLiveReq()
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value root;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-    root[_name_] = REQ_STOP_LIVE;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendStopLiveReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendStopLiveReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;     
+    Json::Value root;   
+    root[_name_] = REQ_STOP_LIVE;    
+    return sendSyncRequest(root);      
 }
 
 
 bool ProtoManager::sendStichCalcReq()
 {
-    int iResult = -1;
-    bool bRet = false;
-
     Json::Value root;
     Json::Value param;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_delay] = 5;      /* 默认为5秒 */
-    root[_name_] = REQ_STITCH_CALC;
+    root[_name_] = REQ_STITCH_CALC;    
     root[_param] = param;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendStichCalcReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendStichCalcReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;      
+    return sendSyncRequest(root);       
 }
 
 /*
@@ -1118,383 +584,75 @@ bool ProtoManager::sendStichCalcReq()
  */
 bool ProtoManager::sendSavePathChangeReq(const char* savePath)
 {
-    int iResult = -1;
-    bool bRet = false;
-
     Json::Value root;
     Json::Value param;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_path]    = savePath;      
-    root[_name_]     = REQ_CHANGE_SAVEPATH;
+    root[_name_]    = REQ_CHANGE_SAVEPATH;  
     root[_param]    = param;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendSavePathChangeReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendSavePathChangeReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet; 
+    return sendSyncRequest(root);  
 }
 
 bool ProtoManager::sendStorageListReq(const char* devList)
 {
-    int iResult = -1;
-    bool bRet = false;
-
     Json::Value root;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
     root[_name_]         = REQ_UPDATE_DEV_LIST;
     root[_param]        = devList;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendStorageListReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendStorageListReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;     
+    return sendSyncRequest(root);   
 }
 
 
 bool ProtoManager::sendStartNoiseSample()
 {
-    int iResult = -1;
-    bool bRet = false;
-
     Json::Value root;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
     root[_name_] = REQ_NOISE_SAMPLE;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendStartNoiseSample -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendStartNoiseSample -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;     
+    return sendSyncRequest(root);       
 }
 
 
 bool ProtoManager::sendGyroCalcReq()
 {
-    int iResult = -1;
-    bool bRet = false;
-
     Json::Value root;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
     root[_name_] = REQ_GYRO_CALC;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendGyroCalcReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendGyroCalcReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;      
+    return sendSyncRequest(root);     
 }
 
 
 bool ProtoManager::sendLowPowerReq()
 {
-    int iResult = -1;
-    bool bRet = false;
-
     Json::Value root;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
     root[_name_] = REQ_LOW_POWER;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendLowPowerReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendLowPowerReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;     
+    return sendSyncRequest(root);    
 }
 
 
 bool ProtoManager::sendWbCalcReq()
 {
-    int iResult = -1;
-    bool bRet = false;
-
     Json::Value root;
-    Json::Value jsonRes;   
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
     root[_name_] = REQ_AWB_CALC;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendWbCalcReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendWbCalcReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;     
+    return sendSyncRequest(root);    
 }
 
 
 bool ProtoManager::sendSetOptionsReq(Json::Value& optionsReq)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
-    Json::Value root;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-    root[_name_] = REQ_SET_OPTIONS;
-	writer->write(optionsReq, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendSetOptionsReq -> request Result: %s", resultStr.c_str());
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendSetOptionsReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;     
+    return sendSyncRequest(optionsReq);       
 }
 
 
 bool ProtoManager::sendSwitchUdiskModeReq(bool bEnterExitFlag)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
     Json::Value root;
     Json::Value param;
-
-    std::ostringstream osInput;
-    std::ostringstream osOutput;
-
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     if (bEnterExitFlag) {
         param[_mode] = 1;      /* 进入Udisk模式 */
     } else {        
         param[_mode] = 0;      /* 退出Udisk模式 */
-    }
+    } 
     root[_name_] = REQ_SWITCH_UDISK_MODE;
     root[_param] = param;
-	writer->write(root, &osInput);
-    sendStr = osInput.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            writer->write(jsonRes, &osOutput);
-            resultStr = osOutput.str();
-            LOGDBG(TAG, "sendEnterUdiskModeReq -> request Result: %s", resultStr.c_str());
-
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "sendEnterUdiskModeReq -> Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;
+    return sendSyncRequest(root);   
 }
 
 
@@ -1509,50 +667,16 @@ bool ProtoManager::sendSwitchUdiskModeReq(bool bEnterExitFlag)
  */
 bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uLiveSec, u32 uLiveRecLeftSec)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
     Json::Value root;
     Json::Value param;
-
-    std::ostringstream os;
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_rec_sec] = uRecSec;
     param[_rec_left_sec] = uLeftRecSecs;
     param[_live_rec_sec] = uLiveSec;
     param[_live_rec_left_sec] = uLiveRecLeftSec;
     root[_name_] = REQ_UPDATE_REC_LIVE_INFO;
-    root[_param] = param;
-	writer->write(root, &os);
-    sendStr = os.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;
+    root[_param] = param;  
+    return sendSyncRequest(root);   
 }
 
 
@@ -1563,68 +687,21 @@ bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uL
  */
 bool ProtoManager::sendUpdateTakeTimelapseLeft(u32 leftVal)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
     Json::Value root;
     Json::Value param;
-
-    std::ostringstream os;
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_tl_left] = leftVal;
     root[_name_] = REQ_UPDATE_TIMELAPSE_LEFT;
     root[_param] = param;
-	writer->write(root, &os);
-    sendStr = os.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "Maybe Transfer Error");
-            bRet = false;
-        }
-    }
-    return bRet;
+    return sendSyncRequest(root);   
 }
 
 
 bool ProtoManager::sendStateSyncReq(REQ_SYNC* pReqSyncInfo)
 {
-    int iResult = -1;
-    bool bRet = false;
-
-    Json::Value jsonRes;   
     Json::Value root;
     Json::Value param;
-
-    std::ostringstream os;
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-
+    
     param["sn"]  = pReqSyncInfo->sn;
     param["r_v"] = pReqSyncInfo->r_v;  
     param["p_v"] = pReqSyncInfo->p_v;
@@ -1632,75 +709,67 @@ bool ProtoManager::sendStateSyncReq(REQ_SYNC* pReqSyncInfo)
 
     root[_name_] = REQ_SYNC_INFO;
     root[_param] = param;
-	writer->write(root, &os);
-    sendStr = os.str();
+ 
+    return sendSyncRequest(root);   
+}
 
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            /* 解析响应值来判断是否允许 */
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    bRet = true;
-                }
-            } else {
-                bRet = false;
-            }
-            break;
-        }
 
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "Maybe Transfer Error");
-            bRet = false;
+bool ProtoManager::getGpsStateCb(Json::Value& resultJson)
+{
+    bool bResult = false;
+    if (resultJson.isMember(_state)) {
+        if (resultJson[_state] == _done) {
+            ProtoManager::Instance()->mGpsState = resultJson[_results][_state].asInt();
+            LOGDBG(TAG, "Query Gps State Result = %d", ProtoManager::Instance()->mGpsState);
+            bResult = true;
+        } else {
+            LOGERR(TAG, "Reply 'state' val not 'done' ");
         }
-    }
-    return bRet;
+    } else {
+        LOGERR(TAG, "Reply content not 'state' member??");
+    }    
+    return bResult;
 }
 
 
 int ProtoManager::sendQueryGpsState()
 {
     int iResult = -1;
-
-    Json::Value jsonRes;   
     Json::Value root;
 
-    std::ostringstream os;
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
     root[_name_] = REQ_QUERY_GPS_STATE;
-	writer->write(root, &os);
-    sendStr = os.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {
-                    iResult = jsonRes[_results][_state].asInt();
-                    LOGDBG(TAG, "Query Gps State Result = %d", iResult);
-                } else {
-                    LOGERR(TAG, "Reply 'state' val not 'done' ");
-                }
-            } else {
-                LOGERR(TAG, "Reply content not 'state' member??");
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "Maybe Transfer Error");
-        }
+    if (sendSyncRequest(root, getGpsStateCb)) {
+        iResult = mGpsState;
     }
-    return iResult;    
+    return iResult;
 }
 
 
+bool ProtoManager::formatTfcardCb(Json::Value& resultJson)
+{
+    int iResult = -1;    
+    if (resultJson.isMember(_state)) {
+        if (resultJson[_state] == _done) {     /* 格式化成功(所有的卡或单张卡) */
+            LOGDBG(TAG, "Format Tf Card Success");
+            iResult = ERROR_FORMAT_SUC;
+        } else {
+            if (resultJson.isMember(_error) && resultJson[_error].isMember(_code)) {
+                if (resultJson[_error][_code].asInt() == 0xFF) {
+                    iResult = ERROR_FORMAT_STATE_NOT_ALLOW;
+                } else {
+                    iResult = ERROR_FORMAT_FAILED;
+                }
+            } else {
+                iResult = ERROR_FORMAT_REQ_FAILED;
+            }
+        }
+    } else {
+        LOGERR(TAG, "Reply content not 'state' member??");
+        iResult = ERROR_FORMAT_REQ_FAILED;
+    }
+    ProtoManager::Instance()->mFormatTfResult = iResult;
+    return true;    
+}
 
 /*
  * 返回值: 
@@ -1709,70 +778,30 @@ int ProtoManager::sendQueryGpsState()
  */
 int ProtoManager::sendFormatmSDReq(int iIndex)
 {
-    int iResult = -1;
-
-    Json::Value jsonRes;   
+    int iResult = -1;   
     Json::Value root;
     Json::Value param;
-
-    std::ostringstream os;
-    std::string resultStr = "";
-    std::string sendStr = "";
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     param[_index] = iIndex;
     root[_name_] = REQ_FORMAT_TFCARD;
     root[_param] = param;
-	writer->write(root, &os);
-    sendStr = os.str();
-
-    iResult = sendHttpSyncReq(gReqUrl, &jsonRes, gPExtraHeaders, sendStr.c_str());
-    switch (iResult) {
-        case PROTO_MANAGER_REQ_SUC: {   /* 接收到了replay,解析Rely */
-            if (jsonRes.isMember(_state)) {
-                if (jsonRes[_state] == _done) {     /* 格式化成功(所有的卡或单张卡) */
-                    LOGDBG(TAG, "Format Tf Card Success");
-                    iResult = ERROR_FORMAT_SUC;
-                } else {
-                    if (jsonRes.isMember(_error) && jsonRes[_error].isMember(_code)) {
-                        if (jsonRes[_error][_code].asInt() == 0xFF) {
-                            iResult = ERROR_FORMAT_STATE_NOT_ALLOW;
-                        } else {
-                            iResult = ERROR_FORMAT_FAILED;
-                        }
-                    } else {
-                        iResult = ERROR_FORMAT_REQ_FAILED;
-                    }
-                }
-            } else {
-                LOGERR(TAG, "Reply content not 'state' member??");
-                iResult = ERROR_FORMAT_REQ_FAILED;
-            }
-            break;
-        }
-
-        default: {  /* 通信错误 */
-            LOGERR(TAG, "Maybe Transfer Error");
-            iResult = ERROR_FORMAT_REQ_FAILED;            
-        }
+    if (sendSyncRequest(root, formatTfcardCb)) {
+        iResult = mFormatTfResult;
     }
-    return iResult;      
+    return iResult;
 }
 
 
 
 bool ProtoManager::getSyncReqExitFlag()
 {
-    AutoMutex _l(mSyncReqLock);
+    std::unique_lock<std::mutex> _lock(mSyncReqLock);
     return mSyncReqExitFlag;
 }
 
 void ProtoManager::setSyncReqExitFlag(bool bFlag)
 {
-    AutoMutex _l(mSyncReqLock);
+    std::unique_lock<std::mutex> _lock(mSyncReqLock);    
     mSyncReqExitFlag = bFlag;
 }
 
