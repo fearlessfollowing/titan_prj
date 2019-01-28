@@ -147,6 +147,7 @@ int oled_light::factory_test(int icnt)
 		icnt = 3;
 	
     for (int i = 0; i < icnt; i++) {
+
         if (mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x00) != 0) {
 			LOGERR(TAG," oled write val 0x%x fail", 0x00);
 			iRet = -1;
@@ -154,7 +155,7 @@ int oled_light::factory_test(int icnt)
 			
 		msg_util::sleep_ms(1000);
 		
-        if (mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x3d) != 0) {
+        if (mI2CLight->i2c_write_byte(LED_I2C_CONTROL_REG, 0x36) != 0) {
 			LOGERR(TAG," oled write val 0x%x fail", 0x36);
 			iRet = -1;
 		}

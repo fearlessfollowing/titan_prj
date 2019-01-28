@@ -1693,16 +1693,6 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
     }
 }
 
-void MenuUI::printJsonCfg(Json::Value& json)
-{
-    #if 0
-    Json::FastWriter weriter;
-    string jsonstr = weriter.write(json);
-    LOGDBG(TAG, "print json: %s", jsonstr.c_str());
-    #endif
-}
-
-
 
 void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct stPicVideoCfg*>& pItemLists)
 {
@@ -2187,11 +2177,9 @@ void MenuUI::setGyroCalcDelay(int iDelay)
 bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 {
     int iIndex = 0;
-
     struct stPicVideoCfg* pTmpPicVidCfg = NULL;
     struct stPicVideoCfg* pAebPicVidCfg = NULL;
     struct stSetItem* pAebSetItem = NULL;
-
     uint64_t serverState = getServerState();
     ProtoManager* pm = ProtoManager::Instance();
     CfgManager* cm = CfgManager::Instance();
@@ -2199,38 +2187,23 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
     switch (option) {
 
         case ACTION_PIC: {	/* 拍照动作： 因为有倒计时,倒计时完成需要检查存储设备还是否存在 */
-
-            LOGDBG(TAG, "-------------->> sendRpc +++ ACTION_PIC");
             Json::Value* pTakePicJson = NULL;
-            
-            /* customer和非customer */
             iIndex = getMenuSelectIndex(MENU_PIC_SET_DEF);
             pTmpPicVidCfg = mPicAllItemsList.at(iIndex);
 
-            if (pTmpPicVidCfg) {
+            if (pTmpPicVidCfg) {                
+                LOGDBG(TAG, "Current TakePicture Gear --> [%s]", pTmpPicVidCfg->pItemName);
                 
-                LOGDBG(TAG, "Take pic mode [%s]", pTmpPicVidCfg->pItemName);
-                
-                /* 所有的拍照挡位参数都是以PicVideoCfg.jsonCmd为准
-                 * 对于Customer挡位,保存模板参数时会更新Customer对应的jsonCmd
-                 */
-                mCurTakePicJson = pTmpPicVidCfg->jsonCmd;
-                pTakePicJson = (pTmpPicVidCfg->jsonCmd).get();
+                mCurTakePicJson = pTmpPicVidCfg->jsonCmd;           /* UI发起的拍照,记录本次拍照的命令,用于在拍照完成时更新剩余容量(特别时RAW存储在模组的情况) */
+                pTakePicJson = (pTmpPicVidCfg->jsonCmd).get();  
 
-
-            #ifdef ENABLE_MENU_AEB
-
-                PIC_ORG* pTmpAeb = NULL;
-
-                /* 根据AEB当前的选项来更新PIC_ORG参数,不管当前选中的是否AEB项 */
                 pAebSetItem = getSetItemByName(mSetItemsList, SET_ITEM_NAME_AEB);
                 pAebPicVidCfg = getPicVidCfgByName(mPicAllItemsList, TAKE_PIC_MODE_AEB);
                 if (pAebSetItem && pAebPicVidCfg) {
-                    pTmpAeb = pAebSetItem->stOrigArg[pAebSetItem->iCurVal];
-                    LOGDBG(TAG, "Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", pTmpAeb->hdr_count, pTmpAeb->min_ev, pTmpAeb->max_ev);
-                    
+                    PIC_ORG* pTmpAeb = pAebSetItem->stOrigArg[pAebSetItem->iCurVal];                    
                     if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {     /* 非Customer模式时，需要更新AEB参数 */
                         if ((*pTakePicJson)["parameters"].isMember("bracket")) {
+                            LOGDBG(TAG, "Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", pTmpAeb->hdr_count, pTmpAeb->min_ev, pTmpAeb->max_ev);
                             (*pTakePicJson)["parameters"]["bracket"]["count"] = pTmpAeb->hdr_count;
                             (*pTakePicJson)["parameters"]["bracket"]["min_ev"] = pTmpAeb->min_ev;
                             (*pTakePicJson)["parameters"]["bracket"]["max_ev"] = pTmpAeb->max_ev;
@@ -2239,7 +2212,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 } else {
                     LOGWARN(TAG, "Warnning Aeb Item lossed, please check!!!");
                 }
-            #endif
 
                 if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) { /* 非Customer模式根据是否使能RAW来设置origin.mime，Customer模式不用理会该属性 */
                     if (CfgManager::Instance()->getKeyVal("raw")) {
@@ -2253,6 +2225,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     LOGDBG(TAG, "-----------> Send Takepic Customer args First");
                     pm->sendSetCustomLensReq(*pTakePicJson);
                 }
+                
                 pm->sendTakePicReq(*pTakePicJson);
             } else {
                 LOGERR(TAG, "Invalid index[%d]");
@@ -3695,7 +3668,6 @@ void MenuUI::calcRemainSpace(bool bUseCached)
     LOGDBG(TAG, "Use New Way Calc Remian Space now ......");
 
     VolumeManager* vm = VolumeManager::Instance();
-    // CfgManager* cm = CfgManager::Instance();
     {
         mCanTakePicNum = 0;     /* 重新计算之前将可拍照片的张数清0 */
 
@@ -3705,7 +3677,6 @@ void MenuUI::calcRemainSpace(bool bUseCached)
         } else {    /* 本地的拍照 - 非Customer模式 */
 
             int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
-            // int iRawVal = cm->getKeyVal("raw");
             struct stPicVideoCfg* pPicVidCfg = mPicAllItemsList.at(item);
             if (pPicVidCfg) {   /* 非timelapse和timelapse的两种计算方式 */
                 if (true == checkIsTakeTimelpaseInCustomer()) {
@@ -7176,20 +7147,24 @@ int MenuUI::oled_disp_type(int type)
 
 			
         case CAPTURE_SUC: {
-
             VolumeManager* vm = VolumeManager::Instance();
             if (cur_menu == MENU_PIC_INFO) {
-                if (mClientTakePicUpdate == true) {
+                if (mClientTakePicUpdate == true) {     /* App控制拍照完成 */
                     LOGDBG(TAG, "Client control Take picture suc");
                     mClientTakePicUpdate = false;
                     // dispBottomInfo();   /* 重新显示之前的挡位信息 */
                     setCurMenu(MENU_PIC_INFO);
-                } else {
+                } else {                                /* UI控制拍照完成 */
                     LOGDBG(TAG, ">>> CAPTURE_SUC remain pic %d", mCanTakePicNum);
-                    if (mCanTakePicNum > 0) {       /* 为了防止拍照完成后进入挡位切换而产生的卡顿问题 */
+                    if (mCanTakePicNum > 0) {           /* 为了防止拍照完成后进入挡位切换而产生的卡顿问题 */
                         /* 同步数据到磁盘 - 为了防止卡住,将剩余张数转换为空间设置回卷管理器中 */
                         mCanTakePicNum--;
+                        #if 0
                         vm->syncTakePicLeftSapce(getCurOneGroupPicSize() * mCanTakePicNum); /* 单位为MB */
+                        #else 
+                        vm->syncTakePicLeftSapce(mCurTakePicJson); /* 单位为MB */
+                        mCurTakePicJson = nullptr;
+                        #endif
                     }
                     /* 拍照成功后，按照原来的计算量进行显示 */
                     dispBottomLeftSpace();

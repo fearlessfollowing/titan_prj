@@ -47,8 +47,8 @@
 
 static std::mutex gCfgManagerMutex;
 
-#define SYS_CTL_FILE_PATH   "/etc/sysctl.conf"
-
+#define SYS_CTL_FILE_OLD_PATH   "/etc/sysctl.conf"
+#define SYS_CTL_FILE_NEW_PATH   "/home/nvidia/insta360/etc/sysctl.conf"
 
 CfgManager* CfgManager::sInstance = NULL;
 
@@ -189,14 +189,21 @@ net.core.netdev_max_backlog=3000
 void CfgManager::startUpSysCtl()
 {
     LOGDBG(TAG, "---> start sysctl <---");
-    unlink(SYS_CTL_FILE_PATH);
-    std::string cfgStr = "net.ipv4.tcp_tw_reuse = 1\n"  \
-                        "net.ipv4.tcp_tw_recycle = 1\n";
+    unlink(SYS_CTL_FILE_OLD_PATH);
 
-    updateFile(SYS_CTL_FILE_PATH, cfgStr.c_str(), cfgStr.length());
+    if (access(SYS_CTL_FILE_NEW_PATH, F_OK)) {
+        std::string cfgStr = "net.ipv4.tcp_tw_reuse = 1\n"  \
+                            "net.ipv4.tcp_tw_recycle = 1\n" \
+                            "net.ipv4.tcp_timestamps=0\n";
+
+        updateFile(SYS_CTL_FILE_NEW_PATH, cfgStr.c_str(), cfgStr.length());
+    }
     
     msg_util::sleep_ms(100);
-    system("/sbin/sysctl -p");
+    std::string cmd = "/sbin/sysctl -p ";
+    cmd += SYS_CTL_FILE_NEW_PATH;
+    LOGDBG(TAG, "cmd: %s", cmd.c_str());
+    system(cmd.c_str());
 }
 
 #define SWAP_FILE_PATH "/swap/sfile"

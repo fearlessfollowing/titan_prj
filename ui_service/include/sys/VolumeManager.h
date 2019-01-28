@@ -161,7 +161,7 @@ typedef struct stVol {
 	int 	        iSpeedTest;		                    /* 1: 已经测速通过; 0: 没有进行测速或测速未通过 */
 
 
-    Mutex           mVolLock;                           /* 访问卷的互踩锁 */
+    std::mutex      mVolLock;                           /* 访问卷的互踩锁 */
 } Volume;
 
 
@@ -476,8 +476,11 @@ public:
     void        setDebug(bool enable);
 
     void        updateVolumeSpace(Volume* pVol);
+    void        updateModuleVolumeSpace(int iAddDecSize);
 
     void        syncTakePicLeftSapce(u32 uLeftSize);
+    void        syncTakePicLeftSapce(sp<Json::Value>& jsonCmd);
+
 
     /*
      * 检查是否存在本地卷
@@ -574,7 +577,7 @@ public:
 
     u32         calcTakeLiveRecLefSec(Json::Value& jsonCmd);
 
-    u32         evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd);
+    Json::Value* evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd);
 
     /*
      * 录像/直播存片 时间接口
@@ -667,6 +670,8 @@ private:
     u64                     mLiveRecLeftSec;                        /* 当前挡位直播存片的剩余时长 */
     u64                     mLiveRecSec;
 
+    Json::Value             mTakePicStorageCfg;                     /* 配置拍照各挡位的存储空间大小 */
+
     /*
      * 可拍照，Timelapse可拍的张数
      */
@@ -686,6 +691,9 @@ private:
     std::thread             mVolWorkerThread;
 
     bool                    mAllowExitUdiskMode;
+
+
+
 
                             VolumeManager();
 

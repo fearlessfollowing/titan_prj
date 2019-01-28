@@ -335,6 +335,7 @@ void clearAllunmountPoint()
     closedir(dir);
 }
 
+
 bool convJsonObj2String(Json::Value& json, std::string& resultStr)
 {
     std::ostringstream osInput;    
@@ -348,6 +349,16 @@ bool convJsonObj2String(Json::Value& json, std::string& resultStr)
 }
 
 
+
+/*************************************************************************
+** 方法名称: loadJsonFromFile
+** 方法功能: 从文件中加载json对象
+** 入口参数: 
+**      filePath - 配置文件的路径
+**      root     - Json对象指针
+** 返回值:   成功返回true;否则返回false
+** 调 用: 
+*************************************************************************/
 bool loadJsonFromFile(std::string filePath, Json::Value* root)
 {
     bool bResult = false;
@@ -391,6 +402,14 @@ bool loadJsonFromString(std::string jsonStr, Json::Value* root)
         root = NULL;
     }    
     return bResult;
+}
+
+
+void printJson(Json::Value& root)
+{
+    std::string resultStr;
+    convJsonObj2String(root, resultStr);
+    LOGINFO(TAG, "[%s]", resultStr.c_str());
 }
 
 

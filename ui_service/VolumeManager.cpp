@@ -75,7 +75,7 @@
 #include <sys/mount.h>
 #include <json/value.h>
 #include <json/json.h>
-
+#include <sys/CfgManager.h>
 #include <sys/Condition.h>
 
 #ifdef ENABLE_CACHE_SERVICE
@@ -127,6 +127,7 @@ static Mutex gLiveRecLeftMutex;
 static Mutex gRecMutex;
 static Mutex gLiveRecMutex;
 static Mutex gTimelapseLock;
+// static std::mutex gTimelapseLock;
 
 static Mutex gRemoteVolLock;
 
@@ -292,17 +293,85 @@ VolumeManager::VolumeManager() :
     LOGDBG(TAG, " Construtor VolumeManager Done...");
 }
 
-#define EVL_TAKE_PIC_BILL   "/home/nvidia/insta360/etc/evlTakepicSz.json"
 
+enum {
+    PIC_RAW_STORAGE_LOC_NV = 0,
+    PIC_RAW_STORAGE_LOC_MODULE = 1,
+    PIC_RAW_STORAGE_LOC_MAX
+};
+
+
+/*************************************************************************
+** 方法名称: loadPicVidStorageCfgBill
+** 方法功能: 加载拍照/存片各挡位的存储配置
+** 入口参数: 
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
 void VolumeManager::loadPicVidStorageCfgBill()
 {
-    if (access(EVL_TAKE_PIC_BILL, F_OK) == 0) {     /* 使用配置文件 */
-        
-    } else {    /* 生成默认的配置 */
+    {
+        bool bLoadTakePicCfg = false;
+        /*
+         * 加载拍照各挡位的存储空间配置文件
+         */
+        if (access(EVL_TAKE_PIC_BILL, F_OK) == 0) {     /* 使用配置文件 */
+            if (loadJsonFromFile(EVL_TAKE_PIC_BILL, &mTakePicStorageCfg)) {
+                LOGDBG(TAG, "---> Load configure file[%s] suc.", EVL_TAKE_PIC_BILL);
+                bLoadTakePicCfg = true;
+            }
+        }
 
+        if (!bLoadTakePicCfg) {  /* 生成默认的配置参数 */
+            mTakePicStorageCfg["name"] = "takePictureEvl";
+            
+            mTakePicStorageCfg["11k_3d_of"]["raw_storage_loc"]      = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["11k_3d_of"]["other_storage_loc"]    = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["11k_3d_of"]["raw_size"]             = 40;       /* dng以40M算 */
+            mTakePicStorageCfg["11k_3d_of"]["misc_size"]            = 65;       /* 60 - 65MB */         
+
+            mTakePicStorageCfg["11k_of"]["raw_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["11k_of"]["other_storage_loc"]       = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["11k_of"]["raw_size"]                = 40;
+            mTakePicStorageCfg["11k_of"]["misc_size"]               = 48;   /* 45 - 50MB */  
+
+            mTakePicStorageCfg["11k"]["raw_storage_loc"]            = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["11k"]["other_storage_loc"]          = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["11k"]["raw_size"]                   = 40;
+            mTakePicStorageCfg["11k"]["misc_size"]                  = 28;   /* 25 - 30MB */ 
+
+            mTakePicStorageCfg["aeb3"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg["aeb3"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["aeb3"]["raw_size"]                  = 40;
+            mTakePicStorageCfg["aeb3"]["misc_size"]                 = 95;   /* 95 - 100MB */  
+
+            mTakePicStorageCfg["aeb5"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg["aeb5"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["aeb5"]["raw_size"]                  = 40;
+            mTakePicStorageCfg["aeb5"]["misc_size"]                 = 150;    
+
+            mTakePicStorageCfg["aeb7"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg["aeb7"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["aeb7"]["raw_size"]                  = 40;
+            mTakePicStorageCfg["aeb7"]["misc_size"]                 = 200;  /* 190 - 200MB */  
+
+            mTakePicStorageCfg["aeb9"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg["aeb9"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["aeb9"]["raw_size"]                  = 40;
+            mTakePicStorageCfg["aeb9"]["misc_size"]                 = 260;  /* 260 - 280MB */ 
+
+            mTakePicStorageCfg["burst"]["raw_storage_loc"]          = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg["burst"]["other_storage_loc"]        = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["burst"]["raw_size"]                 = 40;
+            mTakePicStorageCfg["burst"]["misc_size"]                = 260;   /* 256 - 300MB */
+
+            mTakePicStorageCfg["timelapse"]["raw_storage_loc"]      = 0;
+            mTakePicStorageCfg["timelapse"]["other_storage_loc"]    = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg["timelapse"]["raw_size"]             = 40;
+            mTakePicStorageCfg["timelapse"]["misc_size"]            = 20; 
+        }
     }
 }
-
 
 
 void VolumeManager::checkAllUdiskIdle()
@@ -2016,7 +2085,8 @@ const char* VolumeManager::getLocalVolMountPath()
 ** 方法名称: getLocalVolLeftSize
 ** 方法功能: 计算当前存储设备的剩余容量
 ** 入口参数: 
-**     bUseCached - 是否使用缓存的剩余空间 
+**     bUseCached - 是否使用缓存的剩余空间(true使用缓存的剩余空间; 
+**                  false重新计算本地剩余空间)
 ** 返回值: 剩余空间
 ** 调 用: 
 ** 
@@ -2272,8 +2342,7 @@ int VolumeManager::mountVolume(Volume* pVol)
 {
     int iRet = 0;
 
-    AutoMutex _l(pVol->mVolLock);
-
+    std::unique_lock<std::mutex> _lock(pVol->mVolLock);   
     #if 1
     /* 如果使能了Check,在挂载之前对卷进行check操作 */
     iRet = checkFs(pVol);
@@ -2515,135 +2584,6 @@ u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
 }
 
 
-#if 0
-
-Client: 11K_3D_OF, 11K_OF, 
-
-11k_3d_of       raw
-11k_of          raw
-11k             raw
-aeb3,5,7,9      raw
-burst           raw
-
-timelapse
-
-1.origin的mime决定是否有raw，还是简单的jpeg
-2.stitcher有两种(3d, pano), 两种照片的拼接大小
-3.bracket,需要确定3,5,7,9的大小
-4.burst
-5.timelapse
-
-static const char* pCmdTakePic_11K3DOF 	= 
-{
-    "name":"camera._takePicture",
-    "parameters":{
-        "delay":0,
-        "origin":{"mime":"jpeg","saveOrigin": true, "width": 5280, "height": 3956}, 
-        "stiching": {"mode": "3d_top_left", "height": 10560, "width": 10560, "mime": "jpeg", "algorithm": "opticalFlow"}
-    }
-};
-
-static const char* pCmdTakePic_11KOF 	= 
-{
-    "name":"camera._takePicture",
-    "parameters":{
-        "delay":0,
-        "origin":{"mime":"jpeg","saveOrigin": true, "width": 5280, "height": 3956}, 
-        "stiching": {"mode": "pano", "height": 5280, "width": 10560, "mime": "jpeg", "algorithm": "opticalFlow"}
-    }
-};
-
-static const char* pCmdTakePic_11K 		= 
-{
-    "name":"camera._takePicture",
-    "parameters":{
-        "delay":0,
-        "origin":{"mime":"jpeg","saveOrigin": true, "width": 5280, "height": 3956}
-    }
-};
-
-static const char* pCmdTakePic_AEB 		= 
-{
-    "name":"camera._takePicture",
-    "parameters":{
-        "delay":0,
-        "bracket":{"enable":true,"count": 9, "min_ev": -10, "max_ev": 10}, 
-        "origin": {"mime": "raw+jpeg", "saveOrigin": true, "width": 5280, "height": 3956}
-    }
-};
-
-static const char* pCmdTakePic_Burst 	= 
-{
-    "name":
-    "camera._takePicture",
-    "parameters":{
-        "delay":0,
-        "burst":{"enable":true,"count": 10}, 
-        "origin": {"mime": "jpeg", "saveOrigin": true, "width": 5280, "height": 3956}
-    }
-};
-
-static const char* pCmdTakePic_Customer = "{\"name\":\"camera._takePicture\",\"parameters\":{\"delay\":0,\"origin\":{\"mime\":\"jpeg\",\"saveOrigin\": true, \"width\": 5280, \"height\": 3956, \"storage_loc\": 0}, \"stiching\": {\"mode\": \"3d_top_left\", \"height\": 7680, \"width\": 7680, \"mime\": \"jpeg\", \"algorithm\": \"opticalFlow\"}}}";
-
-
-{
-    "name":"takePictureEvl",
-    "11k_3d_of":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size": 40,            
-        "misc_size": 20
-    },
-    "11k_of":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size":40,
-        "misc_size": 20
-    },
-    "11k":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size":40,
-        "misc_size": 20
-    },
-    "aeb3":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size":40,
-        "misc_size": 20
-    },
-    "aeb5":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size":40,
-        "misc_size": 20
-    },
-    "aeb7":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size":40,
-        "misc_size": 20
-    },
-    "aeb9":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size":40,
-        "misc_size": 20
-    },
-    "burst":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size":40,
-        "misc_size": 20
-    },
-    "timelapse":{
-        "raw_storage_loc":0,
-        "other_storage_loc":0,       
-        "raw_size":40,
-        "misc_size": 20
-    }
-}
-#endif 
 
 
 /*************************************************************************
@@ -2654,15 +2594,80 @@ static const char* pCmdTakePic_Customer = "{\"name\":\"camera._takePicture\",\"p
 ** 返回值:   一组照片大致的占用空间(单位为MB)
 ** 调 用: 
 *************************************************************************/
-u32 VolumeManager::evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd)
+Json::Value* VolumeManager::evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd)
 {
+    Json::Value* pResult = nullptr;
+
     /*
      * 普通拍照
      */
     if (jsonCmd.isMember("name") && !strcmp(jsonCmd["name"].asCString(), "camera._takePicture")) {
+        bool bHaveRaw = false;      /* 是否使能raw */
+        std::string gear = "customer";
 
+        printJson(jsonCmd);
+
+        if (jsonCmd.isMember("parameters")) {
+
+        #if 0
+            if (jsonCmd["parameters"].isMember("origin")) {
+                if (jsonCmd["parameters"]["origin"].isMember("mime")) {
+                    if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "raw+jpeg")) {
+                        bHaveRaw = true;
+                    }
+                }
+            }
+        #else 
+            if (CfgManager::Instance()->getKeyVal("raw")) {
+                bHaveRaw = true;                
+            }
+        #endif 
+
+            if (jsonCmd["parameters"].isMember("burst")) {  /* Burst模式 - 只关注是否有Raw */
+                gear = "burst";
+            } else if (jsonCmd["parameters"].isMember("bracket")) { /* Bracket - 关注count和是否有raw */
+                gear = "aeb3";
+                if (jsonCmd["parameters"]["bracket"].isMember("count")) {
+                    int iAebNum = jsonCmd["parameters"]["bracket"]["count"].asInt();
+                    switch (iAebNum) {
+                        case 3: gear = "aeb3"; break;
+                        case 5: gear = "aeb5"; break;
+                        case 7: gear = "aeb7"; break;
+                        case 9: gear = "aeb9"; break;
+                    }
+                }
+            } else {    /* 11K_3D_OF, 11K_3D, 11K */
+                if (jsonCmd["parameters"].isMember("stiching")) { 
+                    if (jsonCmd["parameters"]["stiching"].isMember("mode")) {
+                        if (!strcmp(jsonCmd["parameters"]["stiching"]["mode"].asCString(), "pano")) {
+                            gear = "11k_of";
+                        } else {
+                            gear = "11k_3d_of";
+                        }
+                    } else {
+                        LOGERR(TAG, "takePitcure have node stitching, but 'mode' is not exist");
+                    }
+                } else {
+                    gear = "11k";
+                }
+            }
+
+            if (mTakePicStorageCfg.isMember(gear)) {
+                LOGDBG(TAG, "gear is [%s]", gear.c_str());
+                printJson(mTakePicStorageCfg[gear.c_str()]);
+                pResult = &(mTakePicStorageCfg[gear.c_str()]);
+            } else {
+                LOGERR(TAG, "--> This gear[%s] not support in mTakePicStorageCfg, maybe need update it");
+            }
+        } else {
+            LOGERR(TAG, "---> takePicture command hasn't parameters node");
+        }
+    } else if (jsonCmd.isMember("name") && !strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
+
+    } else {
+        LOGERR(TAG, "---> evaluateOneGrpPicSzByCmd: Unbelievable arguments recv.");
     }
-    return 0;
+    return pResult;
 }
 
 
@@ -2673,9 +2678,10 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
     int iTfCardUnitSize = -1;
     u64 uLocalVolSize = 0;
     u64 uRemoteVolSize = 0;
-    u32 uTfCanTakeNum = 0;
+    u32 uTfCanTakeNum = -1;
     u32 uTakepicNum = 0;   
-    u32 uTakepicTmpNum = 0;    
+    u32 uNvTakepicNum = -1;    
+    Json::Value* pEvlJson = nullptr;
 
     if (checkLocalVolumeExist()) {
         uLocalVolSize = getLocalVolLeftSize(bUseCached);
@@ -2683,6 +2689,31 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
     
     uRemoteVolSize = calcRemoteRemainSpace(false);
 
+    pEvlJson = evaluateOneGrpPicSzByCmd(jsonCmd);
+    if (pEvlJson) {
+        printJson(*pEvlJson);
+        Json::Value& jCalcObj = *pEvlJson;
+
+        if (jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
+            uTfCanTakeNum = uRemoteVolSize / jCalcObj["raw_size"].asInt();
+            uNvTakepicNum = uLocalVolSize / jCalcObj["misc_size"].asInt();
+        } else {
+            uNvTakepicNum = uLocalVolSize / (jCalcObj["misc_size"].asInt() + jCalcObj["raw_size"].asInt() * SYS_TF_COUNT_NUM);
+        }
+
+        LOGDBG(TAG, "--- uTfCanTakeNum[%d], uNvTakepicNum[%d] ----", uTfCanTakeNum, uNvTakepicNum);
+
+        if (uTfCanTakeNum > 0 && uNvTakepicNum > 0) {
+            uTakepicNum = (uTfCanTakeNum > uNvTakepicNum) ? uNvTakepicNum : uTfCanTakeNum;
+        } else {
+            uTakepicNum = (uTfCanTakeNum > 0) ? uTfCanTakeNum : uNvTakepicNum;
+        }
+
+    } else {
+        LOGERR(TAG, "--> calcTakepicLefNum: evaluateOneGrpPicSzByCmd return null,use default size to calc now.");
+    }
+
+#if 0
     if (!strcmp(jsonCmd["name"].asCString(), "camera._takePicture") || !strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
 
         if (jsonCmd["parameters"].isMember("bracket")) {            /* 包围曝光：全部存储在本地 - AEB3 */
@@ -2738,9 +2769,9 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
 
                 if ((iTfCardUnitSize > 0) && (iUnitSize > 0) )  {       /* Raw + jpeg */
                     uTfCanTakeNum = uRemoteVolSize / iTfCardUnitSize;
-                    uTakepicTmpNum = uLocalVolSize / iUnitSize;
-                    uTakepicNum = (uTfCanTakeNum > uTakepicTmpNum) ? uTakepicTmpNum: uTfCanTakeNum;
-                    LOGDBG(TAG, " -------- Timeplapse[raw+jpeg] Remote can store num[%d], Local can store num[%d]", uTfCanTakeNum, uTakepicTmpNum);
+                    uNvTakepicNum = uLocalVolSize / iUnitSize;
+                    uTakepicNum = (uTfCanTakeNum > uNvTakepicNum) ? uNvTakepicNum: uTfCanTakeNum;
+                    LOGDBG(TAG, " -------- Timeplapse[raw+jpeg] Remote can store num[%d], Local can store num[%d]", uTfCanTakeNum, uNvTakepicNum);
                 } else if ((iTfCardUnitSize > 0) && (iUnitSize < 0)) {  /* Raw */
                     uTakepicNum = uRemoteVolSize / iTfCardUnitSize;
                     LOGDBG(TAG, " -------- Timeplapse[raw only] Remote can store num[%d]", uTakepicNum);                    
@@ -2820,6 +2851,7 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
     } else {    
         LOGERR(TAG, " Invalid Takepic Json Cmd recved!");
     }
+#endif
 
     return uTakepicNum;
 }
@@ -2861,7 +2893,7 @@ int VolumeManager::doUnmount(const char *path, bool force)
  */
 int VolumeManager::unmountVolume(Volume* pVol, std::shared_ptr<NetlinkEvent> pEvt, bool force)
 {
-    AutoMutex _l(pVol->mVolLock);
+    std::unique_lock<std::mutex> _lock(pVol->mVolLock);   
 
     if (pEvt->getEventSrc() == NETLINK_EVENT_SRC_KERNEL) {
         std::string devnode = "/dev/";
@@ -2964,6 +2996,35 @@ int VolumeManager::checkFs(Volume* pVol)
 }
 
 
+/*************************************************************************
+** 方法名称: updateModuleVolumeSpace
+** 方法功能: 更新各模组的容量
+** 入口参数: 
+**      iAddDecSize - 为正数时为增加容量; 为负数时为减少容量
+** 返回值: 无
+** 调 用: 
+** 
+*************************************************************************/
+void VolumeManager::updateModuleVolumeSpace(int iAddDecSize)
+{
+    std::unique_lock<std::mutex> _lock(mRemoteDevLock);     
+    for (auto item: mModuleVols) {
+        LOGDBG(TAG, "-->Module Name[%s]", item->cVolName);
+        LOGDBG(TAG, "-->Module Total[%lu]", item->uTotal);
+        LOGDBG(TAG, "-->Module Avail[%lu]", item->uAvail);
+
+        if (iAddDecSize >= 0) 
+            item->uAvail += iAddDecSize;
+        else {
+            if (item->uAvail >= abs(iAddDecSize)) {
+                item->uAvail += iAddDecSize;
+            } else {
+                item->uAvail = 0;
+            }
+        }
+    }
+}
+
 /*
  * 更新指定卷的存储容量信息
  */
@@ -2971,8 +3032,8 @@ void VolumeManager::updateVolumeSpace(Volume* pVol)
 {
     struct statfs diskInfo;
     
-    AutoMutex _l(pVol->mVolLock);    
- 
+    std::unique_lock<std::mutex> _lock(pVol->mVolLock);        
+
     /* 卡槽使能并且卷已经被挂载 */
     if ((pVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE) && (pVol->iVolState == VOLUME_STATE_MOUNTED)) {
         
@@ -3022,6 +3083,38 @@ void VolumeManager::syncTakePicLeftSapce(u32 uLeftSize)
 
 
 
+void VolumeManager::syncTakePicLeftSapce(sp<Json::Value>& jsonCmd)
+{
+    /*
+     * 如果拍照命令中含raw,并且Raw存储在模组中,需要更新各个模组的剩余容量
+     * 否则,只需要更新本地存储的剩余容量
+     */
+    Json::Value* pJsonCmd = evaluateOneGrpPicSzByCmd(*(jsonCmd.get()));
+    if (pJsonCmd) {
+        Json::Value& jCalcObj = *pJsonCmd;
+        
+        /* 更新模组的剩余容量,并同时更新NV剩余容量 */
+        if (jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
+            int iRawSize = jCalcObj["raw_size"].asInt();
+            updateModuleVolumeSpace(-iRawSize);            
+        } else if ((jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_NV)) {
+            if (mCurrentUsedLocalVol) {
+                mCurrentUsedLocalVol->uAvail -= jCalcObj["raw_size"].asInt() * SYS_TF_COUNT_NUM;
+                LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
+            }
+        }
+
+        if (mCurrentUsedLocalVol) {
+            mCurrentUsedLocalVol->uAvail -= jCalcObj["misc_size"].asInt();
+            LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
+        }
+
+    } else {
+        LOGERR(TAG, "---> syncTakePicLeftSapce: Invalid TakePicture Json Command:");
+        printJson(*(jsonCmd.get()));
+    }
+
+}
 
 #if 0
 int VolumeManager::formatFs2Ext4(const char *fsPath, unsigned int numSectors, const char *mountpoint) 

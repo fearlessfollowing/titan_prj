@@ -63,4 +63,6 @@ bool loadJsonFromFile(std::string filePath, Json::Value* root);
 
 bool loadJsonFromString(std::string jsonStr, Json::Value* root);
 
+void printJson(Json::Value& root);
+
 #endif //PROJECT_UTIL_H

@@ -213,6 +213,10 @@
 
 #define DNSMASQ_CONF_PATH               "/etc/dnsmasq.conf"
 
+
+#define EVL_TAKE_PIC_BILL   "/home/nvidia/insta360/etc/evlTakepicSz.json"
+
+
 /*
  * 日志存放路径名
  */
@@ -223,6 +227,7 @@
 #define TIME_TZ_LOG_PATH                "/home/nvidia/insta360/log/tz_log"
 
 
+
 /*
  * 模板参数
  */
@@ -231,6 +236,8 @@
 #define TAKE_LIVE_TEMPLET_PATH          "/home/nvidia/insta360/etc/live_customer.json"
 
 #define PREVIEW_JSON_FILE               "/home/nvidia/insta360/etc/preview.json"
+
+
 
 
 /*

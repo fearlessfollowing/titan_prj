@@ -489,9 +489,7 @@ enum {
 };
 
 struct _icon_info_;
-struct _lr_menu_;
-struct _r_menu_;
-struct _remain_info_;
+
 struct _select_info_;
 struct _qr_res_;
 struct _disp_type;
@@ -499,6 +497,7 @@ struct _action_info_;
 struct _wifi_config_;
 struct _err_type_info_;
 struct _cam_prop_;
+
 struct stSetItem;
 struct stPicVideoCfg;
 struct stStorageItem;
@@ -714,8 +713,6 @@ private:
 
     bool    checkisLiveRecord();
 
-    void    printJsonCfg(Json::Value& json);
-
     bool    checkIsTakeTimelpaseInCustomer();
 
 
@@ -883,9 +880,9 @@ private:
 
     void    convStorageSize2Str(int iUnit, u64 size, char* pStore, int iLen);
     bool    checkStorageSatisfy(int action);
-
-
     int     getTakepicCustomerDelay();
+
+
     /*
      * 拍照部分
      */
@@ -1037,7 +1034,7 @@ private:
     Json::Value                 mControlPicJsonCmd;         /* 客户端请求的拍照JsonCmd */
     bool                        mClientTakePicUpdate;
 
-    Json::Value                 mControlVideoJsonCmd;         /* 客户端请求的拍照JsonCmd */
+    Json::Value                 mControlVideoJsonCmd;       /* 客户端请求的拍照JsonCmd */
     bool                        mClientTakeVideoUpdate;
 
     bool                        mAgingMode;
@@ -1045,9 +1042,8 @@ private:
     Json::Value                 mControlLiveJsonCmd;         /* 客户端请求的拍照JsonCmd */
     bool                        mClientTakeLiveUpdate;
 	
-	// int save_select;
-    sp<oled_module>             mOLEDModule;
 
+    sp<oled_module>             mOLEDModule;
     sp<SYNC_INIT_INFO>          mSyncInitInfo;
 
     /*
@@ -1061,15 +1057,6 @@ private:
     u8                          mFrontLightVal;     /* 前灯的颜色值 */
 
     std::mutex                  mutexState;
-
-
-#if 0
-    sp<battery_interface>       mBatInterface;        
-    sp<BAT_INFO>                m_bat_info_;
-// #else 
-    sp<BatteryManager>          mBatInterface;
-    sp<BatterInfo>              mBatInfo;
-#endif
 
     sp<SYS_INFO>                mReadSys;
     sp<struct _ver_info_>       mVerInfo;
