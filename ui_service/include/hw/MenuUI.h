@@ -90,15 +90,15 @@ typedef enum _type_ {
     SYNC_LIVE_AND_PREVIEW = 90,
     SYNC_LIVE_CONNECT_AND_PREVIEW,// 91,
     //used internal
-    START_STA_WIFI_FAIL,// 92,
-    STOP_STA_WIFI_FAIL ,// 93,
-    START_AP_WIFI_FAIL ,// 94,
-    STOP_AP_WIFI_FAIL = 95 ,// 95,
+    START_STA_WIFI_FAIL,        // 92,
+    STOP_STA_WIFI_FAIL ,        // 93,
+    START_AP_WIFI_FAIL ,        // 94,
+    STOP_AP_WIFI_FAIL = 95 ,    // 95,
 
     START_AGEING_FAIL = 97,
     START_AGEING = 98,
-    START_FORCE_IDLE = 99,// 99,
-    RESET_ALL = 100,// 100,
+    START_FORCE_IDLE = 99,  // 99,
+    RESET_ALL = 100,        // 100,
 
 
 	START_QUERY_STORAGE = 110,	/*  */
@@ -410,6 +410,9 @@ enum {
     SND_MAX_NUM,
 };
 
+
+#if 0
+
 /*
  * 高电平有效
  */
@@ -479,6 +482,41 @@ enum {
 };
 
 #endif
+
+#endif
+
+
+/* Slave Addr: 0x77 Reg Addr: 0x03
+ * bit[7] - USB_POWER_EN2
+ * bit[6] - USB_POWER_EN1
+ * bit[5] - LED_BACK_B
+ * bit[4] - LED_BACK_G
+ * bit[3] - LED_BACK_R
+ * bit[2] - LED_FRONT_B
+ * bit[1] - LED_FRONT_G
+ * bit[0] - LED_FRONT_R
+ */
+enum {
+    LIGHT_OFF 		= 0xc0,		/* 关闭所有的灯 bit[7:6] = Camera module */
+    FRONT_RED 		= 0xc1,		/* 前灯亮红色,后灯全灭 */
+    FRONT_GREEN 	= 0xc2,		/* 前灯亮绿色,后灯全灭 */
+    FRONT_YELLOW 	= 0xc3,		/* 前灯亮黄色(G+R), 后灯全灭 */
+    FRONT_DARK_BLUE = 0xc4,		/* 前灯亮蓝色, 后灯全灭 */
+    FRONT_PURPLE 	= 0xc5,
+    FRONT_BLUE 		= 0xc6,
+    FRONT_WHITE 	= 0xc7,		/* 前灯亮白色(R+G+B),后灯全灭 */
+
+    BACK_RED 		= 0xc8,		/* 后灯亮红色 */
+    BACK_GREEN 		= 0xd0,		/* 后灯亮绿色 */
+    BACK_YELLOW 	= 0xd8,		/* 后灯亮黄色 */
+    BACK_DARK_BLUE 	= 0xe0,
+    BACK_PURPLE 	= 0xe8,
+    BACK_BLUE 		= 0xf0,
+    BACK_WHITE		= 0xf8,		/* 后灯亮白色 */
+
+    LIGHT_ALL 		= 0xff		/* 所有的灯亮白色 */
+};
+
 
 enum {
     GPS_STATE_NO_DEVICE,
@@ -882,13 +920,10 @@ private:
     bool    checkStorageSatisfy(int action);
     int     getTakepicCustomerDelay();
 
-
     /*
      * 拍照部分
      */
     void    cfgPicModeItemCurVal(struct stPicVideoCfg* pPicCfg);
-
-    int     getCurOneGroupPicSize();
 
 
 /*************************************************************************************************

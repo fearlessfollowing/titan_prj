@@ -746,6 +746,7 @@ static bool check_require_exist(const char* mount_point, std::vector<sp<UPDATE_S
     return true;
 }
 
+
 static int getPro2UpdatePackage(FILE* fp, u32 offset)
 {
 	u8 buf[1024 * 1024] = {0};
@@ -872,7 +873,7 @@ static int pro2Updatecheck(const char* pUpdateFileDir)
 }
 
 
-#define INSTALL_SAMBA_CMD	"/usr/local/bin/install_samba.sh"
+#define INSTALL_USER_CMD	"/usr/local/bin/user_update.sh"
 
 
 static void installVm()
@@ -888,7 +889,8 @@ static void installVm()
 }
 
 
-static int installSamba(const char* cmdPath)
+
+static int executeUserScript(const char* cmdPath)
 {
 	int status;
 	const char *args[1];
@@ -984,24 +986,18 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 		if (!check_require_exist(UPDATE_DEST_BASE_DIR, mSections)) {	/* 检查必备的升级程序是否存在: bill.list */
 			iRet = ERR_UPAPP_BILL;
 		} else {
-
 			updateRootPath += PRO2_UPDATE_DIR;
 			iRet = update_sections(updateRootPath.c_str(), mSections);
 
-
-		#if 0
-			/*
-			 * 检查是否安装了samba,如果没有安装，执行以下脚本安装samba服务
-			 */
-			if (access(INSTALL_SAMBA_CMD, F_OK) == 0) {
-				LOGDBG(TAG, "[%s: %d] Execute install samba service now ...........", __FILE__, __LINE__);
-				chmod(INSTALL_SAMBA_CMD, 0766);
-				installSamba(INSTALL_SAMBA_CMD);
+		#if 1
+			/** 检查是否安装了samba,如果没有安装，执行以下脚本安装samba服务 */
+			if (access(INSTALL_USER_CMD, F_OK) == 0) {
+				LOGDBG(TAG, "Running User-Definded Script now ...........");
+				chmod(INSTALL_USER_CMD, 0766);
+				executeUserScript(INSTALL_USER_CMD);
 			}
 		#endif 
-
 			installVm();
-
 		}
 
 #ifdef UPGRADE_CHECK_BATTERY

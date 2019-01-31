@@ -16,6 +16,7 @@
 ** V3.1         Skymixos        2018年11月15日   修改输入监听looper线程未监听控制PIPE的BUG
 ** V3.2         Skymixos        2018年11月16日   将输入监听改为select
 ** V3.3         Skymixos        2018年11月20日   新增Linux按键码到APP应用码值的转换
+** V3.4         Skymixos        2019年01月30日   导出按键设备路径到属性系统(供其他应用使用)
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -203,6 +204,7 @@ int InputManager::openDevice(const char *device)
     } else {
         if (strcmp(name, "gpio-keys") == 0) {
             LOGDBG(TAG, "found input device %s", device);
+            property_set(PROP_INPUT_DEV_PATH, device);
             mKeyFd = fd;
         } else {
             goto err_ioctl;
@@ -331,7 +333,7 @@ int InputManager::longPressMonitorLoop()
 {
     struct timeval timeout;
 
-    LOGDBG(TAG, "Enter longPressMonitorLoop now ... ");
+    LOGNULL(TAG, "Enter longPressMonitorLoop now ... ");
 
     while (true) {
 
@@ -345,9 +347,9 @@ int InputManager::longPressMonitorLoop()
 
         TEMP_FAILURE_RETRY(read(mLongPressMonitorPipe[0], &c, 1));	
         if (c == CtrlPipe_Wakeup) {
-            LOGDBG(TAG, "Startup Long press Monitor now ...");
+            LOGNULL(TAG, "Startup Long press Monitor now ...");
         } else if (c == CtrlPipe_Shutdown) {
-            LOGDBG(TAG, "Long press Monitor quit now ... ");
+            LOGNULL(TAG, "Long press Monitor quit now ... ");
             break;
         } else {
             continue;
@@ -369,7 +371,7 @@ int InputManager::longPressMonitorLoop()
                 continue;
         } else if (!rc) {   /* 等待超时 */
 
-            LOGDBG(TAG, "Wait timeout 3s, report long press now...");
+            LOGNULL(TAG, "Wait timeout 3s, report long press now...");
 
             /* 3.按键被松开，不需要发送上报事件，由原线程发送;超时，发送长按消息 */
             if (false == mLongPressReported) {
@@ -384,7 +386,7 @@ int InputManager::longPressMonitorLoop()
                 char c = CtrlPipe_Cancel;
                 TEMP_FAILURE_RETRY(read(mLongPressMonitorPipe[0], &c, 1));	
                 if (c == CtrlPipe_Cancel) {
-                    // LOGDBG(TAG, "Startup Long press Canceled ...");
+                    LOGNULL(TAG, "Startup Long press Canceled ...");
                 } else if (c == CtrlPipe_Shutdown) {
                     LOGDBG(TAG, "Long press Monitor quit now ... ");
                     break;

@@ -478,7 +478,7 @@ public:
     void        updateVolumeSpace(Volume* pVol);
     void        updateModuleVolumeSpace(int iAddDecSize);
 
-    void        syncTakePicLeftSapce(u32 uLeftSize);
+    void        syncTakePicLeftSapce(Json::Value& jsonCmd);
     void        syncTakePicLeftSapce(sp<Json::Value>& jsonCmd);
 
 
@@ -578,6 +578,8 @@ public:
     u32         calcTakeLiveRecLefSec(Json::Value& jsonCmd);
 
     Json::Value* evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd);
+    Json::Value* getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd);
+
 
     /*
      * 录像/直播存片 时间接口

@@ -36,6 +36,7 @@ private:
     bool                mSendToLogd;
 };
 
+#define LOGNULL(tag, fmt, ...)  
 #define LOGVER(tag, fmt, ...)  LogWrapper::mLogger->log(ANDROID_LOG_VERBOSE, tag, __FILE__, __LINE__, fmt, ##__VA_ARGS__);
 #define LOGINFO(tag, fmt, ...) LogWrapper::mLogger->log(ANDROID_LOG_INFO, tag, __FILE__, __LINE__, fmt, ##__VA_ARGS__);
 #define LOGDBG(tag, fmt, ...)  LogWrapper::mLogger->log(ANDROID_LOG_DEBUG, tag, __FILE__, __LINE__, fmt, ##__VA_ARGS__);

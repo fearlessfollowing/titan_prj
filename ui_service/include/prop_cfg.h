@@ -174,6 +174,10 @@
 #define PROP_PRESS_INTERVAL             "sys.press_interval"
 
 
+/*
+ * 按键设备路径名属性
+ */
+#define PROP_INPUT_DEV_PATH             "sys.input_path"
 
 
 /******************************************************************************************************

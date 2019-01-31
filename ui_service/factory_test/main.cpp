@@ -73,8 +73,9 @@ int main(int argc ,char *argv[])
 		factoryTestHndl->awbTest();
 	} else if (strcmp(argv[1], "oled") == 0) {
         property_set("ctl.stop", "ui_service");
-        msg_util::sleep_ms(500);
+        msg_util::sleep_ms(1000);
 		factoryTestHndl->oledTest();
+        msg_util::sleep_ms(1000);
         property_set("ctl.start", "ui_service");
     } else if (strcmp(argv[1], "enter_blcbpc") == 0) {
 		factoryTestHndl->enterBlcbpc();

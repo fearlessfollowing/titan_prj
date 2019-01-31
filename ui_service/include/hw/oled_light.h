@@ -16,19 +16,14 @@ public:
 
     void        setAllLight(int iOnOff);
 
-
-    /* 保存恢复灯的状态 */
-    void        suspend_led_status();
-    void        resume_led_status();
-
     void        close_all();
 
 private:
     void        init();
     void        deinit();
 
-    u8 mRestoreLedVal = 0;
-    u8 light_restore_val = 0x7;
+    u8          mRestoreLedVal = 0;
+    u8          light_restore_val = 0x7;
 
     sp<ins_i2c> mI2CLight;
 }; 
