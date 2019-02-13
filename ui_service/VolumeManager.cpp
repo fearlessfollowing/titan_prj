@@ -607,7 +607,7 @@ void VolumeManager::loadPicVidStorageCfgBill()
             mTakePicStorageCfg["burst"]["misc_size"]                = 260;   /* 256 - 300MB */
             mTakePicStorageCfg["burst"]["raw_enable"]               = 0; 
 
-            mTakePicStorageCfg["timelapse"]["raw_storage_loc"]      = 0;
+            mTakePicStorageCfg["timelapse"]["raw_storage_loc"]      = PIC_RAW_STORAGE_LOC_MODULE;
             mTakePicStorageCfg["timelapse"]["other_storage_loc"]    = PIC_RAW_STORAGE_LOC_NV;
             mTakePicStorageCfg["timelapse"]["raw_size"]             = 40;
             mTakePicStorageCfg["timelapse"]["misc_size"]            = 20; 
@@ -2380,7 +2380,6 @@ bool VolumeManager::checkAllTfCardExist()
 }
 
 
-
 int VolumeManager::getIneedTfCard(std::vector<int>& vectors)
 {
     int iErrType = VOL_MODULE_STATE_OK;
@@ -2394,7 +2393,7 @@ int VolumeManager::getIneedTfCard(std::vector<int>& vectors)
                 iErrType = VOL_MODULE_STATE_NOCARD;
             } else if (tmpVolume->uTotal > 0 && (tmpVolume->iVolState != VOL_MODULE_STATE_OK && tmpVolume->iVolState != VOL_MODULE_STATE_FULL)) {
                 vectors.push_back(tmpVolume->iIndex);
-                LOGDBG(TAG, "---> Module[%d] State[%d]", tmpVolume->iIndex, tmpVolume->iVolState);
+                LOGDBG(TAG, "---> Module[%d] State[%s]", tmpVolume->iIndex, getVolState(tmpVolume->iVolState));
                 iErrType = tmpVolume->iVolState;
             }
         }
@@ -2840,11 +2839,10 @@ Json::Value* VolumeManager::getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd
 
     printJson(jsonCmd);
 
-    /** 普通拍照 */
-    if (jsonCmd.isMember("name") && !strcmp(jsonCmd["name"].asCString(), "camera._takePicture")) {
-        std::string gear = "customer";
+    if (jsonCmd.isMember("name") && jsonCmd.isMember("parameters")) {
+        if (!strcmp(jsonCmd["name"].asCString(), "camera._takePicture")) {
+            std::string gear = "customize";
 
-        if (jsonCmd.isMember("parameters")) {
             if (jsonCmd["parameters"].isMember("origin")) {
                 if (jsonCmd["parameters"]["origin"].isMember("mime")) {
                     if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "raw+jpeg")) {
@@ -2881,25 +2879,132 @@ Json::Value* VolumeManager::getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd
                     gear = "11k";
                 }
             }
-
             LOGINFO(TAG, "--> getTakePicStorageCfgFromJsonCmd: gear[%s], raw enbale = %d", gear.c_str(), iRawEnable);
             if (mTakePicStorageCfg.isMember(gear)) {
-
                 mTakePicStorageCfg[gear.c_str()]["raw_enable"] = iRawEnable;
                 pResult = &(mTakePicStorageCfg[gear.c_str()]);
             } else {
                 LOGERR(TAG, "--> This gear[%s] not support in mTakePicStorageCfg, maybe need update it");
             }
-        } else {
-            LOGERR(TAG, "---> takePicture command hasn't parameters node");
-        }
-    } else if (jsonCmd.isMember("name") && !strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
 
+        } else if (!strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
+
+            if (jsonCmd["parameters"].isMember("timelapse")) {
+                if (jsonCmd["parameters"].isMember("origin")) {
+                    if (jsonCmd["parameters"]["origin"].isMember("mime")) {
+                        if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "raw+jpeg")) {
+                            iRawEnable = 1;
+                        }
+                    }
+                }
+
+                if (mTakePicStorageCfg.isMember("timelapse")) {
+                    mTakePicStorageCfg["timelapse"]["raw_enable"] = iRawEnable;
+                    pResult = &(mTakePicStorageCfg["timelapse"]);
+                } else {
+                    LOGERR(TAG, "--> This gear[%s] not support in mTakePicStorageCfg, maybe need update it");
+                }
+            }
+        } else {
+            LOGERR(TAG, "---> evaluateOneGrpPicSzByCmd: Unkown command: %s", jsonCmd["name"].asCString());        
+        }
     } else {
-        LOGERR(TAG, "---> evaluateOneGrpPicSzByCmd: Unbelievable arguments recv.");
+        LOGERR(TAG, "---> evaluateOneGrpPicSzByCmd: Unbelievable arguments recv.");        
     }
     return pResult;
 }
+
+
+#if 0
+{
+        "name" : "camera._startRecording",
+        "parameters" :
+        {
+                "fileOverride" : false,
+                "origin" :
+                {
+                        "hdr" : false,
+                        "height" : 3956,
+                        "logMode" : 0,
+                        "mime" : "jpeg",
+                        "saveOrigin" : true,
+                        "width" : 5280
+                },
+                "properties" :
+                {
+                        "audio_gain" : 64,
+                        "len_param" :
+                        {
+                                "aaa_mode" : 1,
+                                "brightness" : 0,
+                                "contrast" : 64,
+                                "ev_bias" : 0,
+                                "hue" : 0,
+                                "iso_cap" : 0,
+                                "iso_value" : 0,
+                                "saturation" : 64,
+                                "sharpness" : 0,
+                                "shutter_value" : 0,
+                                "stabilization" : 1,
+                                "wb" : 0
+                        }
+                },
+                "stabilization" : true,
+                "storageSpeedTest" : false,
+                "timelapse" :
+                {
+                        "enable" : true,
+                        "interval" : 2000
+                }
+        }
+}
+
+
+
+{
+        "name" : "camera._startRecording",
+        "parameters" :
+        {
+                "fileOverride" : false,
+                "origin" :
+                {
+                        "hdr" : false,
+                        "height" : 3956,
+                        "logMode" : 0,
+                        "mime" : "raw+jpeg",
+                        "saveOrigin" : true,
+                        "width" : 5280
+                },
+                "properties" :
+                {
+                        "audio_gain" : 64,
+                        "len_param" :
+                        {
+                                "aaa_mode" : 1,
+                                "brightness" : 0,
+                                "contrast" : 64,
+                                "ev_bias" : 0,
+                                "hue" : 0,
+                                "iso_cap" : 0,
+                                "iso_value" : 0,
+                                "saturation" : 64,
+                                "sharpness" : 0,
+                                "shutter_value" : 0,
+                                "stabilization" : 1,
+                                "wb" : 0
+                        }
+                },
+                "stabilization" : true,
+                "storageSpeedTest" : false,
+                "timelapse" :
+                {
+                        "enable" : true,
+                        "interval" : 4000
+                }
+        }
+}
+
+#endif
 
 
 /*
@@ -3565,4 +3670,20 @@ bool VolumeManager::formatVolume2Ext4(Volume* pVol)
     return true;
 }
 
+#define CONVNUMTOSTR(n) case n: return #n 
 
+const char* VolumeManager::getVolState(int iType)
+{
+    switch (iType) {
+        CONVNUMTOSTR(VOL_MODULE_STATE_OK);
+        CONVNUMTOSTR(VOL_MODULE_STATE_NOCARD);
+        CONVNUMTOSTR(VOL_MODULE_STATE_FULL);
+        CONVNUMTOSTR(VOL_MODULE_STATE_INVALID_FORMAT);   
+        CONVNUMTOSTR(VOL_MODULE_STATE_WP); 
+        CONVNUMTOSTR(VOL_MODULE_STATE_OTHER_ERROR);         
+
+        default: return "Unkown State";
+    }
+}
+
+     

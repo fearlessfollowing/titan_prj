@@ -3666,19 +3666,18 @@ void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, std::vector<Volume*>& mVolum
             case 2: tmPos.yPos = 48; break;
         }
         
-    #ifdef ENABLE_SHOW_SPACE_NV
+#ifdef ENABLE_SHOW_SPACE_NV
         tmPos.xPos 		= 27;   
         tmPos.iWidth	= 103;   
         tmPos.iHeight   = 16;   
-    #else
+#else
         tmPos.xPos 		= 2;        
         tmPos.iWidth	= 128;     
         tmPos.iHeight   = 16;       
-    #endif
+#endif
 
         gStorageInfoItems[i]->stPos = tmPos;
         gStorageInfoItems[i]->pStVolumeInfo = mVolumeList.at(i);
-        LOGDBG(TAG, "[%d] name: %s", i, gStorageInfoItems[i]->pStVolumeInfo->cVolName);
     }
 }
 
@@ -4338,12 +4337,14 @@ void MenuUI::dispStorageItem(struct stStorageItem* pStorageItem, bool bSelected)
         used_size = pStorageItem->pStVolumeInfo->uTotal - (pStorageItem->pStVolumeInfo->uAvail + iRemainSpace);
     }
 
+#ifdef ENABLE_DEBUG_SET_PAGE
     LOGDBG(TAG, "dispStorageItem item name [%s], selected[%s], Total size[%d]M, Used size[%d]M", 
                             pStorageItem->pStVolumeInfo->cVolName, 
                             (bSelected == true) ? "yes": "no",
                             pStorageItem->pStVolumeInfo->uTotal,
                             used_size
                             );
+#endif
 
     convStorageSize2Str(STORAGE_UNIT_MB, pStorageItem->pStVolumeInfo->uTotal, cTotal, 8);
     convStorageSize2Str(STORAGE_UNIT_MB, used_size, cUsed, 8);
@@ -5328,7 +5329,10 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 /*
  * checkStorageSatisfy - 检查存储是否满足指定的动作
  * action - 拍照，录像，直播
+ * - 如果设置属性(sys.tp_ul - 拍照只需要本地卷即可) PROP_TP_UL
  */
+#define PROP_TP_UL "sys.tp_ul"
+
 bool MenuUI::checkStorageSatisfy(int action)
 {
     bool bRet = false;
@@ -5337,13 +5341,18 @@ bool MenuUI::checkStorageSatisfy(int action)
     LOGDBG(TAG, "checkStorageSatisfy (%d)", vm->getLocalVols().size());
 
     switch (action) {
-        case ACTION_PIC: {  /* 拍照,只有大卡存在都可以拍照操作 */
 
-        #ifdef ENABLE_MODE_NO_TF_TAKEPIC
-            if (vm->checkLocalVolumeExist()) {
-        #else
-            if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {
-        #endif
+        case ACTION_PIC: {  /* 拍照,只有大卡存在都可以拍照操作 */
+            const char* pTpUseLoclVol = property_get(PROP_TP_UL);
+            bool bCardEnough = false;
+
+            if (pTpUseLoclVol && !strcmp(pTpUseLoclVol, "true")) {
+                bCardEnough = vm->checkLocalVolumeExist();
+            } else {
+                bCardEnough = vm->checkLocalVolumeExist() && vm->checkAllTfCardExist();
+            }
+
+            if (bCardEnough) {
                 LOGDBG(TAG, "mCanTakePicNum = %d", mCanTakePicNum);
                 if (mCanTakePicNum > 0) {
                     bRet = true;
@@ -5356,8 +5365,8 @@ bool MenuUI::checkStorageSatisfy(int action)
         }
 
         case ACTION_VIDEO: {    /* 录像的存储条件判断 */
-            if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {
-                
+
+            if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {                
                 /* 如果拍的是timelapse,检查拍timelapse的张数是否大于0 */
                 if (true == mTakeVideInTimelapseMode) {
                     if (vm->getTakeTimelapseCnt() > 0) {
@@ -5802,7 +5811,7 @@ void MenuUI::procPowerKeyEvent()
                         oled_disp_type(CAPTURE);
                     } 
                 } else {
-                    LOGDBG(TAG, "Can't Satisfy Take Video Condition");
+                    LOGDBG(TAG, "Can't Satisfy Take Picture Condition");
                 }
             }
             break;

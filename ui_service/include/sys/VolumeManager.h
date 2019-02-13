@@ -522,6 +522,8 @@ private:
 
     void                    modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel);   
 
+    const char*             getVolState(int iType);
+
 public:
     void                    runFileMonitorListener();
 };
