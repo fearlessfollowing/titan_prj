@@ -367,3 +367,52 @@ void HardwareService::stopService()
         }
     } 
 }
+
+
+void HardwareService::tunningFanSpeed(int iLevel)
+{
+    int iFanSpeed[] = {0, 120, 160, 200, 255};
+    int iCurSpeed;
+    char cmd[128] = {0};
+
+    if (iLevel < 0 || iLevel > 4) {
+        iCurSpeed = iFanSpeed[4];
+    } else {
+        iCurSpeed = iFanSpeed[iLevel];        
+    }
+    LOGDBG(TAG, "---> tunning fan speed: %d", iCurSpeed);
+
+    sprintf(cmd, "echo %d > /sys/kernel/debug/tegra_fan/target_pwm", iCurSpeed);
+    system(cmd);
+}
+
+#define FAN_SPEED_LEVEL_PATH "/sys/kernel/debug/tegra_fan/cur_pwm"
+
+
+int HardwareService::getCurFanSpeedLevel()
+{
+    char cSpeed[512] = {0};   
+    int iSpeedLevel = 0; 
+    int iCurSpeed = 0;
+    if (access(FAN_SPEED_LEVEL_PATH, F_OK) == 0) {
+        FILE* fp = fopen(FAN_SPEED_LEVEL_PATH, "r");
+        if (fp) {
+            fgets(cSpeed, sizeof(cSpeed), fp);
+            cSpeed[strlen(cSpeed) -1] = '\0';
+            iCurSpeed = atoi(cSpeed);
+            if (iCurSpeed < 50) {
+                iSpeedLevel = 0;
+            } else if (iCurSpeed < 120) {
+                iSpeedLevel = 1;
+            } else if (iCurSpeed < 160) {
+                iSpeedLevel = 2;
+            } else if (iCurSpeed < 200) {
+                iSpeedLevel = 3;
+            } else {
+                iSpeedLevel = 4;
+            }
+            fclose(fp);
+        }
+    } 
+    return iSpeedLevel;   
+}

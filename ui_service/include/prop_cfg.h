@@ -349,6 +349,11 @@
 #define SET_ITEM_NAME_AEB7          "aeb7"
 #define SET_ITEM_NAME_AEB9          "aeb9"
 
+#define SET_ITEM_NAME_FR_OFF        "Off"
+#define SET_ITEM_NAME_FR_LL1        "Level-1"
+#define SET_ITEM_NAME_FR_LL2        "Level-2"
+#define SET_ITEM_NAME_FR_LL3        "Level-3"
+#define SET_ITEM_NAME_FR_LL4        "Level-4"
 
 
 /***************************************************************************

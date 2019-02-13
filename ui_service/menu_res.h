@@ -275,6 +275,22 @@ static MENU_INFO mMenuInfos[] = {
         NULL,
     },
 
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+    /*
+     * MENU_SET_PHTO_DELAY
+     */
+    {
+        MENU_SYS_SETTING,
+        {-1 ,0, 0, 8, 3, 3},
+        {APP_KEY_UP, APP_KEY_DOWN, APP_KEY_BACK, 0, APP_KEY_POWER},
+        MENU_SET_FAN_RATE,
+        NULL,
+        NULL,
+    },
+#endif    
+
+
 #ifdef ENABLE_MENU_AEB
     /*
      * MENU_AEB

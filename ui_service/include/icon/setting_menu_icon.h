@@ -2251,7 +2251,8 @@ typedef struct stSetItem {
 	const u8 * 		stNorIcon[SETIING_ITEM_ICON_NUM];		/* 未选中时的图标列表 */
 	PIC_ORG*		stOrigArg[SETTING_PIC_ORG_ARG_NUM];
 
-    const char*     pNote;
+    // const char*     pNote;
+    std::string     pNote;
     bool            bMode;      /* true: 图标; false:文字 */
 } SettingItem;
 
@@ -2320,7 +2321,7 @@ SettingItem setStorageSpace = {
 		showStorageSpace_Nor_103x16,
 	},	
     stOrigArg:      {},
-    pNote:          NULL,
+    pNote:          "",
     bMode:          true,
 };
 
@@ -2340,7 +2341,7 @@ SettingItem setTestSpeed = {
 		testWriteSpeed_Nor_103x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,
+    pNote:          "",
     bMode:          true,
 	
 };
@@ -2365,7 +2366,7 @@ SettingItem setDhcpItem = {
 		set_ethernet_dhcp_normal_96_16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,    
+    pNote:          "",    
     bMode:          true,
 };
 
@@ -2387,7 +2388,7 @@ SettingItem setFreqItem = {
 		set_frequency_60hz_normal_96_16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,    
+    pNote:          "",    
     bMode:          true,				
 };
 
@@ -2408,7 +2409,7 @@ SettingItem setHDRItem = {
 		setHdrOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,    
+    pNote:          "",    
     bMode:          true,					
 };
 
@@ -2430,7 +2431,7 @@ SettingItem setRawPhotoItem = {
 		setRawPhotoOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,    
+    pNote:          "",    
     bMode:          true,					
 };
 
@@ -2461,7 +2462,7 @@ SettingItem setAebItem = {
 		&aeb7Ev,
 		&aeb9Ev,
 	},  
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,   				
 };
 
@@ -2511,7 +2512,7 @@ SettingItem setPhotoDelayItem = {
 		setPhotoDelay60sNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,					
 };
 
@@ -2533,7 +2534,7 @@ SettingItem setSpeakerItem = {
 		setSpeakOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true, 					
 };
 
@@ -2555,7 +2556,7 @@ SettingItem setLedItem = {
 		setLedOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,					
 };
 
@@ -2577,7 +2578,7 @@ SettingItem setAudioItem = {
 		setAudioOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,									
 };
 
@@ -2598,7 +2599,7 @@ SettingItem setSpatialAudioItem = {
 		setSpatialAudioOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,													
 };
 
@@ -2620,7 +2621,7 @@ SettingItem setFlowStateItem = {
 		setFlowStateOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,																	
 };
 
@@ -2642,7 +2643,7 @@ SettingItem setGyroOnOffItem = {
 		setGyroOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,					
 };
 
@@ -2664,7 +2665,7 @@ SettingItem setGyroCalItem = {
 		setGyrCalNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,				
 };
 
@@ -2687,7 +2688,7 @@ SettingItem setFanItem = {
 		setFanOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,				
 };
 
@@ -2710,7 +2711,7 @@ SettingItem setSampleNosieItem = {
 		setSampNoiseNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,					
 };
 
@@ -2733,7 +2734,7 @@ SettingItem setBottomLogoItem = {
 		setBottomlogoOn_Nor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true, 					
 };
 
@@ -2756,7 +2757,7 @@ SettingItem setVideSegItem = {
 		setSegOnNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true, 					
 };
 
@@ -2779,7 +2780,7 @@ SettingItem setStorageItem = {
 		setStorageNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true, 					
 };
 
@@ -2802,7 +2803,7 @@ SettingItem setInfoItem = {
 		setInfoNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true, 					
 };
 
@@ -2826,7 +2827,7 @@ SettingItem setResetItem = {
 		setResetNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,					
 };
 
@@ -2849,7 +2850,7 @@ SettingItem setCalcStich = {
 		setCalcStichNor_96x16,
 	},
     stOrigArg:      {},    
-    pNote:          NULL,      
+    pNote:          "",      
     bMode:          true,
 };
 
@@ -2859,7 +2860,6 @@ SettingItem setCalcStich = {
 SettingItem setFanRateControlItem = {
 	pItemName:      SET_ITEM_NAME_FAN_RATE_CTL,		// pItemName
 	iItemMaxVal:    5,							    // Fan Rate: Off/1/2/3/4
-
 	iCurVal:        0,							    // iCurVal
 	bHaveSubMenu:   true,						    // bHaveSubMenu
 	pSetItemProc:   NULL,						    // pSetItemProc
@@ -2869,7 +2869,7 @@ SettingItem setFanRateControlItem = {
 	stNorIcon:      {	/* 未选中时的图标列表 */
 	},
     stOrigArg:      {},    
-    pNote:          " FanRateCtrl",     
+    pNote:          "FanRateCtrl",     
     bMode:          false,					
 };
 #endif
@@ -2997,7 +2997,7 @@ SettingItem setPhDelayOffItem = {
 		photodelay_off_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3018,7 +3018,7 @@ SettingItem setPhDelay3SItem = {
 		photodelay_3s_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3037,7 +3037,7 @@ SettingItem setPhDelay5SItem = {
 		photodelay_5s_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3057,7 +3057,7 @@ SettingItem setPhDelay10SItem = {
 		photodelay_10s_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3076,7 +3076,7 @@ SettingItem setPhDelay20SItem = {
 		photodelay_20s_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3096,7 +3096,7 @@ SettingItem setPhDelay30SItem = {
 		photodelay_30s_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3116,7 +3116,7 @@ SettingItem setPhDelay40SItem = {
 		photodelay_40s_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3136,7 +3136,7 @@ SettingItem setPhDelay50SItem = {
 		photodelay_50s_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3156,7 +3156,7 @@ SettingItem setPhDelay60SItem = {
 		photodelay_60s_normal_89x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3202,7 +3202,7 @@ SettingItem setAeb3Item = {
 		aeb3Nor_83x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3221,7 +3221,7 @@ SettingItem setAeb5Item = {
 		aeb5Nor_83x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3240,7 +3240,7 @@ SettingItem setAeb7Item = {
 		aeb7Nor_83x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
@@ -3259,10 +3259,112 @@ SettingItem setAeb9Item = {
 		aeb9Nor_88x16,
 	},
     stOrigArg:      {},	    
-    pNote:          NULL,     
+    pNote:          "",     
     bMode:          true,	    		
 };
 
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+
+SettingItem setFanRateCtrlOffItem = {
+	pItemName:      SET_ITEM_NAME_FR_OFF,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_OFF,     
+    bMode:          false,	    		
+};
+
+SettingItem setFanRateCtrl1Item = {
+	pItemName:      SET_ITEM_NAME_FR_LL1,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_LL1,     
+    bMode:          false,	    		
+};
+
+SettingItem setFanRateCtrl2Item = {
+	pItemName:      SET_ITEM_NAME_FR_LL2,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_LL2,     
+    bMode:          false,	    		
+};
+
+SettingItem setFanRateCtrl3Item = {
+	pItemName:      SET_ITEM_NAME_FR_LL3,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_LL3,     
+    bMode:          false,	    		
+};
+
+SettingItem setFanRateCtrl4Item = {
+	pItemName:      SET_ITEM_NAME_FR_LL4,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_LL4,     
+    bMode:          false,	    		
+};
+
+SettingItem* gSetFanrateCtrlItems[] = {
+	&setFanRateCtrlOffItem,
+	&setFanRateCtrl1Item,
+	&setFanRateCtrl2Item,
+	&setFanRateCtrl3Item,
+	&setFanRateCtrl4Item,
+};
+
+#endif
 
 static u8 aebNv_41x48[] = {
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,

@@ -270,6 +270,9 @@ const char *getMenuName(int cmd)
         MENU_NAME(MENU_CALC_BPC);
         MENU_NAME(MENU_UDISK_MODE);
 
+#ifdef ENABLE_FAN_RATE_CONTROL       
+        MENU_NAME(MENU_SET_FAN_RATE);
+#endif
     default: return "Unkown Menu";
     }
 }
@@ -796,6 +799,11 @@ void MenuUI::init_cfg_select()
     mPhotoDelayList.clear();
     mAebList.clear();
 
+#ifdef ENABLE_FAN_RATE_CONTROL
+    mFanRateCtrlList.clear();
+#endif 
+
+
     mPicAllItemsList.clear();
     mVidAllItemsList.clear();
     mLiveAllItemsList.clear();
@@ -1316,7 +1324,6 @@ void MenuUI::setMenuCfgInit()
 
 
     /* 使用配置值来初始化首次显示的页面 */
-    
     updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, CfgManager::Instance()->getKeyVal("ph_delay"));
 
     LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
@@ -1331,6 +1338,44 @@ void MenuUI::setMenuCfgInit()
     tmPos.iWidth	= 89;   /* 显示的宽 */
     tmPos.iHeight   = 16;   /* 显示的高 */
     setCommonMenuInit(&mMenuInfos[MENU_SET_PHOTO_DEALY], mPhotoDelayList, gSetPhotoDelayItems, &tmPos);   /* 设置系统菜单初始化 */
+
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+
+    mMenuInfos[MENU_SET_FAN_RATE].priv = static_cast<void*>(&setPageNvIconInfo);
+    mMenuInfos[MENU_SET_FAN_RATE].privList = static_cast<void*>(&mFanRateCtrlList);
+
+    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total = sizeof(gSetFanrateCtrlItems) / sizeof(gSetFanrateCtrlItems[0]);
+    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.select = 0;   
+    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max = 3;
+
+    iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total % mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max;
+    if (iPageCnt == 0) {
+        iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total / mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max;
+    } else {
+        iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total / mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max + 1;
+    }
+
+    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num = iPageCnt;
+
+    /* 使用配置值来初始化首次显示的页面 */
+    mFanLevel = HardwareService::getCurFanSpeedLevel();
+    convFanSpeedLevel2Note(mFanLevel);
+    updateMenuCurPageAndSelect(MENU_SET_FAN_RATE, mFanLevel);
+
+    LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total,
+                mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num,
+                mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.cur_page,
+                mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.select
+                );
+
+    tmPos.yPos 		= 16;
+    tmPos.xPos 		= 34;       /* 水平方向的起始坐标 */
+    tmPos.iWidth	= 89;       /* 显示的宽 */
+    tmPos.iHeight   = 16;       /* 显示的高 */
+    setCommonMenuInit(&mMenuInfos[MENU_SET_FAN_RATE], mFanRateCtrlList, gSetFanrateCtrlItems, &tmPos);   /* 设置系统菜单初始化 */
+#endif
 
 
 #ifdef ENABLE_MENU_AEB	
@@ -2866,7 +2911,8 @@ void MenuUI::procBackKeyEvent()
         case MENU_DISP_MSG_BOX:
         case MENU_LOW_BAT:
         case MENU_LIVE_REC_TIME:
-        case MENU_SET_PHOTO_DEALY: {
+        case MENU_SET_PHOTO_DEALY:
+        case MENU_SET_FAN_RATE: {
             set_cur_menu_from_exit();
             break;
         }
@@ -3196,6 +3242,40 @@ void MenuUI::updateSetItemCurVal(std::vector<struct stSetItem*>& setItemList, co
 }
 
 
+/********************************************************************************************
+** 函数名称: updateSetItemCurNote
+** 函数功能: 更新指定设置列表中指定设置项的显示名
+** 入口参数: 
+**      setItemList - 设置项列表容器
+**      name - 需更新的设置项的名称
+**      newNote - 显示的新值
+** 返 回 值: 无
+** 调    用: 
+**
+*********************************************************************************************/
+void MenuUI::updateSetItemCurNote(std::vector<struct stSetItem*>& setItemList, const char* name, std::string newNote)
+{
+    struct stSetItem* pTmpItem = NULL;
+    bool bFound = false;
+
+    LOGDBG(TAG, "updateSetItemCurVal item name [%s], new val[%s]", name, newNote.c_str());
+
+    for (u32 i = 0; i < setItemList.size(); i++) {
+        pTmpItem = setItemList.at(i);
+        if (pTmpItem && !strcmp(pTmpItem->pItemName, name)) {
+            bFound = true;
+            break;
+        }
+    }
+
+    if (bFound) {
+        pTmpItem->pNote = newNote;    
+    } else {
+        LOGWARN(TAG, "Can't find set item[%s], please check it ....", name);
+    }
+}
+
+
 void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
 {
     iVal = iVal & 0x00000001;
@@ -3498,6 +3578,13 @@ void MenuUI::updateMenu()
             updateInnerSetPage(mPhotoDelayList, true);
 			break;
         }
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+		case MENU_SET_FAN_RATE: {
+            updateInnerSetPage(mFanRateCtrlList, true);
+			break;
+        }
+#endif
 
 
 #ifdef ENABLE_MENU_AEB
@@ -4978,6 +5065,19 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 			break;
         }
 
+#ifdef ENABLE_FAN_RATE_CONTROL
+        case MENU_SET_FAN_RATE: {
+			clearArea(0, 16);                                   /* 清除真个区域 */
+            if (pNvIconInfo) {
+                dispIconByLoc(pNvIconInfo);
+            } else {
+                LOGERR(TAG, "Current Menu[%s] NV Icon not exist", getMenuName(cur_menu));
+            }
+            dispSettingPage(mFanRateCtrlList);					/* 显示"右侧"的项 */                        
+            break;
+        }
+#endif 
+
         case MENU_SET_AEB: {
             clearArea(0, 16);	
 
@@ -4990,7 +5090,10 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             dispSettingPage(mAebList);
             break;
         }
-		
+
+
+
+
         case MENU_SYS_SETTING: {     /* 显示"设置菜单"" */
             clearArea(0, 16);
             if (pNvIconInfo) {
@@ -5379,17 +5482,19 @@ void MenuUI::procSetMenuKeyEvent()
             iVal = ((~iVal) & 0x00000001);
             cm->setKeyVal("raw", iVal);
             pCurItem->iCurVal = iVal;
-            dispSetItem(pCurItem, true);
-
-#ifdef ENABLE_MENU_AEB            
-        } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_AEB)) {       /* AEB -> 点击确认将进入选择子菜单中 */
-            setCurMenu(MENU_SET_AEB);
-#endif            
-
-        } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_PHDEALY)) {   /* PhotoDelay -> 进入MENU_PHOTO_DELAY子菜单 */
+            dispSetItem(pCurItem, true);         
+        } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_AEB)) {           /* AEB -> 点击确认将进入选择子菜单中 */
+            setCurMenu(MENU_SET_AEB);         
+        } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_PHDEALY)) {       /* PhotoDelay -> 进入MENU_PHOTO_DELAY子菜单 */
             setCurMenu(MENU_SET_PHOTO_DEALY);
+        } 
 
-        } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_SPEAKER)) {
+#ifdef ENABLE_FAN_RATE_CONTROL
+        else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FAN_RATE_CTL)) {  /* Fan Rate Control, for test */
+            setCurMenu(MENU_SET_FAN_RATE);
+        } 
+#endif 
+        else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_SPEAKER)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
             cm->setKeyVal("speaker", iVal);
@@ -5521,6 +5626,26 @@ bool MenuUI::checkIsTakeTimelpaseInCustomer()
         }
     }
 }
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+
+void MenuUI::convFanSpeedLevel2Note(int iLevel)
+{
+    std::string dispNote;
+    switch (iLevel) {
+        case 1: dispNote = "FanRateCtl: L1"; break;
+        case 2: dispNote = "FanRateCtl: L2"; break;
+        case 3: dispNote = "FanRateCtl: L3"; break;
+        case 4: dispNote = "FanRateCtl: L4"; break;
+        case 0:
+        default:
+                dispNote = "FanRateCtl: Off"; break;
+    }
+
+    updateSetItemCurNote(mSetItemsList, SET_ITEM_NAME_FAN_RATE_CTL, dispNote);
+    
+}
+#endif
 
 
 /*************************************************************************
@@ -5705,7 +5830,25 @@ void MenuUI::procPowerKeyEvent()
         }
 
 
-#ifdef ENABLE_MENU_AEB	
+#ifdef ENABLE_FAN_RATE_CONTROL
+
+        case MENU_SET_FAN_RATE: {
+            iIndex = getMenuSelectIndex(MENU_SET_FAN_RATE);
+            mFanLevel = iIndex;
+            std::string dispNote;
+            LOGDBG(TAG, "set fan rate control index[%d]", iIndex);
+
+            convFanSpeedLevel2Note(mFanLevel);
+
+            /*
+             * 根据索引值来设置风扇的速度
+             */
+            HardwareService::tunningFanSpeed(iIndex);
+            procBackKeyEvent();            
+            break;
+        }
+#endif
+
         case MENU_SET_AEB: {
             /* 获取MENU_SET_PHOTO_DELAY的Select_info.select的全局索引值,用该值来更新 */
             iIndex = getMenuSelectIndex(MENU_SET_AEB);
@@ -5717,7 +5860,6 @@ void MenuUI::procPowerKeyEvent()
             procBackKeyEvent();
             break;
         }
-#endif 
 		
         case MENU_SYS_SETTING: {     /* "设置"菜单按下Power键的处理 */
             procSetMenuKeyEvent();     
@@ -5805,18 +5947,7 @@ void MenuUI::procPowerKeyEvent()
             }
             break;
         }
-			
-#ifdef ENABLE_MENU_STITCH_BOX	
-
-        case MENU_STITCH_BOX: {
-            if (!bStiching) {
-                set_cur_menu_from_exit();
-                sendRpc(ACTION_SET_STICH);
-            }
-            break;
-        }
-#endif
-        
+			      
         case MENU_SHOW_SPACE: { /* 如果选中的SD卡或者USB硬盘进入格式化指示菜单 */
             int iIndex = getMenuSelectIndex(MENU_SHOW_SPACE);
             VolumeManager* vm = VolumeManager::Instance();
@@ -7727,8 +7858,8 @@ void MenuUI::dispSetItem(struct stSetItem* pItem, bool iSelected)
             tmpIconInfo.dat = pItem->stNorIcon[pItem->iCurVal];
         }
         mOLEDModule->disp_icon(&tmpIconInfo);
-
         #else 
+
         if (true == pItem->bMode) {
             if (iSelected) {
                 tmpIconInfo.dat = pItem->stLightIcon[pItem->iCurVal];
@@ -7737,7 +7868,8 @@ void MenuUI::dispSetItem(struct stSetItem* pItem, bool iSelected)
             }
             dispIconByLoc(&tmpIconInfo);
         } else {
-            dispStr((const u8 *)pItem->pNote, pItem->stPos.xPos, pItem->stPos.yPos, iSelected, pItem->stPos.iWidth);
+            const char* pDisp = (pItem->pNote).c_str();            
+            dispStr((const u8 *)pDisp, pItem->stPos.xPos, pItem->stPos.yPos, iSelected, pItem->stPos.iWidth);
         }
 
         #endif

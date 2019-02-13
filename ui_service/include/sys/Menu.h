@@ -50,7 +50,11 @@ enum {
     MENU_FORMAT_INDICATION,     // 25
     
 	MENU_SET_PHOTO_DEALY,	    // 26
-	
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+    MENU_SET_FAN_RATE,
+#endif 
+
 #ifdef ENABLE_MENU_AEB
     MENU_SET_AEB,               // 27
 #endif

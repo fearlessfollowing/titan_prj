@@ -949,8 +949,13 @@ private:
     void    updateInnerSetPage(std::vector<struct stSetItem*>& setItemList, bool bUpdateLast);    
     void    dispSettingPage(std::vector<struct stSetItem*>& setItemsList);
     void    updateSetItemCurVal(std::vector<struct stSetItem*>& setItemList, const char* name, int iSetVal);
+    void    updateSetItemCurNote(std::vector<struct stSetItem*>& setItemList, const char* name, std::string newNote);
+
     int     get_setting_select(int type);
 
+#ifdef ENABLE_FAN_RATE_CONTROL
+    void    convFanSpeedLevel2Note(int iLevel);
+#endif
 
     struct stSetItem* getSetItemByName(std::vector<struct stSetItem*>& mList, const char* name);
 
@@ -977,6 +982,8 @@ private:
     void    dispBottomInfo(bool high = false, bool bTrueLeftSpace = true);
     void    updateBottomSpace(bool bNeedCalc, bool bUseCached);
     
+
+
     /************************************** 菜单相关 END *************************************************/
 
 
@@ -1181,6 +1188,10 @@ private:
     std::vector<struct stSetItem*>      mStorageList;
     std::vector<struct stSetItem*>      mTfFormatSelList;
 
+#ifdef ENABLE_FAN_RATE_CONTROL
+    std::vector<struct stSetItem*>      mFanRateCtrlList;
+    int                                 mFanLevel;          /* 0 - Off; 1 - Level1; 2 - Level2; 3 - Level3; 4 - Level4 */
+#endif 
 
     std::vector<struct stPicVideoCfg*>  mPicAllItemsList;
     std::vector<struct stPicVideoCfg*>  mVidAllItemsList;   
