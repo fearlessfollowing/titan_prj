@@ -322,6 +322,7 @@
 #define SET_ITEM_NAME_STITCH_BOX            "stitch_box"
 #define SET_ITEM_NAME_CALC_STITCH           "calc_stitch"
 
+#define SET_ITEM_NAME_FAN_RATE_CTL           "fan_rate_ctl"
 
 #define SET_ITEM_NAME_TF_FOMART_THIS_CARD   "format_this_card"
 #define SET_ITEM_NAME_TF_FOMART_ALL_CARD    "format_all_card"
@@ -329,6 +330,7 @@
 
 #define SET_ITEM_NAME_STORAGESPACE          "storage_space"
 #define SET_ITEM_NAME_TESTSPEED             "test_speed"
+
 
 
 #define SET_ITEM_NAME_OFF           "OFF"

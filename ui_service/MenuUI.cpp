@@ -2175,8 +2175,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 {
     int iIndex = 0;
     struct stPicVideoCfg* pTmpPicVidCfg = NULL;
-    struct stPicVideoCfg* pAebPicVidCfg = NULL;
-    struct stSetItem* pAebSetItem = NULL;
     uint64_t serverState = getServerState();
     ProtoManager* pm = ProtoManager::Instance();
     CfgManager* cm = CfgManager::Instance();
@@ -2190,37 +2188,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
             pTmpPicVidCfg = mPicAllItemsList.at(iIndex);
 
             if (pTmpPicVidCfg) {                                
-                // mCurTakePicJson = pTmpPicVidCfg->jsonCmd;           /* UI发起的拍照,记录本次拍照的命令,用于在拍照完成时更新剩余容量(特别时RAW存储在模组的情况) */
                 pTakePicJson = (pTmpPicVidCfg->jsonCmd).get();  
-
-            #if 0                
-                gearStr = pTmpPicVidCfg->pItemName;
-
-                pAebSetItem = getSetItemByName(mSetItemsList, SET_ITEM_NAME_AEB);
-                pAebPicVidCfg = getPicVidCfgByName(mPicAllItemsList, TAKE_PIC_MODE_AEB);
-                if (pAebSetItem && pAebPicVidCfg) {
-                    PIC_ORG* pTmpAeb = pAebSetItem->stOrigArg[pAebSetItem->iCurVal];                    
-                    if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {     /* 非Customer模式时，需要更新AEB参数 */
-                        if ((*pTakePicJson)["parameters"].isMember("bracket")) {
-                            LOGDBG(TAG, "Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", pTmpAeb->hdr_count, pTmpAeb->min_ev, pTmpAeb->max_ev);
-                            (*pTakePicJson)["parameters"]["bracket"]["count"]   = pTmpAeb->hdr_count;
-                            (*pTakePicJson)["parameters"]["bracket"]["min_ev"]  = pTmpAeb->min_ev;
-                            (*pTakePicJson)["parameters"]["bracket"]["max_ev"]  = pTmpAeb->max_ev;
-                        }
-                    }
-                } else {
-                    LOGWARN(TAG, "Warnning Aeb Item lossed, please check!!!");
-                }
-
-                if (strcmp(pTmpPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) { /* 非Customer模式根据是否使能RAW来设置origin.mime，Customer模式不用理会该属性 */
-                    if (CfgManager::Instance()->getKeyVal("raw")) {
-                        (*pTakePicJson)["parameters"]["origin"]["mime"] = "raw+jpeg";
-                        gearStr += "|raw";
-                    } else {
-                        (*pTakePicJson)["parameters"]["origin"]["mime"] = "jpeg";
-                    }
-                }
-            #endif
 
                 if ((*pTakePicJson)["parameters"].isMember("properties")) {
                     LOGDBG(TAG, "-----------> Send Takepic Customer args First");
@@ -2391,12 +2359,15 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 			
         case ACTION_CALIBRATION: {	/* 拼接校正 */
             if (checkAllowStitchCalc(serverState)) {
-                addState(STATE_CALIBRATING);     /* 避免倒计时，客户端的其他操作，先将状态机设置为START_CALIBRATIONING */
+                addState(STATE_CALIBRATING);        /* 避免倒计时，客户端的其他操作，先将状态机设置为START_CALIBRATIONING */
                 setGyroCalcDelay(5);
                 oled_disp_type(START_CALIBRATIONING);
                 pm->sendStichCalcReq();
             } else {
-                LOGERR(TAG, "[ %s: %d] ---> calibration happen mCamState 0x%x", serverState);
+                /*
+                 * Fixup BUG 15340: 拼接校准的过程中出现相机屏幕重启 - 2019年02月13日
+                 */
+                LOGERR(TAG, "---> calibration happen mCamState 0x%x", serverState);
             }			
             return true;
         }
@@ -5368,6 +5339,7 @@ void MenuUI::procSetMenuKeyEvent()
     if ((pVectorList == NULL) && (iItemIndex < 0 || iItemIndex > mMenuInfos[cur_menu].mSelectInfo.total)) {
         LOGERR(TAG, "Invalid index val[%d] in menu[%s]", iItemIndex, getMenuName(cur_menu));
     } else {
+
         /* 得到该项的当前值 */
         pCurItem = (*pVectorList).at(iItemIndex);
         iVal = pCurItem->iCurVal;
@@ -5376,13 +5348,13 @@ void MenuUI::procSetMenuKeyEvent()
         if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_DHCP)) {
             iVal = ((~iVal) & 0x00000001);
 
-            #ifdef ENABLE_NET_MANAGER
+        #ifdef ENABLE_NET_MANAGER
             if (switchEtherIpMode(iVal)) {
                 cm->setKeyVal("dhcp", iVal);
                 pCurItem->iCurVal = iVal;        
                 dispSetItem(pCurItem, true);
             }
-            #endif
+        #endif
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FREQ)) {
             iVal = ((~iVal) & 0x00000001);
@@ -5849,15 +5821,17 @@ void MenuUI::procPowerKeyEvent()
             int iIndex = getMenuSelectIndex(MENU_SHOW_SPACE);
             VolumeManager* vm = VolumeManager::Instance();
 
-            /* 选中的项是TF卡 */
-            if (vm->judgeIsTfCardByName(gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName)) {
-                LOGDBG(TAG, "You selected [%s] Card!!", gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName);                                
-                setCurMenu(MENU_TF_FORMAT_SELECT);      /* 进入格式化模式选择菜单 */
-            } else {    
-                if (mFormartState == true) {
-                    mFormartState = false;
+            if (gStorageInfoItems[iIndex]->pStVolumeInfo) {     /* 避免系统无任何卡时按确认键导致崩溃 */
+                /* 选中的项是TF卡 */
+                if (vm->judgeIsTfCardByName(gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName)) {
+                    LOGDBG(TAG, "You selected [%s] Card!!", gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName);                                
+                    setCurMenu(MENU_TF_FORMAT_SELECT);      /* 进入格式化模式选择菜单 */
+                } else {    
+                    if (mFormartState == true) {
+                        mFormartState = false;
+                    }
+                    setCurMenu(MENU_FORMAT_INDICATION);     /* 选中的是大SD卡或USB硬盘 */
                 }
-                setCurMenu(MENU_FORMAT_INDICATION);     /* 选中的是大SD卡或USB硬盘 */
             }
             break;
         }
@@ -7745,7 +7719,7 @@ void MenuUI::dispSetItem(struct stSetItem* pItem, bool iSelected)
         tmpIconInfo.w = pItem->stPos.iWidth;
         tmpIconInfo.h = pItem->stPos.iHeight;
 
-        #if 1
+        #if 0
         
         if (iSelected) {
             tmpIconInfo.dat = pItem->stLightIcon[pItem->iCurVal];
@@ -9405,7 +9379,6 @@ void MenuUI::dispInNeedTfCard()
     std::vector<int> cards;
     int iStartPos = 20;
     int iLineOneStartPos = 34;
-    int iDispLen  = 0;
 
     VolumeManager* vm = VolumeManager::Instance();
     cards.clear();

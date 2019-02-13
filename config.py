@@ -154,10 +154,15 @@ COM_FLAGS += ' -DENABLE_PHOTO_DELAY_OFF '
 COM_FLAGS += ' -DBATTERY_USE_BQ40Z50 '
 
 
+# 风扇速度控制，用于测试温升
+COM_FLAGS += ' -DENABLE_FAN_RATE_CONTROL '
+
 # 调试Netlink消息
 # COM_FLAGS += ' -DENABLE_DEBUG_NETLINK_MSG '
 
 COM_FLAGS += ' -fexceptions -Wall -Wunused-variable -g '
+
+
 
 
 # toolchains options
