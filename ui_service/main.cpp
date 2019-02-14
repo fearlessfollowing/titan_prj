@@ -43,7 +43,7 @@
 #undef  TAG
 #define TAG         "uiService"
 
-#define TITAN_VER    "V0.0.17"
+#define TITAN_VER    "V0.0.23"
 
 
 

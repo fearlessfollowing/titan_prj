@@ -670,25 +670,6 @@ void VolumeManager::decTakeTimelapseCnt()
 }
 
 
-/*
- * 确保所有的U-Disk都挂载上了
- */
-int VolumeManager::checkAllUdiskMounted()
-{
-    int iMountedCnt = 0;
-    Volume* tmpVol = NULL;
-
-    for (u32 i = 0; i < mModuleVols.size(); i++) {
-        tmpVol = mModuleVols.at(i);
-        if (tmpVol) {
-            if (tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
-                iMountedCnt++;
-            }
-        }
-    }
-    return iMountedCnt;
-}
-
 
 bool VolumeManager::isMountpointMounted(const char *mp)
 {
@@ -713,385 +694,6 @@ bool VolumeManager::isMountpointMounted(const char *mp)
     }
     fclose(fp);
     return false;
-}
-
-
-
-/*************************************************************************
-** 方法名称: waitHubRestComplete
-** 方法功能: 等待USB HUB复位完成(通过sys检测对应的动态文件是否生成来判定)
-** 入口参数: 
-** 返回值:   无
-** 调 用: 
-*************************************************************************/
-bool VolumeManager::waitHubRestComplete()
-{
-    const std::string moduleHubBasePath = "/sys/devices/3530000.xhci/usb2";
-    std::string hub1Path = moduleHubBasePath + "/2-2";
-    std::string hub2Path = moduleHubBasePath + "/2-3";
-
-    if (!access(hub1Path.c_str(), F_OK) && !access(hub2Path.c_str(), F_OK)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-
-/*************************************************************************
-** 方法名称: notifyModuleEnterExitUdiskMode
-** 方法功能: 通知模组进退U盘模式(通过设置两个GPIO引脚的电平状态)
-** 入口参数: 
-**  iMode  - 进退标识
-** 返回值:   无
-** 调 用: 
-*************************************************************************/
-void VolumeManager::notifyModuleEnterExitUdiskMode(int iMode)
-{
-    switch (iMode) {
-        case NOTIFY_MODULE_ENTER_UDISK_MODE: {
-            system("echo out > /sys/class/gpio/gpio426/direction");
-            system("echo out > /sys/class/gpio/gpio457/direction");
-            system("echo 1 > /sys/class/gpio/gpio426/value");   /* gpio426 = 1 */
-            system("echo 0 > /sys/class/gpio/gpio457/value");   /* gpio457 = 0 */
-            break;
-        }
-
-        case NOTIFY_MODULE_EXIT_UDISK_MODE: {
-            system("echo out > /sys/class/gpio/gpio426/direction");
-            system("echo out > /sys/class/gpio/gpio457/direction");
-            system("echo 0 > /sys/class/gpio/gpio426/value");   /* gpio426 = 1 */
-            system("echo 1 > /sys/class/gpio/gpio457/value");   /* gpio457 = 0 */            
-            break;
-        }
-
-        default: {
-            LOGERR(TAG, "Invalid Mode given: [%d]", iMode);
-        }
-    }
-}
-
-
-/*************************************************************************
-** 方法名称: modulePwrCtl
-** 方法功能: 模组的上下电控制(U盘模式下)
-** 入口参数: 
-**  pVol        - 卷对象指针
-**  onOff       - 开关标志
-**  iPwrOnLevel - 高/低电平有效
-** 返回值:   无
-** 调 用: 
-*************************************************************************/
-void VolumeManager::modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel)
-{
-	int pCtlGpio = pVol->iPwrCtlGpio;
-	
-	LOGDBG(TAG, "[gpio%d power %s]", pCtlGpio, (onOff == true) ? "on": "off");
-
-	if (true == onOff) {
-		if (iPwrOnLevel) {
-			gpio_direction_output(pCtlGpio, 1);
-		} else {
-			gpio_direction_output(pCtlGpio, 0);
-		}
-	} else {
-		if (iPwrOnLevel) {
-			gpio_direction_output(pCtlGpio, 0);
-		} else {
-			gpio_direction_output(pCtlGpio, 1);
-		}
-	}
-}
-
-
-
-/*
- * 检查进入U盘的结果 
- * 返回
- * true - 表示所有的模组都挂载成功
- * false - 表示有模组没有挂载成功
- */
-bool VolumeManager::checkEnterUdiskResult()
-{
-    mAllowExitUdiskMode = true;
-    if (mHandledAddUdiskVolCnt >= mModuleVols.size()) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-
-Volume* VolumeManager::getUdiskVolByIndex(u32 iIndex)
-{
-    Volume* pVol = NULL;
-    if (iIndex < 0 || iIndex > mModuleVols.size()) {
-        LOGERR(TAG, " Invalid udisk index[%d], please check", iIndex);
-    } else {
-        for (u32 i = 0; i < mModuleVols.size(); i++) {
-            if (mModuleVols.at(i)->iIndex == iIndex) {
-                pVol = mModuleVols.at(i);
-                break;
-            }
-        }
-    }
-    return pVol;
-}
-
-
-bool VolumeManager::checkVolIsMountedByIndex(int iIndex, int iTimeout)
-{
-    bool bResult = false;
-    Volume* pVol = NULL;
-    pVol = getUdiskVolByIndex(iIndex);
-
-    if (pVol) {
-        while (iTimeout > 0) {
-            msg_util::sleep_ms(1000);
-            bResult = isMountpointMounted(pVol->pMountPath);
-            if (bResult) {
-                bResult = true;
-                break;
-            } else {
-                msg_util::sleep_ms(1000);
-                iTimeout -= 1000;
-            }
-        }
-    }
-    return bResult;
-}
-
-
-
-
-/*************************************************************************
-** 方法名称: enterUdiskMode
-** 方法功能: 进入U盘模式
-** 入口参数: 
-** 返回值:  成功进入返回true;否则返回false
-** 调 用: 
-*************************************************************************/
-bool VolumeManager::enterUdiskMode()
-{
-    struct timeval enterTv, exitTv;
-    int iResetHubRetry = 0;
-    int iModulePowerOnTimes = 0;
-    bool bAllModuleEnterUdiskFlag = false;
-    int iSleepWaitTime = 10000;     /* 默认为10s */
-    const char* pPropWaitTime = NULL;
-
-    mEnteringUdisk = true;
-    mHandledAddUdiskVolCnt = 0;     /* 成功挂载模组的个数 */
-    mAllowExitUdiskMode = false;
-
-    gettimeofday(&enterTv, NULL);   
-
-    LOGDBG(TAG, " Enter U-disk Mode now ...");
-
-    /*
-     * 1.设置卷管理器的当前工作模式为U盘模式(U盘模式下,当检测到有设备的插入时并不会马上上报给工作线程,而是缓存起来,等待所有的U盘设备都成功起来)
-     */
-    setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_UDISK);
-    checkAllUdiskIdle();
-
-    /* 1.1 通知模组以U盘模式启动 */
-    notifyModuleEnterExitUdiskMode(NOTIFY_MODULE_ENTER_UDISK_MODE);
-    
-    do {
-
-        /* 1.2 给所有模组断电(避免模组之前处于上电状态) */
-        for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
-            modulePwrCtl(getUdiskVolByIndex(i+1), false, 1);
-            msg_util::sleep_ms(10);
-        }
-
-        /*
-         * TODO: 等待所有的设备退出U-Disk模式，避免后面mCacheVec clean后又有新的退出事件产生
-         */
-        int i = 0;
-        do {
-            if (checkAllModuleExitUdisk()) {
-                LOGDBG(TAG, "--> All Module had exit U-Disk Mode");
-                break;
-            }
-            msg_util::sleep_ms(100);
-        } while (i++ < 3);
-
-
-        /*
-        * 2.复位HUB和给模组上电
-        */
-
-        /* 2.1 复位HUB */
-        do {
-            resetHub(303, RESET_HIGH_LEVEL, 300);
-            if (waitHubRestComplete()) {
-                LOGDBG(TAG, " -------------- Hub Reset Complete");
-                break;
-            }
-            msg_util::sleep_ms(1000);        
-        } while (iResetHubRetry++ < 3);
-
-
-        mCacheVec.clear();
-        
-        /* 2.2 给模组上电 */
-        for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
-            LOGDBG(TAG, " Power on for device[%d]", i);
-            modulePwrCtl(getUdiskVolByIndex(i+1), true, 1);
-            msg_util::sleep_ms(200);      
-        }
-
-        /* 模组上电后,正常情况下大概需要7s才能起来 */
-        pPropWaitTime = property_get(PROP_ENTER_UDISK_WAIT_TIME);
-        if (pPropWaitTime) {
-            iSleepWaitTime = atoi(pPropWaitTime);
-        }        
-        msg_util::sleep_ms(iSleepWaitTime);      
-
-
-        if (checkAllModuleEnterUdisk()) {
-            /* 2.3 检查所有的模组是否已经起来 */
-            bAllModuleEnterUdiskFlag = true;
-            LOGDBG(TAG, "--> Lucky boy, All Module Enter Udisk Mode!");
-            break;
-        } else {
-
-        }
-    } while (iModulePowerOnTimes++ < 3);
-
-    /* 有模组没有成功进入U盘模式 */
-    if (iModulePowerOnTimes >= 3 && bAllModuleEnterUdiskFlag == false) {
-        LOGERR(TAG, "---> Error: Some Module enter Udisk Mode failed, drop All Udisk NetlinkEvent.");
-        mEnteringUdisk = false;
-        return false;
-    }
-
-    flushAllUdiskEvent2Worker();
-
-    /* 所有模组成功进入U盘模式,等待工作线程处理完刷入的所有事件(timeout = 120s) */
-    waitUdiskEvtDealComplete(60);
-
-    gettimeofday(&exitTv, NULL);   
-    LOGDBG(TAG, "Enter Udisk Mode Total Used: [%dS,%dMs]", exitTv.tv_sec - enterTv.tv_sec, (exitTv.tv_usec - enterTv.tv_usec) / 1000);
-    
-    mEnteringUdisk = false;
-    return checkEnterUdiskResult();
-
-}
-
-
-
-/*************************************************************************
-** 方法名称: checkAllModuleEnterUdisk
-** 方法功能: 检查是否所有的模组进入了U盘模式(通过检测USB设备的生成状况来判定)
-** 入口参数: 
-** 返回值:   成功返回true;否则返回false
-** 调 用: 
-*************************************************************************/
-bool VolumeManager::checkAllModuleEnterUdisk()
-{
-    const char* modulePaths[] = {
-        "/sys/devices/3530000.xhci/usb2/2-2/2-2.1",
-        "/sys/devices/3530000.xhci/usb2/2-2/2-2.2",
-        "/sys/devices/3530000.xhci/usb2/2-2/2-2.3",
-        "/sys/devices/3530000.xhci/usb2/2-2/2-2.4",
-        "/sys/devices/3530000.xhci/usb2/2-3/2-3.1",
-        "/sys/devices/3530000.xhci/usb2/2-3/2-3.2",
-        "/sys/devices/3530000.xhci/usb2/2-3/2-3.3",
-        "/sys/devices/3530000.xhci/usb2/2-3/2-3.4"
-    };
-
-    int i = 0;
-    int iNum = sizeof(modulePaths) / sizeof(modulePaths[0]);
-    for (; i < iNum; i++) {
-        if (access(modulePaths[i], F_OK)) {
-            LOGERR(TAG, "Usb device[%s] Not Exist", modulePaths[i]);
-            break;
-        }
-    }
-
-    if (i >= iNum)
-        return true;
-    else 
-        return false;
-}
-
-
-bool VolumeManager::checkAllModuleExitUdisk()
-{
-    const char* modulePaths[] = {
-        "/sys/devices/3530000.xhci/usb2/2-2/2-2.1",
-        "/sys/devices/3530000.xhci/usb2/2-2/2-2.2",
-        "/sys/devices/3530000.xhci/usb2/2-2/2-2.3",
-        "/sys/devices/3530000.xhci/usb2/2-2/2-2.4",
-        "/sys/devices/3530000.xhci/usb2/2-3/2-3.1",
-        "/sys/devices/3530000.xhci/usb2/2-3/2-3.2",
-        "/sys/devices/3530000.xhci/usb2/2-3/2-3.3",
-        "/sys/devices/3530000.xhci/usb2/2-3/2-3.4"
-    };
-
-    int i = 0;
-    int iNum = sizeof(modulePaths) / sizeof(modulePaths[0]);
-    for (; i < iNum; i++) {
-        if (access(modulePaths[i], F_OK) == 0) {
-            LOGERR(TAG, "Usb device[%s] Not Quit", modulePaths[i]);
-            break;
-        }
-    }
-
-    if (i >= iNum)
-        return true;
-    else 
-        return false;
-}
-
-
-
-
-/*
- * 工作线程必须以一次取一个事件的模式工作
- */
-void VolumeManager::waitUdiskEvtDealComplete(int iTimeout)
-{
-    int iWaitTime = 0;
-    do {
-        {
-            std::unique_lock<std::mutex> _lock(mEvtLock);
-            if (mEventVec.empty()) {
-                msg_util::sleep_ms(2000);   /* 等待最后一个事件处理完成 */
-                break;
-            }
-        }
-        msg_util::sleep_ms(1000);
-    } while ((++iWaitTime) < iTimeout);
-}
-
-
-bool VolumeManager::checkEnteredUdiskMode()
-{
-    return mAllowExitUdiskMode;
-}
-
-
-void VolumeManager::setVolumeManagerWorkMode(int iWorkMode)
-{
-    mVolumeManagerWorkMode = iWorkMode;
-}
-
-int VolumeManager::getVolumeManagerWorkMode()
-{
-    return mVolumeManagerWorkMode;
-}
-
-int VolumeManager::getCurHandleAddUdiskVolCnt()
-{
-    return mHandledAddUdiskVolCnt;
-}
-
-int VolumeManager::getCurHandleRemoveUdiskVolCnt()
-{
-    return mHandledRemoveUdiskVolCnt;
 }
 
 
@@ -1273,63 +875,6 @@ void VolumeManager::unmountAll()
     }
 }
 
-
-void VolumeManager::exitUdiskMode()
-{
-    /* 1.卸载掉所有的U盘
-     * 2.给模组断电
-     */
-    u32 i;
-    Volume* tmpVol = NULL;
-
-    LOGDBG(TAG, " Exit U-disk Mode now ...");
-
-    mHandledRemoveUdiskVolCnt = 0;
-    mWorkerLoopInterval = ENTER_EXIT_UDISK_LOOPER_INTERVAL; 
-
-    /* 处理TF卡的移除 */
-    {
-        std::unique_lock<std::mutex> _lock(mRemoteDevLock);
-        for (i = 0; i < mModuleVols.size(); i++) {
-
-            tmpVol = mModuleVols.at(i);
-        
-            LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
-            if (tmpVol) {
-                std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();
-                if (pEvt) {
-                    pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
-                    pEvt->setAction(NETLINK_ACTION_REMOVE);
-                    pEvt->setSubsys(VOLUME_SUBSYS_USB);
-                    pEvt->setBusAddr(tmpVol->pBusAddr);
-                    pEvt->setDevNodeName(tmpVol->cDevNode);            
-                    {
-                        std::unique_lock<std::mutex> _lock(mCacheEvtLock);
-                        mCacheVec.push_back(pEvt);
-                    }
-                } else {
-                    LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");                         
-                }
-            }
-        }
-    }
-    
-    flushAllUdiskEvent2Worker();
-
-    int iTime = 0;
-    do {
-        msg_util::sleep_ms(1000);
-        if (mHandledRemoveUdiskVolCnt >= SYS_TF_COUNT_NUM) {
-            LOGDBG(TAG, "----> All Mounted Cards umount Suc.");
-            break;
-        }
-    } while (iTime++ < 12);
-
-
-    notifyModuleEnterExitUdiskMode(NOTIFY_MODULE_EXIT_UDISK_MODE);
-    msg_util::sleep_ms(8*1000);     /* 等待模组卸载卡 */
-    setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_NORMAL);
-}
 
 
 void VolumeManager::startWorkThread()
@@ -2770,96 +2315,6 @@ Json::Value* VolumeManager::getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd
 }
 
 
-#if 0
-{
-        "name" : "camera._startRecording",
-        "parameters" :
-        {
-                "fileOverride" : false,
-                "origin" :
-                {
-                        "hdr" : false,
-                        "height" : 3956,
-                        "logMode" : 0,
-                        "mime" : "jpeg",
-                        "saveOrigin" : true,
-                        "width" : 5280
-                },
-                "properties" :
-                {
-                        "audio_gain" : 64,
-                        "len_param" :
-                        {
-                                "aaa_mode" : 1,
-                                "brightness" : 0,
-                                "contrast" : 64,
-                                "ev_bias" : 0,
-                                "hue" : 0,
-                                "iso_cap" : 0,
-                                "iso_value" : 0,
-                                "saturation" : 64,
-                                "sharpness" : 0,
-                                "shutter_value" : 0,
-                                "stabilization" : 1,
-                                "wb" : 0
-                        }
-                },
-                "stabilization" : true,
-                "storageSpeedTest" : false,
-                "timelapse" :
-                {
-                        "enable" : true,
-                        "interval" : 2000
-                }
-        }
-}
-
-
-
-{
-        "name" : "camera._startRecording",
-        "parameters" :
-        {
-                "fileOverride" : false,
-                "origin" :
-                {
-                        "hdr" : false,
-                        "height" : 3956,
-                        "logMode" : 0,
-                        "mime" : "raw+jpeg",
-                        "saveOrigin" : true,
-                        "width" : 5280
-                },
-                "properties" :
-                {
-                        "audio_gain" : 64,
-                        "len_param" :
-                        {
-                                "aaa_mode" : 1,
-                                "brightness" : 0,
-                                "contrast" : 64,
-                                "ev_bias" : 0,
-                                "hue" : 0,
-                                "iso_cap" : 0,
-                                "iso_value" : 0,
-                                "saturation" : 64,
-                                "sharpness" : 0,
-                                "shutter_value" : 0,
-                                "stabilization" : 1,
-                                "wb" : 0
-                        }
-                },
-                "stabilization" : true,
-                "storageSpeedTest" : false,
-                "timelapse" :
-                {
-                        "enable" : true,
-                        "interval" : 4000
-                }
-        }
-}
-
-#endif
 
 
 /*
@@ -3516,7 +2971,460 @@ bool VolumeManager::formatVolume2Ext4(Volume* pVol)
     return true;
 }
 
-#define CONVNUMTOSTR(n) case n: return #n 
+
+
+
+
+
+/**************************************************************************************************************************
+ *                                      >>> Udisk Mode Related <<<
+ **************************************************************************************************************************/
+/*
+ * 确保所有的U-Disk都挂载上了
+ */
+int VolumeManager::checkAllUdiskMounted()
+{
+    int iMountedCnt = 0;
+    Volume* tmpVol = NULL;
+
+    for (u32 i = 0; i < mModuleVols.size(); i++) {
+        tmpVol = mModuleVols.at(i);
+        if (tmpVol) {
+            if (tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
+                iMountedCnt++;
+            }
+        }
+    }
+    return iMountedCnt;
+}
+
+/*************************************************************************
+** 方法名称: waitHubRestComplete
+** 方法功能: 等待USB HUB复位完成(通过sys检测对应的动态文件是否生成来判定)
+** 入口参数: 
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
+bool VolumeManager::waitHubRestComplete()
+{
+    const std::string moduleHubBasePath = "/sys/devices/3530000.xhci/usb2";
+    std::string hub1Path = moduleHubBasePath + "/2-2";
+    std::string hub2Path = moduleHubBasePath + "/2-3";
+
+    if (!access(hub1Path.c_str(), F_OK) && !access(hub2Path.c_str(), F_OK)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+/*************************************************************************
+** 方法名称: notifyModuleEnterExitUdiskMode
+** 方法功能: 通知模组进退U盘模式(通过设置两个GPIO引脚的电平状态)
+** 入口参数: 
+**  iMode  - 进退标识
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
+void VolumeManager::notifyModuleEnterExitUdiskMode(int iMode)
+{
+    switch (iMode) {
+        case NOTIFY_MODULE_ENTER_UDISK_MODE: {
+            system("echo out > /sys/class/gpio/gpio426/direction");
+            system("echo out > /sys/class/gpio/gpio457/direction");
+            system("echo 1 > /sys/class/gpio/gpio426/value");   /* gpio426 = 1 */
+            system("echo 0 > /sys/class/gpio/gpio457/value");   /* gpio457 = 0 */
+            break;
+        }
+
+        case NOTIFY_MODULE_EXIT_UDISK_MODE: {
+            system("echo out > /sys/class/gpio/gpio426/direction");
+            system("echo out > /sys/class/gpio/gpio457/direction");
+            system("echo 0 > /sys/class/gpio/gpio426/value");   /* gpio426 = 1 */
+            system("echo 1 > /sys/class/gpio/gpio457/value");   /* gpio457 = 0 */            
+            break;
+        }
+
+        default: {
+            LOGERR(TAG, "Invalid Mode given: [%d]", iMode);
+        }
+    }
+}
+
+/*************************************************************************
+** 方法名称: modulePwrCtl
+** 方法功能: 模组的上下电控制(U盘模式下)
+** 入口参数: 
+**  pVol        - 卷对象指针
+**  onOff       - 开关标志
+**  iPwrOnLevel - 高/低电平有效
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
+void VolumeManager::modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel)
+{
+	int pCtlGpio = pVol->iPwrCtlGpio;
+	
+	LOGDBG(TAG, "[gpio%d power %s]", pCtlGpio, (onOff == true) ? "on": "off");
+
+	if (true == onOff) {
+		if (iPwrOnLevel) {
+			gpio_direction_output(pCtlGpio, 1);
+		} else {
+			gpio_direction_output(pCtlGpio, 0);
+		}
+	} else {
+		if (iPwrOnLevel) {
+			gpio_direction_output(pCtlGpio, 0);
+		} else {
+			gpio_direction_output(pCtlGpio, 1);
+		}
+	}
+}
+
+/*
+ * 检查进入U盘的结果 
+ * 返回
+ * true - 表示所有的模组都挂载成功
+ * false - 表示有模组没有挂载成功
+ */
+bool VolumeManager::checkEnterUdiskResult()
+{
+    mAllowExitUdiskMode = true;
+    if (mHandledAddUdiskVolCnt >= mModuleVols.size()) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+Volume* VolumeManager::getUdiskVolByIndex(u32 iIndex)
+{
+    Volume* pVol = NULL;
+    if (iIndex < 0 || iIndex > mModuleVols.size()) {
+        LOGERR(TAG, " Invalid udisk index[%d], please check", iIndex);
+    } else {
+        for (u32 i = 0; i < mModuleVols.size(); i++) {
+            if (mModuleVols.at(i)->iIndex == iIndex) {
+                pVol = mModuleVols.at(i);
+                break;
+            }
+        }
+    }
+    return pVol;
+}
+
+
+bool VolumeManager::checkVolIsMountedByIndex(int iIndex, int iTimeout)
+{
+    bool bResult = false;
+    Volume* pVol = NULL;
+    pVol = getUdiskVolByIndex(iIndex);
+
+    if (pVol) {
+        while (iTimeout > 0) {
+            msg_util::sleep_ms(1000);
+            bResult = isMountpointMounted(pVol->pMountPath);
+            if (bResult) {
+                bResult = true;
+                break;
+            } else {
+                msg_util::sleep_ms(1000);
+                iTimeout -= 1000;
+            }
+        }
+    }
+    return bResult;
+}
+
+/*************************************************************************
+** 方法名称: checkAllModuleEnterUdisk
+** 方法功能: 检查是否所有的模组进入了U盘模式(通过检测USB设备的生成状况来判定)
+** 入口参数: 
+** 返回值:   成功返回true;否则返回false
+** 调 用: 
+*************************************************************************/
+bool VolumeManager::checkAllModuleEnterUdisk()
+{
+    const char* modulePaths[] = {
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.1",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.2",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.3",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.4",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.1",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.2",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.3",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.4"
+    };
+
+    int i = 0;
+    int iNum = sizeof(modulePaths) / sizeof(modulePaths[0]);
+    for (; i < iNum; i++) {
+        if (access(modulePaths[i], F_OK)) {
+            LOGERR(TAG, "Usb device[%s] Not Exist", modulePaths[i]);
+            break;
+        }
+    }
+
+    if (i >= iNum)
+        return true;
+    else 
+        return false;
+}
+
+
+bool VolumeManager::checkAllModuleExitUdisk()
+{
+    const char* modulePaths[] = {
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.1",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.2",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.3",
+        "/sys/devices/3530000.xhci/usb2/2-2/2-2.4",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.1",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.2",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.3",
+        "/sys/devices/3530000.xhci/usb2/2-3/2-3.4"
+    };
+
+    int i = 0;
+    int iNum = ARRAY_SIZE(modulePaths);
+    for (; i < iNum; i++) {
+        if (access(modulePaths[i], F_OK) == 0) {
+            LOGERR(TAG, "Usb device[%s] Not Quit", modulePaths[i]);
+            break;
+        }
+    }
+
+    if (i >= iNum)
+        return true;
+    else 
+        return false;
+}
+
+/*
+ * 工作线程必须以一次取一个事件的模式工作
+ */
+void VolumeManager::waitUdiskEvtDealComplete(int iTimeout)
+{
+    int iWaitTime = 0;
+    do {
+        {
+            std::unique_lock<std::mutex> _lock(mEvtLock);
+            if (mEventVec.empty()) {
+                msg_util::sleep_ms(2000);   /* 等待最后一个事件处理完成 */
+                break;
+            }
+        }
+        msg_util::sleep_ms(1000);
+    } while ((++iWaitTime) < iTimeout);
+}
+
+
+bool VolumeManager::checkEnteredUdiskMode()
+{
+    return mAllowExitUdiskMode;
+}
+
+
+void VolumeManager::setVolumeManagerWorkMode(int iWorkMode)
+{
+    mVolumeManagerWorkMode = iWorkMode;
+}
+
+int VolumeManager::getVolumeManagerWorkMode()
+{
+    return mVolumeManagerWorkMode;
+}
+
+int VolumeManager::getCurHandleAddUdiskVolCnt()
+{
+    return mHandledAddUdiskVolCnt;
+}
+
+int VolumeManager::getCurHandleRemoveUdiskVolCnt()
+{
+    return mHandledRemoveUdiskVolCnt;
+}
+
+
+/*************************************************************************
+** 方法名称: enterUdiskMode
+** 方法功能: 进入U盘模式
+** 入口参数: 
+** 返回值:  成功进入返回true;否则返回false
+** 调 用: 
+*************************************************************************/
+bool VolumeManager::enterUdiskMode()
+{
+    struct timeval enterTv, exitTv;
+    int iResetHubRetry = 0;
+    int iModulePowerOnTimes = 0;
+    bool bAllModuleEnterUdiskFlag = false;
+    int iSleepWaitTime = 10000;     /* 默认为10s */
+    const char* pPropWaitTime = NULL;
+
+    mEnteringUdisk = true;
+    mHandledAddUdiskVolCnt = 0;     /* 成功挂载模组的个数 */
+    mAllowExitUdiskMode = false;
+
+    gettimeofday(&enterTv, NULL);   
+
+    LOGDBG(TAG, " Enter U-disk Mode now ...");
+
+    /*
+     * 1.设置卷管理器的当前工作模式为U盘模式(U盘模式下,当检测到有设备的插入时并不会马上上报给工作线程,而是缓存起来,等待所有的U盘设备都成功起来)
+     */
+    setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_UDISK);
+    checkAllUdiskIdle();
+
+    /* 1.1 通知模组以U盘模式启动 */
+    notifyModuleEnterExitUdiskMode(NOTIFY_MODULE_ENTER_UDISK_MODE);
+    
+    do {
+
+        /* 1.2 给所有模组断电(避免模组之前处于上电状态) */
+        for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
+            modulePwrCtl(getUdiskVolByIndex(i+1), false, 1);
+            msg_util::sleep_ms(10);
+        }
+
+        /*
+         * TODO: 等待所有的设备退出U-Disk模式，避免后面mCacheVec clean后又有新的退出事件产生
+         */
+        int i = 0;
+        do {
+            if (checkAllModuleExitUdisk()) {
+                LOGDBG(TAG, "--> All Module had exit U-Disk Mode");
+                break;
+            }
+            msg_util::sleep_ms(100);
+        } while (i++ < 3);
+
+
+        /*
+        * 2.复位HUB和给模组上电
+        */
+
+        /* 2.1 复位HUB */
+        do {
+            resetHub(303, RESET_HIGH_LEVEL, 300);
+            if (waitHubRestComplete()) {
+                LOGDBG(TAG, " -------------- Hub Reset Complete");
+                break;
+            }
+            msg_util::sleep_ms(1000);        
+        } while (iResetHubRetry++ < 3);
+
+
+        mCacheVec.clear();
+        
+        /* 2.2 给模组上电 */
+        for (int i = 0; i < SYS_TF_COUNT_NUM; i++) {
+            LOGDBG(TAG, " Power on for device[%d]", i);
+            modulePwrCtl(getUdiskVolByIndex(i+1), true, 1);
+            msg_util::sleep_ms(200);      
+        }
+
+        /* 模组上电后,正常情况下大概需要7s才能起来 */
+        pPropWaitTime = property_get(PROP_ENTER_UDISK_WAIT_TIME);
+        if (pPropWaitTime) {
+            iSleepWaitTime = atoi(pPropWaitTime);
+        }        
+        msg_util::sleep_ms(iSleepWaitTime);      
+
+
+        if (checkAllModuleEnterUdisk()) {
+            /* 2.3 检查所有的模组是否已经起来 */
+            bAllModuleEnterUdiskFlag = true;
+            LOGDBG(TAG, "--> Lucky boy, All Module Enter Udisk Mode!");
+            break;
+        } else {
+
+        }
+    } while (iModulePowerOnTimes++ < 3);
+
+    /* 有模组没有成功进入U盘模式 */
+    if (iModulePowerOnTimes >= 3 && bAllModuleEnterUdiskFlag == false) {
+        LOGERR(TAG, "---> Error: Some Module enter Udisk Mode failed, drop All Udisk NetlinkEvent.");
+        mEnteringUdisk = false;
+        return false;
+    }
+
+    flushAllUdiskEvent2Worker();
+
+    /* 所有模组成功进入U盘模式,等待工作线程处理完刷入的所有事件(timeout = 120s) */
+    waitUdiskEvtDealComplete(60);
+
+    gettimeofday(&exitTv, NULL);   
+    LOGDBG(TAG, "Enter Udisk Mode Total Used: [%dS,%dMs]", exitTv.tv_sec - enterTv.tv_sec, (exitTv.tv_usec - enterTv.tv_usec) / 1000);
+    
+    mEnteringUdisk = false;
+    return checkEnterUdiskResult();
+}
+
+
+void VolumeManager::exitUdiskMode()
+{
+    /* 1.卸载掉所有的U盘
+     * 2.给模组断电
+     */
+    u32 i;
+    Volume* tmpVol = NULL;
+
+    LOGDBG(TAG, " Exit U-disk Mode now ...");
+
+    mHandledRemoveUdiskVolCnt = 0;
+    mWorkerLoopInterval = ENTER_EXIT_UDISK_LOOPER_INTERVAL; 
+
+    /* 处理TF卡的移除 */
+    {
+        std::unique_lock<std::mutex> _lock(mRemoteDevLock);
+        for (i = 0; i < mModuleVols.size(); i++) {
+
+            tmpVol = mModuleVols.at(i);
+        
+            LOGDBG(TAG, " Volue[%d] -> %s", i, tmpVol->cDevNode);
+            if (tmpVol) {
+                std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();
+                if (pEvt) {
+                    pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
+                    pEvt->setAction(NETLINK_ACTION_REMOVE);
+                    pEvt->setSubsys(VOLUME_SUBSYS_USB);
+                    pEvt->setBusAddr(tmpVol->pBusAddr);
+                    pEvt->setDevNodeName(tmpVol->cDevNode);            
+                    {
+                        std::unique_lock<std::mutex> _lock(mCacheEvtLock);
+                        mCacheVec.push_back(pEvt);
+                    }
+                } else {
+                    LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");                         
+                }
+            }
+        }
+    }
+    
+    flushAllUdiskEvent2Worker();
+
+    int iTime = 0;
+    do {
+        msg_util::sleep_ms(1000);
+        if (mHandledRemoveUdiskVolCnt >= SYS_TF_COUNT_NUM) {
+            LOGDBG(TAG, "----> All Mounted Cards umount Suc.");
+            break;
+        }
+    } while (iTime++ < 12);
+
+
+    notifyModuleEnterExitUdiskMode(NOTIFY_MODULE_EXIT_UDISK_MODE);
+    msg_util::sleep_ms(8*1000);     /* 等待模组卸载卡 */
+    setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_NORMAL);
+}
+
+
+/**************************************************************************************************************************
+ *                                      >>> For Debug Related <<<
+ **************************************************************************************************************************/
+
 
 const char* VolumeManager::getVolState(int iType)
 {

@@ -72,19 +72,19 @@ KeyCodeConv gConvTab[] = {
     {0x107, APP_KEY_USER_DEF3}
 };
 
-#define KEY_NAME(n) case n: return #n
+
 const char *getAppKeyName(int cmd)
 {
-    switch (cmd) {
-        KEY_NAME(APP_KEY_POWER);
-        KEY_NAME(APP_KEY_UP);
-        KEY_NAME(APP_KEY_DOWN);
-        KEY_NAME(APP_KEY_SETTING);
-        KEY_NAME(APP_KEY_BACK);
-        KEY_NAME(APP_KEY_USER_DEF1);
-        KEY_NAME(APP_KEY_USER_DEF2);
-        KEY_NAME(APP_KEY_USER_DEF3);
-    default: return "Unkown AppKey";
+    switch (cmd) {        
+        CONVNUMTOSTR(APP_KEY_POWER);
+        CONVNUMTOSTR(APP_KEY_UP);
+        CONVNUMTOSTR(APP_KEY_DOWN);
+        CONVNUMTOSTR(APP_KEY_SETTING);
+        CONVNUMTOSTR(APP_KEY_BACK);
+        CONVNUMTOSTR(APP_KEY_USER_DEF1);
+        CONVNUMTOSTR(APP_KEY_USER_DEF2);
+        CONVNUMTOSTR(APP_KEY_USER_DEF3);
+        default: return "Unkown AppKey";
     }
 }
 

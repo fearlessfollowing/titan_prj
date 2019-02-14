@@ -29,26 +29,6 @@ NetlinkEvent::~NetlinkEvent()
 {
 }
 
-
-#if 0
-static const char*
-has_prefix(const char* str, const char* end, const char* prefix, size_t prefixlen)
-{
-    if ((end-str) >= (ptrdiff_t)prefixlen && !memcmp(str, prefix, prefixlen))
-        return str + prefixlen;
-    else
-        return NULL;
-}
-
-/* Same as strlen(x) for constant string literals ONLY */
-#define CONST_STRLEN(x)  (sizeof(x)-1)
-
-/* Convenience macro to call has_prefix with a constant string literal  */
-#define HAS_CONST_PREFIX(str,end,prefix)  has_prefix((str),(end),prefix,CONST_STRLEN(prefix))
-#endif
-
-
-
 bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size) 
 {
     const char *s = buffer;
@@ -84,8 +64,6 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
     mEventSrc = NETLINK_EVENT_SRC_KERNEL;
 
     if ((pBlockEvt != NULL) && (pAt != NULL)) {
-
-
         memset(mDevNodeName, 0, sizeof(mDevNodeName));
         memset(mBusAddr, 0, sizeof(mBusAddr));
         
@@ -97,9 +75,9 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
             return false;   /* 目前只处理 'add', 'remove'两种事件 */
         }
 
-        #ifdef ENABLE_DEBUG_NETLINK_MSG
+    #ifdef ENABLE_DEBUG_NETLINK_MSG
         LOGDBG(TAG, ">>>> Action is %s", (mAction == NETLINK_ACTION_ADD) ? "add" : "remove");
-        #endif
+    #endif
 
  
         /* 设备的子系统类型
@@ -114,9 +92,9 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
             return false;
         }
 
-        #ifdef ENABLE_DEBUG_NETLINK_MSG
+    #ifdef ENABLE_DEBUG_NETLINK_MSG
         LOGDBG(TAG, ">>>> subsystem is %d", mSubsys);
-        #endif
+    #endif
 
         if (mSubsys == VOLUME_SUBSYS_USB) {
             const char* pColon = NULL;
@@ -128,20 +106,18 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
                 pSlash = strrchr(cBusAddr, '/');
                 if (pSlash) {
                     strncpy(mBusAddr, pSlash + 1, (pColon - (pSlash + 1)));
-                    LOGDBG(TAG, "New Version usb bus addr: %s", mBusAddr);
+                    LOGNULL(TAG, "New Version usb bus addr: %s", mBusAddr);
                 } else {
                     return false;
                 }
 
-                #if 1
                 pDevNode = strrchr(s, '/');
                 if (pDevNode) {
                     strcpy(mDevNodeName, pDevNode + 1);
-                    LOGDBG(TAG, "New Version dev node name: %s", mDevNodeName);
+                    LOGNULL(TAG, "New Version dev node name: %s", mDevNodeName);
                 } else {
                     return false;
                 }
-                #endif
             } else {
                 return false;
             }

@@ -29,6 +29,9 @@ enum {
 };
 
 
+#define CONVNUMTOSTR(n) case n: return #n 
+
+
 bool sh_isbig(void);
 int read_line(int fd, void *vptr, int maxlen);
 int exec_sh(const char *str);
