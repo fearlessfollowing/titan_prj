@@ -17,20 +17,17 @@
 #ifndef _VOLUMEMANAGER_H_
 #define _VOLUMEMANAGER_H_
 
-#include <pthread.h>
 #include <sys/ins_types.h>
 #include <vector>
 #include <mutex>
+#include <thread>
+
 #include <common/sp.h>
 #include <util/ARMessage.h>
 #include <sys/NetlinkEvent.h>
-
-#include <hw/ins_i2c.h>
 #include <json/json.h>
 
-#include <thread>
 
-#include <sys/Mutex.h>
 
 enum {
     VOLUME_MANAGER_LISTENER_MODE_NETLINK,
@@ -161,7 +158,7 @@ typedef struct stVol {
 	int 	        iSpeedTest;		                    /* 1: 已经测速通过; 0: 没有进行测速或测速未通过 */
 
 
-    std::mutex      mVolLock;                           /* 访问卷的互踩锁 */
+    std::mutex      mVolLock;                           /* 访问卷的锁 */
 } Volume;
 
 
@@ -201,15 +198,12 @@ enum {
 
 class NetlinkEvent;
 
-/* 1.接收客户端发送的进入U盘模式命令
- * 2.将命令转发给UI
- * 3.UI设置gpio，然后给模组上电
- * 4.全部模组挂载成功，
- */
 
 using savePathChangedCallback = std::function<void (const char* pSavePath)>;
 using saveListNotifyCallback = std::function<void ()>;
 using notifyHotplugCallback = std::function<void (sp<ARMessage>& msg, int iAction, int iType, std::vector<Volume*>& devList)>;
+
+
 
 /*
  * 底层: 接收Netlink消息模式, 监听设备文件模式
@@ -282,20 +276,14 @@ public:
 
     bool        changeMountMethod(const char* mode);
 
-    /*
-     * 更新mSD的查询结果
-     */
+    /** 更新mSD的查询结果 */
     void        updateRemoteTfsInfo(std::vector<sp<Volume>>& mList);
 
-    /*
-     * 更新所有卷的测速状态
-     */
+    /** 更新所有卷的测速状态 */
     void        updateVolumesSpeedTestState(std::vector<sp<Volume>>& mList);
 
 
-    /*
-     * 更新远端卷的拔插处理
-     */
+    /** 更新远端卷的拔插处理 */
     int         handleRemoteVolHotplug(std::vector<sp<Volume>>& volChangeList);
 
     void        sendCurrentSaveListNotify();
@@ -305,8 +293,6 @@ public:
     void        sendDevChangeMsg2UI(int iAction, int iType, std::vector<Volume*>& devList);
 
     void        setNotifyRecv(sp<ARMessage> notify);
-
-    Volume*     lookupVolume(const char *label);
 
     /*
      * 获取远端存储卷列表
@@ -342,6 +328,9 @@ public:
 
     void        powerOnOffModuleByIndex(bool bOnOff, int iIndex);
 
+
+
+
     u32         calcTakeLiveRecLefSec(Json::Value& jsonCmd);
 
     Json::Value* evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd);
@@ -369,6 +358,7 @@ public:
     u32         calcTakeRecLefSec(Json::Value& jsonCmd, bool bFactoryMode = false);
     int         calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached);
 
+
     /***************************************************************************************
      * Timelapse
      ***************************************************************************************/
@@ -378,13 +368,10 @@ public:
     void        calcTakeTimelapseCnt(Json::Value& jsonCmd);
     
     void        decTakeTimelapseCnt();
-
     void        clearTakeTimelapseCnt();
-
     void        repairVolume(Volume* pVol);
-    /*
-     * 转换秒数为'00:00:00'格式字符串
-     */
+    
+    /** 转换秒数为'00:00:00'格式字符串 */
     void        convSec2TimeStr(u64 secs, char* strBuf, int iLen);
 
     static VolumeManager *Instance();
@@ -402,83 +389,56 @@ public:
 
 private:
 
-    int                     mListenerMode;                  /* 监听模式 */
-    Volume*                 mCurrentUsedLocalVol;           /* 当前被使用的本地卷 */
-    Volume*                 mSavedLocalVol;                 /* 上次保存 */
-    bool                    mBsavePathChanged;              /* 本地存储设备路径是否发生改变 */
+    int                             mListenerMode;                  /* 监听模式 */
+    Volume*                         mCurrentUsedLocalVol;           /* 当前被使用的本地卷 */
+    Volume*                         mSavedLocalVol;                 /* 上次保存 */
+    bool                            mBsavePathChanged;              /* 本地存储设备路径是否发生改变 */
 
-    static VolumeManager*   sInstance;
+    static VolumeManager*           sInstance;
 
-    std::vector<Volume*>    mVolumes;                       /* 管理系统中所有的卷 */
-    std::vector<Volume*>    mLocalVols;                     /* 管理系统中所有的卷 */
-    std::vector<Volume*>    mModuleVols;                    /* 模组卷 */
-    std::vector<Volume*>    mCurSaveVolList;
-    std::vector<Volume*>    mSysStorageVolList;
+    std::vector<Volume*>            mVolumes;                       /* 管理系统中所有的卷 */
+    std::vector<Volume*>            mLocalVols;                     /* 管理系统中所有的卷 */
+    std::vector<Volume*>            mModuleVols;                    /* 模组卷 */
+    std::vector<Volume*>            mCurSaveVolList;
+    std::vector<Volume*>            mSysStorageVolList;
 
-    int                     mVolManagerDisabled;
+    int                             mVolManagerDisabled;
 
-    int                     mModuleVolNum;
+    int                             mModuleVolNum;
 
-    std::mutex				mLocaLDevLock;
-    std::mutex              mRemoteDevLock;
+    std::mutex				        mLocaLDevLock;
+    std::mutex                      mRemoteDevLock;
 
-    u64                     mReoteRecLiveLeftSize;                  /* 远端设备(小卡)的录像,直播剩余时间 */
+    u64                             mReoteRecLiveLeftSize;                  /* 远端设备(小卡)的录像,直播剩余时间 */
 
-    int                     mVolumeManagerWorkMode;                 /* 卷管理器的工作模式: U盘模式;普通模式 */
+    int                             mVolumeManagerWorkMode;                 /* 卷管理器的工作模式: U盘模式;普通模式 */
 
-    u32                     mHandledAddUdiskVolCnt;
-    int                     mHandledRemoveUdiskVolCnt;
+    u32                             mHandledAddUdiskVolCnt;
+    int                             mHandledRemoveUdiskVolCnt;
 
-    u32                     mTaketimelapseCnt;                      /* 可拍timelapse的张数 */
+    u32                             mTaketimelapseCnt;                      /* 可拍timelapse的张数 */
 
     /*
      * 录像，直播录像的剩余秒数
      */
-    u64                     mRecLeftSec;                            /* 当前挡位可录像的剩余时长 */
-    u64                     mRecSec;    
-    u64                     mLiveRecLeftSec;                        /* 当前挡位直播存片的剩余时长 */
-    u64                     mLiveRecSec;
+    u64                             mRecLeftSec;                            /* 当前挡位可录像的剩余时长 */
+    u64                             mRecSec;    
+    u64                             mLiveRecLeftSec;                        /* 当前挡位直播存片的剩余时长 */
+    u64                             mLiveRecSec;
 
-    Json::Value             mTakePicStorageCfg;                     /* 配置拍照各挡位的存储空间大小 */
+    Json::Value                     mTakePicStorageCfg;                     /* 配置拍照各挡位的存储空间大小 */
 
     /*
      * 可拍照，Timelapse可拍的张数
      */
-    u32                     mTakePicLeftNum;                            /* 普通拍照的剩余张数 */
-
-    sp<ins_i2c>             mI2CLight;
-
-    struct timeval          mEnterUdiskTime;
-
-    pthread_t               mThread;			
-
-	sp<ARMessage>	        mNotify;
-
-    pthread_t               mFileMonitorThread;
-    int                     mFileMonitorPipe[2];
-
-    std::thread             mVolWorkerThread;
-
-    bool                    mAllowExitUdiskMode;
+    u32                             mTakePicLeftNum;                            /* 普通拍照的剩余张数 */
+	
+	sp<ARMessage>	                mNotify;
 
 
+    std::thread                     mVolWorkerThread;
 
-
-                            VolumeManager();
-
-    bool                    initFileMonitor();
-    bool                    deInitFileMonitor();
-
-    /*
-     * 工作线程
-     */
-    void                    startWorkThread();
-    void                    stopWorkThread();
-    void                    volWorkerEntry();
-    std::shared_ptr<NetlinkEvent>        getEvent();
-    std::vector<std::shared_ptr<NetlinkEvent>> getEvents();
-    void                    postEvent(std::shared_ptr<NetlinkEvent> pEvt);
-
+    bool                            mAllowExitUdiskMode;
 
     int                             mCtrlPipe[2];   // 0 -- read , 1 -- write
     std::vector<sp<NetlinkEvent>>   mEventVec;
@@ -492,6 +452,26 @@ private:
     savePathChangedCallback         mSavePathChangeCallback;
     saveListNotifyCallback          mSaveListNotifyCallback;
     notifyHotplugCallback           mStorageHotplugCallback;
+
+
+    bool                            mWorkerRunning;           /* Netlink事件处理线程的状态: true - 运行状态; false - 非运行状态 */
+    std::mutex                      mWorkRunStateLock;
+
+                            VolumeManager();
+
+    /*****************************************************************************************************
+     * Vold Netlink事件处理线程
+     *****************************************************************************************************/
+    void                    startWorkThread();
+    void                    stopWorkThread();
+    void                    volWorkerEntry();
+    std::shared_ptr<NetlinkEvent>        getEvent();
+    std::vector<std::shared_ptr<NetlinkEvent>> getEvents();
+    void                    postEvent(std::shared_ptr<NetlinkEvent> pEvt);
+    bool                    getWorkerState();
+    void                    setWorkerState(bool bState);
+
+
 
     int                     mountVolume(Volume* pVol);
 
@@ -522,10 +502,13 @@ private:
 
     void                    modulePwrCtl(Volume* pVol, bool onOff, int iPwrOnLevel);   
 
-    const char*             getVolState(int iType);
 
-public:
-    void                    runFileMonitorListener();
+    /********************************************************************************
+     * >>> For Debug <<<
+     ********************************************************************************/
+    const char*             getVolState(int iType);
+    const char*             getActionStr(int iType);
+
 };
 
 #endif  /* _VOLUMEMANAGER_H_ */

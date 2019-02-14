@@ -31,6 +31,9 @@
 ** V3.5(TODO)
 ** 1.深度格式化
 ** 2.剩余量计算的配置化
+** V3.6         Skymixos        2019年2月14日   去掉文件/目录监视器相关代码
+**                                              fixup Vold线程启动前，缓存了复位USB2SD芯片得到的热插拔事件
+**
 ******************************************************************************************************/
 
 #include <stdio.h>
@@ -99,14 +102,14 @@
 /*********************************************************************************************
  *  宏定义
  *********************************************************************************************/
-#define MAX_FILES 			1000
-#define EPOLL_COUNT 		20
-#define MAXCOUNT 			500
-#define EPOLL_SIZE_HINT 	8
+#define MAX_FILES 			                1000
+#define EPOLL_COUNT 		                20
+#define MAXCOUNT 			                500
+#define EPOLL_SIZE_HINT 	                8
 #define DEFAULT_WORKER_LOOPER_INTERVAL      500     // Ms
 #define ENTER_EXIT_UDISK_LOOPER_INTERVAL    50      // Ms
 
-#define MKFS_EXFAT          "/usr/local/bin/mkexfatfs"
+#define MKFS_EXFAT                          "/usr/local/bin/mkexfatfs"
 
 
 /*********************************************************************************************
@@ -318,7 +321,7 @@ static Volume gSysVols[] = {
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
     },          
 
-#ifdef HW_FLATFROM_TITAN
+    #ifdef HW_FLATFROM_TITAN
     
     {   /* mSD7 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
@@ -361,7 +364,7 @@ static Volume gSysVols[] = {
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
     }, 
-#endif
+    #endif
 
 };
 
@@ -403,11 +406,11 @@ VolumeManager::VolumeManager() :
                                 mSavedLocalVol(NULL),
                                 mBsavePathChanged(false),
                                 mNotify(NULL),
-                                mAllowExitUdiskMode(false)                          
+                                mAllowExitUdiskMode(false),
+                                mWorkerRunning(false)                         
 {
 
 	Volume* tmpVol = NULL;
-
 
     mModuleVolNum = 0;
     mReoteRecLiveLeftSize = 0;
@@ -444,6 +447,31 @@ VolumeManager::VolumeManager() :
     property_set(PROP_RO_MOUNT_TF, "true");     /* 只读的方式挂载TF卡 */    
 #endif
 
+    /** 
+     * 1.先让USB2SD卡处于Reset状态
+     * 2.重新复位下接SD卡的HUB 
+     * 3.最后让USB2SD卡退出Reset状态
+     */
+	int iDefaultSdResetGpio = USB_TO_SD_RESET_GPIO;
+	const char* pSdResetProp = NULL;
+
+
+	/* 从属性系统文件中获取USB转SD卡芯片使用的复位引脚 */
+	pSdResetProp = property_get(PROP_SD_RESET_GPIO);
+	if (pSdResetProp) {
+		iDefaultSdResetGpio = atoi(pSdResetProp);
+		LOGDBG(TAG, "Use Property Sd Reset GPIO: %d", iDefaultSdResetGpio);
+	}
+
+    setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_HIGH);
+    LOGINFO(TAG, "Reset Usb2Sd IC first!");
+    resetHub(SD_USB_HUB_RESET_GPIO, RESET_HIGH_LEVEL, 500);
+    LOGINFO(TAG, "Resume Usb2Sd IC In normal state, hope it work normally^^");
+
+    setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_LOW);
+    msg_util::sleep_ms(500);
+
+
     LOGDBG(TAG, " Umont All device now .....");
 
     umount2("/mnt/SD1", MNT_FORCE);
@@ -464,6 +492,7 @@ VolumeManager::VolumeManager() :
 
     /* 删除/mnt/下未挂载的目录，已经挂载了的不处理（实时上update_check已经将升级设备挂载了） */
     clearAllunmountPoint();
+
 
     /*
      * 初始化与模组交互的两个GPIO
@@ -489,36 +518,12 @@ VolumeManager::VolumeManager() :
         }
     }
 
-    LOGDBG(TAG, "--> Module num = %d", mModuleVolNum);
-
-    /** 
-     * 1.先让USB2SD卡处于Reset状态
-     * 2.重新复位下接SD卡的HUB 
-     * 3.最后让USB2SD卡退出Reset状态
-     */
-	int iDefaultSdResetGpio = USB_TO_SD_RESET_GPIO;
-	const char* pSdResetProp = NULL;
-	
-	/* 从属性系统文件中获取USB转SD卡芯片使用的复位引脚 */
-	pSdResetProp = property_get(PROP_SD_RESET_GPIO);
-	if (pSdResetProp) {
-		iDefaultSdResetGpio = atoi(pSdResetProp);
-		LOGDBG(TAG, "Use Property Sd Reset GPIO: %d", iDefaultSdResetGpio);
-	}
-
-    setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_HIGH);
-    LOGINFO(TAG, "Reset Usb2Sd IC first!");
-    resetHub(SD_USB_HUB_RESET_GPIO, RESET_HIGH_LEVEL, 500);
-    LOGINFO(TAG, "Resume Usb2Sd IC In normal state, hope it work normally^^");
-
-    setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_LOW);
-
+    LOGNULL(TAG, "--> Module num = %d", mModuleVolNum);
 
     /*
      * 加载拍照,录像各模式下存储配置清单
      */
     loadPicVidStorageCfgBill();
-
 
 #ifdef ENABLE_CACHE_SERVICE
     CacheService::Instance();
@@ -1043,24 +1048,6 @@ bool VolumeManager::checkAllModuleExitUdisk()
 
 
 
-/*************************************************************************
-** 方法名称: flushAllUdiskEvent2Worker
-** 方法功能: 清空工作线程工作队列中所有的U盘事件
-**          (U-Disk event was Cached in mCacheVec)
-** 入口参数: 
-** 返回值:   无
-** 调 用: 
-*************************************************************************/
-void VolumeManager::flushAllUdiskEvent2Worker()
-{
-    std::unique_lock<std::mutex> _lock(mEvtLock);
-    LOGDBG(TAG, "Current CacheVec Events(%d)", mCacheVec.size());
-    for (auto item: mCacheVec) {
-        mEventVec.push_back(item);
-    }
-    mCacheVec.clear();
-}
-
 
 /*
  * 工作线程必须以一次取一个事件的模式工作
@@ -1345,151 +1332,6 @@ void VolumeManager::exitUdiskMode()
 }
 
 
-void VolumeManager::runFileMonitorListener()
-{
-    int iFd;
-    int iRes;
-	u32 readCount = 0;
-    char inotifyBuf[MAXCOUNT];
-    // char epollBuf[MAXCOUNT];
-
-	struct inotify_event inotifyEvent;
-	struct inotify_event* curInotifyEvent;
-
-    iFd = inotify_init();
-    if (iFd < 0) {
-        LOGERR(TAG, " inotify init failed...");
-        return;
-    }
-
-    LOGDBG(TAG, " Inotify init OK");
-
-    iRes = inotify_add_watch(iFd, "/mnt", IN_CREATE | IN_DELETE);
-    if (iRes < 0) {
-        LOGERR(TAG, " inotify_add_watch /mnt failed");
-        return;
-    }    
-
-    LOGDBG(TAG, " Add Listener object /mnt");
-
-    while (true) {
-
-        #ifndef USB_UDISK_AUTO_RAUN
-        fd_set read_fds;
-        int rc = 0;
-        int max = -1;
-
-        FD_ZERO(&read_fds);
-
-        FD_SET(mFileMonitorPipe[0], &read_fds);	
-        if (mFileMonitorPipe[0] > max)
-            max = mFileMonitorPipe[0];
-
-        FD_SET(iFd, &read_fds);	
-        if (iFd > max)
-            max = iFd;
-
-        if ((rc = select(max + 1, &read_fds, NULL, NULL, NULL)) < 0) {	
-            if (errno == EINTR)
-                continue;
-            sleep(1);
-            continue;
-        } else if (!rc)
-            continue;
-
-        if (FD_ISSET(mFileMonitorPipe[0], &read_fds)) {	
-            char c = CtrlPipe_Shutdown;
-            TEMP_FAILURE_RETRY(read(mFileMonitorPipe[0], &c, 1));	
-            if (c == CtrlPipe_Shutdown) {
-                LOGDBG(TAG, " VolumeManager notify our exit now ...");
-                break;
-            }
-            continue;
-        }
-
-
-        if (FD_ISSET(iFd, &read_fds)) {	
-            /* 读取inotify事件，查看是add 文件还是remove文件，add 需要将其添加到epoll中去，remove 需要从epoll中移除 */
-            readCount  = 0;
-            readCount = read(iFd, inotifyBuf, MAXCOUNT);
-            if (readCount <  sizeof(inotifyEvent)) {
-                LOGERR(TAG, "error inofity event");
-                continue;
-            }
-
-            curInotifyEvent = (struct inotify_event*)inotifyBuf;
-
-            while (readCount >= sizeof(inotifyEvent)) {
-                if (curInotifyEvent->len > 0) {
-
-                    std::string devNode = "/mnt/";
-                    devNode += curInotifyEvent->name;
-
-                    if (curInotifyEvent->mask & IN_CREATE) {
-                        /* 有新设备插入,根据设备文件执行挂载操作 */
-                        // handleMonitorAction(ACTION_ADD, devPath);
-                        LOGDBG(TAG, " [%s] Insert", devNode.c_str());
-                    } else if (curInotifyEvent->mask & IN_DELETE) {
-                        /* 有设备拔出,执行卸载操作 
-                         * 由设备名找到对应的卷(地址，子系统，挂载路径，设备命) - 构造出一个NetlinkEvent事件
-                         */
-                        LOGDBG(TAG, " [%s] Remove", devNode.c_str());
-
-                    }
-                }
-                curInotifyEvent--;
-                readCount -= sizeof(inotifyEvent);
-            }
-        }
-        #else 
-            LOGDBG(TAG, " Enter Udisk, times = %d", ++iTimes);
-            enterUdiskMode();
-            msg_util::sleep_ms(20* 1000);
-            
-            LOGDBG(TAG, " Exit Udisk, times = %d", iTimes);
-            exitUdiskMode();
-            msg_util::sleep_ms(5* 1000);
-
-        #endif
-
-    }
-}
-
-
-void* fileMonitorThread(void *obj) 
-{
-    VolumeManager* me = reinterpret_cast<VolumeManager *>(obj);
-    LOGDBG(TAG, " Enter Listener mode now ...");
-    me->runFileMonitorListener();		
-    pthread_exit(NULL);
-    return NULL;
-}
-
-
-/*
- * 卷管理器新增功能: 2018年8月31日
- * 1.监听/mnt下的文件变化   - (何时创建/删除文件，将其记录在日志中)
- * 2.监听磁盘的容量变化     - (本地的正在使用的以及远端的小卡)
- * 
- */
-
-bool VolumeManager::initFileMonitor()
-{
-    bool bResult = false;
-    if (pipe(mFileMonitorPipe)) {
-        LOGERR(TAG, " initFileMonitor pipe failed");
-    } else {
-        if (pthread_create(&mFileMonitorThread, NULL, fileMonitorThread, this)) {	
-            LOGERR(TAG, " pthread_create (%s)", strerror(errno));
-        } else {
-            LOGDBG(TAG, " Create File Monitor notify Thread....");
-            bResult = true;
-        }  
-    }
-    return bResult;
-}
-
-
 void VolumeManager::startWorkThread()
 {
     LOGDBG(TAG, "---> Start Volume Worker thread!");
@@ -1499,17 +1341,13 @@ void VolumeManager::startWorkThread()
         exit(-1);
     }
     mVolWorkerThread = std::thread([this]{ volWorkerEntry();});
+    mWorkerRunning = true;
 }
 
 
 void VolumeManager::stopWorkThread()
 {
     LOGDBG(TAG, "---> Stop Volume Worker thread!");
-
-    std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();
-    if (pEvt) {
-
-    }
     if (mCtrlPipe[0] != -1) {
         writePipe(mCtrlPipe[1], CtrlPipe_Shutdown);
         if (mVolWorkerThread.joinable()) {
@@ -1518,7 +1356,8 @@ void VolumeManager::stopWorkThread()
         mCtrlPipe[0] = -1;
         mCtrlPipe[1] = -1;
     }
-    mEventVec.clear();    
+    mEventVec.clear();  
+    mWorkerRunning = false;  
 }
 
 std::shared_ptr<NetlinkEvent> VolumeManager::getEvent()
@@ -1544,12 +1383,55 @@ std::vector<std::shared_ptr<NetlinkEvent>> VolumeManager::getEvents()
 }
 #endif
 
+
+
 void VolumeManager::postEvent(std::shared_ptr<NetlinkEvent> pEvt)
 {
-    if (pEvt) {
+    if (getWorkerState() && pEvt) {
         std::unique_lock<std::mutex> _lock(mEvtLock);
         mEventVec.push_back(pEvt);
         LOGDBG(TAG, "---> vector size: %d", mEventVec.size());
+    }
+}
+
+/*************************************************************************
+** 方法名称: flushAllUdiskEvent2Worker
+** 方法功能: 清空工作线程工作队列中所有的U盘事件
+**          (U-Disk event was Cached in mCacheVec)
+** 入口参数: 
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
+void VolumeManager::flushAllUdiskEvent2Worker()
+{    
+    if (getWorkerState()) {
+        LOGDBG(TAG, "Current CacheVec Events(%d)", mCacheVec.size());
+        std::unique_lock<std::mutex> _lock(mEvtLock);
+        for (auto item: mCacheVec) {
+            mEventVec.push_back(item);
+        }
+    }
+    mCacheVec.clear();
+}
+
+
+
+bool VolumeManager::getWorkerState()
+{
+    bool bCurState = false;
+    {
+        std::unique_lock<std::mutex> _lock(mWorkRunStateLock);
+        bCurState = mWorkerRunning;
+    }
+    return bCurState;
+}
+
+
+void VolumeManager::setWorkerState(bool bState)
+{
+    {
+        std::unique_lock<std::mutex> _lock(mWorkRunStateLock);
+        mWorkerRunning = bState;
     }
 }
 
@@ -1562,7 +1444,8 @@ void VolumeManager::volWorkerEntry()
     while (true) {
         std::shared_ptr<NetlinkEvent> pEvt = getEvent();
         if (pEvt) {
-            LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> volWorkerEntry Handle Event(action: %d, bus: %s) <<<<<<<<<<<<<<<", pEvt->getAction(), pEvt->getBusAddr());
+
+            LOGDBG(TAG, ">> volWorkerEntry Handle Event(action: %s, bus: %s)", getActionStr(pEvt->getAction()), pEvt->getBusAddr());
             Volume* tmpVol = NULL;
             int iResult = 0;
 
@@ -1669,6 +1552,7 @@ void VolumeManager::volWorkerEntry()
 
                 case NETLINK_ACTION_EXIT: {
                     LOGDBG(TAG, "--> volWorkerEntry Exit Event");
+                    mWorkerRunning = false;
                     return;
                 }
             }            
@@ -1681,6 +1565,14 @@ void VolumeManager::volWorkerEntry()
 
 
 
+
+/*************************************************************************
+** 方法名称: start
+** 方法功能: 启动卷管理相关线程(包括netlink事件监听线程,netlink事件处理线程)
+** 入口参数: 
+** 返回值:   无
+** 调 用: 
+*************************************************************************/
 bool VolumeManager::start()
 {
     bool bResult = false;
@@ -1697,15 +1589,9 @@ bool VolumeManager::start()
             } else {
                 coldboot("/sys/block");
                 bResult = true;
-
-            #ifdef ENABLE_FILE_CHANGE_MONITOR
-                initFileMonitor();
-            #endif
-
                 startWorkThread();
             }
-        }      
-    
+        }          
     } else {
         LOGDBG(TAG, " VolumeManager Not Support Listener Mode[%d]", mListenerMode);
     }
@@ -1713,40 +1599,12 @@ bool VolumeManager::start()
 }
 
 
-bool VolumeManager::deInitFileMonitor()
-{
-    char c = CtrlPipe_Shutdown;		
-    int  rc;	
-
-    rc = TEMP_FAILURE_RETRY(write(mFileMonitorPipe[1], &c, 1));
-    if (rc != 1) {
-        LOGERR(TAG, "Error writing to control pipe (%s)", strerror(errno));
-    }
-
-    void *ret;
-    if (pthread_join(mFileMonitorThread, &ret)) {	
-        LOGERR(TAG, "Error joining to listener thread (%s)", strerror(errno));
-    }
-	
-    close(mFileMonitorPipe[0]);	
-    close(mFileMonitorPipe[1]);
-    mFileMonitorPipe[0] = -1;
-    mFileMonitorPipe[1] = -1;
-    
-    stopWorkThread();
-
-    return true;
-}
-
-
 bool VolumeManager::stop()
 {
     bool bResult = false;
 
-#ifdef ENABLE_FILE_CHANGE_MONITOR
-    deInitFileMonitor();
-#endif
-
+    stopWorkThread();
+    
     if (mListenerMode == VOLUME_MANAGER_LISTENER_MODE_NETLINK) {
         NetlinkManager* nm = NULL;
         if (!(nm = NetlinkManager::Instance())) {	
@@ -1759,7 +1617,6 @@ bool VolumeManager::stop()
                 bResult = true;
             }
         }
-    
     } else {
         LOGDBG(TAG, " VolumeManager Not Support Listener Mode[%d]", mListenerMode);
     }
@@ -1909,7 +1766,6 @@ bool VolumeManager::checkMountPath(const char* mountPath)
 }
 
 
-
 bool VolumeManager::isValidFs(const char* devName, Volume* pVol)
 {
     char cDevNodePath[128] = {0};
@@ -1952,18 +1808,17 @@ bool VolumeManager::isValidFs(const char* devName, Volume* pVol)
 *************************************************************************/
 int VolumeManager::handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt)
 {
-    LOGDBG(TAG, ">>>>>>>>>>>>>>>>>> handleBlockEvent(action: %d, bus: %s) <<<<<<<<<<<<<<<", pEvt->getAction(), pEvt->getBusAddr());
-    
-    /*
-     * U盘工作模式
-     */
-    if (mEnteringUdisk) {
-        LOGDBG(TAG, ">> VolumeManager work on Udisk Mode, Cache Event here");
-        std::unique_lock<std::mutex> _lock(mCacheEvtLock);
-        mCacheVec.push_back(pEvt);
-    } else {
-        LOGDBG(TAG, ">> VolumeManager work on Norma Mode, Post Event here");
-        postEvent(pEvt);
+    if (getWorkerState()) {
+        LOGDBG(TAG, "=====> handleBlockEvent[Kernel -> Vold](action: %s, bus: %s)", getActionStr(pEvt->getAction()), pEvt->getBusAddr());
+        
+        if (mEnteringUdisk) {   /** U盘工作模式 */
+            LOGDBG(TAG, ">> Vold work on Udisk Mode, Cache Event to mCacheVec.");
+            std::unique_lock<std::mutex> _lock(mCacheEvtLock);
+            mCacheVec.push_back(pEvt);
+        } else {                /** 普通工作模式 */
+            LOGDBG(TAG, ">> Vold work on Normal Mode, Pass Event directly.");
+            postEvent(pEvt);
+        }
     }
     return 0;  
 }
@@ -2709,7 +2564,7 @@ u32 VolumeManager::calcTakeRecLefSec(Json::Value& jsonCmd, bool bFactoryMode)
     float iOriginBitRate = 0;
     float iStitchBitRate = 0;
 
-    float iSubBitRate = (5 * 1024 * 6 * 1.0f);          /* 字码流有6路 */
+    float iSubBitRate = (5 * 1024 * 8 * 1.0f);          /* 字码流有8路 */
     float iPrevieBitRate = 3 * 1024 * 1.0f;             /* 预览流1路 */
 
     float iNativeTotoalBitRate = 0.0f;
@@ -3131,7 +2986,6 @@ int VolumeManager::unmountVolume(Volume* pVol, std::shared_ptr<NetlinkEvent> pEv
         std::string devnode = "/dev/";
         devnode += pEvt->getDevNodeName();
         LOGDBG(TAG, " umount volume devname[%s], event devname[%s]", pVol->cDevNode, devnode.c_str());
-
         if (strcmp(pVol->cDevNode, devnode.c_str())) {   /* 设备名不一致,直接返回 */
             return -1;
         }
@@ -3619,14 +3473,6 @@ std::vector<Volume*>& VolumeManager::getLocalVols()
 }
 
 
-Volume* lookupVolume(const char *label)
-{
-    Volume* tmpVol = NULL;
-    
-    return tmpVol;
-}
-
-
 bool VolumeManager::formatVolume2Exfat(Volume* pVol)
 {
     /* 1.检查设备文件是否存在 */
@@ -3685,5 +3531,21 @@ const char* VolumeManager::getVolState(int iType)
         default: return "Unkown State";
     }
 }
+  
+
+const char* VolumeManager::getActionStr(int iType)
+{
+    switch (iType) {
+        CONVNUMTOSTR(NETLINK_ACTION_UNKOWN);
+        CONVNUMTOSTR(NETLINK_ACTION_ADD);
+        CONVNUMTOSTR(NETLINK_ACTION_REMOVE);
+        CONVNUMTOSTR(NETLINK_ACTION_CHANGE);   
+        CONVNUMTOSTR(NETLINK_ACTION_EXIT); 
+        CONVNUMTOSTR(NETLINK_ACTION_MAX);         
+
+        default: return "Unkown Action";
+    }
+}
+
 
      

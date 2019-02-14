@@ -711,6 +711,8 @@ void MenuUI::subSysInit()
 
 void MenuUI::subSysDeInit()
 {
+    // VolumeManager::Instance()->stop();    
+    
     TranManager::Instance()->stop();
 
     InputManager::Instance()->stop();
