@@ -102,3 +102,8 @@ ui_service_env.Program('./out/ui_service', ui_service_obj)
 ############################ factory_test ##################################
 factory_test_obj = SConscript('./ui_service/factory_test/SConscript')
 com_env.Program('./out/factory_test', factory_test_obj)
+
+
+############################## webServer ###################################
+web_server_obj = SConscript('./webServer/SConscript')
+com_env.Program('./out/webServer', web_server_obj)

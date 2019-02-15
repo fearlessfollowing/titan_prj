@@ -30,7 +30,7 @@ bool HttpServer::startHttpServer()
 
 	while (true) {
 		// printf("------------------> mg_mgr_poll\n");
-		mg_mgr_poll(&mMgr, 5); 	// ms
+		mg_mgr_poll(&mMgr, 10); 	// ms
 	}
 
 	return true;

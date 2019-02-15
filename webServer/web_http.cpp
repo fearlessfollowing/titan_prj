@@ -6002,6 +6002,8 @@ static size_t mg_get_line_len(const char *buf, size_t buf_len)
     return len == buf_len ? 0 : len + 1;
 }
 
+#if 0
+
 /*
  * 最大的内存缓冲区大小
  */
@@ -6095,7 +6097,7 @@ bool submit_mem_buf(strcut mem_buf* pbuf)
 
 }
 
-
+#endif
 
 
 #if MG_ENABLE_HTTP_STREAMING_MULTIPART
