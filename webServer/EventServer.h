@@ -8,19 +8,37 @@
 
 #include <sys/SocketListener.h>
 #include <sys/SocketClient.h>
+// #include <util/Queue.h>
+#include <util/ATask.h>
 
-#include "http_server.h"
+
+#include <json/value.h>
+#include <json/json.h>
+
 #include "UiListener.h"
+#include "http_server.h"
+
+
+enum {
+    AEVENT_SRC_UI,
+    AEVENT_SRC_CAMERAD,
+    AEVENT_SRC_HTTPCLIENT,
+    AEVENT_SRC_MAX
+};
 
 /*
  * AEvent为抽象的事件
  * - fd
  */
-class AEvent {
-
+struct AEvent {
+    int             iEventSrcType;      /* 事件的源: UI, Camerad, Http Client */
+    Json::Value     jInputData;         /* 存储得到的输入数据 */
+    Json::Value     jOutputData;        /* 输出数据对象 */
+    void*           priv;               /* 用来存储 mg_connection, SocketClient etc */
 };
 
 
+class UiListener;
 
 /*
  * EventHub为事件监听器，监听来自UI, Camerad, Http Client的事件
@@ -31,40 +49,41 @@ class AEvent {
 class EventServer: public HttpServer {
 
 public:
-            // EventServer();
-            EventServer(std::string sHttpPort, std::string sSocketPath);
-            ~EventServer();
+                EventServer();
+                EventServer(std::string sHttpPort, std::string sSocketPath);
+                ~EventServer();
 
-    void    startServer();
-    void    stopServer();
+    void        startServer();
+    void        stopServer();
+
+    bool        handleUiEvent(std::shared_ptr<AEvent> pUiEvt);
+
+    static void eventLooperHandler(std::shared_ptr<AEvent>& pEvt);
 
 protected:
 
     /** 主线程将http请求转换为 */
-    void    HandleEvent(struct mg_connection *connection, http_message *http_req);
-
-    bool    onDataAvailable(SocketClient *c);
+    void        httpEventHandler(struct mg_connection *connection, http_message *http_req);
 
 
 private:
-    std::thread     mEventLooperThread;
-    std::vector<std::shared_ptr<AEvent>>    mEventsQue;
-    std::mutex      mEventQueLock;
 
     std::string     mHttpPort;              /* HTTP port */
     std::string     mSocketPath;            /* Unix */
     std::string     mSocketPort;            /* TCP port */
 
+    u64                             mServerState;
+    std::shared_ptr<UiListener>     mUiListener;
+    std::shared_ptr<ATask<std::shared_ptr<AEvent>>>  mEventLoopTask;    
 
-    bool            createCommunicateLink();
 
+    bool            init();
+    void            deInit();
     void            dispatchAEvent(std::shared_ptr<AEvent> pEvent);
 
 
-    u64                             mServerState;
-
-    std::shared_ptr<UiListener>     mUiListener;
-
+	std::vector<std::shared_ptr<struct HttpRequest>>    mSupportRequest;
+    bool            registerUrlHandler(std::shared_ptr<struct HttpRequest> uriHandler);
 };
 
 

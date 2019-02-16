@@ -1,109 +1,120 @@
 
 #include <util/util.h>
 #include <string>
-#include <sys/types.h>			/* See NOTES */
+#include <sys/types.h>			
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <util/LocalSocket.h>
+
 
 #include "EventServer.h"
 #include "log_wrapper.h"
-
-#define DEFAULT_EVENT_SERVER_UNIX_PAH   "/dev/socket/event_server"
 
 #undef  TAG
 #define TAG "EventServer"
 
 
-int create_socket(const char *name, int type, mode_t perm)
+const char* getInputSrc(int iType)
 {
-    struct sockaddr_un addr;
-    int fd, ret;
-
-    fd = socket(PF_UNIX, type, 0);
-    if (fd < 0) {
-        LOGERR("Failed to open socket '%s': %s\n", name, strerror(errno));
-        return -1;
+    switch (iType) {
+        CONVNUMTOSTR(AEVENT_SRC_UI);
+        CONVNUMTOSTR(AEVENT_SRC_CAMERAD);
+        CONVNUMTOSTR(AEVENT_SRC_HTTPCLIENT);
+        default: return "Unkown Input Source";
     }
-
-    memset(&addr, 0 , sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    snprintf(addr.sun_path, sizeof(addr.sun_path), "/dev/socket/%s", name);
-
-    ret = unlink(addr.sun_path);
-    if (ret != 0 && errno != ENOENT) {
-        LOGERR("Failed to unlink old socket '%s': %s", name, strerror(errno));
-        goto out_close;
-    }
-
-    ret = bind(fd, (struct sockaddr *) &addr, sizeof (addr));
-    if (ret) {
-        LOGERR("Failed to bind socket '%s': %s", name, strerror(errno));
-        goto out_unlink;
-    }
-
-    chmod(addr.sun_path, perm);
-
-    LOGINFO("Created socket '%s' with mode '%o', user '%d', group '%d'", addr.sun_path, perm);
-
-    return fd;
-
-out_unlink:
-    unlink(addr.sun_path);
-out_close:
-    close(fd);
-    return -1;
 }
 
 
+void EventServer::eventLooperHandler(std::shared_ptr<AEvent>& pEvt)
+{
+    LOGDBG(TAG, ">> call eventLooperHandler");
+    LOGDBG(TAG, "Input source: %s", getInputSrc(pEvt->iEventSrcType));
+
+    /* UI, HTTP, CAMERAD */
+
+}
 
 
 /**
  * Create Communicate Link(Fifo, Unix socket etc)
  */
-bool EventServer::createCommunicateLink()
+bool EventServer::init()
 {
-    return true;
+    bool bResult = false;
+
+    mEventLoopTask = std::make_shared<ATask<std::shared_ptr<AEvent>>>(EventServer::eventLooperHandler);
+    if (mEventLoopTask) {
+        LOGDBG(TAG, "--> Create EventLooper Obj Suc.");
+
+        int iSocketFd = localSocketServer(mSocketPath.c_str(), SOCK_STREAM);
+        if (iSocketFd > 0) {
+            mUiListener = std::make_shared<UiListener>(iSocketFd);
+            bResult = true;
+        } else {
+            mEventLoopTask.reset();
+            mEventLoopTask = nullptr;
+            LOGERR(TAG, "--> create socket failed");
+        }   
+
+    }
+    return bResult;
 }
 
 
-// EventServer::EventServer()
-// {
-//     mSocketPath = DEFAULT_EVENT_SERVER_UNIX_PAH;
-// }
+void EventServer::deInit()
+{
+    if (mUiListener) {
+        mUiListener->stopListener();
+        mUiListener.reset();
+        mUiListener = nullptr;
+    }
+
+    if (mEventLoopTask) {
+        mEventLoopTask->stop();
+        mEventLoopTask.reset();
+        mEventLoopTask = nullptr;        
+    }
+}
+
+EventServer::EventServer()
+{
+    mHttpPort = "10000";
+    mSocketPath = "event_server";
+    mEventLoopTask = nullptr;
+}
 
 
 EventServer::EventServer(std::string sHttpPort, std::string sSocketPath)
 {
     mHttpPort = sHttpPort;
     mSocketPath = sSocketPath;
-
-    int iSocketFd = create_socket(mSocketPath.c_str(), SOCK_STREAM, 0666);
-    if (iSocketFd > 0) {
-    } else {
-        LOGERR(TAG, "--> create socket failed");
-    }
 }
 
 
 EventServer::~EventServer()
 {
-
+    deInit();
 }
-
 
 
 
 void EventServer::startServer()
 {
-    if (createCommunicateLink()) {
+    if (init()) {
+
+        /* Creat EventLooper Thread */
+        LOGDBG(TAG, "--> Create Event Looper for deal Events.");
+        mEventLoopTask->start();
+
         /** Create Communicate With Camerad Linker */
 
-        /** Startup Unix Socket Server */
 
+        /** Startup Unix Socket Server */
+        LOGDBG(TAG, "--> startup Unix Socket Listener Server");
+        mUiListener->startListener();
 
         /** Startup Monitor Camerad Message Server */
         
-
         /** Startup Http Server */
         setPort(mHttpPort);
         startHttpServer();
@@ -120,9 +131,96 @@ void EventServer::stopServer()
 }
 
 
-void EventServer::HandleEvent(struct mg_connection *connection, http_message *http_req)
+/*
+ * 处理来自UI的事件
+ * - 直接将事件丢入EventLooper中,由EventLooper线程集中处理事件
+ */
+bool EventServer::handleUiEvent(std::shared_ptr<AEvent> pUiEvt)
 {
-    /* TODO */
+    if (mEventLoopTask) {
+        mEventLoopTask->push(pUiEvt);
+        return true;
+    } else {
+        LOGERR(TAG, "--> mEventLoopTask is null, Maybe not init yet.");
+        return false;
+    }
+}
+
+
+
+bool EventServer::registerUrlHandler(std::shared_ptr<struct HttpRequest> uriHandler)
+{
+	std::shared_ptr<struct HttpRequest> tmpPtr = nullptr;
+	bool bResult = false;
+	u32 i = 0;
+
+	for (i = 0; i < mSupportRequest.size(); i++) {
+		tmpPtr = mSupportRequest.at(i);
+		if (tmpPtr && uriHandler) {
+			if (uriHandler->mUrl == tmpPtr->mUrl) {
+				fprintf(stderr, "url have registed, did you cover it\n");
+				break;
+			}
+		}
+	}
+
+	if (i >= mSupportRequest.size()) {
+		mSupportRequest.push_back(uriHandler);
+		bResult = true;
+	}
+	return bResult;    
+}
+
+
+/*
+ * 处理来自Http的事件
+ * - 构造Aevent
+ * - 将事件丢入线程池中
+ */
+void EventServer::httpEventHandler(struct mg_connection *connection, http_message *http_req)
+{
+	/*
+	 * message:包括请求行 + 头 + 请求体
+	 */	
+	std::string req_str = std::string(http_req->message.p, http_req->message.len);	
+	printf("Request Message: %s\n", req_str.c_str());
+
+	bool bHandled = false;
+	std::string reqMethod = std::string(http_req->method.p, http_req->method.len);
+	std::string reqUri = std::string(http_req->uri.p, http_req->uri.len);
+	std::string reqProto = std::string(http_req->proto.p, http_req->proto.len);
+	std::string reqBody = std::string(http_req->body.p, http_req->body.len);
+
+	printf("Req Method: %s", reqMethod.c_str());
+	printf("Req Uri: %s", reqUri.c_str());
+	printf("Req Proto: %s", reqProto.c_str());
+	printf("body: %s\n", reqBody.c_str());
+
+	std::shared_ptr<struct HttpRequest> tmpRequest;
+	u32 i = 0;
+	for (i = 0; i < mSupportRequest.size(); i++) {
+		tmpRequest = mSupportRequest.at(i);
+		if (tmpRequest) {
+			if (reqUri == tmpRequest->mUrl) {
+				int method = 0;
+
+				if (reqMethod == "GET" || reqMethod == "get") {
+					method |= METHOD_GET;
+				} else if (reqMethod == "POST" || reqMethod == "post") {
+					method |= METHOD_POST;
+				}
+
+				if (method & tmpRequest->mReqMethod) {	/* 支持该方法 */
+					// oscServiceEntry(connection, reqUri, reqBody);
+					bHandled = true;
+				}
+			}
+		}
+	}
+
+	if (!bHandled) {
+		mg_http_send_error(connection, 404, NULL);
+	}
 }
 
 

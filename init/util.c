@@ -100,7 +100,7 @@ int create_socket(const char *name, int type, mode_t perm, uid_t uid, gid_t gid)
 
     memset(&addr, 0 , sizeof(addr));
     addr.sun_family = AF_UNIX;
-    snprintf(addr.sun_path, sizeof(addr.sun_path), ANDROID_SOCKET_DIR"/%s", name);
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "/tmp/%s", name);
 
     ret = unlink(addr.sun_path);
     if (ret != 0 && errno != ENOENT) {

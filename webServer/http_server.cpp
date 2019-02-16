@@ -43,7 +43,7 @@ void HttpServer::OnHttpEvent(mg_connection *connection, int event_type, void *ev
 	
 	switch (event_type) {
 		case MG_EV_HTTP_REQUEST:
-			mInstance->HandleEvent(connection, httpReq);
+			mInstance->httpEventHandler(connection, httpReq);
 			break;
 	
 		case MG_EV_CLOSE: {
@@ -67,7 +67,7 @@ void HttpServer::OnHttpEvent(mg_connection *connection, int event_type, void *ev
 }
 
 
-void HttpServer::HandleEvent(mg_connection *connection, http_message *httpReq)
+void HttpServer::httpEventHandler(mg_connection *connection, http_message *httpReq)
 {
 	printf("-----------> HttpServer::HandleEvent called...\n");
 }

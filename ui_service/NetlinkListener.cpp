@@ -132,23 +132,12 @@ bool NetlinkListener::onDataAvailable(SocketClient *cli)
         // Log.e(TAG, "recvmsg failed (%s)", strerror(errno));
         return false;
     }
-
-#if 0
-    NetlinkEvent *evt = new NetlinkEvent();	
-    if (evt) {
-        if (evt->decode(mBuffer, count, mFormat)) {		
-            onEvent(evt);								
-        } 
-        delete evt;		
-    }		
-#else 
     std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();
     if (pEvt) {
         if (pEvt->decode(mBuffer, count, mFormat)) {		
             onEvent(pEvt);								
         }         
     }
-#endif 
     return true;	
 }
 

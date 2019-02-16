@@ -22,6 +22,18 @@ default: \
     LOGERR(TAG,"error item %d",item);\
     abort();
 
+
+#ifndef TEMP_FAILURE_RETRY
+/* Used to retry syscalls that can return EINTR. */
+#define TEMP_FAILURE_RETRY(exp) ({         \
+    typeof (exp) _rc;                      \
+    do {                                   \
+        _rc = (exp);                       \
+    } while (_rc == -1 && errno == EINTR); \
+    _rc; })
+#endif
+
+
 enum {
     CtrlPipe_Shutdown = 0,                  /* 关闭管道通知: 线程退出时使用 */
     CtrlPipe_Wakeup   = 1,                  /* 唤醒消息: 长按监听线程执行完依次检测后会睡眠等待唤醒消息的到来 */
@@ -65,6 +77,8 @@ bool convJsonObj2String(Json::Value& json, std::string& resultStr);
 bool loadJsonFromFile(std::string filePath, Json::Value* root);
 
 bool loadJsonFromString(std::string jsonStr, Json::Value* root);
+
+bool loadJsonFromCString(const char* pCstr, Json::Value* root);
 
 void printJson(Json::Value& root);
 

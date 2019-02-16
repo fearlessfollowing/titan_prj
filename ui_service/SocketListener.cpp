@@ -194,7 +194,7 @@ void SocketListener::runListener()
                 continue;
             sleep(1);
             continue;
-        } else if (!rc)
+    } else if (!rc)
             continue;
 
         if (FD_ISSET(mCtrlPipe[0], &read_fds)) {	
@@ -260,10 +260,9 @@ bool SocketListener::release(SocketClient* c, bool wakeup)
 {
     bool ret = false;
 	
-    /* if our sockets are connection-based, remove and destroy it */
     if (mListen && c) {
-        /* Remove the client from our array */
-        LOGINFO(TAG, "going to zap %d for %s", c->getSocket(), mSocketName);
+
+        LOGINFO(TAG, "release soccket %d from socket listener", c->getSocket());
         pthread_mutex_lock(&mClientsLock);
         SocketClientCollection::iterator it;
         for (it = mClients->begin(); it != mClients->end(); ++it) {
@@ -273,6 +272,7 @@ bool SocketListener::release(SocketClient* c, bool wakeup)
                 break;
             }
         }
+
         pthread_mutex_unlock(&mClientsLock);
 		
         if (ret) {

@@ -405,6 +405,24 @@ bool loadJsonFromString(std::string jsonStr, Json::Value* root)
 }
 
 
+bool loadJsonFromCString(const char* pCstr, Json::Value* root)
+{
+    bool bResult = false;
+    Json::CharReaderBuilder builder;
+    builder["collectComments"] = false;
+    JSONCPP_STRING errs;
+    Json::CharReader* reader = builder.newCharReader();
+    if (reader->parse(pCstr, pCstr + strlen(pCstr), root, &errs)) {
+        LOGDBG(TAG, "parse [%s] success", pCstr);
+        bResult = true;
+    } else {
+        LOGERR(TAG, "Parse Json String Failed!");
+        root = NULL;
+    }    
+    return bResult;
+}
+
+
 void printJson(Json::Value& root)
 {
     std::string resultStr;

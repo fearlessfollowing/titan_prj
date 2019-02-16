@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <string>
 #include <common/sp.h>
-#include <util/StringFormat.h>
+// #include <util/StringFormat.h>
 
 
 inline std::string ToString(const std::string &str)
@@ -98,6 +98,7 @@ inline std::string ToString(const T &a)
     }\
     } while(0)
 
+#if 0
 #define CHECK(a, ...) \
     do { \
     if(!(a)) {\
@@ -106,5 +107,6 @@ inline std::string ToString(const T &a)
             __FILE__, __FUNCTION__, __LINE__);\
     }\
     } while(0)
+#endif
 
 #endif

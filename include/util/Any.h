@@ -38,9 +38,7 @@ struct Any
     template<class U>
     U& AnyCast()
     {
-        CHECK(Is<U>(), "Cannot cast %s to %s", typeid(U).name(), m_tpIndex.name());
         // assert(Is<U>());
-
         auto derived = dynamic_cast<Derived<U>*> (m_ptr.get());
         return derived->m_value;
     }

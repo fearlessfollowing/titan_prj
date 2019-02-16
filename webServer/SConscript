@@ -8,8 +8,11 @@ src += ['http_server.cpp']
 src += ['UiListener.cpp']
 src += ['EventServer.cpp']
 
+
+
 src += [config.UI_SERVICE + '/SocketListener.cpp']
 src += [config.UI_SERVICE + '/SocketClient.cpp']
+src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
 
 src += [config.LIBLOG + '/logd_write.c']
 src += [config.LIBLOG + '/log_event_write.c']
@@ -19,6 +22,8 @@ src += [config.LIBLOG + '/log_time.cpp']
 src += [config.LIBLOG + '/log_wrapper.cpp']
 
 src += [config.LIBCUTILS + '/system_properties.c']
+src += [config.UTIL + '/util.cpp']
+src += [config.UTIL + '/LocalSocket.cpp']
 
 web_server_obj = com_env.Object(src)
 Return('web_server_obj')

@@ -49,15 +49,15 @@ public:
 	bool 				stopHttpServer(); 
 
 protected:
-	virtual void		HandleEvent(mg_connection *connection, http_message *http_req);
+	virtual void		httpEventHandler(mg_connection *connection, http_message *http_req);
 	static HttpServer*	mInstance;
 
 private:
 
 	static void			OnHttpEvent(mg_connection *connection, int event_type, void *event_data);
 
-	std::string					mPort;    
-	mg_mgr						mMgr;    
+	std::string     mPort;    
+	mg_mgr          mMgr;    
 };
 
 #endif /* _HTT_SERVER_H_ */
