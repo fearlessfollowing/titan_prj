@@ -48,6 +48,18 @@ typedef struct stKeyCode {
 } KeyCodeConv;
 
 
+/*********************************************************************************************
+ *  宏定义
+ *********************************************************************************************/
+enum {
+    UP = 0,
+    DOWN = 1,
+};
+
+#define LONG_PRESS_MSEC         (2000)
+#define SHORT_PRESS_THOR	    (100)   // 100ms
+
+
 /*
  * 有按键事件时的回调接口
  */
@@ -56,20 +68,20 @@ using BtnReportCallback = std::function<void (int iEventCode)>;
 class InputManager {
 
 public:
+    						InputManager();
 	virtual					~InputManager();
 	
 	void 					stop();
 	void 					start();
-    static InputManager*	Instance();
-	void					setNotifyRecv(sp<ARMessage> notify);
+	
+    void					setNotifyRecv(sp<ARMessage> notify);
 	
 	bool 					getReportState();
 	void					setEnableReport(bool bEnable);
-
     void                    setBtnReportCallback(BtnReportCallback callback);
 
 private:
-    						InputManager();
+
 	int 					openDevice(const char *device);
 
 	int 					inputEventLoop();
@@ -89,23 +101,25 @@ private:
     
     BtnReportCallback       mBtnReportCallback;          /* 按键事件上报回调处理 */    
     
-    int 					mCtrlPipe[2]; // 0 -- read , 1 -- write
+    int 					mCtrlPipe[2];               // 0 -- read , 1 -- write
     int 					last_down_key = 0;
     int64 					last_key_ts = 0;
 	
 	int						mKeyFd;
 
+    int                     mIKeyRespRate;              /* 按键的灵敏度,默认为100ms */        
+
     std::mutex 				mutexKey;
 	struct pollfd*			ufds = nullptr;
 	int 					nfds;
     int						mLongPressMonitorPipe[2];
-    pthread_t				mLongPressThread;
-    static InputManager*   	sInstance;
-	sp<ARMessage>			mNotify;
+	
+    sp<ARMessage>			mNotify;
 	bool					mEnableReport;
 	bool					mLongPressReported;
 	int						mLongPressVal;					/* 长按下的键值 */
 	int 					mLongPressState;
+
     std::thread 			mLooperThread;                  /* 循环线程 */
 	std::thread				mLongPressMonitorThread;		/* 长按监听线程 */
 

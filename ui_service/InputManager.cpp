@@ -1,5 +1,5 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2、Titan Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: InputManager.cpp
 ** 功能描述: 输入管理器（用于处理按键事件）
@@ -39,26 +39,13 @@
 #include <system_properties.h>
 #include <log/log_wrapper.h>
 
+
+/*********************************************************************************************
+ *  输出日志的TAG(用于刷选日志)
+ *********************************************************************************************/
 #undef  TAG
 #define TAG "InputManager"
 
-#define POLL_FD_NUM (2)
-
-enum {
-    UP = 0,
-    DOWN = 1,
-};
-
-
-#define LONG_PRESS_MSEC     (2000)
-#define SHORT_PRESS_THOR	(100)	        // 100ms
-
-#define ARRAY_SIZE(x)	    (sizeof(x) / sizeof(x[0]))
-
-
-static int          gIKeyRespRate = 100;        /* 按键的灵敏度,默认为100ms */
-static std::mutex   gInputManagerMutex;
-InputManager* InputManager::sInstance = NULL;
 
 
 KeyCodeConv gConvTab[] = {
@@ -89,15 +76,6 @@ const char *getAppKeyName(int cmd)
 }
 
 
-InputManager* InputManager::Instance() 
-{
-	std::unique_lock<std::mutex> lock(gInputManagerMutex);    
-    if (!sInstance)
-        sInstance = new InputManager();
-    return sInstance;
-}
-
-
 void InputManager::setNotifyRecv(sp<ARMessage> notify)
 {
     mNotify = notify;
@@ -106,7 +84,6 @@ void InputManager::setNotifyRecv(sp<ARMessage> notify)
 
 InputManager::InputManager(): mBtnReportCallback(nullptr), mNotify(nullptr)
 {
-
 	LOGDBG(TAG, ">>>>>>>>>>>>>>>>> InputManager Constructor <<<<<<<<<<<<<<<<<");
 
     const char* pRespRate = NULL;
@@ -121,11 +98,12 @@ InputManager::InputManager(): mBtnReportCallback(nullptr), mNotify(nullptr)
 	
     mLooperThread = std::thread([this]{ inputEventLoop();});
     mLongPressMonitorThread = std::thread([this]{ longPressMonitorLoop();});
+    mIKeyRespRate = 100;
 
     pRespRate = property_get(PROP_KEY_RESPRATE);
     if (pRespRate) {
         LOGDBG(TAG, "Get prop key response rate: %s", pRespRate);
-        gIKeyRespRate = atoi(pRespRate);
+        mIKeyRespRate = atoi(pRespRate);
     }
 }
 
@@ -451,12 +429,12 @@ int InputManager::inputEventLoop()
                 return -1;
             } else {
 						
-                #ifdef DEBUG_INPUT_MANAGER
+            #ifdef DEBUG_INPUT_MANAGER
                 key_ts = event.time.tv_sec * 1000000LL + event.time.tv_usec;                
                 LOGDBG(TAG, "get event %04x %04x %08x new_time %ld ms",
                             event.type, event.code, event.value, key_ts / 1000);
 
-                #endif
+            #endif
 
                 if (event.code != 0) {
 
@@ -467,9 +445,9 @@ int InputManager::inputEventLoop()
 
                     int iIntervalMs =  key_interval / 1000;
 
-                    #ifdef DEBUG_INPUT_MANAGER
+                #ifdef DEBUG_INPUT_MANAGER
                     LOGDBG(TAG, " event.code is 0x%x, event.value[%d], interval = %d ms\n", event.code, event.value, iIntervalMs);
-                    #endif
+                #endif
 
                     switch (event.value) {
                         case UP: {
@@ -477,7 +455,7 @@ int InputManager::inputEventLoop()
                             setMonitorState(MONITOR_STATE_CANCEL);
                             writePipe(mLongPressMonitorPipe[1], CtrlPipe_Cancel);
 
-                            if ((iIntervalMs > gIKeyRespRate) && (iIntervalMs < 1500)) {
+                            if ((iIntervalMs > mIKeyRespRate) && (iIntervalMs < 1500)) {
                                 if (event.code == last_down_key) {
                                     reportEvent(event.code);
                                 } else {

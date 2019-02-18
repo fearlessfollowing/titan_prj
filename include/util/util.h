@@ -42,6 +42,7 @@ enum {
 
 
 #define CONVNUMTOSTR(n) case n: return #n 
+#define ARRAY_SIZE(x)   (sizeof(x) / sizeof(x[0]))
 
 
 bool sh_isbig(void);

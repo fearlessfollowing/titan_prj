@@ -68,6 +68,7 @@
 #include <sys/Mutex.h>
 #include <icon/setting_menu_icon.h>
 #include <icon/pic_video_select.h>
+#include <util/SingleInstance.h>
 
 #include <log/log_wrapper.h>
 
@@ -687,9 +688,7 @@ void MenuUI::subSysInit()
      *******************************************************************************/
     LOGDBG(TAG, "---------> Init Input Manager");
     sp<ARMessage> inputNotify = obtainMessage(UI_MSG_KEY_EVENT);
-    InputManager* in = InputManager::Instance();
-    in->setNotifyRecv(inputNotify);
-
+    Singleton<InputManager>::getInstance()->setNotifyRecv(inputNotify);
 
     /*******************************************************************************
      * 传输子系统初始化
@@ -706,12 +705,10 @@ void MenuUI::subSysInit()
 
 
 void MenuUI::subSysDeInit()
-{
-    // VolumeManager::Instance()->stop();    
+{ 
     
     TranManager::Instance()->stop();
-
-    InputManager::Instance()->stop();
+    Singleton<InputManager>::getInstance()->stop();
 
 #ifdef ENABLE_NET_MANAGER
     NetManager::Instance()->stop();
@@ -2022,9 +2019,8 @@ void MenuUI::set_cur_menu_from_exit()
 
 void MenuUI::restore_all()
 {
-    InputManager* im = InputManager::Instance();
 
-    im->setEnableReport(false);
+    Singleton<InputManager>::getInstance()->setEnableReport(false);
 
     dispIconByType(ICON_RESET_SUC_128_48128_48);
 
@@ -2038,7 +2034,7 @@ void MenuUI::restore_all()
     } else {
         procBackKeyEvent();
     }
-    im->setEnableReport(true);
+    Singleton<InputManager>::getInstance()->setEnableReport(true);
 }
 
 
@@ -2880,7 +2876,6 @@ void MenuUI::procBackKeyEvent()
 {
     uint64_t tmpState = getServerState();
     ProtoManager* pm = ProtoManager::Instance();
-    InputManager* im = InputManager::Instance();
 
     LOGNULL(TAG, "procBackKeyEvent --> Current menu[%s], Current Server state[0x%x]", getMenuName(cur_menu), tmpState);
 
@@ -2939,7 +2934,7 @@ void MenuUI::procBackKeyEvent()
             if (pFactoryTest && !strcmp(pFactoryTest, "true")) {
                 if (tmpState == STATE_IDLE) {                    
                     u8 uLight = 0;
-                    im->setEnableReport(false);
+                    Singleton<InputManager>::getInstance()->setEnableReport(false);                    
                     
                     /* 发送AWB校正请求 - 如果服务器处于IDLE状态 */                
                     setLight();
@@ -2960,7 +2955,7 @@ void MenuUI::procBackKeyEvent()
                             LOGDBG(TAG, "-----> Calc Awb Failed. set val[0x%x]", uLight);
                     }
                     setLightDirect(uLight);
-                    im->setEnableReport(true);
+                    Singleton<InputManager>::getInstance()->setEnableReport(true);  
                 } else {
                     LOGERR(TAG, "Server is busy, 0x%x", tmpState);
                 }
@@ -4999,7 +4994,6 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
         case MENU_SHOW_SPACE: {  /* 显示存储设备菜单 */
 
             clearArea(0, 16);
-            InputManager* im = InputManager::Instance();
 
         #ifdef ENABLE_SPACE_PAGE_POWER_ON_MODULE
             system("power_manager power_on");
@@ -5016,8 +5010,8 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             /* 查询的时间有点长,显示等待... */
             dispIconByLoc(&queryStorageWait);
 
-            im->setEnableReport(false);
-
+            Singleton<InputManager>::getInstance()->setEnableReport(false);  
+            
             syncQueryTfCard();
     
             /* 统计系统中卡的信息 */
@@ -5026,7 +5020,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             /* 显示系统的存储卡的信息 */
             dispShowStoragePage(gStorageInfoItems);            
 
-            im->setEnableReport(true);
+            Singleton<InputManager>::getInstance()->setEnableReport(true); 
             break;
         }
 
@@ -5275,10 +5269,9 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
              * 该阶段的按键无效(不上报) - 2018年9月19日
              */
             VolumeManager* vm = VolumeManager::Instance();
-            InputManager* in = InputManager::Instance();
 
             /* 进入U盘模式后将不响应任何按键事件，除非关机 */
-            in->setEnableReport(false);
+            Singleton<InputManager>::getInstance()->setEnableReport(false); 
 
             tipEnterUdisk();            
             if (vm->enterUdiskMode()) {
@@ -5288,7 +5281,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             }
 
             #ifdef ENBALE_INPUT_EVENT_WHEN_ENTER_UDISK
-            in->setEnableReport(true);
+            Singleton<InputManager>::getInstance()->setEnableReport(true);             
             #endif
 
             break;
@@ -5651,7 +5644,6 @@ void MenuUI::procPowerKeyEvent()
     uint64_t serverState = getServerState();
 
     ProtoManager* pm = ProtoManager::Instance();
-    InputManager* im = InputManager::Instance();
     CfgManager* cm = CfgManager::Instance();
     int iIndex = 0;
 
@@ -5920,9 +5912,9 @@ void MenuUI::procPowerKeyEvent()
             if (false == mFormartState) {
                 if (checkStateEqual(serverState, STATE_IDLE) || checkStateEqual(serverState, STATE_PREVIEW)) {
                     if (addState(STATE_FORMATING)) {    /* 通知Server进入正在格式化状态 */
-                        im->setEnableReport(false);
+                        Singleton<InputManager>::getInstance()->setEnableReport(false);                            
                         startFormatDevice();            /* 进行设备格式化 */
-                        im->setEnableReport(true);
+                        Singleton<InputManager>::getInstance()->setEnableReport(true);                            
                     } else {
                         LOGDBG(TAG, "Notify Server Enter STATE_FORMATING Failed");
                     }
@@ -7800,13 +7792,10 @@ int MenuUI::oled_disp_type(int type)
                 dispQuitUdiskMode();
 
                 VolumeManager* vm = VolumeManager::Instance();
-                InputManager* in = InputManager::Instance();
-                in->setEnableReport(false);
-
+                Singleton<InputManager>::getInstance()->setEnableReport(false);    
                 vm->exitUdiskMode();
                 procBackKeyEvent();
-                in->setEnableReport(true);
-
+                Singleton<InputManager>::getInstance()->setEnableReport(true);    
             } else {
                 LOGERR(TAG, "Not in MENU_UDISK_MODE && Request Server quit Udisk Mode failed [%s]", getMenuName(cur_menu));
             }
