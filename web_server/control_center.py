@@ -30,8 +30,6 @@ from util.fifo_util import *
 import config
 from util.str_util import *
 
-# from util.log_util import *
-
 from util.ins_log_util import *
 from util.timer_util import *
 from util.time_util import *
@@ -67,29 +65,9 @@ ACTION_REQ_SYNC = 0
 ACTION_PIC = 1
 ACTION_VIDEO = 2
 ACTION_LIVE = 3
-ACTION_PREVIEW = 4
-#ACTION_HDMI = 4
-ACTION_CALIBRATION = 5
-ACTION_QR = 6
+
 ACTION_SET_OPTION = 7
-ACTION_LOW_BAT = 8
-ACTION_SPEED_TEST = 9
-ACTION_POWER_OFF = 10
-ACTION_GYRO = 11
-ACTION_NOISE = 12
-# ACTION_LOW_PROTECT = 19
-ACTION_CUSTOM_PARAM = 18
-ACTION_LIVE_ORIGIN = 19
-ACTION_AGEING = 20
 
-ACTION_AWB = 21
-ACTION_SET_STICH = 50
-
-#格式化TF卡（2018年8月10日）
-ACTION_FORMAT_TFCARD = 201
-
-# 退出U盘模式
-ACTION_QUIT_UDISK_MODE = 202
 
 ORG_OVER = 'originOver'
 KEY_STABLIZATION = 'stabilization'
@@ -118,24 +96,12 @@ class control_center:
         # 来自客户端的命令
         #
         self.camera_cmd_func = OrderedDict({
-
-            # 客户端请求启动预览 - OK
-            config._START_PREVIEW:          self.camera_start_preview,
-
-            # 客户端请求停止预览    
-            config._STOP_PREVIEW:           self.camera_stop_preview,
-
-            # 客户端请求拍照 - DYZ
-            config._TAKE_PICTURE:           self.camera_take_pic,
-
-            # 启动录像
-            config._START_RECORD:           self.camera_rec,
-
+            config._START_PREVIEW:          self.camera_start_preview,          # 客户端请求启动预览    
+            config._STOP_PREVIEW:           self.camera_stop_preview,           # 客户端请求停止预览
+            config._TAKE_PICTURE:           self.camera_take_pic,               # 客户端请求拍照 - DYZ
+            config._START_RECORD:           self.camera_rec,                    # 启动录像
             config._STOP_RECORD:            self.camera_rec_stop,
-
-            # 客户端请求启动直播
-            config._START_LIVE:             self.camera_live,
-
+            config._START_LIVE:             self.camera_live,                   # 客户端请求启动直播
             config._STOP_LIVE:              self.camera_stop_live,
             
             # 设置Flicker - OK
@@ -330,87 +296,33 @@ class control_center:
 
         # UI客户端
         self.ui_cmd_func = OrderedDict({
- 
-            # 请求查询Camera的状态
-            config._GET_SET_CAM_STATE:          self.cameraUiGetSetCamState,
-
-            # 请求Server进入U盘模式
-            config._REQ_ENTER_UDISK_MOD:        self.cameraUiSwitchUdiskMode,
-
-            # 更新拍timelapse的剩余值
-            config._UPDAT_TIMELAPSE_LEFT:       self.cameraUiUpdateTimelapaseLeft,
-
-            # 请求同步状态
-            config._REQ_SYNC_INFO:              self.cameraUiRequestSyncInfo,
-
-            # 请求格式化TF卡
-            config._REQ_FORMART_TFCARD:         self.cameraUiFormatTfCard,
-
-            # 请求更新录像,直播的时间
-            config._REQ_UPDATE_REC_LIVE_INFO:   self.cameraUiUpdateRecLeftSec,
-
-            # 请求启动预览
-            config._REQ_START_PREVIEW:          self.cameraUiStartPreview,
-
-            # 请求停止预览
-            config._REQ_STOP_PREVIEW:           self.cameraUiStopPreview,
-
-            # 查询TF卡状态
-            config._REQ_QUERY_TF_CARD:          self.cameraUiQueryTfcard,
-
-            # 查询GPS状态
-            config._REQ_QUERY_GPS_STATE:        self.cameraUiqueryGpsState,
-
-            # 设置Customer
-            config._REQ_SET_CUSTOM_PARAM:       self.cameraUiSetCustomerParam,
-
-            # 测速请求
-            config._REQ_SPEED_TEST:             self.cameraUiSpeedTest,
-
-            # 请求拍照
-            config._REQ_TAKE_PIC:               self.cameraUiTakePic,
-
-            # 请求录像
-            config._REQ_TAKE_VIDEO:             self.cameraUiTakeVideo,
-
-            # 停止录像
-            config._REQ_STOP_VIDEO:             self.cameraUiStopVideo,
-
-            # 请求启动直播
-            config._REQ_START_LIVE:             self.cameraUiStartLive,
-
-            # 请求停止直播
-            config._REQ_STOP_LIVE:              self.cameraUiStopLive,
-        
-            # 拼接校正
-            config._REQ_STITCH_CALC:            self.cameraUiStitchCalc,
-
-            # 存储路径改变
-            config._REQ_SAVEPATH_CHANGE:        self.cameraUiSavepathChange,
-
-            # 更新存储设备列表
-            config._REQ_UPDATE_STORAGE_LIST:    self.cameraUiUpdateStorageList,
-
-            # 更新电池信息
-            config._REQ_UPDATE_BATTERY_IFNO:    self.cameraUiUpdateBatteryInfo,
-
-            # 请求噪声采样
-            config._REQ_START_NOISE:            self.cameraUiNoiseSample,
-
-            # 请求陀螺仪校正
-            config._REQ_START_GYRO:             self.cameraUiGyroCalc,
-
-            # 低电请求
-            config._REQ_POWER_OFF:              self.cameraUiLowPower,
-
-            # 设置Options
-            config._REQ_SET_OPTIONS:            self.cameraUiSetOptions,
-
-            # AWB校正
-            config._REQ_AWB_CALC:               self.cameraUiCalcAwb,
-
-            # 更新系统温度
-            config._REQ_UPDATE_SYS_TMP:         self.cameraUiUpdateSysTemp,
+            config._GET_SET_CAM_STATE:          self.cameraUiGetSetCamState,                # 请求查询Camera的状态
+            config._REQ_ENTER_UDISK_MOD:        self.cameraUiSwitchUdiskMode,               # 请求Server进入U盘模式
+            config._UPDAT_TIMELAPSE_LEFT:       self.cameraUiUpdateTimelapaseLeft,          # 更新拍timelapse的剩余值
+            config._REQ_SYNC_INFO:              self.cameraUiRequestSyncInfo,               # 请求同步状态
+            config._REQ_FORMART_TFCARD:         self.cameraUiFormatTfCard,                  # 请求格式化TF卡
+            config._REQ_UPDATE_REC_LIVE_INFO:   self.cameraUiUpdateRecLeftSec,              # 请求更新录像,直播的时间
+            config._REQ_START_PREVIEW:          self.cameraUiStartPreview,                  # 请求启动预览
+            config._REQ_STOP_PREVIEW:           self.cameraUiStopPreview,                   # 请求停止预览
+            config._REQ_QUERY_TF_CARD:          self.cameraUiQueryTfcard,                   # 查询TF卡状态
+            config._REQ_QUERY_GPS_STATE:        self.cameraUiqueryGpsState,                 # 查询GPS状态
+            config._REQ_SET_CUSTOM_PARAM:       self.cameraUiSetCustomerParam,              # 设置Customer
+            config._REQ_SPEED_TEST:             self.cameraUiSpeedTest,                     # 测速请求
+            config._REQ_TAKE_PIC:               self.cameraUiTakePic,                       # 请求拍照
+            config._REQ_TAKE_VIDEO:             self.cameraUiTakeVideo,                     # 请求录像
+            config._REQ_STOP_VIDEO:             self.cameraUiStopVideo,                     # 停止录像
+            config._REQ_START_LIVE:             self.cameraUiStartLive,                     # 请求启动直播
+            config._REQ_STOP_LIVE:              self.cameraUiStopLive,                      # 请求停止直播
+            config._REQ_STITCH_CALC:            self.cameraUiStitchCalc,                    # 拼接校正
+            config._REQ_SAVEPATH_CHANGE:        self.cameraUiSavepathChange,                # 存储路径改变
+            config._REQ_UPDATE_STORAGE_LIST:    self.cameraUiUpdateStorageList,             # 更新存储设备列表
+            config._REQ_UPDATE_BATTERY_IFNO:    self.cameraUiUpdateBatteryInfo,             # 更新电池信息
+            config._REQ_START_NOISE:            self.cameraUiNoiseSample,                   # 请求噪声采样
+            config._REQ_START_GYRO:             self.cameraUiGyroCalc,                      # 请求陀螺仪校正
+            config._REQ_POWER_OFF:              self.cameraUiLowPower,                      # 低电请求
+            config._REQ_SET_OPTIONS:            self.cameraUiSetOptions,                    # 设置Options
+            config._REQ_AWB_CALC:               self.cameraUiCalcAwb,                       # AWB校正
+            config._REQ_UPDATE_SYS_TMP:         self.cameraUiUpdateSysTemp,                 # 更新系统温度
 
         })
 
@@ -429,7 +341,6 @@ class control_center:
 
             config._QUERY_GPS_STATE:        self.queryGpsState,
 
-            # config._GET_SN: self.get_sn,
             # config.CAMERA_RESET:          self.camera_reset,
         })
 
@@ -450,58 +361,21 @@ class control_center:
 
         self.oled_func = OrderedDict(
             {
-                ACTION_PIC:                 self.handleUiTakePic,
-
-                ACTION_VIDEO:               self.camera_oled_rec,
-
                 ACTION_REQ_SYNC:            self.start_oled_syn_state,
-
-                ACTION_LIVE:                self.camera_oled_live,
-
-                ACTION_PREVIEW:             self.camera_oled_preview,
-
-                ACTION_CALIBRATION:         self.camera_oled_calibration,
-
-                ACTION_QR:                  self.camera_oled_qr,
-
-                ACTION_SET_OPTION:          self.camera_oled_set_option,
-
-                ACTION_LOW_BAT:             self.camera_oled_low_bat,
-
-                ACTION_SPEED_TEST:          self.camera_oled_speed_test,
-
-                ACTION_POWER_OFF:           self.camera_oled_power_off,
-
-                # ACTION_GYRO:                self.camera_oled_gyro,
-
-                # ACTION_LOW_PROTECT:       self.camera_low_protect,
-
-                ACTION_LIVE_ORIGIN:         self.camera_oled_live_origin,
-
-                ACTION_AWB:                 self.camera_old_factory_awb,
             }
         )
 
 
         self.state_notify_func = OrderedDict({
             config._STATE_NOTIFY:           self.state_notify,
-
             config._RECORD_FINISH:          self.rec_notify,
-            
             config._PIC_NOTIFY:             self.pic_notify,
-            
             config._RESET_NOTIFY:           self.reset_notify,
-            
             config._QR_NOTIFY:              self.qr_notify,
-
             config._CALIBRATION_NOTIFY:     self.calibration_notify,
-            
             config._PREVIEW_FINISH:         self.preview_finish_notify,
-            
             config._LIVE_STATUS:            self.live_stats_notify,
-            
             config._NET_LINK_STATUS:        self.net_link_state_notify,
-            
             config._GYRO_CALIBRATION:       self.gyro_calibration_finish_notify,
 
             # 测速完成通知
@@ -579,13 +453,6 @@ class control_center:
 
         return read_info
 
-
-    def camera_old_factory_awb(self, content):
-        Info('camera_old_factory_awb')
-        Info('content is {}'.format(content))
-        os.system("factory_test awb")
-
-
     def camera_get_result(self, req, from_ui = False):
         try:
             req_ids = req[_param]['list_ids']
@@ -658,9 +525,6 @@ class control_center:
     def camera_stop_stitch_done(self, res=None):
         Info('camera_stop_stitch_done')
 
-    def start_stitch_req(self,req):
-        read_info = self.write_and_read(req)
-        return read_info
 
     def start_non_stich_camera_func(self, name, req):
         try:
@@ -1885,25 +1749,6 @@ class control_center:
         return read_info
 
 
-    # def camera_delete(self, req, from_ui = False):
-    #     dest = req[_param]['fileUrls']  # dest为删除列表
-    #     Info('>>>>>>>>>>>>>>>>>>> delete dest file {}'.format(dest))
-    #     for i in dest:
-    #         # 检查待删除的目录为外部存储目录/mnt开头
-    #         if str_start_with(i, MOUNT_ROOT):
-    #             if file_exist(i):   # 文件或目录存在
-    #                 if os.path.isdir(i):
-    #                     dir_name = os.path.basename(i)
-    #                     Info('>>>>>>>>>>> delete mSD card dir {}'.format(dir_name))
-    #                 if os.path.isdir(i):
-    #                     shutil.rmtree(i)
-    #                 else:
-    #                     os.remove(i)
-
-    #     read_info = cmd_done(req[_name])
-    #     return read_info
-
-
     def camera_delete(self, req, from_ui = False):
 
         Info('----> cameraDeleteFile req {} cam state: {}'.format(req, StateMachine.getCamStateFormatHex()))
@@ -2164,7 +2009,7 @@ class control_center:
                 Err('oled pic:error state {}'.format(StateMachine.getCamState()))
                 read_info = cmd_error_state(req[_name], StateMachine.getCamState())
         except Exception as e:
-            Err('handleUiTakePic e {}'.format(e))
+            Err('cameraUiTakePic e {}'.format(e))
             read_info = cmd_exception(e, req[_name])
         return read_info
 
@@ -2235,7 +2080,7 @@ class control_center:
                 Err('cameraUiStartLive:error state {}'.format(StateMachine.getCamState()))
                 read_info = cmd_error_state(req[_name], StateMachine.getCamState())
         except Exception as e:
-            Err('camera_oled_live e {}'.format(e))
+            Err('cameraUiStartLive e {}'.format(e))
             read_info = cmd_exception(e, name)
         return read_info
 
@@ -2344,7 +2189,7 @@ class control_center:
 
 
     def cameraUiUpdateSysTemp(self, req):
-        Info('[------- UI Req: cameraUiUpdateSysTemp ------] req: {}'.format(req))      
+        # Info('[------- UI Req: cameraUiUpdateSysTemp ------] req: {}'.format(req))      
         res = OrderedDict()
         res[_name] = req[_name]
         res[_state] = config.DONE   
@@ -2592,254 +2437,6 @@ class control_center:
             dict[_param] = param
         return dict
 
-
-    def get_origin(self,mime='jpeg', w=4000, h=3000, framerate=None, bitrate=None,save_org = None):
-        org = OrderedDict({config.MIME: mime,
-                           config.WIDTH: w, config.HEIGHT: h,
-                           config.SAVE_ORG: self.get_save_org()})
-        if save_org is not None:
-            org[config.SAVE_ORG] = save_org
-        if framerate is not None:
-            org[config.FRAME_RATE] = framerate
-        if bitrate is not None:
-            org[config.BIT_RATE] = bitrate
-        return org
-
-
-    def get_stich(self,mime='jpeg', w=3840, h=1920, mode='pano', framerate=None, bitrate=None):
-        org = OrderedDict({config.MIME: mime, config.MODE: mode, config.WIDTH: w, config.HEIGHT: h})
-        if framerate is not None:
-            org[config.FRAME_RATE] = framerate
-        if bitrate is not None:
-            org[config.BIT_RATE] = bitrate
-        return org
-
-    def get_audio(self,mime='aac',sampleFormat = 's16',channelLayout='stereo',samplerate=48000,bitrate=128):
-        aud = OrderedDict({config.MIME: mime, config.SAMPLE_FMT: sampleFormat, config.SAMPLE_RATE: samplerate, config.BIT_RATE: bitrate,config.CHANNEL_LAYOUT:channelLayout})
-        return aud
-
-    #max 3d pic as default
-    def get_pic_param(self,mode = config.MODE_3D):
-        param = OrderedDict()
-        param[config.ORG] = self.get_origin()
-        if mode == config.MODE_3D:
-            param[config.STICH] = self.get_stich(w=7680, h=7680, mode = config.MODE_3D)
-        else:
-            param[config.STICH] = self.get_stich(w=7680, h=3840, mode = 'pano')
-        # param[config.HDR] = 'true'
-        # param[config.PICTURE_COUNT] = 3
-        # param[config.PICTURE_INTER] = 5
-        return param
-
-
-    def handleUiTakePic(self, req = None):
-        name = config._TAKE_PICTURE
-
-        # 在屏幕拍照，倒计时阶段会设置服务器的状态为config.STATE_TAKE_CAPTURE_IN_PROCESS
-        # 所以如果确实是由屏幕发起的拍照，此处需要先去掉config.STATE_TAKE_CAPTURE_IN_PROCESS状态
-        if self._client_take_pic == False:
-            if StateMachine.checkStateIn(config.STATE_TAKE_CAPTURE_IN_PROCESS):
-                StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
-        try:
-            if StateMachine.checkAllowTakePic():
-                StateMachine.addCamState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
-                if req is None:
-                    res = self.take_pic(self.get_req(name, self.get_pic_param()),True)
-                else:
-                    Info('oled req {}'.format(req))
-                    res = self.take_pic(req, True)
-            elif StateMachine.checkStateIn(config.STATE_TAKE_CAPTURE_IN_PROCESS):
-                Info('camerad is taking picture in processing....')
-            else:
-                Err('oled pic:error state {}'.format(self.get_cam_state()))
-                res = cmd_error_state(name, self.get_cam_state())
-                self.send_oled_type(config.CAPTURE_FAIL)
-        except Exception as e:
-            Err('handleUiTakePic e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-    def get_preview_def_image_param(self):
-        param = OrderedDict()
-        param['sharpness'] = 4
-        # param['wb'] = 0
-        # param['iso_value'] = 0
-        # param['shutter_value']= 0
-        # param['brightness']= 0
-        param['contrast']= 55 #0-255
-        # param['saturation']= 0
-        # param['hue']= 0
-        param['ev_bias'] = 0  # (-96), (-64), (-32), 0, (32), (64), (96)
-        # param['ae_meter']= 0
-        # param['dig_effect']= 0
-        # param['flicker']= 0
-        return param
-
-    def get_preview_param(self, mode = config.MODE_PANO):
-        param = OrderedDict()
-        if mode == config.MODE_3D:
-            param[config.ORG] = self.get_origin(mime='h264', w=1920, h=1440, framerate=30, bitrate=15000)
-            param[config.STICH] = self.get_stich(mime='h264', w=1920, h=1920, framerate=30, bitrate=1000, mode = mode)
-        else:
-            param[config.ORG] = self.get_origin(mime='h264', w=1920, h=1440, framerate=30, bitrate=15000)
-            param[config.STICH] = self.get_stich(mime='h264', w=1920, h=960, framerate=30, bitrate=1000)
-
-        # param['imageProperty'] = self.get_preview_def_image_param()
-        # param[KEY_STABLIZATION] = True
-        #add audio for preview 170807
-        param[config.AUD] = self.get_audio()
-        Info('new preview param {}'.format(param))
-        return param
-
-
-    def camera_oled_preview(self):
-        name = config._START_PREVIEW
-        try:
-            # 检查是否运行启动预览
-            if StateMachine.checkAllowPreview():
-                # 允许启动预览，发送启动预览请求
-                res = self.start_preview(self.get_req(name, self.get_preview_param()), True)
-            elif StateMachine.checkInPreviewState():
-                name = config._STOP_PREVIEW
-                res = self.stop_preview(self.get_req(name), True)
-            else:
-                Err('camera_oled_preview error state {}'.format(hex(self.get_cam_state())))
-                self.send_oled_type(config.START_PREVIEW_FAIL)
-                res = cmd_error_state(name, self.get_cam_state())
-        except Exception as e:
-            Err('camera_oled_preview e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-
-    def camera_oled_rec(self, action_info = None):
-        name = config._START_RECORD
-        try:
-            if StateMachine.checkAllowTakeVideo():
-                # 添加正在启动录像的状态
-                StateMachine.addServerState(config.STATE_START_RECORDING)
-
-                res = self.start_rec(action_info, True)
-            elif StateMachine.checkInRecord():
-                # 添加正在停止录像状态
-                StateMachine.addServerState(config.STATE_STOP_RECORDING)
-
-                name = config._STOP_RECORD
-                res = self.stop_rec(self.get_req(name), True)
-            else:
-                Err('camera_oled_rec pic:error state {}'.format(StateMachine.getCamState()))
-                self.send_oled_type(config.START_REC_FAIL)
-                res = cmd_error_state(name, StateMachine.getCamState())
-        except Exception as e:
-            Err('camera_oled_rec e {}'.format(e))
-            if StateMachine.checkStateIn(config.STATE_START_RECORDING):
-                StateMachine.rmServerState(config.STATE_START_RECORDING)
-            
-            if StateMachine.checkStateIn(config.STATE_STOP_RECORDING):
-                StateMachine.rmServerState(config.STATE_STOP_RECORDING)
-
-            res = cmd_exception(e, name)
-        return res
-
-
-    def get_live_param(self, mode = config.MODE_3D):
-        param = OrderedDict()
-        br = 20000
-        stich_br = 10000
-        if mode == config.MODE_3D:
-            param[config.ORG] = self.get_origin(mime='h264', w=1920, h=1440, framerate=25, bitrate=br,save_org=False)
-            param[config.STICH] = self.get_stich(mime='h264', w=3840, h=3840, framerate=25, bitrate=stich_br,mode = mode)
-        else:
-            param[config.ORG] = self.get_origin(mime='h264', w=2560, h=1440, framerate=30, bitrate=br,save_org=False)
-            param[config.STICH] = self.get_stich(mime='h264', w=3840, h=1920, framerate=30, bitrate=stich_br,
-                                                 mode=mode)
-        param[config.AUD] = self.get_audio()
-        # param[KEY_STABLIZATION] = True
-        #param[config.STICH][config.LIVE_URL] = 'rtmp://127.0.0.1/live/rtmplive'
-        return param
-
-    def get_auto_connect_param(self):
-        auto_connect = OrderedDict({})
-        auto_connect['enable'] = True
-        auto_connect['interval'] = 1000
-        auto_connect['count'] = -1  #forever
-        return auto_connect
-
-    def camera_oled_live(self, action_info = None):
-        name = config._START_LIVE
-        Info('----> camera_oled_live start')
-        try:
-            if self._client_take_live == False:
-                if StateMachine.checkStateIn(config.STATE_START_LIVING):
-                    StateMachine.rmServerState(config.STATE_START_LIVING)
-
-            # 允许启动直播
-            if StateMachine.checkAllowLive():
-                StateMachine.addCamState(config.STATE_START_LIVING)
-                if action_info is None:
-                    Info('camera_oled_live action none')
-                    res = self.start_live(self.get_req(name, self.get_live_param()), True)
-                else:
-                    if check_dic_key_exist(action_info, config.AUD) is False:
-                        action_info[config.AUD] = self.get_audio()
-                    else:
-                        Info('live oled audio exist {}'.format(action_info[config.AUD]))
-
-                    if check_dic_key_exist(action_info, config.LIVE_AUTO_CONNECT) is False:
-                        action_info[config.LIVE_AUTO_CONNECT] = self.get_auto_connect_param()
-                    else:
-                        Info('live auto connect exist {}'.format(action_info[config.LIVE_AUTO_CONNECT]))
-                    res = self.start_live(action_info, True)
-            elif StateMachine.checkInLive() or StateMachine.checkInLiveConnecting():
-                name = config._STOP_LIVE
-                res = self.stop_live(self.get_req(name), True)
-            else:
-                if StateMachine.checkStateIn(config.STATE_START_LIVING):
-                    StateMachine.rmServerState(config.STATE_START_LIVING)
-                self.send_oled_type(config.START_LIVE_FAIL)
-                res = cmd_error_state(name, self.get_cam_state())
-                Info('---> live res {}'.format(res))
-        except Exception as e:
-            Err('camera_oled_live e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-    def get_live_org_req(self):
-        dict = OrderedDict()
-        dict[_name] = config._START_LIVE
-        if param is not None:
-            dict[_param] = param
-        return dict
-
-    def get_live_org_param(self):
-        param = OrderedDict()
-        br = 30000
-        param[config.ORG] = self.get_origin(mime='h264', w=3840, h=2160, framerate=30, bitrate=br,save_org = False)
-        param[config.AUD] = self.get_audio()
-
-        param[config.ORG]['liveUrl'] = 'rtmp://127.0.0.1/live'
-        return param
-
-    def camera_oled_live_origin(self):
-        name = config._START_LIVE
-        Info('camera_oled_live_origin start')
-        try:
-            if self.checkAllowLive():
-                Info('camera_oled_live_origin action none')
-                res = self.start_live(self.get_req(name, self.get_live_org_param()), True)
-            elif StateMachine.checkInLive() or StateMachine.checkInLiveConnecting():
-                name = config._STOP_LIVE
-                res = self.stop_live(self.get_req(name), True)
-            else:
-                self.send_oled_type(config.START_LIVE_FAIL)
-                res = self.cmd_error_state(name, self.get_cam_state())
-            Info('camera_oled_live_origin res {}'.format(res))
-        except Exception as e:
-            Err('camera_oled_live_origin e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-
     #  {'sharpness': 4, 'brightness': 87, 'long_shutter':1-60(s),'shutter_value': 21, 'wb': 0, 'saturation': 156, 'aaa_mode': 2, 'contrast': 143, 'ev_bias': 0, 'iso_value': 7}
     def set_len_param(self, len_param):
         Info('set_len_param {}'.format(len_param))
@@ -2854,8 +2451,6 @@ class control_center:
         if len(param) > 0:
             dict[_param] = param
         return self.camera_set_options(dict)
-
-
 
     def camera_oled_err(self, name, err_des):
         return cmd_error(name, 'camera_oled_error', err_des)
@@ -2913,6 +2508,7 @@ class control_center:
         except Exception as e:
             Err('camera_oled_sync_state e {}'.format(e))
         return cmd_done(ACTION_REQ_SYNC)
+
 
     def camera_start_calibration_done(self, req = None):
         self._client_stitch_calc = False
@@ -3220,23 +2816,6 @@ class control_center:
             return read_info
 
 
-    def camera_oled_calibration(self, param = None):
-        name = config._CALIBRATION
-        try:
-            #force calibration to 5s
-            if param is not None:
-                Info("oled calibration param {}".format(param))
-            else:
-                param = OrderedDict()
-            param['delay'] = 5
-
-            res = self.start_calibration(self.get_req(name, param), True)
-        except Exception as e:
-            Err('camera_oled_calibration e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-
     def camera_stop_qr_fail(self,err = -1):
         self.send_oled_type_err(config.STOP_QR_FAIL, err)
 
@@ -3269,23 +2848,6 @@ class control_center:
         read_info = self.write_and_read(req, True)
         return read_info
 
-    def camera_oled_qr(self):
-        name = config._START_QR
-        try:
-            Info('oled qr self.get_cam_state() {}'.format(self.get_cam_state()))
-            if self.get_cam_state() in (config.STATE_IDLE, config.STATE_PREVIEW):
-                res = self.start_qr(self.get_req(name))
-            elif self.get_cam_state() & config.STATE_START_QR == config.STATE_START_QR:
-                name = config._STOP_QR
-                res = self.stop_qr(self.get_req(name))
-            else:
-                Err('camera_oled_qr :error state {}'.format(self.get_cam_state()))
-                res = cmd_error_state(name, self.get_cam_state())
-                self.send_oled_type(config.QR_FINISH_ERROR)
-        except Exception as e:
-            Err('camera_oled_calibration e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
 
     def camera_oled_set_option(self, param = None):
         name = config.SET_OPTIONS
@@ -3302,17 +2864,6 @@ class control_center:
         StateMachine.addCamState(config.STATE_POWER_OFF)
         read_info = self.write_and_read(req, True)
         return read_info
-
-
-    def camera_oled_low_bat(self):
-        name = config._POWER_OFF
-        Info("oled camera_low_bat")
-        try:
-            res = self.start_power_off(self.get_req(name))
-        except Exception as e:
-            Err('camera_low_bat e {}'.format(e)                                                                                                                                                                                                             )
-            res = cmd_exception(e, name)
-        return res
 
 
     def camera_low_protect_fail(self, err = -1):
@@ -3346,16 +2897,6 @@ class control_center:
         Info("power off fail  err {}".format(err))
         self.set_cam_state(config.STATE_IDLE)
         self.send_oled_type(config.START_LOW_BAT_FAIL)
-
-    def camera_oled_power_off(self):
-        name = config._POWER_OFF
-        Info("oled camera_power_off setStitch false")
-        try:
-            res = self.start_power_off(self.get_req(name))
-        except Exception as e:
-            Err('camera_power_off e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
 
     def camera_gyro_done(self, req=None):
         Info("gyro done")
@@ -3455,40 +2996,10 @@ class control_center:
         return self.start_speed_test(req)
 
 
-    def camera_oled_speed_test(self, param = None):
-        name = config._SPEED_TEST
-        Info("oled camera_oled_speed_test param {}".format(param))
-        try:
-            res = self.start_speed_testreq(self.get_req(name, param), True)
-        except Exception as e:
-            Err('camera_oled_speed_test e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-
     def start_change_save_path(self, content):
         Info('[------ UI Req: start_change_save_path -----] req: {}'.format(content))
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.HAND_SAVE_PATH, content))
         return self.start_camera_cmd_func(config._SET_STORAGE_PATH, self.get_req(config._SET_STORAGE_PATH, content))
-
-
-    def handle_oled_key(self, content):
-        self.acquire_sem_camera()
-        try:
-            action = content['action']
-            Info('handle_oled_key action {}'.format(action))
-            
-            # 如果该action对应的处理函数存在
-            if check_dic_key_exist(self.oled_func, action):
-                if check_dic_key_exist(content, _param):
-                    res = self.oled_func[action](content[_param])
-                else:
-                    res = self.oled_func[action]()
-            else:
-                Err('bad oled action {}'.format(action))
-        except Exception as e:
-            Err('handle_oled_key exception {}'.format(e))
-        self.release_sem_camera()
 
 
 

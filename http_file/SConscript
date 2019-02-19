@@ -8,8 +8,8 @@ import config
 
 src = Glob('*.cpp')
 
-src += [config.PRO2_SERVICE + '/util/arlog.c']
-src += [config.PRO2_SERVICE + '/util/stlog.cpp']
+src += [config.SYSTEM_SERVER + '/util/arlog.c']
+src += [config.SYSTEM_SERVER + '/util/stlog.cpp']
 
 
 src += [config.LIBLOG + '/logd_write.c']
@@ -20,7 +20,7 @@ src += [config.LIBLOG + '/log_time.cpp']
 
 src += [config.LIBCUTILS + '/system_properties.c']
 
-com_env['CXXFLAGS'] += ' -I' + config.PRO2_SERVICE + '/include'
+com_env['CXXFLAGS'] += ' -I' + config.SYSTEM_SERVER + '/include'
 mongoose_obj = com_env.Object(src)
 
 Return('mongoose_obj')
