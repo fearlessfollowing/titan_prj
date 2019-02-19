@@ -25,6 +25,7 @@
 #include <iostream>
 #include <fstream>
 #include <util/util.h>
+#include <util/SingleInstance.h>
 #include <sys/ProtoManager.h>
 
 #include <log/log_wrapper.h>
@@ -89,16 +90,18 @@
 /*********************************************************************************************
  *  全局变量
  *********************************************************************************************/
-ProtoManager *ProtoManager::sInstance = NULL;
+// ProtoManager *ProtoManager::sInstance = NULL;
 
 static std::mutex gProtoManagerMutex;
 static std::mutex gSyncReqMutex;
 static const std::string gReqUrl = "http://127.0.0.1:20000/ui/commands/execute";
 static const char* gPExtraHeaders = "Content-Type:application/json\r\nReq-Src:ProtoManager\r\n";     // Req-Src:ProtoManager\r\n
 
+
 int ProtoManager::mSyncReqErrno = 0;
 Json::Value* ProtoManager::mSaveSyncReqRes = NULL;
 
+#if 0
 
 ProtoManager* ProtoManager::Instance() 
 {
@@ -107,6 +110,7 @@ ProtoManager* ProtoManager::Instance()
         sInstance = new ProtoManager();
     return sInstance;
 }
+#endif
 
 
 ProtoManager::ProtoManager(): mSyncReqExitFlag(false), 
@@ -208,7 +212,7 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
 {
 	http_message *hm = (struct http_message *)pEventData;
 	int iConnState;
-    ProtoManager* pm = ProtoManager::Instance();
+    std::shared_ptr<ProtoManager> pm = Singleton<ProtoManager>::getInstance();
 
 	switch (iEventType)  {
 	    case MG_EV_CONNECT: {
@@ -305,7 +309,7 @@ bool ProtoManager::getServerStateCb(Json::Value& resultJson)
 
     if (resultJson.isMember(_state)) {
         if (resultJson[_state] == _done) {
-            ProtoManager::Instance()->mServerState = resultJson["value"].asUInt64();
+            Singleton<ProtoManager>::getInstance()->mServerState = resultJson["value"].asUInt64();
             bRet = true;
         }
     } else {
@@ -433,7 +437,7 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
     LOGDBG(TAG, "---> parseQueryTfcardResult");
 
     bool bResult = false;
-    ProtoManager::Instance()->mStorageList.clear();
+    Singleton<ProtoManager>::getInstance()->mStorageList.clear();
 
     if (jsonData.isMember("state") && jsonData.isMember("results")) {
         if (jsonData["state"] == "done") {
@@ -469,7 +473,7 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
                     LOGDBG(TAG, "TF card node[%s] info index[%d], total space[%d]M, left space[%d], speed[%d], storage_state[%d]",
                                 tmpVol->cVolName, tmpVol->iIndex, tmpVol->uTotal, tmpVol->uAvail, tmpVol->iSpeedTest, tmpVol->iVolState);
 
-                    ProtoManager::Instance()->mStorageList.push_back(tmpVol);
+                    Singleton<ProtoManager>::getInstance()->mStorageList.push_back(tmpVol);
 
                 }
                 bResult = true; 
@@ -495,12 +499,13 @@ bool ProtoManager::parseQueryTfcardResult(Json::Value& jsonData)
 bool ProtoManager::queryTfcardCb(Json::Value& resultJson)
 {
     bool bRet = false;    
-    VolumeManager* vm = VolumeManager::Instance();    
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
+
     if (resultJson.isMember(_state)) {
         if (resultJson[_state] == _done) {     /* 调用卷管理器来更新TF卡的信息 */
             if (parseQueryTfcardResult(resultJson)) {
                 bRet = true;
-                vm->updateRemoteTfsInfo(ProtoManager::Instance()->mStorageList);
+                vm->updateRemoteTfsInfo(Singleton<ProtoManager>::getInstance()->mStorageList);
             }
         }
     } else {
@@ -888,8 +893,8 @@ bool ProtoManager::getGpsStateCb(Json::Value& resultJson)
     bool bResult = false;
     if (resultJson.isMember(_state)) {
         if (resultJson[_state] == _done) {
-            ProtoManager::Instance()->mGpsState = resultJson[_results][_state].asInt();
-            LOGDBG(TAG, "Query Gps State Result = %d", ProtoManager::Instance()->mGpsState);
+            Singleton<ProtoManager>::getInstance()->mGpsState = resultJson[_results][_state].asInt();
+            LOGDBG(TAG, "Query Gps State Result = %d", Singleton<ProtoManager>::getInstance()->mGpsState);
             bResult = true;
         } else {
             LOGERR(TAG, "Reply 'state' val not 'done' ");
@@ -952,7 +957,7 @@ bool ProtoManager::formatTfcardCb(Json::Value& resultJson)
         LOGERR(TAG, "Reply content not 'state' member??");
         iResult = ERROR_FORMAT_REQ_FAILED;
     }
-    ProtoManager::Instance()->mFormatTfResult = iResult;
+    Singleton<ProtoManager>::getInstance()->mFormatTfResult = iResult;
     return true;    
 }
 
@@ -1140,7 +1145,7 @@ void ProtoManager::handleQueryLeftInfo(Json::Value& queryJson)
     std::ostringstream osOutput;  
 
     std::string sendDataStr;
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
     Json::Value rootNode;
 
@@ -1406,7 +1411,7 @@ void ProtoManager::handleSpeedTestResult(Json::Value& jsonData)
 void ProtoManager::handleSwitchMountMode(Json::Value& paramJson)
 {
     LOGDBG(TAG, "Switch Mount Mode");
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
     if (paramJson.isMember("parameters")) {
         if (paramJson["parameters"].isMember("mode")) {

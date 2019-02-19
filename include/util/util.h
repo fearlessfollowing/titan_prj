@@ -44,6 +44,9 @@ enum {
 #define CONVNUMTOSTR(n) case n: return #n 
 #define ARRAY_SIZE(x)   (sizeof(x) / sizeof(x[0]))
 
+#define MAX_VAL(a,b) (((a) > (b)) ? (a):(b))
+
+
 
 bool sh_isbig(void);
 int read_line(int fd, void *vptr, int maxlen);

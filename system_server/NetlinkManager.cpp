@@ -15,8 +15,9 @@
 
 #include <log/log_wrapper.h>
 
+
 #undef  TAG
-#define TAG "Vold"
+#define TAG     "Vold"
 
 
 NetlinkManager *NetlinkManager::sInstance = NULL;

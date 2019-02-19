@@ -964,12 +964,14 @@ class control_center:
         except Exception as e:
             Err('set hw exception {}'.format(e))
 
-    def set_sys_time_change(self):
+    def set_sys_time_change(self, delta_t):
         Info('set_sys_time_change a')
-        self.start_camera_cmd_func(config._SYS_TIME_CHANGE, self.get_req(config._SYS_TIME_CHANGE))
+        param = OrderedDict()
+        param['delta_time_s'] = delta_t
+        self.start_camera_cmd_func(config._SYS_TIME_CHANGE, self.get_req(config._SYS_TIME_CHANGE, param))
         Info('set_sys_time_change b')
 
-    def set_sys_time(self,req):
+    def set_sys_time(self, req):
         if check_dic_key_exist(req, 'hw_time') and check_dic_key_exist(req,'time_zone'):
             tz = req['time_zone']
             Info('tz is {}'.format(tz))
@@ -978,7 +980,13 @@ class control_center:
             if check_dic_key_exist(nv_timezones, tz):
 
                 # 设置硬件时间
-                # self.set_hw_set_cmd(req['hw_time'])
+                t1 = int(time.time())
+                self.set_hw_set_cmd(req['date_time'])
+                t2 = int(time.time())
+
+                Info('t1 = {}'.format(t1))
+                Info('t2 = {}'.format(t2))
+
                 cmd = join_str_list(('setprop sys.hw_time ', req['hw_time']))
                 Info('set hw_time {}'.format(cmd))
                 sys_cmd(cmd)
@@ -989,10 +997,12 @@ class control_center:
                 sys_cmd(cmd)
                 
                 # 通知系统启动time_tz服务来修改系统时间及时区
+             
                 sys_cmd('setprop sys.tz_changed true')
-
                 self.has_sync_time = True
-                self.set_sys_time_change()
+
+                delta_time_s = t2 - t1                
+                self.set_sys_time_change(delta_time_s)
             else:
                 # 默认使用UTC时间
                 Info('System not support this zone {}'.format(tz))
@@ -1001,11 +1011,15 @@ class control_center:
         elif check_dic_key_exist(req, 'date_time'):
             cmd = join_str_list(('date ', req['date_time']))
             Info('connect fix date {}'.format(cmd))
+            t1 = time.time()
             sys_cmd(cmd)
+            t2 = time.time()
+            delta_time_s = t2 - t1
             self.has_sync_time = True
-            self.set_sys_time_change()
+            self.set_sys_time_change(delta_time_s)
         else:
             Err('not set sys_time')
+
 
 
     #

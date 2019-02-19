@@ -7,8 +7,8 @@ Import('com_env')
 import config
 
 src = Glob('*.cpp')
-src += [config.UI_SERVICE + '/hw/ins_i2c.cpp']
-src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
+src += [config.SYSTEM_SERVER + '/hw/ins_i2c.cpp']
+src += [config.SYSTEM_SERVER + '/hw/ins_gpio.cpp']
 
 src += [config.UTIL + '/util.cpp']
 

@@ -38,6 +38,8 @@
 #include <sys/ins_types.h>
 #include <hw/InputManager.h>
 #include <util/util.h>
+#include <util/SingleInstance.h>
+
 #include <prop_cfg.h>
 #include <system_properties.h>
 
@@ -48,33 +50,6 @@
 
 #undef      TAG
 #define     TAG "HwService"
-
-#define MAX_VAL(a,b) (((a) > (b)) ? (a):(b))
-
-#define CPU_TEMP_PATH           "/sys/class/thermal/thermal_zone2/temp"
-#define GPU_TEMP_PATH           "/sys/class/thermal/thermal_zone1/temp"
-#define PROP_POLL_SYS_PERIOD    "sys.poll_period"
-
-
-#define INVALID_TMP_VAL         1000.0f
-#define BAT_LOW_VAL             (5)
-
-
-bool HardwareService::mHaveInstance = false;
-static std::mutex gInstanceLock;
-static std::shared_ptr<HardwareService> gInstance;
-
-std::shared_ptr<HardwareService>& HardwareService::Instance()
-{
-    {
-        std::unique_lock<std::mutex> lock(gInstanceLock);   
-        if (mHaveInstance == false) {
-            mHaveInstance = true;
-            gInstance = std::make_shared<HardwareService>();
-        }
-    }
-    return gInstance;
-}
 
 
 void HardwareService::writePipe(int p, int val)
@@ -210,7 +185,7 @@ bool HardwareService::reportSysTempAndBatInfo()
     root["temp"] = temp;
     root["bat"]  = bat;
 
-    return ProtoManager::Instance()->sendUpdateSysTempReq(root);
+    return Singleton<ProtoManager>::getInstance()->sendUpdateSysTempReq(root);
 }
 
 
@@ -386,7 +361,6 @@ void HardwareService::tunningFanSpeed(int iLevel)
     system(cmd);
 }
 
-#define FAN_SPEED_LEVEL_PATH "/sys/kernel/debug/tegra_fan/cur_pwm"
 
 
 int HardwareService::getCurFanSpeedLevel()

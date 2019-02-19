@@ -33,6 +33,7 @@ LIBEV           = EXTLIBS + 'libev-master'
 UTIL            = EXTLIBS + 'util'
 
 UI_SERVICE      = SDK_ROOT + 'ui_service'
+SYSTEM_SERVER   = SDK_ROOT + 'system_server'
 UPDATE_CHECK    = SDK_ROOT + 'update_check'
 UPDATE_TOOL     = SDK_ROOT + 'update_tool'
 UPDATE_APP      = SDK_ROOT + 'update_app'

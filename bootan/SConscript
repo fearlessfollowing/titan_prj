@@ -7,10 +7,10 @@ Import('com_env')
 import config
 
 src = Glob('*.cpp')
-src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
-src += [config.UI_SERVICE + '/hw/ins_i2c.cpp']
-src += [config.UI_SERVICE + '/hw/oled_light.cpp']
-src += [config.UI_SERVICE + '/hw/oled_module.cpp']
+src += [config.SYSTEM_SERVER + '/hw/ins_gpio.cpp']
+src += [config.SYSTEM_SERVER + '/hw/ins_i2c.cpp']
+src += [config.SYSTEM_SERVER + '/hw/oled_light.cpp']
+src += [config.SYSTEM_SERVER + '/hw/oled_module.cpp']
 
 src += [config.LIBLOG + '/logd_write.c']
 src += [config.LIBLOG + '/log_event_write.c']
@@ -22,7 +22,7 @@ src += [config.LIBLOG + '/log_wrapper.cpp']
 src += [config.LIBCUTILS + '/system_properties.c']
 
 
-com_env['CXXFLAGS'] += ' -I' + config.UI_SERVICE + '/include'
+com_env['CXXFLAGS'] += ' -I' + config.SYSTEM_SERVER + '/include'
 bootan_obj = com_env.Object(src)
 
 Return('bootan_obj')

@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include <util/SingleInstance.h>
 #include <sys/NetlinkEvent.h>
 #include <sys/NetlinkHandler.h>
 #include <sys/VolumeManager.h>
@@ -39,7 +40,6 @@ int NetlinkHandler::stop()
  */
 void NetlinkHandler::onEvent(std::shared_ptr<NetlinkEvent> pEvt) 
 {   
-    VolumeManager *vm = VolumeManager::Instance();
-    vm->handleBlockEvent(pEvt);
+    Singleton<VolumeManager>::getInstance()->handleBlockEvent(pEvt);
 }
 

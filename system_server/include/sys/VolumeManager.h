@@ -214,8 +214,10 @@ using notifyHotplugCallback = std::function<void (sp<ARMessage>& msg, int iActio
 class VolumeManager {
 
 public:
+                VolumeManager();
     virtual     ~VolumeManager();
-    static u32  lefSpaceThreshold;
+
+
 
     /*
      * 启动/停止卷管理器
@@ -233,8 +235,6 @@ public:
     int         formatVolume(Volume* pVol, bool wipe = false);
     
     void        disableVolumeManager(void) { mVolManagerDisabled = 1; }
-
-    void        setDebug(bool enable);
 
     void        updateVolumeSpace(Volume* pVol);
     void        updateModuleVolumeSpace(int iAddDecSize);
@@ -328,9 +328,6 @@ public:
 
     void        powerOnOffModuleByIndex(bool bOnOff, int iIndex);
 
-
-
-
     u32         calcTakeLiveRecLefSec(Json::Value& jsonCmd);
 
     Json::Value* evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd);
@@ -374,10 +371,11 @@ public:
     /** 转换秒数为'00:00:00'格式字符串 */
     void        convSec2TimeStr(u64 secs, char* strBuf, int iLen);
 
-    static VolumeManager *Instance();
+    // static VolumeManager *Instance();
 
 
     void        loadPicVidStorageCfgBill();
+
 
     /***************************************************************************************
      * Callback
@@ -386,6 +384,7 @@ public:
     void        setSaveListNotifyCb(saveListNotifyCallback cb) { mSaveListNotifyCallback =  cb;}
     void        setNotifyHotplugCb(notifyHotplugCallback cb) { mStorageHotplugCallback =  cb;}
 
+    static u32  lefSpaceThreshold;
 
 private:
 
@@ -394,7 +393,7 @@ private:
     Volume*                         mSavedLocalVol;                 /* 上次保存 */
     bool                            mBsavePathChanged;              /* 本地存储设备路径是否发生改变 */
 
-    static VolumeManager*           sInstance;
+    // static VolumeManager*           sInstance;
 
     std::vector<Volume*>            mVolumes;                       /* 管理系统中所有的卷 */
     std::vector<Volume*>            mLocalVols;                     /* 管理系统中所有的卷 */
@@ -457,19 +456,19 @@ private:
     bool                            mWorkerRunning;           /* Netlink事件处理线程的状态: true - 运行状态; false - 非运行状态 */
     std::mutex                      mWorkRunStateLock;
 
-                            VolumeManager();
+
 
     /*****************************************************************************************************
      * Vold Netlink事件处理线程
      *****************************************************************************************************/
-    void                    startWorkThread();
-    void                    stopWorkThread();
-    void                    volWorkerEntry();
-    std::shared_ptr<NetlinkEvent>        getEvent();
-    std::vector<std::shared_ptr<NetlinkEvent>> getEvents();
-    void                    postEvent(std::shared_ptr<NetlinkEvent> pEvt);
-    bool                    getWorkerState();
-    void                    setWorkerState(bool bState);
+    void                                        startWorkThread();
+    void                                        stopWorkThread();
+    void                                        volWorkerEntry();
+    std::shared_ptr<NetlinkEvent>               getEvent();
+    std::vector<std::shared_ptr<NetlinkEvent>>  getEvents();
+    void                                        postEvent(std::shared_ptr<NetlinkEvent> pEvt);
+    bool                                        getWorkerState();
+    void                                        setWorkerState(bool bState);
 
 
 

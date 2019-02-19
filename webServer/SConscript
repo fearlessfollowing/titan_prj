@@ -10,9 +10,9 @@ src += ['EventServer.cpp']
 
 
 
-src += [config.UI_SERVICE + '/SocketListener.cpp']
-src += [config.UI_SERVICE + '/SocketClient.cpp']
-src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
+src += [config.SYSTEM_SERVER + '/SocketListener.cpp']
+src += [config.SYSTEM_SERVER + '/SocketClient.cpp']
+src += [config.SYSTEM_SERVER + '/hw/ins_gpio.cpp']
 
 src += [config.LIBLOG + '/logd_write.c']
 src += [config.LIBLOG + '/log_event_write.c']

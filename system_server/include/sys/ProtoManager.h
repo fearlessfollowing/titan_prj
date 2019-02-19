@@ -116,9 +116,9 @@ using syncReqResultCallback = std::function<bool (Json::Value& resultJson)>;
 class ProtoManager {
 
 public:
+                                    ProtoManager();
     virtual                         ~ProtoManager();
 
-    static ProtoManager*            Instance();                         /* 状态机实例 */
 
     /* 获取服务器的状态 */
     bool            getServerState(uint64_t* saveState);
@@ -227,7 +227,6 @@ private:
 
     static ProtoManager*    sInstance;
 
-
     static int              mSyncReqErrno;
     std::mutex              mSyncReqLock;
     bool                    mSyncReqExitFlag; 
@@ -248,7 +247,6 @@ private:
     int                     mGpsState;
     int                     mFormatTfResult;
 
-                    ProtoManager();
 
     bool            getSyncReqExitFlag();
     void            setSyncReqExitFlag(bool bFlag);

@@ -121,7 +121,8 @@ extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit
 /*********************************************************************************************
  *  全局变量
  *********************************************************************************************/
-VolumeManager *VolumeManager::sInstance = NULL;
+// VolumeManager *VolumeManager::sInstance = NULL;
+
 u32 VolumeManager::lefSpaceThreshold = 1024U;
 
 static std::mutex gVolumeManagerMutex;
@@ -130,6 +131,7 @@ static Mutex gLiveRecLeftMutex;
 static Mutex gRecMutex;
 static Mutex gLiveRecMutex;
 static Mutex gTimelapseLock;
+
 // static std::mutex gTimelapseLock;
 
 static Mutex gRemoteVolLock;
@@ -376,6 +378,7 @@ static Volume gSysVols[] = {
 
 
 
+#if 0
 /*************************************************************************
 ** 方法名称: Instance
 ** 方法功能: 获取卷管理器对象指针
@@ -390,6 +393,7 @@ VolumeManager* VolumeManager::Instance()
         sInstance = new VolumeManager();
     return sInstance;
 }
+#endif
 
 
 /*************************************************************************

@@ -22,16 +22,13 @@
 class TranManager {
 
 public:
+                            TranManager();
 	virtual					~TranManager();
 
 	bool 					start();
 	bool 					stop();
     
-    static TranManager*	    Instance();
-
 private:
-                            TranManager();
-    static TranManager*   	sInstance;
 
     std::mutex 				mLock;
     int 					mCtrlPipe[2]; // 0 -- read , 1 -- write

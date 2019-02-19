@@ -31,7 +31,7 @@
 #include <system_properties.h>
 #include <sys/TranManager.h>
 #include <util/bytes_int_convert.h>
-
+#include <util/SingleInstance.h>
 #include <sys/ProtoManager.h>
 
 #include <prop_cfg.h>
@@ -48,27 +48,15 @@
 
 
 
-#define RECV_HEAD_LEN   8 
-#define DATA_LEN_OFFSET 4
-
-
-TranManager* TranManager::sInstance = NULL;
-static std::mutex gInstanceLock;
-
-TranManager* TranManager::Instance() 
-{
-    std::unique_lock<std::mutex> lock(gInstanceLock);
-    if (!sInstance)
-        sInstance = new TranManager();
-    return sInstance;
-}
-
+#define RECV_HEAD_LEN       8 
+#define DATA_LEN_OFFSET     4
 
 TranManager::TranManager()
 {
     LOGDBG(TAG, "----> Constructor TranManager here");
     mRunning = false;
     mRecvErrCnt = 0;
+
 #ifdef TRAN_USE_FIFO
     mSendFd = -1;
     mRecvFd = -1;
@@ -171,7 +159,7 @@ bool TranManager::onDataAvailable(int iFd)
                 if (!reader->parse(&mRecvBuf[RECV_HEAD_LEN], &mRecvBuf[RECV_HEAD_LEN + iContentLen], &rootJson, &errs)) {
                     LOGERR(TAG, ">>>>>> Parse json format failed");
                 } else {
-                    bResult = ProtoManager::Instance()->parseAndDispatchRecMsg(iMsgWhat, rootJson); 
+                    bResult = Singleton<ProtoManager>::getInstance()->parseAndDispatchRecMsg(iMsgWhat, rootJson); 
                 }
             }
         }

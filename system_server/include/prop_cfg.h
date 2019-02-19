@@ -242,6 +242,17 @@
 #define PREVIEW_JSON_FILE               "/home/nvidia/insta360/etc/preview.json"
 
 
+/*
+ * CPU/GPU温度读取路径
+ */
+#define CPU_TEMP_PATH                   "/sys/class/thermal/thermal_zone2/temp"
+#define GPU_TEMP_PATH                   "/sys/class/thermal/thermal_zone1/temp"
+
+
+/*
+ * 风扇级别控制路径
+ */
+#define FAN_SPEED_LEVEL_PATH            "/sys/kernel/debug/tegra_fan/cur_pwm"
 
 
 /*
@@ -384,5 +395,16 @@
 
 #define SERVICE_STATE_STOPPING      "stopping"
 #define SERVICE_STATE_STOPPED       "stopped"
+
+
+
+
+#define PROP_POLL_SYS_PERIOD    "sys.poll_period"
+
+
+#define INVALID_TMP_VAL         1000.0f
+#define BAT_LOW_VAL             (5)
+
+
 
 #endif /* PRO2_OSC_CODE_CODE_CORE_INCLUDE_PROP_CFG_H_ */

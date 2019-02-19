@@ -44,12 +44,12 @@
 #undef  TAG
 #define TAG     "CfgManager"
 
-
-static std::mutex gCfgManagerMutex;
-
 #define SYS_CTL_FILE_OLD_PATH   "/etc/sysctl.conf"
 #define SYS_CTL_FILE_NEW_PATH   "/home/nvidia/insta360/etc/sysctl.conf"
 
+
+#if 0
+static std::mutex gCfgManagerMutex;
 CfgManager* CfgManager::sInstance = NULL;
 
 CfgManager* CfgManager::Instance() 
@@ -59,7 +59,7 @@ CfgManager* CfgManager::Instance()
         sInstance = new CfgManager();
     return sInstance;
 }
-
+#endif
 
 CfgManager::CfgManager()
 {

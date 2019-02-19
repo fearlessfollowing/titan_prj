@@ -25,11 +25,11 @@ com_env.Append(CCCOMSTR  ='CC <============================================ $SOU
 com_env.Append(CXXCOMSTR ='CXX <=========================================== $SOURCES')
 #com_env.Append(LINKCOMSTR='Link Target $SOURCES')
 
-ui_service_env = com_env.Clone()
+system_server_env = com_env.Clone()
 
 
 Export('com_env')
-Export('ui_service_env')
+Export('system_server_env')
 
 ############################# Monitor ######################################
 monitor_obj = SConscript('./init/SConscript')
@@ -67,21 +67,21 @@ com_env.Program('out/update_app', update_app_obj)
 
 
 ############################ power_manager ##################################
-power_obj = SConscript('./ui_service/power/SConscript')
+power_obj = SConscript('./system_server/power/SConscript')
 com_env.Program('./out/power_manager', power_obj)
 
 ############################ pwr_ctl ##################################
-#pwr_obj = SConscript('./ui_service/pwr_ctl/SConscript')
+#pwr_obj = SConscript('./system_server/pwr_ctl/SConscript')
 #com_env.Program('./out/pwr_ctl', pwr_obj)
 
 
-############################ ui_service ##################################
-ui_service_env = com_env.Clone()
-ui_service_env.Append(CXXFLAGS= '-DUSE_TRAN_SEND_MSG')
-ui_service_env.Append(LIBS=['sqlite3'])
-#ui_service_env.Append(LIBS=['tinyxml2'])
-ui_service_obj = SConscript('./ui_service/SConscript')
-ui_service_env.Program('./out/ui_service', ui_service_obj)
+############################ system_server ##################################
+system_server_env = com_env.Clone()
+system_server_env.Append(CXXFLAGS= '-DUSE_TRAN_SEND_MSG')
+system_server_env.Append(LIBS=['sqlite3'])
+#system_server_env.Append(LIBS=['tinyxml2'])
+system_server_obj = SConscript('./system_server/SConscript')
+system_server_env.Program('./out/system_server', system_server_obj)
 
 
 ############################ mongoose ##################################
@@ -100,7 +100,7 @@ ui_service_env.Program('./out/ui_service', ui_service_obj)
 
 
 ############################ factory_test ##################################
-factory_test_obj = SConscript('./ui_service/factory_test/SConscript')
+factory_test_obj = SConscript('./system_server/factory_test/SConscript')
 com_env.Program('./out/factory_test', factory_test_obj)
 
 

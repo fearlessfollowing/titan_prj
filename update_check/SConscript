@@ -7,10 +7,10 @@ Import('com_env')
 import config
 
 src = Glob('*.cpp')
-src += [config.UI_SERVICE + '/hw/oled_module.cpp']
-src += [config.UI_SERVICE + '/hw/oled_light.cpp']
-src += [config.UI_SERVICE + '/hw/ins_i2c.cpp']
-src += [config.UI_SERVICE + '/hw/ins_gpio.cpp']
+src += [config.SYSTEM_SERVER + '/hw/oled_module.cpp']
+src += [config.SYSTEM_SERVER + '/hw/oled_light.cpp']
+src += [config.SYSTEM_SERVER + '/hw/ins_i2c.cpp']
+src += [config.SYSTEM_SERVER + '/hw/ins_gpio.cpp']
 
 src += [config.UTIL + '/Process.cpp']
 src += [config.UTIL + '/forkUtil.cpp']
@@ -20,13 +20,13 @@ src += [config.UTIL + '/update_util.cpp']
 src += [config.UTIL + '/bytes_int_convert.cpp']
 src += [config.UTIL + '/util.cpp']
 
-src += [config.UI_SERVICE + '/NetlinkEvent.cpp']
-src += [config.UI_SERVICE + '/NetlinkHandler.cpp']
-src += [config.UI_SERVICE + '/NetlinkListener.cpp']
-src += [config.UI_SERVICE + '/NetlinkManager.cpp']
-src += [config.UI_SERVICE + '/SocketListener.cpp']
-src += [config.UI_SERVICE + '/SocketClient.cpp']
-src += [config.UI_SERVICE + '/VolumeManager.cpp']
+src += [config.SYSTEM_SERVER + '/NetlinkEvent.cpp']
+src += [config.SYSTEM_SERVER + '/NetlinkHandler.cpp']
+src += [config.SYSTEM_SERVER + '/NetlinkListener.cpp']
+src += [config.SYSTEM_SERVER + '/NetlinkManager.cpp']
+src += [config.SYSTEM_SERVER + '/SocketListener.cpp']
+src += [config.SYSTEM_SERVER + '/SocketClient.cpp']
+src += [config.SYSTEM_SERVER + '/VolumeManager.cpp']
 
 src += [config.LIBLOG + '/logd_write.c']
 src += [config.LIBLOG + '/log_event_write.c']

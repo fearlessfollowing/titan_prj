@@ -1283,7 +1283,7 @@ static PicVideoCfg vid3K_240F_3D_Cfg = {
 	stNorIcon:			{	                            /* 未选中时的图标列表 */
 		vid_8K60F_Nor_78x16,
 	},
-    pNote:              "3K|240F|3D",
+    pNote:              "3.2K|240F|3D",
     bDispType:          false,
 };
 
@@ -1356,7 +1356,7 @@ static PicVideoCfg vid8K_5F_Cfg = {
 	stNorIcon:			{	/* 未选中时的图标列表 */
 		vid_4K30F_Nor_78x16,
 	},
-    pNote:              "8K|5F|GSV",
+    pNote:              "11K|5F|GSV",
     bDispType:          false,
 };
 
@@ -1452,7 +1452,7 @@ static PicVideoCfg vid_Customer_Cfg = {
 		picVidCustmNor_78x16,
 	},
     pNote:              "customize",
-    bDispType:          true,
+    bDispType:          false,
 };
 
 

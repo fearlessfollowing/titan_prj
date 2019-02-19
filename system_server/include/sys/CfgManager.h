@@ -29,9 +29,10 @@ enum {
 class CfgManager {
 
 public:
+                            CfgManager();
 	virtual                 ~CfgManager();
 
-    static CfgManager*	    Instance();
+    // static CfgManager*	    Instance();
 
     bool                    setKeyVal(std::string key, int iNewVal);
     int                     getKeyVal(std::string key);
@@ -44,7 +45,7 @@ public:
 
 private:
 
-                            CfgManager();
+
 
     bool                    loadCfgFormFile(Json::Value& root, const char* pFile);
     void                    init();
@@ -55,7 +56,7 @@ private:
     void                    genDefaultCfg();
     void                    syncCfg2File(const char* pCfgFile, Json::Value& curCfg);
 
-    static CfgManager*   	sInstance;
+    // static CfgManager*   	sInstance;
     std::mutex              mCfgLock; 
 
     CfgChangedCallback      mCallback;

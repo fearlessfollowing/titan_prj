@@ -2,7 +2,7 @@
 **					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: main.cpp
-** 功能描述: UI核心进程的入口
+** 功能描述: system_server核心进程的入口
 **
 **
 **
@@ -13,6 +13,7 @@
 ** V1.0			Skymixos		2018-06-05		创建文件，添加注释
 ** V2.0         Skymixos        2018年11月14日   增加主线程主动退出流程
 ** V3.0         Skymixos        2019年1月18日    增加ulimited
+** V3.1         Skymixos        2019年2月19日    增加getSignalStr函数,用于调试
 ******************************************************************************************************/
 
 #include <util/msg_util.h>
@@ -50,9 +51,52 @@
 static int mCtrlPipe[2];    // 0 -- read , 1 -- write
 
 
+const char* getSignalStr(int iSigType)
+{
+    switch (iSigType) {
+        CONVNUMTOSTR(SIGHUP);
+        CONVNUMTOSTR(SIGINT);
+        CONVNUMTOSTR(SIGQUIT);
+        CONVNUMTOSTR(SIGILL);
+        CONVNUMTOSTR(SIGTRAP);
+
+        CONVNUMTOSTR(SIGABRT);
+        CONVNUMTOSTR(SIGBUS);
+        CONVNUMTOSTR(SIGFPE);
+        CONVNUMTOSTR(SIGKILL);
+        CONVNUMTOSTR(SIGUSR1);
+
+        CONVNUMTOSTR(SIGSEGV);
+        CONVNUMTOSTR(SIGUSR2);
+        CONVNUMTOSTR(SIGPIPE);
+        CONVNUMTOSTR(SIGALRM);
+        CONVNUMTOSTR(SIGTERM);
+
+        CONVNUMTOSTR(SIGCHLD);
+        CONVNUMTOSTR(SIGCONT);
+        CONVNUMTOSTR(SIGSTOP);
+        CONVNUMTOSTR(SIGTSTP);
+        CONVNUMTOSTR(SIGTTIN);
+
+        CONVNUMTOSTR(SIGTTOU);
+        CONVNUMTOSTR(SIGURG);
+        CONVNUMTOSTR(SIGXCPU);
+        CONVNUMTOSTR(SIGXFSZ);
+        CONVNUMTOSTR(SIGVTALRM);
+
+        CONVNUMTOSTR(SIGPROF);
+        CONVNUMTOSTR(SIGWINCH);
+        CONVNUMTOSTR(SIGIO);
+
+        default: return "Unkown Signal";
+    }
+}
+
+
+
 static void signalHandler(int sig) 
 {
-    LOGDBG(TAG, "signalHandler: Recive Signal[%d]", sig);
+    LOGDBG(TAG, "signalHandler: Recive Signal[%d] meaning[%s]", sig, getSignalStr(sig));
 
     if (sig == SIGKILL || sig == SIGTERM || sig == SIGINT || sig == SIGQUIT) {
         writePipe(mCtrlPipe[1], CtrlPipe_Shutdown);
@@ -68,7 +112,6 @@ int main(int argc ,char *argv[])
     char c = -1;
 
     pipe(mCtrlPipe);
-
     registerSig(signalHandler);
     // signal(SIGPIPE, pipe_signal_handler);
 
@@ -81,7 +124,7 @@ int main(int argc ,char *argv[])
         return -1;
     }
 
-    LogWrapper::init("/home/nvidia/insta360/log", "ui_log", true);
+    LogWrapper::init(DEFAULT_LOG_FILE_PATH_BASE, "sys_log", true);
 
     LOGDBG(TAG, "\n>>> Start ui_service now, Firm Version [%s], CompileInfo[%s - %s] <<<<<<<<<<<<\n", property_get(PROP_SYS_FIRM_VER), __DATE__, __TIME__);
 

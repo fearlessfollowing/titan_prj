@@ -67,6 +67,7 @@
 #include <prop_cfg.h>
 
 #include <util/util.h>
+#include <util/SingleInstance.h>
 
 #include <log/log_wrapper.h>
 
@@ -564,7 +565,7 @@ int main(int argc, char **argv)
     setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_LOW);
 
 	/** 启动卷管理器,用于挂载升级设备 */
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
     if (vm) {
         LOGDBG(TAG, "+++++++++++++ Start Vold Manager for update check +++++++++++");
         vm->start();

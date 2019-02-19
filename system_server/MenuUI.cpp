@@ -332,7 +332,7 @@ void MenuUI::uiSubsysInit()
 
 void MenuUI::uiSubsysDeinit()
 {
-    HardwareService::Instance()->stopService();    
+    Singleton<HardwareService>::getInstance()->stopService();
     setLightDirect(LIGHT_OFF);
     sendExit();
 }
@@ -434,7 +434,7 @@ void MenuUI::init()
     CHECK_NE(mOLEDModule, nullptr);
 
     LOGDBG(TAG, "Create System Configure Object...");
-    CfgManager::Instance();     /* 配置管理器初始化 */
+    Singleton<CfgManager>::getInstance();   /* 配置管理器初始化 */
 
     LOGDBG(TAG, "Create System Light Manager Object...");
 
@@ -565,8 +565,7 @@ void MenuUI::subSysInit()
     /*******************************************************************************
      * 协议管理器初始化
      *******************************************************************************/
-    ProtoManager::Instance()->setNotifyRecv(obtainMessage(UI_MSG_COMMON));
-
+    Singleton<ProtoManager>::getInstance()->setNotifyRecv(obtainMessage(UI_MSG_COMMON));
 
     /*******************************************************************************
      * UI子系统初始化
@@ -579,7 +578,7 @@ void MenuUI::subSysInit()
      *******************************************************************************/
 #ifdef ENABLE_NET_MANAGER
 
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     sp<NetManager> nm = NetManager::Instance();
     nm->setNotifyRecv(obtainMessage(UI_MSG_UPDATE_IP));    
@@ -672,14 +671,14 @@ void MenuUI::subSysInit()
      *******************************************************************************/
 	/* 设备管理器: 监听设备的动态插拔 */
     sp<ARMessage> devNotify = obtainMessage(UI_UPDATE_DEV_INFO);
-    VolumeManager* volInstance = VolumeManager::Instance();
-    if (volInstance) {
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
+    if (vm) {
         LOGDBG(TAG, "+++++++++ Start Vold Manager For Titan +++++++++");
-        volInstance->setNotifyRecv(devNotify);
-        volInstance->setSavepathChangedCb(MenuUI::savePathChangeCb);
-        volInstance->setSaveListNotifyCb(MenuUI::saveListNotifyCb);
-        volInstance->setNotifyHotplugCb(MenuUI::storageHotplugCb);
-        volInstance->start();
+        vm->setNotifyRecv(devNotify);
+        vm->setSavepathChangedCb(MenuUI::savePathChangeCb);
+        vm->setSaveListNotifyCb(MenuUI::saveListNotifyCb);
+        vm->setNotifyHotplugCb(MenuUI::storageHotplugCb);
+        vm->start();
     }
 
 
@@ -693,21 +692,18 @@ void MenuUI::subSysInit()
     /*******************************************************************************
      * 传输子系统初始化
      *******************************************************************************/
-    TranManager::Instance()->start();
-
+    Singleton<TranManager>::getInstance()->start();
 
     /********************************************************************************
      * 硬件管理服务子系统初始化 - 2018年12月29日
      ********************************************************************************/
-    HardwareService::Instance()->startService();
-
+    Singleton<HardwareService>::getInstance()->startService();
 }
 
 
 void MenuUI::subSysDeInit()
 { 
-    
-    TranManager::Instance()->stop();
+    Singleton<TranManager>::getInstance()->stop();
     Singleton<InputManager>::getInstance()->stop();
 
 #ifdef ENABLE_NET_MANAGER
@@ -819,7 +815,7 @@ void MenuUI::init_cfg_select()
     strcpy(tmpInfo->ipAddr, WLAN0_DEFAULT_IP);
     tmpInfo->iDevType = DEV_WLAN;
 
-	if (CfgManager::Instance()->getKeyVal("wifi_on") == 1) {
+	if (Singleton<CfgManager>::getInstance()->getKeyVal("wifi_on") == 1) {
         iCmd = NETM_STARTUP_NETDEV;
 		disp_wifi(true);
 	} else {
@@ -827,7 +823,7 @@ void MenuUI::init_cfg_select()
         iCmd = NETM_CLOSE_NETDEV;
 	}	
 
-    LOGDBG(TAG, "init_cfg_select: wifi state[%d]", CfgManager::Instance()->getKeyVal("wifi_on"));
+    LOGDBG(TAG, "init_cfg_select: wifi state[%d]", Singleton<CfgManager>::getInstance()->getKeyVal("wifi_on"));
 
     sp<ARMessage> msg = NetManager::Instance()->obtainMessage(iCmd);
     msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
@@ -864,7 +860,7 @@ void MenuUI::write_p(int p, int val)
 
 void MenuUI::play_sound(u32 type)
 {
-    if (CfgManager::Instance()->getKeyVal("speaker") == 1) {
+    if (Singleton<CfgManager>::getInstance()->getKeyVal("speaker") == 1) {
         if (type >= 0 && type <= sizeof(sound_str) / sizeof(sound_str[0])) {
             char cmd[1024];
             const char* pPlaySound = property_get(PROP_PLAY_SOUND);
@@ -893,14 +889,14 @@ void MenuUI::disp_top_info()
 	/** 显示状态栏之前,进行清除状态栏(避免有些写的字落在该区域) */
     clearArea(0, 0, 128, 16);
 
-    if (CfgManager::Instance()->getKeyVal("wifi_on")) {
+    if (Singleton<CfgManager>::getInstance()->getKeyVal("wifi_on")) {
         dispIconByLoc(&sbWifiOpenIconInfo);
     } else {
         dispIconByLoc(&sbWifiCloseIconInfo);
     }
 	uiShowStatusbarIp();
     
-    BatterInfo batInfo = HardwareService::Instance()->getSysBatteryInfo();
+    BatterInfo batInfo = Singleton<HardwareService>::getInstance()->getSysBatteryInfo();
     uiShowBatteryInfo(&batInfo);
     
     bDispTop = true;
@@ -937,7 +933,7 @@ void MenuUI::disp_msg_box(int type)
 
     if (cur_menu != MENU_DISP_MSG_BOX) {
         if (cur_menu == MENU_SYS_ERR || ((MENU_LOW_BAT == cur_menu) && checkStateEqual(serverState, STATE_IDLE))) {
-            if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
+            if (Singleton<CfgManager>::getInstance()->getKeyVal("light_on") == 1) {
                 setLightDirect(front_light);
             } else {
                 setLightDirect(LIGHT_OFF);
@@ -1115,7 +1111,7 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
          * 配置值的初始化
          */
         const char* pItemName = pSetItem[i]->pItemName;
-        CfgManager* cm = CfgManager::Instance();
+        std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
 
         if (!strcmp(pItemName, SET_ITEM_NAME_DHCP)) {   /* DHCP */
@@ -1300,7 +1296,7 @@ void MenuUI::setMenuCfgInit()
 
 
     /* 使用配置值来初始化首次显示的页面 */
-    updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, CfgManager::Instance()->getKeyVal("ph_delay"));
+    updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, Singleton<CfgManager>::getInstance()->getKeyVal("ph_delay"));
 
     LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total,
@@ -1374,7 +1370,7 @@ void MenuUI::setMenuCfgInit()
 
     /* 使用配置值来初始化首次显示的页面 */
     
-    updateMenuCurPageAndSelect(MENU_SET_AEB, CfgManager::Instance()->getKeyVal("aeb"));
+    updateMenuCurPageAndSelect(MENU_SET_AEB, Singleton<CfgManager>::getInstance()->getKeyVal("aeb"));
 
 
     LOGDBG(TAG, "Set AEB Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
@@ -1651,7 +1647,7 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
 {
     int iRawVal = 0;
     int iAebVal = 0;
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     iRawVal = cm->getKeyVal("raw");
     iAebVal = cm->getKeyVal("aeb");
@@ -1720,7 +1716,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
         ICON_POS tmPos = {0, 48, 78, 16};
         int iIndex = 0;
         std::string cfgItemJsonFilePath;
-        CfgManager* cm = CfgManager::Instance();
+        std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
         PicVideoCfg** pSetItems = static_cast<PicVideoCfg**>(pParentMenu->priv);
         sp<Json::Value> pRoot;
@@ -2024,7 +2020,7 @@ void MenuUI::restore_all()
 
     dispIconByType(ICON_RESET_SUC_128_48128_48);
 
-    CfgManager::Instance()->resetAllCfg();
+    Singleton<CfgManager>::getInstance()->resetAllCfg();
 
     msg_util::sleep_ms(500);
     init_cfg_select();
@@ -2108,7 +2104,7 @@ bool MenuUI::checkServerAllowTakePic()
 
 bool MenuUI::checkVidLiveStorageSpeed()
 {
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
 
     if (property_get(PROP_SKIP_SPEED_TEST)) {
         return true;
@@ -2196,8 +2192,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
     int iIndex = 0;
     struct stPicVideoCfg* pTmpPicVidCfg = NULL;
     uint64_t serverState = getServerState();
-    ProtoManager* pm = ProtoManager::Instance();
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<ProtoManager> pm = Singleton<ProtoManager>::getInstance();
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
     std::string gearStr;
     
     switch (option) {
@@ -2309,7 +2305,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 LOGDBG(TAG, "Take Live mode [%s]", pTmpPicVidCfg->pItemName);
 
 #ifdef ENABLE_LIVE_ORG_MODE
-                VolumeManager* vm = VolumeManager::Instance();
+                std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
+
                 Json::Value tmpCfg;
                 Json::CharReaderBuilder builder;
                 builder["collectComments"] = false;
@@ -2777,7 +2774,7 @@ void MenuUI::handleWifiAction()
     int iCmd = -1;
     bool bShowWifiIcon = false;
     int iSetVal = 0;
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     sp<DEV_IP_INFO> tmpInfo = std::make_shared<DEV_IP_INFO>();
     strcpy(tmpInfo->cDevName, WLAN0_NAME);
@@ -2875,7 +2872,7 @@ void MenuUI::reset_last_info()
 void MenuUI::procBackKeyEvent()
 {
     uint64_t tmpState = getServerState();
-    ProtoManager* pm = ProtoManager::Instance();
+    std::shared_ptr<ProtoManager> pm = Singleton<ProtoManager>::getInstance();
 
     LOGNULL(TAG, "procBackKeyEvent --> Current menu[%s], Current Server state[0x%x]", getMenuName(cur_menu), tmpState);
 
@@ -2965,7 +2962,7 @@ void MenuUI::procBackKeyEvent()
 
 
         case MENU_UDISK_MODE: {     /* 进入U盘后，按返回键提示用户只能重启才能退出U盘模式 */
-            VolumeManager* vm = VolumeManager::Instance();
+            std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
             tipHowtoExitUdisk();
 
             msg_util::sleep_ms(1000);
@@ -3255,7 +3252,7 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
     iVal = iVal & 0x00000001;
 
     LOGDBG(TAG, "updateSetItemVal Item Name[%s], iVal [%d]", pSetItemName, iVal);
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     if (!strcmp(pSetItemName, SET_ITEM_NAME_FREQ)) {
         cm->setKeyVal("flicker", iVal);
@@ -3535,7 +3532,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
 void MenuUI::updateMenu()
 {
     int item = getMenuSelectIndex(cur_menu);
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     switch (cur_menu) {
         case MENU_TOP: {
@@ -3661,7 +3658,8 @@ void MenuUI::volumeItemInit(MENU_INFO* pParentMenu, std::vector<Volume*>& mVolum
  */
 void MenuUI::getShowStorageInfo()
 {
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
+
     std::vector<Volume*>& showList = vm->getSysStorageDevList();
 
     mMenuInfos[MENU_SHOW_SPACE].mSelectInfo.total = showList.size();
@@ -3688,7 +3686,8 @@ void MenuUI::getShowStorageInfo()
 void MenuUI::calcRemainSpace(bool bUseCached)
 {
     uint64_t serverState = getServerState();
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
+
     {
         mCanTakePicNum = 0;     /* 重新计算之前将可拍照片的张数清0 */
 
@@ -3701,8 +3700,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
             if (pPicVidCfg) {   /* 非timelapse和timelapse的两种计算方式 */
                 if (checkIsTakeTimelpaseInCustomer()) {
                     vm->calcTakeTimelapseCnt(*(pPicVidCfg->jsonCmd.get()));                        
-                    ProtoManager* pm = ProtoManager::Instance();
-                    pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
+                    Singleton<ProtoManager>::getInstance()->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
                 } else {
                     Json::Value* pTakePicJson = (pPicVidCfg->jsonCmd).get();  
                     std::string gearStr = pPicVidCfg->pItemName;
@@ -3723,7 +3721,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                     }    
 
                     if (strcmp(pPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) { /* 非Customer模式根据是否使能RAW来设置origin.mime，Customer模式不用理会该属性 */
-                        if (CfgManager::Instance()->getKeyVal("raw")) {
+                        if (Singleton<CfgManager>::getInstance()->getKeyVal("raw")) {
                             (*pTakePicJson)["parameters"]["origin"]["mime"] = "raw+jpeg";
                             gearStr += "|raw";
                         } else {
@@ -3749,8 +3747,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
 
                 vm->calcTakeTimelapseCnt(mControlVideoJsonCmd);  
                 /* 将计算能拍timelapse的张数更新到心跳包中 */
-                ProtoManager* pm = ProtoManager::Instance();
-                pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
+                Singleton<ProtoManager>::getInstance()->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
 
             } else {    /* 客户端控制的普通录像 */
                 /*
@@ -3782,8 +3779,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                 if (true == mTakeVideInTimelapseMode) {
                     LOGDBG(TAG, "------------->> takepicture in Customer, calc it now");
                     vm->calcTakeTimelapseCnt(mControlVideoJsonCmd);   
-                    ProtoManager* pm = ProtoManager::Instance();
-                    pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
+                    Singleton<ProtoManager>::getInstance()->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
                 } else {
                     int item = getMenuSelectIndex(MENU_VIDEO_SET_DEF);
                     PicVideoCfg* pTmpCfg = mVidAllItemsList.at(item); 
@@ -3855,7 +3851,8 @@ void MenuUI::convStorageSize2Str(int iUnit, u64 size, char* pStore, int iLen)
 void MenuUI::dispBottomLeftSpace()
 {
     char disk_info[16] = {0};
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
+
     uint64_t serverState = getServerState();
 
     if (checkServerStateIn(serverState, STATE_START_PREVIEWING))  { 
@@ -4171,7 +4168,7 @@ void MenuUI::startFormatDevice()
     int iTfIndex = -1;
     SetStorageItem* tmpStorageItem = NULL;
     SettingItem* tmpFormatSelectItem = NULL;
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
 
     /* 选中的MENU_SHOW_SPACE菜单中的第几项 */
     int iIndex = getMenuSelectIndex(MENU_SHOW_SPACE);
@@ -4199,8 +4196,7 @@ void MenuUI::startFormatDevice()
         /* 显示格式化消息: "TF Card X is Formatting..." */
         dispTfCardIsFormatting(iTfIndex);
 
-        ProtoManager* pm = ProtoManager::Instance();
-        int iResult = pm->sendFormatmSDReq(iTfIndex);
+        int iResult = Singleton<ProtoManager>::getInstance()->sendFormatmSDReq(iTfIndex);
         dispTfcardFormatReuslt(iResult, iTfIndex);
 
     } else {    /* 大卡或USB设备 */
@@ -4731,15 +4727,13 @@ void MenuUI::savePathChangeCb(const char* pSavePath)
     Json::StreamWriterBuilder builder;
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-    ProtoManager* pm = ProtoManager::Instance();
-    pm->sendSavePathChangeReq(pSavePath);
+    Singleton<ProtoManager>::getInstance()->sendSavePathChangeReq(pSavePath);
 }
 
 void MenuUI::saveListNotifyCb()
 {
     LOGNULL(TAG, "---> saveListNotifyCb");
-    std::vector<Volume*>& curDevList = VolumeManager::Instance()->getCurSavepathList();
-    ProtoManager* pm = ProtoManager::Instance();
+    std::vector<Volume*>& curDevList = Singleton<VolumeManager>::getInstance()->getCurSavepathList();
     Volume* tmpVol = NULL;
 
     Json::Value curDevListRoot;
@@ -4767,7 +4761,7 @@ void MenuUI::saveListNotifyCb()
 
     LOGDBG(TAG, "Current Save List: %s", devListStr.c_str());
     
-    pm->sendStorageListReq(devListStr.c_str());
+    Singleton<ProtoManager>::getInstance()->sendStorageListReq(devListStr.c_str());
 }
 
 
@@ -4803,8 +4797,8 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                                                                             (bUpdateAllMenuUI == true) ? "true": "false");
     
     ICON_INFO* pNvIconInfo = NULL;
-    VolumeManager* vm = VolumeManager::Instance();
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     pNvIconInfo = static_cast<ICON_INFO*>(mMenuInfos[cur_menu].priv);
     
@@ -5268,7 +5262,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             /* 防止用户在按确认键进入U盘后，立即按了返回键，导致刚入U盘立即退出的现象，在此处进入输入，让
              * 该阶段的按键无效(不上报) - 2018年9月19日
              */
-            VolumeManager* vm = VolumeManager::Instance();
+            std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
 
             /* 进入U盘模式后将不响应任何按键事件，除非关机 */
             Singleton<InputManager>::getInstance()->setEnableReport(false); 
@@ -5308,8 +5302,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 bool MenuUI::checkStorageSatisfy(int action)
 {
     bool bRet = false;
-    VolumeManager* vm = VolumeManager::Instance();
-
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
     LOGDBG(TAG, "checkStorageSatisfy (%d)", vm->getLocalVols().size());
 
     switch (action) {
@@ -5418,7 +5411,7 @@ void MenuUI::procSetMenuKeyEvent()
     u32 iItemIndex = getMenuSelectIndex(cur_menu);    /* 得到选中的索引 */
     struct stSetItem* pCurItem = NULL;
     std::vector<struct stSetItem*>* pVectorList = static_cast<std::vector<struct stSetItem*>*>(mMenuInfos[cur_menu].privList);
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     if ((pVectorList == NULL) && (iItemIndex < 0 || iItemIndex > mMenuInfos[cur_menu].mSelectInfo.total)) {
         LOGERR(TAG, "Invalid index val[%d] in menu[%s]", iItemIndex, getMenuName(cur_menu));
@@ -5643,8 +5636,8 @@ void MenuUI::procPowerKeyEvent()
 	LOGNULL(TAG, "procPowerKeyEvent Menu(%s) select %d\n", getMenuName(cur_menu), getCurMenuCurSelectIndex());
     uint64_t serverState = getServerState();
 
-    ProtoManager* pm = ProtoManager::Instance();
-    CfgManager* cm = CfgManager::Instance();
+    std::shared_ptr<ProtoManager> pm = Singleton<ProtoManager>::getInstance();
+    std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
     int iIndex = 0;
 
     switch (cur_menu) {	
@@ -5692,14 +5685,12 @@ void MenuUI::procPowerKeyEvent()
 				
                 case MAINMENU_CALIBRATION: {	/* 拼接校准 */
 
-                    ProtoManager* pm = ProtoManager::Instance();
-
                     /*
                      * 注:请求服务器进入U盘状态
                      * - 如果服务器允许会返回True,并设置当前状态为U盘状态
                      * - 如果服务器不允许返回False
                      */
-                    if (pm->sendSwitchUdiskModeReq(true)) { /* 请求服务器进入U盘模式 */
+                    if (Singleton<ProtoManager>::getInstance()->sendSwitchUdiskModeReq(true)) { /* 请求服务器进入U盘模式 */
 
                         /* 主动切网卡为直接模式 */
                         if (NULL == property_get("sys.unswitch_ip"))
@@ -5875,8 +5866,7 @@ void MenuUI::procPowerKeyEvent()
         case MENU_SET_TEST_SPEED: {
 
             if (checkServerAlloSpeedTest(serverState)) {
-                VolumeManager* vm = VolumeManager::Instance();
-
+                std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
                 if (mSpeedTestUpdateFlag == false) {
                     LOGDBG(TAG, "Enter MENU_SPEED_TEST Speed Testing ");
 
@@ -5930,8 +5920,7 @@ void MenuUI::procPowerKeyEvent()
 			      
         case MENU_SHOW_SPACE: { /* 如果选中的SD卡或者USB硬盘进入格式化指示菜单 */
             int iIndex = getMenuSelectIndex(MENU_SHOW_SPACE);
-            VolumeManager* vm = VolumeManager::Instance();
-
+            std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
             if (gStorageInfoItems[iIndex]->pStVolumeInfo) {     /* 避免系统无任何卡时按确认键导致崩溃 */
                 /* 选中的项是TF卡 */
                 if (vm->judgeIsTfCardByName(gStorageInfoItems[iIndex]->pStVolumeInfo->cVolName)) {
@@ -6017,8 +6006,7 @@ void MenuUI::procPowerKeyEvent()
  */
 int MenuUI::isSatisfySpeedTestCond()
 {
-    VolumeManager* vm = VolumeManager::Instance();
-
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
     if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {
         return COND_ALL_CARD_EXIST;
     } else if (!(vm->checkLocalVolumeExist())) {
@@ -6187,7 +6175,7 @@ void MenuUI::exit_sys_err()
     if (cur_menu == MENU_SYS_ERR || ((MENU_LOW_BAT == cur_menu) && checkStateEqual(serverState, STATE_IDLE))) {
 
         LOGDBG(TAG, "exit_sys_err ( %d 0x%x )", cur_menu, serverState);        
-        if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
+        if (Singleton<CfgManager>::getInstance()->getKeyVal("light_on") == 1) {
             setLightDirect(front_light);
         } else {
             setLightDirect(LIGHT_OFF);
@@ -6267,8 +6255,7 @@ bool MenuUI::checkStateEqual(uint64_t state)
     uint64_t serverState;
     bool bResult = false;
     
-    ProtoManager* pm = ProtoManager::Instance();
-    if (pm->getServerState(&serverState)) {
+    if (Singleton<ProtoManager>::getInstance()->getServerState(&serverState)) {
         LOGDBG(TAG, "Server State: 0x%x", serverState);
         bResult = (serverState == state) ? true : false;
     } else {
@@ -6291,8 +6278,7 @@ bool MenuUI::checkServerStateIn(uint64_t state)
     uint64_t serverState;
     bool bResult = false;
     
-    ProtoManager* pm = ProtoManager::Instance();
-    if (pm->getServerState(&serverState)) {
+    if (Singleton<ProtoManager>::getInstance()->getServerState(&serverState)) {
         LOGDBG(TAG, "Server State: 0x%x", serverState);
         bResult = ((serverState & state) == state) ? true : false;
     } else {
@@ -6362,7 +6348,7 @@ bool MenuUI::checkAllowStitchCalc(uint64_t serverState)
 bool MenuUI::addState(uint64_t state)
 {
     bool bResult = false;    
-    ProtoManager* pm = ProtoManager::Instance();
+    std::shared_ptr<ProtoManager> pm = Singleton<ProtoManager>::getInstance();
     if (pm->setServerState(state)) {
         bResult = true;
     } else {
@@ -6375,7 +6361,7 @@ bool MenuUI::addState(uint64_t state)
 bool MenuUI::rmState(uint64_t state)
 {
     bool bResult = false;    
-    ProtoManager* pm = ProtoManager::Instance();
+    std::shared_ptr<ProtoManager> pm = Singleton<ProtoManager>::getInstance();
     if (pm->rmServerState(state)) {
         bResult = true;
     } else {
@@ -6402,8 +6388,7 @@ uint64_t MenuUI::getServerState()
     uint64_t serverState = STATE_IDLE;
     std::string strState = "";
 
-    ProtoManager* pm = ProtoManager::Instance();
-    if (pm->getServerState(&serverState)) {
+    if (Singleton<ProtoManager>::getInstance()->getServerState(&serverState)) {
         // strState += serverState;
         // property_set(PROP_SERVER_STATE, strState.c_str());
     } else {
@@ -6438,7 +6423,7 @@ bool MenuUI::checkInLive()
     uint64_t serverState;
     bool bResult = false;
     
-    ProtoManager* pm = ProtoManager::Instance();
+    std::shared_ptr<ProtoManager> pm = Singleton<ProtoManager>::getInstance();
     if (pm->getServerState(&serverState)) {
         LOGDBG(TAG, "Server State: 0x%x", serverState);
         bResult = ((serverState & STATE_LIVE) == STATE_LIVE || (serverState & STATE_LIVE_CONNECTING) == STATE_LIVE_CONNECTING) ? true : false;
@@ -6663,7 +6648,7 @@ void MenuUI::disp_sys_err(int type, int back_menu)
 void MenuUI::set_flick_light()
 {
     
-    if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
+    if (Singleton<CfgManager>::getInstance()->getKeyVal("light_on") == 1) {
         switch ((front_light)) {
             case FRONT_RED: { 
                 fli_light = BACK_RED; break;
@@ -6707,7 +6692,7 @@ bool MenuUI::checkServerIsBusy()
 
 void MenuUI::setLight()
 {
-    BatterInfo batInfo = HardwareService::Instance()->getSysBatteryInfo();
+    BatterInfo batInfo = Singleton<HardwareService>::getInstance()->getSysBatteryInfo();
     if (batInfo.bIsExist) {
         if (batInfo.uBatLevelPer < 10) {                /* 电量小于10%显示红色 */
             front_light = FRONT_RED;
@@ -6921,8 +6906,7 @@ void MenuUI::set_led_power(unsigned int on)
  */
 bool MenuUI::syncQueryTfCard()
 {
-    ProtoManager* pm = ProtoManager::Instance();
-    return pm->sendQueryTfCard();
+    return Singleton<ProtoManager>::getInstance()->sendQueryTfCard();
 }
 
 
@@ -7033,7 +7017,7 @@ int MenuUI::oled_disp_type(int type)
     uint64_t serverState = getServerState();
     LOGNULL(TAG, "oled_disp_type (%d %s 0x%x)", type, getMenuName(cur_menu), serverState);
     
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
     switch (type) {
 
 		/*
@@ -7169,14 +7153,11 @@ int MenuUI::oled_disp_type(int type)
         }
 			
         case STOP_REC_FAIL: {
-
-            ProtoManager* pm = ProtoManager::Instance();
-
             tl_count = -1;
             vm->incOrClearRecSec(true);     /* 重置已经录像的时间为0 */                
             vm->clearTakeTimelapseCnt();
 
-            pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
+            Singleton<ProtoManager>::getInstance()->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
             LOGDBG(TAG, "STOP_REC_FAIL ...");
             break;
         }
@@ -7201,7 +7182,7 @@ int MenuUI::oled_disp_type(int type)
 
                 mNeedSendAction = true;
                 int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
-                int iDelay = convIndex2CapDelay(CfgManager::Instance()->getKeyVal("ph_delay"));
+                int iDelay = convIndex2CapDelay(Singleton<CfgManager>::getInstance()->getKeyVal("ph_delay"));
                 LOGDBG(TAG, "get delay val: %d", iDelay);
 
                 struct stPicVideoCfg* pPicVidCfg = mPicAllItemsList.at(item);
@@ -7226,7 +7207,7 @@ int MenuUI::oled_disp_type(int type)
 
 			
         case CAPTURE_SUC: {
-            VolumeManager* vm = VolumeManager::Instance();
+            std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();             
             if (cur_menu == MENU_PIC_INFO) {
                 if (mClientTakePicUpdate == true) {                 /* App控制拍照完成 */
                     LOGDBG(TAG, "Client control Take picture suc");
@@ -7386,7 +7367,7 @@ int MenuUI::oled_disp_type(int type)
 
             dispIconByType(ICON_RESET_SUC_128_48128_48);
             msg_util::sleep_ms(500);
-            CfgManager::Instance()->resetAllCfg();
+            Singleton<CfgManager>::getInstance()->resetAllCfg();
             init_cfg_select();
 
             LOGDBG(TAG, "RESET_ALL_CFG cur_menu is %d", cur_menu);
@@ -7676,9 +7657,7 @@ int MenuUI::oled_disp_type(int type)
             if (vm->getTakeTimelapseCnt() > 0) {
                 vm->decTakeTimelapseCnt();
                 dispBottomLeftSpace();
-
-                ProtoManager* pm = ProtoManager::Instance();
-                pm->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
+                Singleton<ProtoManager>::getInstance()->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
             } else {
                 LOGDBG(TAG, "Disk is Full, Stop Timelapse take");
             }
@@ -7782,18 +7761,14 @@ int MenuUI::oled_disp_type(int type)
             break;
         }
 
-        case EXIT_UDISK_MODE: {     /* 退出U盘模式 */
-            
-            ProtoManager* pm = ProtoManager::Instance();
-
-            if (cur_menu == MENU_UDISK_MODE && (true == pm->sendSwitchUdiskModeReq(false))) {
+        case EXIT_UDISK_MODE: {     /* 退出U盘模式 */            
+            if (cur_menu == MENU_UDISK_MODE && (true == Singleton<ProtoManager>::getInstance()->sendSwitchUdiskModeReq(false))) {
 
                 LOGDBG(TAG, "Exit Udisk Mode, Current Menu[%s]", getMenuName(cur_menu));
                 dispQuitUdiskMode();
-
-                VolumeManager* vm = VolumeManager::Instance();
+                   
                 Singleton<InputManager>::getInstance()->setEnableReport(false);    
-                vm->exitUdiskMode();
+                Singleton<VolumeManager>::getInstance()->exitUdiskMode();
                 procBackKeyEvent();
                 Singleton<InputManager>::getInstance()->setEnableReport(true);    
             } else {
@@ -7916,8 +7891,7 @@ bool MenuUI::is_bat_low()
 
 void MenuUI::func_low_bat()
 {
-    ProtoManager* pm = ProtoManager::Instance();
-    pm->sendLowPowerReq();
+    Singleton<ProtoManager>::getInstance()->sendLowPowerReq();    
 }
 
 /* @ func
@@ -7947,7 +7921,7 @@ void MenuUI::setLight(u8 val)
     LOGDBG(TAG, "setLight 0x%x  front_light 0x%x", val, front_light);
 #endif
 
-    if (CfgManager::Instance()->getKeyVal("light_on") == 1) {
+    if (Singleton<CfgManager>::getInstance()->getKeyVal("light_on") == 1) {
         #ifdef LED_HIGH_LEVEL
             setLightDirect(val | front_light);
         #else 
@@ -8214,7 +8188,8 @@ void MenuUI::handleKeyMsg(int iAppKey)
 void MenuUI::handleLongKeyMsg(int iAppKey)
 {
     LOGDBG(TAG, "handleLongKeyMsg: ---> long press key 0x%x", iAppKey);
-    VolumeManager* vm = VolumeManager::Instance();
+
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
     bool bNeedShutdown = false;
     uint64_t serverState = getServerState();
 
@@ -8500,7 +8475,8 @@ void MenuUI::handleGpsState()
 
 void MenuUI::handleUpdateDevInfo(int iAction, int iType, std::vector<Volume*>& mList)
 {
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
+
     uint64_t serverState = getServerState();
 
 #if 0
@@ -8540,10 +8516,9 @@ void MenuUI::handleUpdateDevInfo(int iAction, int iType, std::vector<Volume*>& m
 void MenuUI::handleTfStateChanged(std::vector<std::shared_ptr<Volume>>& mTfChangeList)
 {
     LOGDBG(TAG, "Tf Card state Changed, Insert/Removed.....");
-    VolumeManager* vm = VolumeManager::Instance();
     int iAction = 0;
 
-    iAction = vm->handleRemoteVolHotplug(mTfChangeList);
+    iAction = Singleton<VolumeManager>::getInstance()->handleRemoteVolHotplug(mTfChangeList);
     if (iAction != VOLUME_ACTION_UNSUPPORT) {
 
         /* 有TF卡插入并且录像,直播模式下需要重新查询小卡状态 */
@@ -8564,9 +8539,7 @@ void MenuUI::handleSppedTest(std::vector<sp<Volume>>& mSpeedTestList)
     sp<Volume> tmpLocalVol = NULL;
     sp<Volume> tmpResultVol = NULL;
     std::vector<sp<Volume>> testFailedList;
-
-    VolumeManager* vm = VolumeManager::Instance();
-
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
     testFailedList.clear();
     int iLocalTestFlag = 0;
 
@@ -8664,8 +8637,8 @@ void MenuUI::handleUpdateMid()
 {
     bSendUpdateMid = false;
     std::unique_lock<std::mutex> lock(mutexState);
-    VolumeManager* vm = VolumeManager::Instance();
-    ProtoManager* pm  = ProtoManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
+    std::shared_ptr<ProtoManager> pm  = Singleton<ProtoManager>::getInstance();
     uint64_t serverState = getServerState();
 
     if (checkServerStateIn(serverState, STATE_RECORD) && !checkServerStateIn(serverState, STATE_LIVE) && !checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) {         /* 录像状态 */
@@ -8765,9 +8738,8 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     int iNextPollTime = BAT_INTERVAL;       /* 下次获取电池信息的时刻 */
     BatterInfo batInfo;
 
-    // ProtoManager* pm = ProtoManager::Instance();
     uint64_t serverState = getServerState();
-    std::shared_ptr<HardwareService> hs = HardwareService::Instance();
+    std::shared_ptr<HardwareService> hs = Singleton<HardwareService>::getInstance();
 
     batInfo = hs->getSysBatteryInfo();
     uiShowBatteryInfo(&batInfo);
@@ -8979,10 +8951,9 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 if (msg->find<sp<SYNC_INIT_INFO>>("sync_info", &mSyncInfo)) {
                     handleSetSyncInfo(mSyncInfo);	/* 根据同步系统初始化系统参数及显示 */
                     
-                    ProtoManager* pm = ProtoManager::Instance();
                     int iQueryResult = -1, i;
                     for (i = 0; i < 3; i++) {
-                        iQueryResult = pm->sendQueryGpsState();
+                        iQueryResult = Singleton<ProtoManager>::getInstance()->sendQueryGpsState();
                         if (iQueryResult >= 0) {
                             break;
                         } 
@@ -9010,9 +8981,7 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 snprintf(reqSync.r_v, sizeof(reqSync.r_v), "%s", mVerInfo->r_ver);
                 snprintf(reqSync.p_v, sizeof(reqSync.p_v), "%s", mVerInfo->p_ver);
                 snprintf(reqSync.k_v, sizeof(reqSync.k_v), "%s", mVerInfo->k_ver);                
-
-                ProtoManager* pm = ProtoManager::Instance();
-                pm->sendStateSyncReq(&reqSync);
+                Singleton<ProtoManager>::getInstance()->sendStateSyncReq(&reqSync);
                 break;
             }
 
@@ -9169,7 +9138,7 @@ void MenuUI::send_update_light(int menu, int interval, bool bLight, int sound_id
 {
     const char* pPlaySound = property_get(PROP_PLAY_SOUND);
 
-    if (sound_id != -1 && CfgManager::Instance()->getKeyVal("speaker") == 1) {
+    if (sound_id != -1 && Singleton<CfgManager>::getInstance()->getKeyVal("speaker") == 1) {
         flick_light();
         play_sound(sound_id);
         
@@ -9355,7 +9324,7 @@ bool MenuUI::checkisLiveRecord()
 
 void MenuUI::dispLiveReady()
 {
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
     int iRet = 0;
     int item = getMenuSelectIndex(MENU_LIVE_SET_DEF);
@@ -9405,7 +9374,7 @@ void MenuUI::dispLiveReady()
  */
 void MenuUI::dispReady(bool bDispReady)
 {
-    VolumeManager* vm = VolumeManager::Instance();
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
     if (cur_menu == MENU_PIC_INFO || cur_menu == MENU_VIDEO_INFO 
         || cur_menu == MENU_LIVE_INFO) {
@@ -9489,9 +9458,8 @@ void MenuUI::dispInNeedTfCard()
     int iStartPos = 20;
     int iLineOneStartPos = 34;
 
-    VolumeManager* vm = VolumeManager::Instance();
     cards.clear();
-    vm->getIneedTfCard(cards);
+    Singleton<VolumeManager>::getInstance()->getIneedTfCard(cards);
 
     if (cards.size() > 0) {
         LOGDBG(TAG, "Lost Card Size: %d", cards.size());

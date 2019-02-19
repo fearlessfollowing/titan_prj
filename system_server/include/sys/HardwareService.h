@@ -8,11 +8,8 @@
 class HardwareService {
 
 public:
-    HardwareService();
-    ~HardwareService();
-
-    static std::shared_ptr<HardwareService>& Instance();
-
+                    HardwareService();
+                    ~HardwareService();
 
     void            startService();
     void            stopService();
@@ -62,10 +59,7 @@ private:
     std::mutex                              mLock; 
     static std::mutex                       mInstanceLock;
     bool                                    mRunning;
-    static std::shared_ptr<HardwareService> mInstance;
-    static bool                             mHaveInstance;
     std::shared_ptr<BatteryManager>         mBatteryInterface;
-
 };
 
 
