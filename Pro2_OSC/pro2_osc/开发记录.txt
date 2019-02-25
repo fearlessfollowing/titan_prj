@@ -189,3 +189,16 @@ videoGPSSupport:["none", "continue"]
 2.列出文件的时候，只列出大卡的文件，小卡的怎么办?
 3.拍照是否需要支持raw及raw+jpeg?
 
+
+
+日期：2019年2月21日
+设置时区为CST
+1.在卡挂载的情况下，修改本地时间(不修改时区)，然后执行拍照，在Windows下看修改时间与文件名是否一致   （一致）
+date 022117332019
+
+2.在卡挂载的情况下，修改时区和时间，然后执行拍照，在Windows下看修改时间与文件名是否一致             
+timedatectl set-timezone "UTC"
+date 022108382019
+timedatectl set-timezone "Europe/Rome"
+timedatectl set-timezone "Asia/Shanghai"
+

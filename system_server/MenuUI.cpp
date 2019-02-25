@@ -5297,7 +5297,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
  * action - 拍照，录像，直播
  * - 如果设置属性(sys.tp_ul - 拍照只需要本地卷即可) PROP_TP_UL
  */
-#define PROP_TP_UL "sys.tp_ul"
+
 
 bool MenuUI::checkStorageSatisfy(int action)
 {

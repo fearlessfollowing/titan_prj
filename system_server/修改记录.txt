@@ -512,28 +512,96 @@ service web_server /usr/local/bin/python3.6 /usr/local/bin/web_server
 
 
 
-修改点:
-1.新增状态机,相机的状态由web_server统一管理(避免产生两个进程(web_server与UI)状态不同步的问题，而出现屏幕卡死)
-2.改写日志系统，新增日志分段
-3.新增列出文件的异步接口
-4.修改老化模式脚本及老化界面
+音频专项:
+1.启动过程中alsa_ctl进程崩溃，导致不能开机?
+
+解决方法: 
+修改/lib/systemd/system/alsa-restore.service 
+[Service]
+Type=oneshot
+RemainAfterExit=true
++ExecStartPre=/bin/sleep 8
+ExecStartPre=/bin/mkdir -p /run/alsa 
+ExecStart=-/usr/sbin/alsactl -E
+HOME=/run/alsa restore 
+ExecStop=-/usr/sbin/alsactl -E 
+HOME=/run/alsa store
+
+修改之后，测试了一个周末没有出现开补了机的情况
+
+2.偶现调用in1p_record_setup.sh/in1n_record_setup.sh之后，发现内核没有打印
+"rt5639_dmic_put: RT5639_DMIC1 ****"字样
+解决方法:
+迟一点调用该脚本
+
+3.in1n(靠近SD卡卡槽)录音，左右声道区别明显，但是in1p(靠近显示屏)录音左右声道区别不明显?
+解决方法:
+调节一些in1p采集声音的增益
 
 
-fixup:
-1.相机4k30FHDMI直播4小时之后，停止直播；插上6张TF卡，此时相机直播页面的UI缺失，并且屏幕卡死
-2.相机在提示测速页面时拔掉大卡，再开始测速，此时测速会卡死(拔掉大卡将自动返回上一菜单页)
-3.与客户端连接过程中，按相机返回按钮退出预览，此时相机卡在“...”(重写状态机)
-4.使用客户端连接相机直播，机身停止直播后立刻再开始录像，此时客户端重启预览会导致相机屏幕卡在拍照的预览页面（重写状态机）
-5.客户端连接相机，相机机身退出预览到设置页，用客户端做拼接校准，校准完成后相机卡死在校准成功的页面
-6.客户端连接相机，相机机身退出预览到设置页，用客户端做拼接校准，校准完成后相机卡死在校准成功的页面
-7.AEB模式拍照的工程文件type写的是HDR而不是bracket
-8.客户端连接相机状态下，按相机返回键退预览，此时用PC端控制录像，在相机还没开始录像时，再手动进预览。此时相机UI缺失，没有ready显示，但是相机功能正常
-9.客户端连接相机状态下，按相机返回键退预览，此时用PC端控制录像，在相机还没开始录像时，再手动进预览。此时相机UI缺失，没有ready显示，但是相机功能正常
-10.客户端连接相机使用时，插上大卡之后，随即手动按相机返回键退预览，此时相机屏幕卡在“...”了；但此时相机预览正常，并且可正常拍照
-11.拍摄Timelapse到卡满（64G），APP和PC端控制时，在存储页面获取相机文件列表会超时，相机这边列出文件大概一分钟。固件listFile增加异步接口
-12.相机使用客户端进入相册页后，再通过机身按键进入Samba服务，小卡都挂载不上
-13.相机进预览报错460，此时按电源键恢复之后，再次进预览OK，但是退预览时卡在“...”
-14.相机与客户端连接状态下，进入U盘模式，在查看文件时，相机容易出异常
-15.相机录像过程中，APP连接相机，并进入设置页面，此时按【恢复出厂设置按钮】，相机屏幕会错乱，但是录像正常进行
+In1n(hw:1,1):
+# reg-28: 5050 -> 1010
+amixer cset -c tegrasndt186ref name="x Mono ADC MIXR ADC1 Switch" 1
+amixer cset -c tegrasndt186ref name="x Mono ADC MIXL ADC1 Switch" 1
+# reg-3c: 00x4f -> 006f
+amixer cset -c tegrasndt186ref name="x RECMIXR INR Switch" 1
+# reg-3e: 004f -> 00x6f
+amixer cset -c tegrasndt186ref name="x RECMIXL INL Switch" 1
 
+amixer cset -c tegrasndt186ref name="x DMIC Switch" "DMIC1"
+amixer cset -c tegrasndt186ref name="x Stereo ADC R2 Mux" "DMIC1"
+amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC1"
+amixer cset -c tegrasndt186ref name="x Mono ADC R2 Mux" "DMIC R1"
+amixer cset -c tegrasndt186ref name="x Mono ADC L2 Mux" "DMIC L1"
+amixer cset -c tegrasndt186ref name="x Stereo ADC MIXR ADC1 Switch" 1
+amixer cset -c tegrasndt186ref name="x Stereo ADC MIXL ADC1 Switch" 1
+amixer cset -c tegrasndt186ref name="x Stereo ADC MIXR ADC2 Switch" 1
+amixer cset -c tegrasndt186ref name="x Stereo ADC MIXL ADC2 Switch" 1
 
+amixer cset -c tegrasndt186ref name="x Mono ADC MIXL ADC2 Switch" 1
+amixer cset -c tegrasndt186ref name="x Mono ADC MIXR ADC2 Switch" 1
+
+amixer cset -c tegrasndt186ref name="x IN1 Mode Control" 0
+amixer cset -c tegrasndt186ref name="x IN1 Boost" 2
+amixer cset -c tegrasndt186ref name="x ADC Capture Volume" 127 127
+amixer cset -c tegrasndt186ref name="x RECMIXR BST2 Switch" 1
+amixer cset -c tegrasndt186ref name="x RECMIXR BST1 Switch" 0
+amixer cset -c tegrasndt186ref name="x RECMIXL BST2 Switch" 1
+amixer cset -c tegrasndt186ref name="x RECMIXL BST1 Switch" 0
+
+# below two lines to disable in1n record
+#amixer cset -c tegrasndt186ref name="x Stereo ADC MIXL ADC2 Switch" 0
+#amixer cset -c tegrasndt186ref name="x Stereo ADC MIXR ADC2 Switch" 0
+
+# make it work
+amixer cset -c tegrasndt186ref name="x IF2 ADC R Mux" "Mono ADC MIXR"
+amixer cset -c tegrasndt186ref name="x IF2 ADC L Mux" "Mono ADC MIXL"
+amixer cset -c tegrasndt186ref name="x Mono ADC MIXR ADC1 Switch" 1
+amixer cset -c tegrasndt186ref name="x Mono ADC MIXL ADC1 Switch" 1
+amixer sset -c tegrasndt186ref "ADMAIF2 Mux" "I2S2"
+amixer sset -c tegrasndt186ref "I2S2 Mux" "ADMAIF2"
+
+In1p(hw:1,0):
+amixer cset -c tegrasndt186ref name="x DMIC Switch" "DMIC2"
+amixer cset -c tegrasndt186ref name="x Stereo ADC R2 Mux" "DMIC2"
+#amixer cset -c tegrasndt186ref name="x Stereo ADC L2 Mux" "DMIC2"
+amixer cset -c tegrasndt186ref name="x Mono ADC R2 Mux" "DMIC R1"
+#amixer cset -c tegrasndt186ref name="x Mono ADC L2 Mux" "DMIC L2"
+amixer cset -c tegrasndt186ref name="x Stereo ADC MIXR ADC1 Switch" 1
+amixer cset -c tegrasndt186ref name="x Stereo ADC MIXL ADC1 Switch" 1
+amixer cset -c tegrasndt186ref name="x Stereo ADC MIXR ADC2 Switch" 1
+amixer cset -c tegrasndt186ref name="x Stereo ADC MIXL ADC2 Switch" 1
+
+# below two lines to disable in1p record
+#amixer cset -c tegrasndt186ref name="x Mono ADC MIXL ADC2 Switch" 0
+#amixer cset -c tegrasndt186ref name="x Mono ADC MIXR ADC2 Switch" 0
+
+# amixer cset -c tegrasndt186ref name="x IN1 Mode Control" 0
+amixer cset -c tegrasndt186ref name="x IN1 Boost" 2
+amixer cset -c tegrasndt186ref name="x ADC Capture Volume" 97 97
+amixer cset -c tegrasndt186ref name="x RECMIXR BST2 Switch" 1
+amixer cset -c tegrasndt186ref name="x RECMIXR BST1 Switch" 0
+amixer cset -c tegrasndt186ref name="x RECMIXL BST2 Switch" 1
+amixer cset -c tegrasndt186ref name="x RECMIXL BST1 Switch" 0
+amixer sset -c tegrasndt186ref "ADMAIF1 Mux" "I2S1"
+amixer sset -c tegrasndt186ref "I2S1 Mux" "ADMAIF1"

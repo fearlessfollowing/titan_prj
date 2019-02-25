@@ -23,6 +23,7 @@
 **													交由update_check处理，并将升级包存放于/mnt/update/下
 ** V3.1			skymixos    2018年10月29日			更改挂载检测时间
 ** V3.2			skymixos	2018年10月31日			使用新的日志系统
+** V3.3			Skymixos	2019年02月22日			读取当前系统的时区信息并写入属性系统
 ******************************************************************************************************/
 
 
@@ -513,6 +514,35 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
 }
 
 
+static void extraAndExportTz()
+{
+	FILE* fp = popen("timedatectl", "r");
+	if (fp) {
+		char cLine[512] = {0};
+		char cTz[64] = {0};
+
+		char* pTz = NULL;
+		char* pEnd = NULL;
+		while (fgets(cLine, sizeof(cLine), fp) != NULL) {
+			LOGINFO(TAG, "%s", cLine);
+			if ((pTz = strstr(cLine, "Time zone: "))) {
+				pTz += strlen("Time zone: ");
+				break;
+			}
+		}
+		if (pTz) {
+			pEnd = strchr(pTz, ' ');
+			if (pEnd) {
+				snprintf(cTz, pEnd - pTz + 1, "%s", pTz);
+				LOGINFO(TAG, "Current TimeZone: %s", cTz);
+				property_set(PROP_SYS_TZ, cTz);
+			}
+		}
+		fclose(fp);
+	}
+}
+
+
 /*************************************************************************
 ** 方法名称: main
 ** 方法功能: check_update服务的入口
@@ -540,12 +570,14 @@ int main(int argc, char **argv)
 
 	property_set(PROP_SYS_UC_VER, UPDAE_CHECK_VER);		/* 将程序的版本更新到属性系统中 */
 
+	extraAndExportTz();
 
 	/* 通知卷挂载器，以只读的方式挂载升级设备 */
 	property_set(PROP_RO_MOUNT_TF, "true");
 
 
-	LOGDBG(TAG, "\n>>>>>>>>>>> Service: update_check starting (Version: %s) ^_^ <<<<<<<<<<", property_get(PROP_SYS_UC_VER));
+	LOGDBG(TAG, "\n>>>>>>>>>>> Service: update_check starting (Version: %s, Timezone: %s) ^_^ <<<<<<<<<<", 
+								property_get(PROP_SYS_UC_VER), property_get(PROP_SYS_TZ));
 
 	LOGDBG(TAG, "get prop: [sys.tf_mount_ro] = %s", property_get(PROP_RO_MOUNT_TF));
 
@@ -572,6 +604,8 @@ int main(int argc, char **argv)
     }
 
 	setLastFirmVer2Prop(VER_FULL_PATH);		/** 读取系统的固件版本并写入到属性系统中 */
+
+
 
 	/*
  	 * 系统启动后USB的挂载需要一些时间,因此可通过属性系统来配置update_check服务的等待时间

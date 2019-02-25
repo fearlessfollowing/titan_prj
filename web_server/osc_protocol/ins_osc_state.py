@@ -142,7 +142,8 @@ class osc_state(threading.Thread):
                 self._cur_save_dev_info['test'] = False
 
         else:
-            Info('locak disk not exist')
+            pass
+            # Info('locak disk not exist')
 
 
     # 获取文件

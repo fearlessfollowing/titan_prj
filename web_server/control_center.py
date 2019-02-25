@@ -10,6 +10,7 @@
 # 2018年10月24日    skymixos                V1.0.7          与camerad的同步请求的超时时间设置为70s
 # 2018年11月22日    skymixos                V1.0.8          查询TF卡失败时不清除心跳包中小卡信息
 # 2019年1月18日     skymixos                V1.0.9          修复App拍照时无倒计时BUG
+# 2019年02月22日    skymixos                V1.0.10         修改客户端设置时间逻辑
 ######################################################################################################
 
 from threading import Semaphore
@@ -838,32 +839,32 @@ class control_center:
     def set_sys_time(self, req):
         if check_dic_key_exist(req, 'hw_time') and check_dic_key_exist(req,'time_zone'):
             tz = req['time_zone']
-            Info('tz is {}'.format(tz))
+            Info('---> tz is {}'.format(tz))
 
             # 如果需要设置的时区在系统的支持列表中
             if check_dic_key_exist(nv_timezones, tz):
 
+                Info('---> Step1: Set current timezone to UTC')
+                os.system('timedatectl set-timezone UTC')
+
                 # 设置硬件时间
                 t1 = int(time.time())
-                self.set_hw_set_cmd(req['date_time'])
+                Info('---> Step2: Set UTC Time {}'.format(req['hw_time']))
+                self.set_hw_set_cmd(req['hw_time'])
                 t2 = int(time.time())
-
-                Info('t1 = {}'.format(t1))
-                Info('t2 = {}'.format(t2))
-
-                cmd = join_str_list(('setprop sys.hw_time ', req['hw_time']))
-                Info('set hw_time {}'.format(cmd))
-                sys_cmd(cmd)
-
-                # 设置属性: persist.sys.timezone
-                cmd = join_str_list(('setprop sys.timezone ', nv_timezones[tz]))
-                Info('set tz {}'.format(cmd))
-                sys_cmd(cmd)
                 
-                # 通知系统启动time_tz服务来修改系统时间及时区
-             
-                sys_cmd('setprop sys.tz_changed true')
-                self.has_sync_time = True
+                Info('---> Step3: Switch new time-zone {}'.format(nv_timezones[tz]))
+                cmd = join_str_list(('timedatectl set-timezone ', nv_timezones[tz]))             
+                os.system(cmd)
+
+                # 设置新时区到属性系统中
+                Info('---> Step4: Update timezone to property')
+                cmd = join_str_list(('setprop sys.timezone ', nv_timezones[tz]))             
+                os.system(cmd)
+
+                # 保存系统时间为硬件时间
+                os.system('hwclock -w')
+                Info('---> Step4: Sync System time to Hardware')
 
                 delta_time_s = t2 - t1                
                 self.set_sys_time_change(delta_time_s)
@@ -938,6 +939,8 @@ class control_center:
                 if check_dic_key_exist(req, _param) and self.has_sync_time is False:
                     Info('--> Inneed sync time here.')
                     self.set_sys_time(req[_param])
+                else:
+                    Info('---> Need not sync time form App')
 
             ret[config.RESULTS]['_cam_state'] = st
 

@@ -291,7 +291,6 @@ public:
 
 
     void        sendDevChangeMsg2UI(int iAction, int iType, std::vector<Volume*>& devList);
-
     void        setNotifyRecv(sp<ARMessage> notify);
 
     /*
@@ -305,55 +304,55 @@ public:
     /*
      * U盘模式
      */
-    bool        enterUdiskMode();
-    void        exitUdiskMode();
-    void        checkAllUdiskIdle();
-    int         checkAllUdiskMounted();
+    bool            enterUdiskMode();
+    void            exitUdiskMode();
+    void            checkAllUdiskIdle();
+    int             checkAllUdiskMounted();
 
-    bool        checkEnteredUdiskMode();
+    bool            checkEnteredUdiskMode();
 
-    int         getVolumeManagerWorkMode();
-    void        setVolumeManagerWorkMode(int iWorkMode);
+    int             getVolumeManagerWorkMode();
+    void            setVolumeManagerWorkMode(int iWorkMode);
 
-    int         getCurHandleAddUdiskVolCnt();
-    int         getCurHandleRemoveUdiskVolCnt();
+    int             getCurHandleAddUdiskVolCnt();
+    int             getCurHandleRemoveUdiskVolCnt();
 
-    bool        checkEnterUdiskResult();
-    void        waitUdiskEvtDealComplete(int iTimeout);
+    bool            checkEnterUdiskResult();
+    void            waitUdiskEvtDealComplete(int iTimeout);
 
 
-    bool        checkAllModuleEnterUdisk();
-    bool        checkAllModuleExitUdisk();    
-    void        flushAllUdiskEvent2Worker();
+    bool            checkAllModuleEnterUdisk();
+    bool            checkAllModuleExitUdisk();    
+    void            flushAllUdiskEvent2Worker();
 
-    void        powerOnOffModuleByIndex(bool bOnOff, int iIndex);
+    void            powerOnOffModuleByIndex(bool bOnOff, int iIndex);
 
-    u32         calcTakeLiveRecLefSec(Json::Value& jsonCmd);
+    u32             calcTakeLiveRecLefSec(Json::Value& jsonCmd);
 
-    Json::Value* evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd);
-    Json::Value* getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd);
+    Json::Value*    evaluateOneGrpPicSzByCmd(Json::Value& jsonCmd);
+    Json::Value*    getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd);
 
 
     /*
      * 录像/直播存片 时间接口
      */
-    u64         getRecSec();
-    void        incOrClearRecSec(bool bClrFlg = false);
-    void        setRecLeftSec(u64 leftSecs);
-    bool        decRecLeftSec();
-    u64         getRecLeftSec();
+    u64             getRecSec();
+    void            incOrClearRecSec(bool bClrFlg = false);
+    void            setRecLeftSec(u64 leftSecs);
+    bool            decRecLeftSec();
+    u64             getRecLeftSec();
 
-    u64         getLiveRecSec();
-    void        incOrClearLiveRecSec(bool bClrFlg = false);
+    u64             getLiveRecSec();
+    void            incOrClearLiveRecSec(bool bClrFlg = false);
 
-    void        setLiveRecLeftSec(u64 leftSecs);
-    bool        decLiveRecLeftSec();
-    u64         getLiveRecLeftSec();
+    void            setLiveRecLeftSec(u64 leftSecs);
+    bool            decLiveRecLeftSec();
+    u64             getLiveRecLeftSec();
 
-    void        unmountAll();
+    void            unmountAll();
 
-    u32         calcTakeRecLefSec(Json::Value& jsonCmd, bool bFactoryMode = false);
-    int         calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached);
+    u32             calcTakeRecLefSec(Json::Value& jsonCmd, bool bFactoryMode = false);
+    int             calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached);
 
 
     /***************************************************************************************

@@ -378,23 +378,6 @@ static Volume gSysVols[] = {
 
 
 
-#if 0
-/*************************************************************************
-** 方法名称: Instance
-** 方法功能: 获取卷管理器对象指针
-** 入口参数: 
-** 返 回 值:   进程内唯一的卷管理器对象
-** 调    用: 
-*************************************************************************/
-VolumeManager* VolumeManager::Instance() 
-{
-    std::unique_lock<std::mutex> _lock(gVolumeManagerMutex);    
-    if (!sInstance)
-        sInstance = new VolumeManager();
-    return sInstance;
-}
-#endif
-
 
 /*************************************************************************
 ** 方法名称: VolumeManager
@@ -2068,6 +2051,7 @@ int VolumeManager::mountVolume(Volume* pVol)
     if (status == 0) {
 
         LOGDBG(TAG, "------------> Mount Volume Step 1 is OK");
+
 
         char lost_path[256] = {0};
         LOGDBG(TAG, " Mkdir in mount point");

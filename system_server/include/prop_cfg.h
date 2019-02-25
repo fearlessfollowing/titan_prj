@@ -98,7 +98,7 @@
 #define PROP_SYS_TZ_VER                 "sys.tz_ver"
 
 #define PROP_SYS_TZ                     "sys.timezone"
-#define PROP_SYS_TZ1                    "sys.timezone1"
+
 #define PROP_SYS_TIME                   "sys.hw_time"
 
 #define PROP_UPDATE_IMAG_DST_PATH       "sys.img_dst_path"
@@ -178,6 +178,14 @@
  * 按键设备路径名属性
  */
 #define PROP_INPUT_DEV_PATH             "sys.input_path"
+
+
+
+/************************************************
+ * For Debug
+ ************************************************/
+#define PROP_TP_UL "sys.tp_ul"
+
 
 
 /******************************************************************************************************
