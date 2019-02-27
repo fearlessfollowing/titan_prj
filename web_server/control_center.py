@@ -11,6 +11,7 @@
 # 2018年11月22日    skymixos                V1.0.8          查询TF卡失败时不清除心跳包中小卡信息
 # 2019年1月18日     skymixos                V1.0.9          修复App拍照时无倒计时BUG
 # 2019年02月22日    skymixos                V1.0.10         修改客户端设置时间逻辑
+# 2019年02月26日    skymixos                V1.0.11         客户端断开时，给camerad发送MODULE_POWER_OFF消息
 ######################################################################################################
 
 from threading import Semaphore
@@ -436,6 +437,16 @@ class control_center:
         self.preview_url = ''
         self.live_url = ''
 
+
+    # 方法名称: modulePowerOff
+    # 方法描述: 通知camerad退出MODULE_POWRON状态
+    # 入口参数: 
+    # 返 回 值: 
+    def modulePowerOff(self):
+        Info('------- Send module poweroff -------')
+        req = OrderedDict()
+        req[_name] = config._MODULE_POWER_OFF
+        self.write_and_read(req)
 
     def reset_state(self):
         Info('reset busy to idle')
@@ -968,7 +979,10 @@ class control_center:
 
 
     def camera_disconnect(self, req, from_ui = False):
-        Info('[------- APP Req: camera_disconnect ------] req: {}'.format(req))                
+        Info('[------- APP Req: camera_disconnect ------] req: {}'.format(req))
+        
+        # 避免断网的情况下，camerad一直处于POWERON状态
+        self.modulePowerOff()                
         ret = cmd_done(req[_name])
         try:
             Info('camera_disconnect Server State {}'.format(StateMachine.getCamStateFormatHex()))
@@ -3790,38 +3804,28 @@ class control_center:
 
     def close_read(self):
         if self._read_fd != -1:
-            #flush all the buffer in fifo while close
-            # Info('close_read control self._read_fd {}'.format(self._read_fd))
             fifo_wrapper.close_fifo(self._read_fd)
             self._read_fd = -1
-            # Info('close_read control {} over'.format(self._read_fd))
 
     def close_write(self):
         if self._write_fd != -1:
-            # Info('close_write control self._write_fd {}'.format(self._write_fd))
             fifo_wrapper.close_fifo(self._write_fd)
             self._write_fd = -1
-            # Info('close_write control self._write_fd {} over'.format(self._write_fd))
 
     # @lazy_property
     def get_write_fd(self):
         if self._write_fd == -1:
-            # Print('0get control write fd {}'.format(self._write_fd))
             self._write_fd = fifo_wrapper.open_write_fifo(config.INS_FIFO_TO_SERVER)
-        # Print('get control write fd {}'.format(self._write_fd))
         return self._write_fd
 
     # @lazy_property
     def get_read_fd(self):
         if self._read_fd == -1:
-            # Info('0get control self._read_fd is {}'.format(self._read_fd))
             self._read_fd = fifo_wrapper.open_read_fifo(config.INS_FIFO_TO_CLIENT)
-        # Info('get control self._read_fd is {}'.format(self._read_fd))
         return self._read_fd
 
     def get_reset_read_fd(self):
         if self._reset_read_fd == -1:
-            Info('0get self._reset_read_fd is {}'.format(self._reset_read_fd))
             self._reset_read_fd = fifo_wrapper.open_read_fifo(config.INS_FIFO_RESET_FROM)
 
         Info('get  self._reset_read_fd is {}'.format(self._reset_read_fd))
@@ -3829,7 +3833,6 @@ class control_center:
 
     def get_reset_write_fd(self):
         if self._reset_write_fd == -1:
-            Info('0get self._reset_write_fd is {}'.format(self._reset_write_fd))
             self._reset_write_fd = fifo_wrapper.open_write_fifo(config.INS_FIFO_RESET_TO)
         Info('get  self._reset_write_fd is {}'.format(self._reset_write_fd))
         return self._reset_write_fd

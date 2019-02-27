@@ -605,3 +605,61 @@ amixer cset -c tegrasndt186ref name="x RECMIXL BST2 Switch" 1
 amixer cset -c tegrasndt186ref name="x RECMIXL BST1 Switch" 0
 amixer sset -c tegrasndt186ref "ADMAIF1 Mux" "I2S1"
 amixer sset -c tegrasndt186ref "I2S1 Mux" "ADMAIF1"
+
+
+
+R28.2.0 DTB配置
+GPIOs 232-239, platform/max77620-gpio, max77620-gpio, can sleep:
+ gpio-232 (                    |external-connection:) in  hi    
+ gpio-237 (                    |spmic_gpio_input_5  ) in  lo    
+ gpio-238 (                    |spmic_gpio_input_6  ) in  hi    
+
+GPIOs 240-255, i2c/0-0077, tca9539, can sleep:
+ gpio-240 (                    |sysfs               ) out hi    
+ gpio-241 (                    |sysfs               ) out hi    
+ gpio-242 (                    |sysfs               ) out hi    
+ gpio-243 (                    |en-vdd-sys          ) out lo    
+ gpio-244 (                    |sysfs               ) out lo    
+ gpio-245 (                    |sysfs               ) out lo    
+ gpio-246 (                    |sysfs               ) out lo    
+ gpio-247 (                    |sysfs               ) out lo    
+ gpio-248 (                    |usb_cam3            ) out hi    
+ gpio-249 (                    |en-vdd-cam          ) out hi    
+ gpio-250 (                    |en-vdd-cam-1v2      ) out hi    
+ gpio-251 (                    |usb_cam6            ) out lo    
+ gpio-253 (                    |tegra_audio         ) out lo    
+ gpio-254 (                    |tegra_fan           ) out hi    
+ gpio-255 (                    |wifi_ap6356s_power  ) out lo    
+
+GPIOs 256-319, platform/c2f0000.gpio, tegra-gpio-aon:
+ gpio-259 (                    |sysfs               ) out hi    
+ gpio-272 (                    |temp_alert          ) in  hi    
+ gpio-298 (                    |sysfs               ) out lo    
+ gpio-303 (                    |sysfs               ) out lo    
+ gpio-312 (                    |Power               ) in  hi    
+ gpio-313 (                    |Up                  ) in  hi    
+ gpio-314 (                    |Down                ) in  hi    
+ gpio-315 (                    |wifi-wake-ap        ) in  hi    
+ gpio-316 (                    |bt_host_wake        ) in  hi    
+
+GPIOs 320-511, platform/2200000.gpio, tegra-gpio:
+ gpio-336 (                    |bcmdhd-oob          ) in  hi    
+ gpio-381 (                    |reset_gpio          ) out lo    
+ gpio-390 (                    |sysfs               ) out lo    
+ gpio-397 (                    |sysfs               ) out hi    
+ gpio-412 (                    |vdd-usb0-5v         ) out lo    
+ gpio-413 (                    |vdd-usb1-5v         ) out lo    
+ gpio-420 (                    |eqos_phy_reset      ) out hi    
+ gpio-421 (                    |eqos_phy_intr       ) in  hi    
+ gpio-426 (                    |sysfs               ) out lo    
+ gpio-441 (                    |hdmi2.0_hpd         ) in  lo    
+ gpio-445 (                    |sdmmc-wake-input    ) in  hi    
+ gpio-446 (                    |en-vdd-sd           ) out lo    
+ gpio-456 (                    |cam0-pwdn           ) out lo    
+ gpio-457 (                    |sysfs               ) out lo    
+ gpio-461 (                    |sysfs               ) out lo    
+ gpio-479 (                    |external-connection:) in  lo    
+ gpio-481 (                    |Back                ) in  hi    
+ gpio-484 (                    |bt_ext_wake         ) out hi    
+ gpio-488 (                    |Setting             ) in  hi    
+ gpio-489 (                    |WL_REG_ON           ) out lo 

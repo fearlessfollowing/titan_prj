@@ -163,6 +163,11 @@ _BLC_FINISH             = 'camera._calibrationBlcResult_'
 _CAL_ORG_FINISH         = 'camera._calibration_origin_finish_'
 _BPC_FINISH             = 'camera._calibrationBpcResult_'
 
+
+# 通知Camerad退出相册页状态
+_MODULE_POWER_OFF       = 'camera._modulePowerOff'        
+
+
 #stich
 
 _STITCH_CONNECT         = 'camera._stitchConnect'
@@ -195,7 +200,6 @@ PATH_CMD_STITCH         = '/osc/commands/stitch'
 PATH_UI_CMD_EXECUTE     = '/ui/commands/execute'
 
 # PATH_PIC_NAME         = '/osc/pic/<media_name>'
-
 
 
 

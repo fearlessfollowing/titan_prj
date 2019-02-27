@@ -7,7 +7,7 @@ from exception.my_exception import *
 
 class select_wrapper:
     @classmethod
-    def add_fd(cls,fd):
+    def add_fd(cls, fd):
         pass
 
 class fifo_wrapper:
