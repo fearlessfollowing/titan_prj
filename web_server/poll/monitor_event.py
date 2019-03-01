@@ -30,7 +30,6 @@ EVENT_QUERY_STORAGE = 6
 EVENT_QUERY_LEFT    = 7
 
 
-
 # 发送给UI的通知/指示
 CMD_OLED_DISP_TYPE = 0
 CMD_OLED_SYNC_INIT = 1
@@ -51,6 +50,8 @@ CMD_WEB_UI_SHUT_DOWN            = 36
 CMD_WEB_UI_SWITCH_MOUNT_MODE    = 37
 
 MAX_QUEUE_SIZE = 20
+
+
 class mointor_fifo_write_handle:
     def __init__(self):
         self._queue = queue.Queue(MAX_QUEUE_SIZE)
@@ -208,6 +209,14 @@ class monitor_fifo_write(threading.Thread):
         self._exit = True
 
 
+
+# 
+# SocketClient - 类用于与system_server交互
+# - 
+class SocketClient(threading.Thread):
+
+
+
 #
 # 监听来自pro_servcie的消息
 #
@@ -303,6 +312,9 @@ class monitor_fifo_read(threading.Thread):
 
 
 
+#
+# monitor_camera_active_handle - 启动监听camerad的异步消息
+#
 class monitor_camera_active_handle:
     def __init__(self, controller):
         self._write_thread = monitor_camera_active(controller)
@@ -324,7 +336,6 @@ class monitor_camera_active(threading.Thread):
             if file_exist(config.INS_ACTIVE_FROM_CAMERA) is False:
                 os.mkfifo(config.INS_ACTIVE_FROM_CAMERA)
         self.control_obj = controller
-        # Print('read self {0} read_fd {1}'.format(self,self._read_fd))
 
     def get_read_fd(self):
         if self.read_fd == -1:
@@ -332,7 +343,6 @@ class monitor_camera_active(threading.Thread):
 
     def close_read_fd(self):
         if self.read_fd != -1:
-            # Info('monitor_camera_active close read fd {}'.format(self.read_fd))
             fifo_wrapper.close_fifo(self.read_fd)
             self.read_fd = -1
 
@@ -359,7 +369,7 @@ class monitor_camera_active(threading.Thread):
                     assert_match(len(content), content_len)
                 else:
                     Err(' camera active fifo len <= 0')
-                # Print('read monitor content len {} content {}'.format(content_len,content))
+
                 dic = jsonstr_to_dic(content)
 
                 # 处理来自camerad的通知
@@ -374,6 +384,7 @@ class monitor_camera_active(threading.Thread):
                 #sometimes met fifo not created
                 time_util.delay_ms(2000)
                 Err('monitor_camera_active over {}'.format(e))
+
 
     def stop(self):
         Print('stop camera active')

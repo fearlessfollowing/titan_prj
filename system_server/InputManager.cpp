@@ -96,8 +96,14 @@ InputManager::InputManager(): mBtnReportCallback(nullptr), mNotify(nullptr)
     pipe(mCtrlPipe);                    /* 控制按键循环线程的管道 */
     pipe(mLongPressMonitorPipe);        /* 用于给长按监听线程通信 */
 	
-    mLooperThread = std::thread([this]{ inputEventLoop();});
-    mLongPressMonitorThread = std::thread([this]{ longPressMonitorLoop();});
+    mLooperThread = std::thread([this]{ 
+        inputEventLoop();
+    });
+    
+    mLongPressMonitorThread = std::thread([this]{ 
+        longPressMonitorLoop();
+    });
+    
     mIKeyRespRate = 100;
 
     pRespRate = property_get(PROP_KEY_RESPRATE);

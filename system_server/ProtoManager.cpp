@@ -90,7 +90,6 @@
 /*********************************************************************************************
  *  全局变量
  *********************************************************************************************/
-// ProtoManager *ProtoManager::sInstance = NULL;
 
 static std::mutex gProtoManagerMutex;
 static std::mutex gSyncReqMutex;
@@ -100,17 +99,6 @@ static const char* gPExtraHeaders = "Content-Type:application/json\r\nReq-Src:Pr
 
 int ProtoManager::mSyncReqErrno = 0;
 Json::Value* ProtoManager::mSaveSyncReqRes = NULL;
-
-#if 0
-
-ProtoManager* ProtoManager::Instance() 
-{
-    std::unique_lock<std::mutex> _lock(gProtoManagerMutex);
-    if (!sInstance)
-        sInstance = new ProtoManager();
-    return sInstance;
-}
-#endif
 
 
 ProtoManager::ProtoManager(): mSyncReqExitFlag(false), 

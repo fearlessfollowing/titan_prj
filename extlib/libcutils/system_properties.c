@@ -76,28 +76,11 @@ int __system_properties_init(void)
 	/* 为了让非monitor进程启动的子进程都能使用属性系统
 	 * 将不使用环境变量的方式,而是使用访问属性文件的方式
 	 */
-	#if 0
-    env = getenv("ANDROID_PROPERTY_WORKSPACE");
-    if (!env) {
-        return -1;
-    }
-	
-    fd = atoi(env);
-    env = strchr(env, ',');
-    if (!env) {
-        return -1;
-    }
-    sz = atoi(env + 1);
-	#else
-	
     fd = open(PROPERTY_SPACE_PATH, O_RDONLY);	/* 以只读的方式打开,这样进程就没有直接修改属性的权限了 */
     if (fd < 0)
         return -1;
-	
+
 	sz = PA_SIZE;	/* 属性区域的大小固定 */
-
-	#endif
-
 	
     pa = mmap(0, sz, PROT_READ, MAP_SHARED, fd, 0);
     if (pa == MAP_FAILED) {
@@ -109,7 +92,7 @@ int __system_properties_init(void)
         return -1;
     }
 
-	printf("prop_area.magic = 0x%x, prop_area.version = 0x%x\n", PROP_AREA_MAGIC, PROP_AREA_VERSION);
+	// printf("prop_area.magic = 0x%x, prop_area.version = 0x%x\n", PROP_AREA_MAGIC, PROP_AREA_VERSION);
 	
     __system_property_area__ = pa;
     return 0;
@@ -176,7 +159,6 @@ const char* property_get(const char *name)
     const prop_info *pi = __system_property_find(name);
 
     if (pi != 0) {
-    	printf("prop: %s exist\n", name);
         return pi->value;
     } else {
     	printf("prop: %s not exist\n", name);
@@ -266,7 +248,6 @@ int property_set(const char *key, const char *value)
     if (err < 0) {
         return err;
     }
-
     return 0;
 }
 

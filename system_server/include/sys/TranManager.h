@@ -1,11 +1,9 @@
 #ifndef _TRAN_MANAGER_H_
 #define _TRAN_MANAGER_H_
 
-
 #include <sys/ins_types.h>
-#include <common/sp.h>
+#include <sys/SocketListener.h>
 #include <mutex>
-
 
 /*
  * 使用FIFO进行数据收发
@@ -17,9 +15,11 @@
  */
 // #define TRAN_USE_UNIX_SOCKET
 
-#define     MAX_RECV_BUF_SIZE       1024
+#define MAX_RECV_BUF_SIZE   1024
 
-class TranManager {
+
+
+class TranManager: public SocketListener {
 
 public:
                             TranManager();
@@ -27,8 +27,13 @@ public:
 
 	bool 					start();
 	bool 					stop();
-    
+
+
+protected:
+    virtual bool            onDataAvailable(SocketClient *cli);
+
 private:
+
 
     std::mutex 				mLock;
     int 					mCtrlPipe[2]; // 0 -- read , 1 -- write
@@ -38,24 +43,7 @@ private:
 
     char                    mRecvBuf[MAX_RECV_BUF_SIZE];        /* 接收数据的缓冲区 */
 
-
-#ifdef TRAN_USE_FIFO
-    int                     mSendFd;
-    int                     mRecvFd;
-    int                     createFifo();
-    int                     getSendFd();
-    int                     getRecvFd();
-    void                    closeSendFd();
-    void                    closeRecvFd();
-    int                     mRecvErrCnt;
-
-#else 
-    int                     mFd;
-#endif
-    int                     tranEventLoop(int iFd);
-    void                    writePipe(int p, int val);
-
-    bool                    onDataAvailable(int iFd);
+    int                     getTranListenerSocket();
 
 };
 

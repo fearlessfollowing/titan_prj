@@ -663,3 +663,21 @@ GPIOs 320-511, platform/2200000.gpio, tegra-gpio:
  gpio-484 (                    |bt_ext_wake         ) out hi    
  gpio-488 (                    |Setting             ) in  hi    
  gpio-489 (                    |WL_REG_ON           ) out lo 
+
+
+
+gpio-240 (                    |sysfs               ) out lo    
+gpio-241 (                    |sysfs               ) out lo    
+gpio-242 (                    |sysfs               ) out lo    
+gpio-243 (                    |en-vdd-sys          ) out lo    
+gpio-244 (                    |sysfs               ) out lo    
+gpio-245 (                    |sysfs               ) out lo    
+gpio-246 (                    |sysfs               ) out lo    
+gpio-247 (                    |sysfs               ) out lo    
+gpio-248 (                    |usb_cam3            ) out hi    
+gpio-249 (                    |en-vdd-cam          ) out lo    
+gpio-250 (                    |en-vdd-cam-1v2      ) out lo    
+gpio-251 (                    |usb_cam6            ) out hi    
+gpio-253 (                    |tegra_audio         ) out lo    
+gpio-254 (                    |tegra_fan           ) out hi    
+gpio-255 (                    |wifi_ap6356s_power  ) out lo    

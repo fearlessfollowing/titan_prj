@@ -1,12 +1,9 @@
-# from util.log_util import *
-from util.ins_log_util import *
 
-VERSION = 'V1.0.4_2018.10.18'
+VERSION = 'V1.0.4_2019.03.01'
 
 class ins_version:
     @classmethod
     def get_version(self):
-        Info('version is {}'.format(VERSION))
         return VERSION
 
     @classmethod

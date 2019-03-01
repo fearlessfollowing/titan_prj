@@ -9,6 +9,7 @@
 ** 日     期: 2019年1月25日
 ** 修改记录:
 ** V1.0			Skymixos		2019年1月25日		创建文件，添加注释
+** V1.1         Skymixos        2019年02月28日      增加输入设备文件的路径选择(用户输入 > 属性系统中设置 > 默认值)
 ******************************************************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,49 +27,8 @@
 
 #include <system_properties.h>
 
-
-/*
- * 一次按键的过程: hexdump /dev/input/event4
- * UP: (按下+同步 + 松开 + 同步)
- * 0000000 b6e9 56bc 0000 0000 8652 0007 0000 0000
- * 0000010 0001 0101 0001 0000 b6e9 56bc 0000 0000
- * 0000020 8652 0007 0000 0000 0000 0000 0000 0000
- * 0000030 b6e9 56bc 0000 0000 879a 000a 0000 0000
- * 0000040 0001 0101 0000 0000 b6e9 56bc 0000 0000
- * 0000050 879a 000a 0000 0000 0000 0000 0000 0000
- * DOWN:
- * 0000060 b711 56bc 0000 0000 9956 000e 0000 0000
- * 0000070 0001 0102 0001 0000 b711 56bc 0000 0000
- * 0000080 9956 000e 0000 0000 0000 0000 0000 0000
- * 0000090 b712 56bc 0000 0000 df9f 0001 0000 0000
- * 00000a0 0001 0102 0000 0000 b712 56bc 0000 0000
- * 00000b0 df9f 0001 0000 0000 0000 0000 0000 0000
- * BACK:
- * 00000c0 b734 56bc 0000 0000 d670 000c 0000 0000
- * 00000d0 0001 0104 0001 0000 b734 56bc 0000 0000
- * 00000e0 d670 000c 0000 0000 0000 0000 0000 0000
- * 00000f0 b735 56bc 0000 0000 5385 0000 0000 0000
- * 0000100 0001 0104 0000 0000 b735 56bc 0000 0000
- * 0000110 5385 0000 0000 0000 0000 0000 0000 0000
- * SETTING:
- * 0000120 b750 56bc 0000 0000 164f 0000 0000 0000
- * 0000130 0001 0103 0001 0000 b750 56bc 0000 0000
- * 0000140 164f 0000 0000 0000 0000 0000 0000 0000
- * 0000150 b750 56bc 0000 0000 56be 0002 0000 0000
- * 0000160 0001 0103 0000 0000 b750 56bc 0000 0000
- * 0000170 56be 0002 0000 0000 0000 0000 0000 0000
- * POWER:
- * 0000300 b76f 56bc 0000 0000 225b 0007 0000 0000
- * 0000310 0001 0100 0001 0000 b76f 56bc 0000 0000
- * 0000320 225b 0007 0000 0000 0000 0000 0000 0000
- * 0000330 b76f 56bc 0000 0000 3acb 0009 0000 0000
- * 0000340 0001 0100 0000 0000 b76f 56bc 0000 0000
- * 0000350 3acb 0009 0000 0000 0000 0000 0000 0000
- * 
- */
-
-typedef unsigned short u16;
-typedef int s32;
+typedef unsigned short  u16;
+typedef int             s32;
 
 
 #define ACTION_UP           "up"
@@ -90,13 +50,16 @@ typedef int s32;
 #define _KEY_DOWN            0x1
 #define _KEY_UP              0x0
 
-#define DEFAULT_INTERVAL    300
+#define DEFAULT_INTERVAL    100         /* 按键的灵敏度默认为100ms */
 
 #define EVT_PATH    "/dev/input/event4"
+
+#define EVT_SENDER_VER      "V0.1.1"
 
 
 static void print_usage()
 {
+    fprintf(stdout, "event_sender version: %s, created by skymixos, date[%s]\n", EVT_SENDER_VER, __DATE__);
     fprintf(stdout, "event_sender <\"up\"|\"down\"|\"power\"|\"back\"|\"setting\"|\"shutdown\">\n");
     fprintf(stdout, "event_sender /dev/input/eventX <\"up\"|\"down\"|\"power\"|\"back\"|\"setting\"|\"shutdown\">\n");
 
@@ -108,11 +71,11 @@ static void print_usage()
     fprintf(stdout, "shutdown - Means Long press Power key\n");
 }
 
+
 static void sleep_ms(uint32_t uiMS)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(uiMS));
 }
-
 
 
 static void sendKeyEvt(std::string evt_path, std::string evt)
@@ -123,19 +86,24 @@ static void sendKeyEvt(std::string evt_path, std::string evt)
     const char* pInterval = NULL;
     int iSleepInterval = DEFAULT_INTERVAL;
     
-    if (evt_path == "none")
-        path = EVT_PATH;
-    else 
+    if (evt_path == "none") {
+        if (property_get("sys.input_path")) {
+            path = property_get("sys.input_path");
+        } else {
+            path = EVT_PATH;
+        }
+    } else {
         path = evt_path.c_str();
+    }
 
     pInterval = property_get(PROP_PRESS_INTERVAL);
     if (pInterval) {
         iSleepInterval = atoi(pInterval);
     }
 
-    if (evt == ACTION_UP) code = KEY_CODE_UP;
-    else if (evt == ACTION_DOWN) code = KEY_CODE_DOWN;
-    else if (evt == ACTION_BACK) code = KEY_CODE_BACK;
+    if (evt == ACTION_UP)           code = KEY_CODE_UP;
+    else if (evt == ACTION_DOWN)    code = KEY_CODE_DOWN;
+    else if (evt == ACTION_BACK)    code = KEY_CODE_BACK;
     else if (evt == ACTION_SETTING) code = KEY_CODE_SETTING;
     else code = KEY_CODE_POWER;
 
