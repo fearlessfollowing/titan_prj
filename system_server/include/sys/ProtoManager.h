@@ -15,14 +15,17 @@
 #ifndef _PROTO_MANAGER_H_
 #define _PROTO_MANAGER_H_
 
+#include <mutex>
 #include <string>
 #include <functional>
+#include <unordered_map>
+
 #include <system_properties.h>
 #include <sys/VolumeManager.h>
 #include <sys/SocketListener.h>
-
+#include <sys/SocketClient.h>
 #include <prop_cfg.h>
-#include <mutex>
+
 #include <json/value.h>
 #include <json/json.h>
 
@@ -76,7 +79,7 @@
 
 #define REQUEST_BY_UI       "ui"
 
-// 此处必须用function类，typedef再后面函数指针赋值无效
+
 using ReqCallback = std::function<void (std::string)>;
 
 enum {
@@ -110,6 +113,7 @@ enum {
 
 using syncReqResultCallback = std::function<bool (Json::Value& resultJson)>;
 
+using protoReqCallback = std::function<void(SocketClient* cli, Json::Value& jsonData)>;
 
 /*
  * 传输管理器对象 - 负责提供与服务器交互接口(使用http)
@@ -223,7 +227,7 @@ public:
      */
     bool            parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
 
-    bool            parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
+    bool            parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData);
 
 
     void            setNotifyRecv(sp<ARMessage> notify);
@@ -248,7 +252,8 @@ private:
 
     std::string             mPreviewArg;        /* 预览参数: 优先读取配置文件中的预览参数;如果没有将使用默认的预览参数 */
     Json::Value             mPreviewJson;
-	std::unordered_map<std::string, std::function<void((SocketClient* cli, Json::Value& jsonData)>> mMsgHandler;
+	
+    // std::unordered_map<std::string, protoReqCallback> mMsgHandler;
 
 
     uint16_t                mServerState;
@@ -267,15 +272,14 @@ private:
 
     void            handleDispType(Json::Value& jsonData);
     void            handleQueryLeftInfo(Json::Value& queryJson);
-    void            handleGpsStateChange(Json::Value& queryJson);
-    void            handleShutdownMachine(Json::Value& queryJson);
-    void            handleSwitchMountMode(Json::Value& paramJson);
-    void            handleSetSn(Json::Value& jsonData);
-    void            handleSyncInfo(Json::Value& jsonData);
+
+
+
+
     void            handleErrInfo(Json::Value& jsonData);
-    void            handleTfCardChanged(Json::Value& jsonData);
     void            handleTfcardFormatResult(Json::Value& jsonData);
     void            handleSpeedTestResult(Json::Value& jsonData);
+
 
 
     void            handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode);
@@ -283,6 +287,15 @@ private:
 
     bool            sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack = nullptr);
 
+
+
+    void            handleSyncInfo(SocketClient* cli, Json::Value& jsonData);
+    void            handleGpsStateChange(SocketClient* cli, Json::Value& queryJson);
+    void            handleSwitchMountMode(SocketClient* cli, Json::Value& paramJson);
+    void            handleShutdownMachine(SocketClient* cli, Json::Value& queryJson);
+    void            handleTfCardChanged(SocketClient* cli, Json::Value& jsonData);
+    void            handleSetSn(SocketClient* cli, Json::Value& jsonData);
+    
     /* 解析查询小卡的结果 */
     static bool     parseQueryTfcardResult(Json::Value& jsonData);
 

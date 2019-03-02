@@ -542,7 +542,7 @@ class osc_state_handle:
         cls._osc_state.join()
 
     @classmethod
-    def get_osc_state(cls,bStitch):
+    def get_osc_state(cls, bStitch):
         return cls._osc_state.get_osc_state(bStitch)
 
     @classmethod

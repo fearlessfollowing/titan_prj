@@ -15,6 +15,7 @@ import json
 from threading import Semaphore
 from collections import OrderedDict
 from util.str_util import *
+from util.ins_log_util import *
 
 
 class UnixSocketClient:
@@ -22,10 +23,12 @@ class UnixSocketClient:
         self.SYSTEM_SERVER_PATH = "/dev/socket/system_server"
         self.sendLock = Semaphore()
         self._socket = None
+        self._headMagic = 0xDEADBEEF
 
     def connectServer(self):
         try:
             self._socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self._socket.connect(self.SYSTEM_SERVER_PATH)
         except OSError as e:
             Info("Create Unix Socket Error: {}".format(e))
             self._socket = None
@@ -40,20 +43,21 @@ class UnixSocketClient:
 
 
     def genSendData(self, req):
+        Info('genSendData conent {}'.format(req))
         sendContent = json.dumps(req)
-        magicHead = int_to_bytes(0xDEADBEEF)
+        magicHead = int_to_bytes(self._headMagic)
         dataLen = int_to_bytes(len(sendContent))
         bytesContent = str_to_bytes(sendContent)
-        return join_byte_list((magicHead, sendContent, bytesContent))
+        return join_byte_list((magicHead, dataLen, bytesContent))
 
 
-    def genSendData(self, cmd, data):
+    def genSendDataEx(self, cmd, data):
         sendContentDict = OrderedDict({'cmd': cmd, 'parameters': data})
         sendContent = json.dumps(sendContentDict)
-        magicHead = int_to_bytes(0xDEADBEEF)
+        magicHead = int_to_bytes(self._headMagic)
         dataLen = int_to_bytes(len(sendContent))
         bytesContent = str_to_bytes(sendContent)
-        return join_byte_list((magicHead, sendContent, bytesContent))
+        return join_byte_list((magicHead, dataLen, bytesContent))
 
 
     def recvData(self, socket):
@@ -79,11 +83,17 @@ class UnixSocketClient:
     #   cmd - 命令ID
     #   data - 命令对应的参数
     # 返 回 值: 成功返回大于0; 失败返回错误码
-    def sendAsyncNotify(self, cmd, data):
+    def sendAsyncNotify(self, cmd, data = None):
         self.sendLock.acquire()
         sendAsyncResult = True
-        content = self.genSendData(cmd, data)
-        Info('sendAsyncNotify conent {}'.format(sendContent))
+        content = None
+
+        if data != None:
+            content = self.genSendDataEx(cmd, data)
+        else:
+            content = self.genSendData(cmd)
+
+        Info('sendAsyncNotify conent {}'.format(content))
 
         if self.connectServer() != None:
             try:
@@ -100,8 +110,8 @@ class UnixSocketClient:
         else:
             Info("Create connect to system_server failed")
             sendAsyncResult = False
-
-        self.sendLock.release()            
+        self.sendLock.release()    
+                
         return sendAsyncResult
 
 
@@ -110,31 +120,31 @@ class UnixSocketClient:
     # Content: {“cmd": rsp_cmd, "parameters"： {}}
     #
     # 发送同步请求
-    def sendSyncRequest(self, cmd, data, callback):
-        self.sendLock.acquire()
-        sendSyncResult = True
-        content = self.genSendData(cmd, data)
+    def sendSyncRequest(self, cmd, data = None):
+        content = None
+        requestResult = None
 
+        self.sendLock.acquire()
+        
+        if data != None:
+            content = self.genSendDataEx(cmd, data)
+        else:
+            content = self.genSendData(cmd)
+        
         if self.connectServer() != None:
             try:
                 self._socket.sendall(content)
-                rspData = self.recvData(self._socket)
-                if rspData != None and callback != None:
-                    callback(rspData)
-                else:
-                    Info("---> rspData is None or needn't callback")
+                requestResult = self.recvData(self._socket)
             except InterruptedError as e:
                 Info('sendAsyncNotify got InterruptedError {}'.format(e))
-                sendSyncResult = False            
             except Exception as e:
                 Info('sendsyncNotify got Except {}'.format(e))
-                sendSyncResult = False
 
             finally:
                 self.disconnectServer()
         else:
             Info("Connect system_server for sync request failed")
-            sendSyncResult = False
+
         self.sendLock.release()
         
-        return sendSyncResult
+        return requestResult

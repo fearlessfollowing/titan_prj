@@ -281,6 +281,9 @@ _REQ_AWB_CALC               = 'camera._calibrationAwb'
 # 更新系统温度
 _REQ_UPDATE_SYS_TMP         = 'camera._updateSysTemp'
 
+
+
+
 """camera_state"""
 STATE_IDLE                      = 0x00
 STATE_RECORD                    = 0x01
@@ -354,6 +357,9 @@ FILE_TYPE   = 'fileType'
 SAVE_ORG    = 'saveOrigin'
 FRAME_RATE  = 'framerate'
 #BIT_RATE   = 'bitrate'
+
+########################### 指示/通知命令 #############################
+_SYNC_INIT_NOTIFY = "camera._syncInfo"
 
 
 # Machine

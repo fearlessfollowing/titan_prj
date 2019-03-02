@@ -602,3 +602,78 @@ Response:
 {"name": "camera._startPreview","parameters":{"origin":{"mime":"h264","width":1920,"height":1440,"framerate":30,"bitrate":20000},"stiching":{"mode":"pano","map":"flat","mime":"h264","width":1920,"height":960,"framerate":30,"bitrate":5000},"audio":{"mime":"aac", "sampleFormat":"s16", "channelLayout":"stereo","samplerate":48000, "bitrate":128}}}
 
 
+
+Protocol:
+For Client:
+----------------------------------------------------------------------------------------------
+connect:
+
+
+preview:
+----------------------------------------------------------------------------------------------
+{
+	"name": "camera._startPreview",
+	"parameters":{
+		"audio": {
+			"bitrate": 128, 
+			"channelLayout": "stereo", 
+			"mime": "aac", 
+			"sampleFormat": "s16", 
+			"samplerate": 48000
+		},
+		"origin":{
+			"mime":"h264",
+			"width":1920,
+			"height":1440,
+			"framerate":30,
+			"bitrate":20000
+		},
+		"stiching":{
+			"mode":"pano",
+			"map":"flat",
+			"mime":"h264",
+			"width":1920,
+			"height":960,
+			"framerate":30,
+			"bitrate":5000
+		}
+	}
+}
+
+
+takePicture:
+----------------------------------------------------------------------------------------------
+
+
+queryLeftInfo:
+----------------------------------------------------------------------------------------------
+
+
+shutdown:
+----------------------------------------------------------------------------------------------
+
+
+
+
+
+For internel:
+----------------------------------------------------------------------------------------------
+sync:
+{
+    "name": "camera._syncInfo",
+    "parameters": {
+        "state":0,
+        "a_v": "1.1.011810"
+        "c_v": "1.1.190216.190216.190219B1"
+        "h_v": "V1.0.4_2018.10.18”
+    }
+}
+
+gps notify:
+{
+    "name": "camera._gps_state_", 
+    "sequence": 0, 
+    "parameters": { 
+        "state": 0 
+    }
+}

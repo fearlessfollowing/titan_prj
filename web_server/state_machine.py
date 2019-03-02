@@ -157,6 +157,12 @@ class StateMachine:
         else:
             return False   
 
+    @classmethod
+    def checkAllowSwitchMountMode(self):
+        if (StateMachine.getCamState() in (config.STATE_IDLE, config.STATE_PREVIEW)):
+            return True
+        else:
+            return False   
 
     @classmethod
     def checkAllowStopPreview(cls):

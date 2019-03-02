@@ -170,14 +170,20 @@ def assert_not_none(val,des):
     if val is None:
         raise AssertionError(join_str_list(['None ',des]))
 
-def check_dic_key_exist(dic,key):
+def check_dic_key_exist(dic, key):
     if key in dic:
         return True
     else:
         return False
 
-def assert_key(req,key):
-    if check_dic_key_exist(req,key) is False:
+def dicHasKey(dic, key):
+    if key in dic:
+        return True
+    else:
+        return False
+
+def assert_key(req, key):
+    if check_dic_key_exist(req, key) is False:
         raise AssertionError(join_str_list(['req[', key ,'] is none']))
 
 def assert_match(req,res):

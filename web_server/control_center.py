@@ -38,11 +38,12 @@ from util.time_util import *
 from util.time_zones import *
 from util.version_util import *
 from flask import send_file
+
 from poll.monitor_event import monitor_fifo_read, mointor_fifo_write_handle, monitor_camera_active_handle
 
 from thread_utils import *
 from state_machine import *
-from exception.my_exception import *
+from util.UnixSocket import *
 
 import shutil
 import time
@@ -89,6 +90,7 @@ class control_center:
         self.random_data = 0
         self._list_progress = False   
         self._list_file_seq = -1  
+
         self._client_take_pic = False   
         self._client_take_live = False
         self._client_stitch_calc = False
@@ -163,9 +165,7 @@ class control_center:
             config._DELETE_TF_CARD:         self.cameraDeleteFile,
 
             config._QUERY_LEFT_INFO:         self.cameraQueryLeftInfo,
-
-            # 关机
-            config._SHUT_DOWN_MACHINE:       self.cameraShutdown,
+            config._SHUT_DOWN_MACHINE:       self.cameraShutdown,                       # 关机
 
             # 切换TF卡的挂载方式
             config._SWITCH_MOUNT_MODE:       self.cameraSwitchMountMode,
@@ -225,11 +225,6 @@ class control_center:
             config._CALIBRATE_MAGMETER:     self.cameraCalibrateMagmeterDone,
 
             config._DELETE_TF_CARD:         self.cameraDeleteFileDone,
-
-            # 给定一json命令，返回对应的剩余量
-            # 拍照: 返回能拍的剩余张数
-            # 录像: 返回能录的时长
-            # 直播存片: 返回能直播存片的时长
             config._QUERY_LEFT_INFO:        self.cameraQueryLeftInfo,
 
         })
@@ -292,7 +287,6 @@ class control_center:
             config._CALIBRATE_MAGMETER:     self.cameraCalibrateMagmeterFail,
 
             config._DELETE_TF_CARD:         self.cameraDeleteFileFail,
-
         })
 
 
@@ -379,12 +373,8 @@ class control_center:
             config._LIVE_STATUS:            self.live_stats_notify,
             config._NET_LINK_STATUS:        self.net_link_state_notify,
             config._GYRO_CALIBRATION:       self.gyro_calibration_finish_notify,
-
-            # 测速完成通知
-            config._SPEED_TEST_NOTIFY:      self.storage_speed_test_finish_notify,
-
-            # 非存片模式的直播
-            config._LIVE_FINISH:            self.handle_live_finsh,
+            config._SPEED_TEST_NOTIFY:      self.storage_speed_test_finish_notify,  # 测速完成通知
+            config._LIVE_FINISH:            self.handle_live_finsh,                 # 非存片模式的直播
             
             config._LIVE_REC_FINISH:        self.handle_live_rec_finish,
 
@@ -448,6 +438,7 @@ class control_center:
         req[_name] = config._MODULE_POWER_OFF
         self.write_and_read(req)
 
+
     def reset_state(self):
         Info('reset busy to idle')
 
@@ -460,10 +451,9 @@ class control_center:
 
         # 给camerad发送录像
         read_info = self.write_and_read(content)
-
         Info('start_ageing_test result {}'.format(read_info))
-
         return read_info
+
 
     def camera_get_result(self, req, from_ui = False):
         try:
@@ -592,6 +582,8 @@ class control_center:
         
         self._monitor_cam_active_handle = None
 
+        self._unix_sender = UnixSocketClient()
+
         if platform.machine() == 'x86_64' or platform.machine() == 'aarch64' or file_exist('/sdcard/http_local'):
             self.init_fifo()
 
@@ -618,12 +610,12 @@ class control_center:
         self.init_fifo_monitor_camera_active()
 
 
-    def send_sync_init(self,req):
-        Info('send sync init req {}'.format(req))
-        self.send_req(self.get_write_req(config.OLED_SYNC_INIT, req))
-
-    def send_set_sn(self,req):
-        self.send_req(self.get_write_req(config.OLED_SET_SN, req))
+    def syncInitToSystemServer(self, req):
+        Info('---> send system_server sync init req {}'.format(req))
+        asyncNotify = OrderedDict()
+        asyncNotify[_name] = config._SYNC_INIT_NOTIFY
+        asyncNotify[_param] = req
+        self._unix_sender.sendAsyncNotify(asyncNotify)
 
     def send_wifi_config(self, req):
         Info('wifi req'.format(req))
@@ -649,13 +641,13 @@ class control_center:
     def get_cam_state_hex(self):
         return hex(osc_state_handle.get_cam_state())
 
-    def set_cam_state(self,state):
+    def set_cam_state(self, state):
         osc_state_handle.set_cam_state(state)
 
-    def set_gps_state(self,state):
+    def set_gps_state(self, state):
         osc_state_handle.set_gps_state(state)
 
-    def set_snd_state(self,param):
+    def set_snd_state(self, param):
         osc_state_handle.set_snd_state(param)
 
     #req is reserved
@@ -685,7 +677,7 @@ class control_center:
     def check_for_update(self, req):
         return osc_check_update.check_update(req)
 
-    def get_media_name(self,name):
+    def get_media_name(self, name):
         pass
 
     def __init__(self):
@@ -765,7 +757,7 @@ class control_center:
                     if m_v in res.keys():
                         req['c_v'] = res[m_v]
                     req['h_v'] = ins_version.get_version()
-                    self.send_sync_init(req)
+                    self.syncInitToSystemServer(req)
         except Exception as e:
             Err('sync_init_info_to_p exception {}'.format(str(e)))
 
@@ -777,7 +769,6 @@ class control_center:
         self.sync_init_info_to_p(res)
 
     def camera_query_state(self, req, from_ui = False):
-
         read_info = self.write_and_read(req)
         return read_info
 
@@ -914,7 +905,7 @@ class control_center:
             Info('b camera_connect req {}'.format(req))
             self.generate_fp()
             
-            ret = OrderedDict({_name:req[_name], _state:config.DONE, config.RESULTS:{config.FINGERPRINT:self.finger_print}})
+            ret = OrderedDict({_name: req[_name], _state: config.DONE, config.RESULTS:{config.FINGERPRINT:self.finger_print}})
             url_list = OrderedDict()
 
             self.set_last_info(None)
@@ -968,8 +959,11 @@ class control_center:
             self.set_connect(True)
             
             Print('>>> connect ret {}'.format(ret))
-            self.start_poll_timer()
-            
+            if dicHasKey(req[_param], "connectMode") and req[_param]["connectMode"] == "test":
+                Info("----> Enter my test mode, stop poll timer")
+            else:
+                self.start_poll_timer()
+
             return dict_to_jsonstr(ret) # 返回链接参数string给客户端
 
         except Exception as e:
@@ -1032,8 +1026,8 @@ class control_center:
 
 
     def set_sn(self, req):
-        Info('set_sn {}'.format(req))
-        self.send_set_sn(req[_param])
+        Info('[------- APP Req: camera_set_sys_setting ------] req: {}'.format(req))
+        self._unix_sender.sendAsyncNotify(req)        
         return cmd_done(req[_name])
 
 
@@ -2218,6 +2212,7 @@ class control_center:
 
         return json.dumps(res) 
 
+
     def cameraUiCalcAwb(self, req):
         Info('[------- UI Req: cameraUiCalcAwb ------] req: {}'.format(req))  
         if StateMachine.checkAllowAwbCalc():
@@ -2385,6 +2380,7 @@ class control_center:
 
     def camera_get_meta_data(self, req, from_ui = False):
         return cmd_done(req[_name])
+
 
     #keep reset suc even if camerad not response
     #TODO  -- future use aio mode
@@ -2714,28 +2710,41 @@ class control_center:
         self.set_cam_state(self.get_cam_state() & ~config.STATE_DELETE_FILE)
 
 
-    def queryLeftResult(self, res):
-        Info('>>>>> queryLeftResult req {} self.get_cam_state() {}'.format(res, self.get_cam_state()))
-        self.left_val = res['left']
-
-
     def cameraShutdown(self, req):
-        Info('------> cameraShutdown req from client {} Server State {}'.format(req, StateMachine.getCamState()))
-        self.send_req(self.get_write_req(config.UI_NOTIFY_SHUT_DOWN, req))
-        result = OrderedDict()
-        result['name'] = req[_name]
-        result['state'] = config.DONE
-        return json.dumps(result)
+        Info('[------- APP Req: cameraShutdown ------] req: {}'.format(req))  
+        reqResult = OrderedDict()
+        reqResult[_name] = req[_name]   
+        reqResult['state'] = config.DONE
+        self._unix_sender.sendAsyncNotify(req)
+        return json.dumps(reqResult)
 
 
     def cameraSwitchMountMode(self, req):
-        Info('----> cameraSwitchMountMode req from client {} Server State {}'.format(req, StateMachine.getCamState()))
-        self.send_req(self.get_write_req(config.UI_NOTIFY_SWITCH_MOUNT_MODE, req))
-        result = OrderedDict()
-        result['name'] = req[_name]        
-        result['state'] = config.DONE
-        return json.dumps(result)
+        Info('[------- APP Req: cameraSwitchMountMode ------] req: {}'.format(req))
+        reqResult = OrderedDict()
+        reqResult[_name] = req[_name]        
+        if StateMachine.checkAllowSwitchMountMode():
+            self._unix_sender.sendAsyncNotify(req)
+            reqResult['state'] = config.DONE        
+        else:
+            reqResult['state'] = 'error' 
+        return json.dumps(reqResult)
 
+
+    def cameraQueryLeftInfo(self, req, from_ui = False):
+        Info('[------- APP Req: cameraQueryLeftInfo ------] req: {}'.format(req))          
+        queryResult = OrderedDict()
+        queryResult['name'] = req['name']
+
+        if StateMachine.checkAllowQueryLeftInfo():
+            rsp = self._unix_sender.sendSyncRequest(req)
+
+            # 等待处理结果
+            queryResult['state'] = config.DONE
+            queryResult['left'] = rsp['left']
+            return json.dumps(queryResult)
+        else:
+            return cmd_error_state(req[_name], StateMachine.getCamState())
 
 
     # 列出文件(异步版本)
@@ -2798,39 +2807,6 @@ class control_center:
             Info('-----> not allow list file')
             read_info = cmd_error_state(req[_name], self.get_cam_state())
         return read_info
-
-    #
-    # {
-    #   "name": "camera._queryLeftInfo",
-    #   "param": {}
-    # }
-    # 1.检查是否允许查询
-    # 2.发送请求给system_server
-    # 3.返回结果
-
-
-
-    def cameraQueryLeftInfo(self, req, from_ui = False):
-        Info('[------- APP Req: camera_calibrate_blc ------] req: {}'.format(req))          
-        queryResult = OrderedDict()
-        queryResult['name'] = req['name']
-
-        if StateMachine.checkAllowQueryLeftInfo():
-            # 根据请求的参数做处理
-            # 如果是拍照：
-            # 如果是录像：
-            # 如果是直播：
-            self.send_req(self.get_write_req(config.UI_NOTIFY_QUERY_LEFT_INFO, req['param']))
-        
-            time.sleep(0.5)
-
-            # 等待处理结果
-            queryResult['state'] = config.DONE
-            queryResult['left'] = self.left_val
-            return json.dumps(queryResult)
-        else:
-            return cmd_error_state(req[_name], StateMachine.getCamState())
-
 
 
     def camera_stop_qr_fail(self, err = -1):
@@ -2914,6 +2890,7 @@ class control_center:
         Info("power off fail  err {}".format(err))
         self.set_cam_state(config.STATE_IDLE)
         self.send_oled_type(config.START_LOW_BAT_FAIL)
+
 
     def camera_gyro_done(self, req=None):
         Info("gyro done")
@@ -3206,6 +3183,7 @@ class control_center:
             self.send_oled_type_err(config.START_GYRO_FAIL,self.get_err_code(param))
 
 
+
     # 方法名称: gps_notify
     # 功能描述: GPS状态变化通知
     #           
@@ -3214,7 +3192,11 @@ class control_center:
     def gps_notify(self, param):
         Info('[-------Notify Message -------] gps_notify param {}'.format(param))
         self.set_gps_state(param['state'])
-        self.send_req(self.get_write_req(config.UI_NOTIFY_GPS_STATE_CHANGE, param))
+        gpsNotify = OrderedDict()
+        gpsNotify[_name] = "camera._gps_state_"
+        gpsNotify[_param] = param
+        self._unix_sender.sendAsyncNotify(gpsNotify)
+
 
 
     # {
@@ -3249,7 +3231,11 @@ class control_center:
         # 将更新的信息发给状态机
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.TF_STATE_CHANGE, param['module']))
         # 将更新的信息发给UI(2018年8月7日)
-        self.send_req(self.get_write_req(config.UI_NOTIFY_TF_CHANGED, param))
+        nofityDic = OrderedDict()
+        nofityDic[_name] = "camera._tfStateChange"
+        nofityDic[_param] = param
+        self._unix_sender.sendAsyncNotify(nofityDic)
+
 
 
     # 方法名称: stitch_notify
@@ -3385,7 +3371,6 @@ class control_center:
 
 
     def reset_all(self):
-        Info('start reset')
         self.reset_fifo()
         Info('start reset2')
         self.clear_all()
@@ -3714,6 +3699,7 @@ class control_center:
         except Exception as e:
             Err('send req exception {}'.format(e))
 
+
     def get_write_req(self, msg_what, args):
         req = OrderedDict()
         req['msg_what'] = msg_what
@@ -3750,7 +3736,6 @@ class control_center:
 
 
     def init_fifo_monitor_camera_active(self):
-        # Info('init_fifo_monitor_camera_active start')
         self._monitor_cam_active_handle = monitor_camera_active_handle(self)
         self._monitor_cam_active_handle.start()
 

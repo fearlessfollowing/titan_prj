@@ -13,9 +13,9 @@
 /*
  * 使用Unix Socket进行数据收发
  */
-// #define TRAN_USE_UNIX_SOCKET
 
-#define MAX_RECV_BUF_SIZE   4096
+
+#define MAX_RECV_BUF_SIZE   1024
 
 
 
@@ -34,12 +34,7 @@ protected:
 
 private:
 
-
     std::mutex 				mLock;
-    int 					mCtrlPipe[2]; // 0 -- read , 1 -- write
-    bool                    mRunning;
-
-    std::thread 			mTranThread;   
 
     char                    mRecvBuf[MAX_RECV_BUF_SIZE];        /* 接收数据的缓冲区 */
 

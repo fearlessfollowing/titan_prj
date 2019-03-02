@@ -81,10 +81,10 @@ int ins_i2c::i2c_write(const u8 reg, const u8 *dat, unsigned int dat_len)
     unsigned int res;
     int times = 5;
     int i = 0;
-    u8 buf[128];
+    u8 buf[128]= {0};
     unsigned int write_len = 1;
 
-    unique_lock<mutex> lock(i2c_mutex);
+    // unique_lock<mutex> lock(i2c_mutex);
 
     CHECK_NE(i2c_fd, -1);
     memset(buf, 0x00, sizeof(buf));
@@ -92,7 +92,7 @@ int ins_i2c::i2c_write(const u8 reg, const u8 *dat, unsigned int dat_len)
     buf[0] = (u8)reg;
 	
     if (dat != nullptr) {
-        memcpy(&buf[1],dat,dat_len);
+        memcpy(&buf[1], dat, dat_len);
         write_len += dat_len;
     }
 
@@ -123,7 +123,6 @@ int ins_i2c::i2c_read(const u8 reg, u8 *dat, const unsigned int len)
     if (i2c_write(reg, nullptr, 0) == 0) {
         int i = 0;
         int times = 5;
-        unique_lock<mutex> lock(i2c_mutex);
         CHECK_NE(i2c_fd, -1);
 
         for (i = 0; i < times; i++) {

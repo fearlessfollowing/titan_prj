@@ -9030,8 +9030,8 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             }
 
             case UI_READ_BAT: {     /* 读取电池电量消息 */
-                std::unique_lock<std::mutex> lock(mutexState);
-                handleCheckBatteryState();
+                // std::unique_lock<std::mutex> lock(mutexState);
+                // handleCheckBatteryState();
                 break;
             }
 

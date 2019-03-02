@@ -209,14 +209,6 @@ class monitor_fifo_write(threading.Thread):
         self._exit = True
 
 
-
-# 
-# SocketClient - 类用于与system_server交互
-# - 
-class SocketClient(threading.Thread):
-
-
-
 #
 # 监听来自pro_servcie的消息
 #
@@ -260,19 +252,13 @@ class monitor_fifo_read(threading.Thread):
     def handle_query_storage(self, content):
         self.control_obj.queryStorage()
 
-    def handle_query_left(self, content):
-        Info('>>>>>>>>>>>>> handle_query_left {}'.format(content))
-        self.control_obj.queryLeftResult(content)
-
     def run(self):
         self.func = OrderedDict({
-            # EVENT_USB:            self.handle_usb_event,
             # EVENT_NET_CHANGE:     self.handle_net_change_event,
             EVENT_OLED_KEY:         self.handle_oled_key,
             # EVENT_DEV_NOTIFY:       self.handle_dev_notify,
             # EVENT_AGEING_TEST:      self.handle_ageing_test,
             # EVENT_QUERY_STORAGE:    self.handle_query_storage,
-            EVENT_QUERY_LEFT:       self.handle_query_left,
         })
         
 

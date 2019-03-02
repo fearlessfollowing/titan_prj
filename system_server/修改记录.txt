@@ -10,17 +10,6 @@ sys.key_resprate=50
 BUG #11440=>罗品京 【拍照】【必现】拍照相机机身Pano实时拼接的档位，拍出来的pano照片比例不对 
 已解决
 
-
-BUG #11441=>罗品京 【相机重启】相机插电源线录像，没插电池，相机自动重启。文件损坏。同时也会出现相机在20%~30的电量时，直接关机的情况 
-需要硬件确认？
-
-
-
-BUG #11444=>罗品京 【直播/UI】直播不存片（比如机身的档位），不插卡时右下角不能显示None；直播如果存片的话，要计算出剩余可录时长，在右下角显示；详情如下： 
-直播不存片（比如机身的档位），不插卡时右下角显示None。不存片时，右下角不显示卡的信息
-直播如果存片的话，要计算出剩余可录时长，并在右下角显示
-
-
 3.Direct模式下网络不畅问题？
 在hardware_init.sh中禁止掉NetWorkManager服务
 
@@ -681,3 +670,100 @@ gpio-251 (                    |usb_cam6            ) out hi
 gpio-253 (                    |tegra_audio         ) out lo    
 gpio-254 (                    |tegra_fan           ) out hi    
 gpio-255 (                    |wifi_ap6356s_power  ) out lo    
+
+
+
+关于底部MIC接口使用Line Input模式的调试记录：
+1.插入Line in，检查硬件是否可以检测到?
+root@tegra-ubuntu:/usr/local/bin# amixer cget -c 1 name="Jack-state"
+numid=676,iface=MIXER,name='Jack-state'
+  ; type=ENUMERATED,access=rw------,values=1,items=3
+  ; Item #0 'None'
+  ; Item #1 'HS'
+  ; Item #2 'HP'
+  : values=2
+
+2.datasheet中的操作方法:
+The IN2P/N is a dual type input port: microphone input and line input. Microphone input can be
+configured to differential input or single-ended input by MX-0E[6]. Multi-steps microphone boost
+gain set by sel_bst2 (MX-0E[11:8]) is easy to use for microphone application. Pow_bst2 can be used
+to power down the MIC2 boost. As line input, it has volume control for tuning by MX-0F[12:8] and
+MX-0F[4:0].
+
+
+
+echo 1c 7f7f >/sys/bus/i2c/devices/1-001c/codec_reg
+
+
+IN2输入控制: 0xE
+i2cget -f -y 1 0x1c 0xe
+----------------------------------------------------------------------------------------------------
+Name        Bits            Read/Write          Reset State         Description
+Reserved    15:12           R/W                 0’h                 Reserved
+Sel_bst2    11:8            R/W                 0’h                 IN2 Boost Control (BST2)
+                                                                    0000’b: Bypass
+                                                                    0001’b: +20dB
+                                                                    0010’b: +24dB
+                                                                    0011’b: +30dB
+                                                                    0100’b: +35dB
+                                                                    0101’b: +40dB
+                                                                    0110’b: +44dB
+                                                                    0111’b: +50dB
+                                                                    1000’b: +52dB
+                                                                    Others : Reserved
+Reserved    7               R                   0’h                 Reserved
+En_in2_df   6               R/W                 0’h                 IN2 Input Mode Control
+                                                                    0’b: Single Ended Mode
+                                                                    1’b: Differential Mode
+Reserved    5:0             R                   0’h                 Reserved
+----------------------------------------------------------------------------------------------------
+
+
+INL & INR 音量控制: 0xF
+i2cget -f -y 1 0x1c 0xf
+----------------------------------------------------------------------------------------------------
+Name        Bits            Read/Write          Reset State         Description
+reserved    15:13           R                   0’h                 Reserved
+Vol_inl     12:8            R/W                 8’h                 INL Channel Volume Control 
+                                                                    00’h: +12dB
+                                                                    …
+                                                                    08’h: 0dB
+                                                                    …
+                                                                    1F’h: -34.5dB, with 1.5dB/step
+Reserved    7:5             R                   0’h                 Reserved
+Vol_inr     4:0             R/W                 8’h                 INR Channel Volume Control 
+                                                                    00’h: +12dB
+                                                                    …
+                                                                    08’h: 0dB
+                                                                    …
+                                                                    1F’h: -34.5dB, with 1.5dB/step
+----------------------------------------------------------------------------------------------------
+
+
+
+电源控制: 0x64
+----------------------------------------------------------------------------------------------------
+Name                Bits           Read/Write              Reset State         Description
+Pow_bst1            15              R/W                     0’h                 MIC BST1 Power Control
+                                                                                0’b: Power Down
+                                                                                1’b: Power On
+reserved            14:13           R/W                     0’h                 reserved
+Pow_bst2            12              R/W                     0’h                 MIC BST2 Power Control
+                                                                                0’b: Power Down
+                                                                                1’b: Power On
+Pow_micbias1        11              R/W                     0’h                 MICBIAS1 Power Control
+                                                                                0’b: Power Down
+                                                                                1’b: Power On
+reserved            10              R/W                     0’h                 reserved
+Pow_pll             9               R/W                     0’h                 PLL Power Control
+                                                                                0’b: Power Down
+                                                                                1’b: Power On
+reserved            8:0             R                       0’h                 Reserved
+----------------------------------------------------------------------------------------------------
+
+
+
+快捷查找:
+1.删除风扇采样的sample
+adb connect 192.168.1.188
+adb shell rm /home/nvidia/insta360/noise_sample/*
