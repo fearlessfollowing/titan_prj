@@ -150,6 +150,13 @@ class StateMachine:
         else:
             return False
 
+    @classmethod
+    def checkAllowQueryLeftInfo(self):
+        if (StateMachine.getCamState() in (config.STATE_IDLE, config.STATE_PREVIEW)):
+            return True
+        else:
+            return False   
+
 
     @classmethod
     def checkAllowStopPreview(cls):

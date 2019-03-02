@@ -1,6 +1,6 @@
 ######################################################################################################
 # -*- coding: UTF-8 -*-
-# 文件名：  UnixSocketClient.py 
+# 文件名：  UnixSocket.py 
 # 版本：    V1.0.1
 # 修改记录：
 # 日期              修改人                  版本            备注
@@ -37,6 +37,14 @@ class UnixSocketClient:
         Info("disconnect socket server")
         if self._socket != None:
             self._socket.close()
+
+
+    def genSendData(self, req):
+        sendContent = json.dumps(req)
+        magicHead = int_to_bytes(0xDEADBEEF)
+        dataLen = int_to_bytes(len(sendContent))
+        bytesContent = str_to_bytes(sendContent)
+        return join_byte_list((magicHead, sendContent, bytesContent))
 
 
     def genSendData(self, cmd, data):

@@ -2647,15 +2647,7 @@ class control_center:
 
 
 ################################## 文件删除操作 #######################################
- 
-
-
-    def check_allow_query_left(self):
-        if (self.get_cam_state() in (config.STATE_IDLE, config.STATE_PREVIEW)):
-            return True
-        else:
-            return False    
-
+  
     # 如果小卡删除成功，则删除对应大卡里的文件
     def cameraDeleteFileNotify(self, param):
         Info('>>>>>>> cameraDeleteFileNotify param {}'.format(param))
@@ -2807,15 +2799,23 @@ class control_center:
             read_info = cmd_error_state(req[_name], self.get_cam_state())
         return read_info
 
+    #
+    # {
+    #   "name": "camera._queryLeftInfo",
+    #   "param": {}
+    # }
+    # 1.检查是否允许查询
+    # 2.发送请求给system_server
+    # 3.返回结果
+
 
 
     def cameraQueryLeftInfo(self, req, from_ui = False):
-        Info('>>>>> cameraQueryLeftInfo req {} self.get_cam_state() {}'.format(req, self.get_cam_state()))
+        Info('[------- APP Req: camera_calibrate_blc ------] req: {}'.format(req))          
         queryResult = OrderedDict()
         queryResult['name'] = req['name']
 
-        if self.check_allow_query_left():
-
+        if StateMachine.checkAllowQueryLeftInfo():
             # 根据请求的参数做处理
             # 如果是拍照：
             # 如果是录像：
@@ -2829,11 +2829,11 @@ class control_center:
             queryResult['left'] = self.left_val
             return json.dumps(queryResult)
         else:
-            read_info = cmd_error_state(req[_name], self.get_cam_state())
-            return read_info
+            return cmd_error_state(req[_name], StateMachine.getCamState())
 
 
-    def camera_stop_qr_fail(self,err = -1):
+
+    def camera_stop_qr_fail(self, err = -1):
         self.send_oled_type_err(config.STOP_QR_FAIL, err)
 
     def camera_stop_qr_done(self,req = None):

@@ -19,6 +19,7 @@
 #include <functional>
 #include <system_properties.h>
 #include <sys/VolumeManager.h>
+#include <sys/SocketListener.h>
 
 #include <prop_cfg.h>
 #include <mutex>
@@ -217,8 +218,13 @@ public:
      */
     bool            sendSetOptionsReq(Json::Value& optionsReq);
 
+    /*
+     * 下版本中废除
+     */
+    bool            parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
 
     bool            parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
+
 
     void            setNotifyRecv(sp<ARMessage> notify);
 
@@ -242,7 +248,9 @@ private:
 
     std::string             mPreviewArg;        /* 预览参数: 优先读取配置文件中的预览参数;如果没有将使用默认的预览参数 */
     Json::Value             mPreviewJson;
-    
+	std::unordered_map<std::string, std::function<void((SocketClient* cli, Json::Value& jsonData)>> mMsgHandler;
+
+
     uint16_t                mServerState;
     int                     mGpsState;
     int                     mFormatTfResult;

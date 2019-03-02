@@ -15,7 +15,7 @@
  */
 // #define TRAN_USE_UNIX_SOCKET
 
-#define MAX_RECV_BUF_SIZE   1024
+#define MAX_RECV_BUF_SIZE   4096
 
 
 

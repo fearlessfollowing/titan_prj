@@ -118,6 +118,11 @@ bool TranManager::stop()
 }
 
 
+#if 0
+Head: 0xDEADBEEF + contentLen(共8字节)
+Data: json string
+#endif
+
 bool TranManager::onDataAvailable(SocketClient* cli)
 {
     bool bResult = true;
@@ -125,38 +130,41 @@ bool TranManager::onDataAvailable(SocketClient* cli)
 
     memset(mRecvBuf, 0, sizeof(mRecvBuf));
     int iLen = read(iSockFd, mRecvBuf, RECV_HEAD_LEN);
-    if (RECV_HEAD_LEN != iLen) {
+    if (iLen <= 0) {
+        return false;
+    } else if (RECV_HEAD_LEN != iLen) {
         LOGERR(TAG, "onDataAvailable: read head mismatch(rec[%d] act[%d])", iLen, RECV_HEAD_LEN);
         return false;
     } else {
         int iMsgWhat = bytes_to_int(mRecvBuf);	/* 前4字节代表消息类型: what */
-        if (iMsgWhat == 20) {	                /* 如果是退出消息 */
-            LOGDBG(TAG, "---> Recv EXIT msg");
+        if (iMsgWhat != 0xDEADBEEF) {	                /* 如果是退出消息 */
+            LOGERR(TAG, "---> Recv msghdr is not 0xDEADBEEF");
             return false;
-        } else {
-            int iContentLen = bytes_to_int(&mRecvBuf[DATA_LEN_OFFSET]);
-
-            /* 读取传输的数据 */
-            iLen = read(iSockFd, &mRecvBuf[RECV_HEAD_LEN], iContentLen);
-            if (iLen != iContentLen) {	    /* 读取的数据长度不一致 */
-                LOGERR(TAG, "read msg content mismatch(%d %d)", iLen, iContentLen);
-            } else {
-
-                Json::CharReaderBuilder builder;
-                builder["collectComments"] = false;
-                JSONCPP_STRING errs;
-                Json::Value rootJson;
-
-                Json::CharReader* reader = builder.newCharReader();
-                LOGDBG(TAG, "--> Recv: %s", &mRecvBuf[RECV_HEAD_LEN]);
-
-                if (!reader->parse(&mRecvBuf[RECV_HEAD_LEN], &mRecvBuf[RECV_HEAD_LEN + iContentLen], &rootJson, &errs)) {
-                    LOGERR(TAG, ">>>>>> Parse json format failed");
-                } else {
-                    bResult = Singleton<ProtoManager>::getInstance()->parseAndDispatchRecMsg(iMsgWhat, rootJson); 
-                }
-            }
         }
+
+        int iContentLen = bytes_to_int(&mRecvBuf[DATA_LEN_OFFSET]);
+
+        /* 读取传输的数据 */
+        iLen = read(iSockFd, &mRecvBuf[RECV_HEAD_LEN], iContentLen);
+        if (iLen != iContentLen) {	    /* 读取的数据长度不一致 */
+            LOGERR(TAG, "read msg content mismatch(%d %d)", iLen, iContentLen);
+            return false;
+        }
+
+        Json::CharReaderBuilder builder;
+        builder["collectComments"] = false;
+        JSONCPP_STRING errs;
+        Json::Value rootJson;
+
+        Json::CharReader* reader = builder.newCharReader();
+        LOGDBG(TAG, "--> Recv: %s", &mRecvBuf[RECV_HEAD_LEN]);
+
+        if (!reader->parse(&mRecvBuf[RECV_HEAD_LEN], &mRecvBuf[RECV_HEAD_LEN + iContentLen], &rootJson, &errs)) {
+            LOGERR(TAG, ">>>>>> Parse json format failed");
+            return false;
+        }
+
+        bResult = Singleton<ProtoManager>::getInstance()->parseAndDispatchRecMsg(cli, rootJson);         
     }
     return bResult;
 }

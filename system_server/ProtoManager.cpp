@@ -1424,6 +1424,67 @@ void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
 }
 
 
+
+#if 0
+消息格式:
+{
+    "name": "",
+    "parameters": {
+
+    }
+}
+#endif
+
+#define INS_REGISTER_PROTOCOL(name, func) mMsgHandler[name] = std::bind(func, this, std::placeholders::_1, std::placeholders::_2);
+
+#define PROTO_CMD_QUERY_LEFT_INFO           "camera._queryLeftInfo"
+
+
+#define PROTO_CMD_DISP_TYPE                 "camera._dispType"
+#define PROTO_CMD_GPS_STATE_CHANGE          "camera._gpsStateChange"
+#define PROTO_CMD_SHUTDOWN                  "camera._shutdown"
+#define PROTO_CMD_SET_SN                    "camera._setSN"
+#define PROTO_CMD_SYNC_INIT                 "camera._syncInit"
+#define PROTO_CMD_DISP_ERRINFO              "camera._dispErrorInfo"
+#define PROTO_CMD_TF_STATE_CHANGE           "camera._tfStateChange"
+#define PROTO_CMD_TF_FORMAT_RESULT          "camera._formatResult"
+#define PROTO_CMD_TF_SPEED_TEST_RESULT      "camera._speedTestResult"
+#define PROTO_CMD_SWITCH_MOUNT_MODE         "camera._switchMountMode"
+
+
+
+void ProtoManager::registerProtocol()
+{
+	INS_REGISTER_PROTOCOL(PROTO_CMD_DISP_TYPE, &ProtoManager::handleDispType)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_QUERY_LEFT_INFO, &ProtoManager::handleQueryLeftInfo)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_GPS_STATE_CHANGE, &ProtoManager::handleGpsStateChange)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_SHUTDOWN, &ProtoManager::handleShutdownMachine)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_SET_SN, &ProtoManager::handleSetSn)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_SYNC_INIT, &ProtoManager::handleSyncInfo)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_DISP_ERRINFO, &ProtoManager::handleErrInfo)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_TF_STATE_CHANGE, &ProtoManager::handleTfCardChanged)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_TF_FORMAT_RESULT, &ProtoManager::handleTfcardFormatResult)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_TF_SPEED_TEST_RESULT, &ProtoManager::handleSpeedTestResult)
+	INS_REGISTER_PROTOCOL(PROTO_CMD_SWITCH_MOUNT_MODE, &ProtoManager::handleSwitchMountMode)
+}
+
+
+bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData)
+{
+    std::string cmd = "";
+    if (jsonData.isMember("name")) 
+        cmd = jsonData["name"].asConstString();
+
+    if (mMsgHandler.count(cmd) <= 0) {
+        LOGWARN(TAG, "Command[%s] not support in ProtoManager", cmd.c_str());
+        return false;
+    }
+
+    mMsgHandler[cmd](cli, jsonData);
+    return true;
+}
+
+
 bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 {
     switch (iMsgType) {
