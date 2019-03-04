@@ -124,7 +124,7 @@ class monitor_fifo_write(threading.Thread):
     def handle_set_wifi_config(self,req):
         self.start_write(CMD_CONFIG_WIFI, req)
 
-    def handle_sync_init(self,req):
+    def handle_sync_init(self, req):
         self.start_write(CMD_OLED_SYNC_INIT, req)
 
     def handle_set_sn(self,req):
@@ -155,31 +155,19 @@ class monitor_fifo_write(threading.Thread):
     def handleQueryLeftInfo(self, req):
         self.start_write(CMD_WEB_UI_QUERY_LEFT_INFO, req)
 
-    def handleGpsStateChange(self, req):
-        self.start_write(CMD_WEB_UI_GPS_STATE_CHANGE, req)
 
-    def handleShutdown(self, req):
-        self.start_write(CMD_WEB_UI_SHUT_DOWN, req)
-
-    def hanleSwitchMountMode(self, req):
-        self.start_write(CMD_WEB_UI_SWITCH_MOUNT_MODE, req)
 
     def run(self):
         self.func = OrderedDict({
             config.OLED_DISP_TYPE_ERR:          self.handle_disp_oled_type_err,
             config.OLED_DISP_TYPE:              self.handle_disp_oled_type,
             config.OLED_SET_SN:                 self.handle_set_sn,
-            # config.OLED_POWER_OFF:            self.handle_power_off,
-            config.OLED_CONIFIG_WIFI:           self.handle_set_wifi_config,
             config.OLED_SYNC_INIT:              self.handle_sync_init,
             config.UI_NOTIFY_STORAGE_STATE:     self.handle_notify_tf_state,
             config.UI_NOTIFY_TF_CHANGED:        self.handleTfCardChanged,
             config.UI_NOTIFY_TF_FORMAT_RESULT:  self.handleTfFormatResult,
             config.UI_NOTIFY_SPEED_TEST_RESULT: self.handleSpeedTestResult,
             config.UI_NOTIFY_QUERY_LEFT_INFO:   self.handleQueryLeftInfo,
-            config.UI_NOTIFY_GPS_STATE_CHANGE:  self.handleGpsStateChange,
-            config.UI_NOTIFY_SHUT_DOWN:         self.handleShutdown,
-            config.UI_NOTIFY_SWITCH_MOUNT_MODE: self.hanleSwitchMountMode,
         })
         
         while self._exit is False:

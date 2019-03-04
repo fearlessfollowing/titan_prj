@@ -118,6 +118,32 @@ int SocketClient::sendBinaryMsg(int code, const void *data, int len)
 }
 
 
+// send 3-digit code, null, binary-length, binary data
+int SocketClient::sendRspBinaryMsg(const void *data, int len) 
+{
+    // 4 bytes for the code & null + 4 bytes for the len
+    char buf[8];
+ 
+    uint32_t hdr = htonl(0xBEADBEEF);
+    uint32_t tmp = htonl(len);
+
+    memcpy(buf, &hdr, sizeof(uint32_t));
+    memcpy(buf + 4, &tmp, sizeof(uint32_t));
+
+    struct iovec vec[2];
+    vec[0].iov_base = (void *) buf;
+    vec[0].iov_len = sizeof(buf);
+    vec[1].iov_base = (void *) data;
+    vec[1].iov_len = len;
+
+    pthread_mutex_lock(&mWriteMutex);
+    int result = sendDataLockedv(vec, (len > 0) ? 2 : 1);
+    pthread_mutex_unlock(&mWriteMutex);
+
+    return result;
+}
+
+
 int SocketClient::sendCode(int code) 
 {
     char buf[4];

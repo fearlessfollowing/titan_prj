@@ -231,6 +231,7 @@ enum {
     UI_MSG_UPDATE_GPS_STATE,
     UI_MSG_SHUT_DOWN,
     UI_MSG_COMMON,
+    UI_MSG_UPDATE_TIMELAPSE_CNT,
     UI_EXIT,                        /* 退出消息循环 */
 };
 
@@ -1009,6 +1010,7 @@ private:
     void    handleUpdateSysInfo(sp<SYS_INFO> &mSysInfo);
     void    handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo);
     bool    handleCheckBatteryState(bool bUpload = false);
+    void    handleUpdateTimelapseCnt(uint32_t cnt);
 
     void    handleShutdown();
 

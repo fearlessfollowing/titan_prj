@@ -271,22 +271,13 @@ private:
 
 
     void            handleDispType(Json::Value& jsonData);
-    void            handleQueryLeftInfo(Json::Value& queryJson);
 
-
-
-
-    void            handleErrInfo(Json::Value& jsonData);
     void            handleTfcardFormatResult(Json::Value& jsonData);
-    void            handleSpeedTestResult(Json::Value& jsonData);
-
-
 
     void            handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode);
     void            handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode);
 
     bool            sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack = nullptr);
-
 
 
     void            handleSyncInfo(SocketClient* cli, Json::Value& jsonData);
@@ -295,7 +286,15 @@ private:
     void            handleShutdownMachine(SocketClient* cli, Json::Value& queryJson);
     void            handleTfCardChanged(SocketClient* cli, Json::Value& jsonData);
     void            handleSetSn(SocketClient* cli, Json::Value& jsonData);
-    
+    void            handleSpeedTestResult(SocketClient* cli, Json::Value& jsonData);
+    void            handleErrInfo(SocketClient* cli, Json::Value& jsonData);
+    void            handleQueryLeftInfo(SocketClient* cli, Json::Value& queryJson);
+    void            handleUpdateTimelapseCnt(SocketClient* cli, Json::Value& jsonData);
+    void            handSysSetting(SocketClient* cli, Json::Value& jsonData);
+    void            handQrScanResult(SocketClient* cli, Json::Value& jsonData);
+    void            handDispType(SocketClient* cli, Json::Value& jsonData);
+
+
     /* 解析查询小卡的结果 */
     static bool     parseQueryTfcardResult(Json::Value& jsonData);
 

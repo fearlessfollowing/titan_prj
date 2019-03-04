@@ -85,7 +85,6 @@
 
 #define PROTO_CMD_QUERY_LEFT_INFO           "camera._queryLeftInfo"
 
-
 #define PROTO_CMD_DISP_TYPE                 "camera._dispType"
 #define PROTO_CMD_GPS_STATE_CHANGE          "camera._gps_state_"
 #define PROTO_CMD_SHUTDOWN                  "camera._shutdown"
@@ -94,9 +93,12 @@
 #define PROTO_CMD_DISP_ERRINFO              "camera._dispErrorInfo"
 #define PROTO_CMD_TF_STATE_CHANGE           "camera._tfStateChange"
 #define PROTO_CMD_TF_FORMAT_RESULT          "camera._formatResult"
-#define PROTO_CMD_TF_SPEED_TEST_RESULT      "camera._speedTestResult"
+#define PROTO_CMD_TF_SPEED_TEST_RESULT      "camera._storage_speed_test_finish_"
 #define PROTO_CMD_SWITCH_MOUNT_MODE         "camera._change_mount_mode"
-
+#define PROTO_CMD_UPDATE_TIMELAPSE_CNT      "camera._timelapse_pic_take_"
+#define PROTO_CMD_DISP_TYPE                 "camera._dispType"
+#define PROTO_CMD_QR_SCAN_RESULT            "camera._qrScanResult"
+#define PROTO_CMD_SET_GET_SYS_SETTING       "camera._sys_setting"
 
 
 /*********************************************************************************************
@@ -1050,60 +1052,6 @@ void ProtoManager::handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNo
 }
 
 
-void ProtoManager::handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode)
-{
-    dispType->mSysSetting = std::make_shared<SYS_SETTING>();
-
-    memset(dispType->mSysSetting.get(), -1, sizeof(SYS_SETTING));
-
-    if (reqNode.isMember("flicker") && reqNode["flicker"].isInt()) {
-        dispType->mSysSetting->flicker = reqNode["flicker"].asInt();
-    }
-
-    if (reqNode.isMember("speaker") && reqNode["speaker"].isInt()) {
-        dispType->mSysSetting->speaker = reqNode["speaker"].asInt();
-    }
-
-    if (reqNode.isMember("led_on") && reqNode["led_on"].isInt()) {
-        dispType->mSysSetting->led_on = reqNode["led_on"].asInt();
-    }
-
-    if (reqNode.isMember("fan_on") && reqNode["fan_on"].isInt()) {
-        dispType->mSysSetting->fan_on = reqNode["fan_on"].asInt();
-    }
-
-    if (reqNode.isMember("aud_on") && reqNode["aud_on"].isInt()) {
-        dispType->mSysSetting->aud_on = reqNode["aud_on"].asInt();
-    }
-
-    if (reqNode.isMember("aud_spatial") && reqNode["aud_spatial"].isInt()) {
-        dispType->mSysSetting->aud_spatial = reqNode["aud_spatial"].asInt();
-    }
-
-    if (reqNode.isMember("set_logo") && reqNode["set_logo"].isInt()) {
-        dispType->mSysSetting->set_logo = reqNode["set_logo"].asInt();
-    }
-
-    if (reqNode.isMember("gyro_on") && reqNode["gyro_on"].isInt()) {
-        dispType->mSysSetting->gyro_on = reqNode["gyro_on"].asInt();
-    }
-
-    if (reqNode.isMember("video_fragment") && reqNode["video_fragment"].isInt()) {
-        dispType->mSysSetting->video_fragment = reqNode["video_fragment"].asInt();
-    }
-
-    LOGDBG(TAG, "%d %d %d %d %d %d %d %d %d",
-                dispType->mSysSetting->flicker,
-                dispType->mSysSetting->speaker,
-                dispType->mSysSetting->led_on,
-                dispType->mSysSetting->fan_on,
-                dispType->mSysSetting->aud_on,
-                dispType->mSysSetting->aud_spatial,
-                dispType->mSysSetting->set_logo,
-                dispType->mSysSetting->gyro_on,
-                dispType->mSysSetting->video_fragment);    
-}
-
 
 void ProtoManager::handleDispType(Json::Value& jsonData)
 {
@@ -1119,16 +1067,9 @@ void ProtoManager::handleDispType(Json::Value& jsonData)
     dispType->tl_count  = -1;
     dispType->qr_type  = -1;
 
-    if (jsonData.isMember("content")) {
-        LOGDBG(TAG, "Qr Function Not implement now ..");
-        // handleQrContent(dispType, root, subNode);
-    } else if (jsonData.isMember("req")) {
+    if (jsonData.isMember("req")) {
         handleReqFormHttp(dispType, jsonData["req"]);
-    } else if (jsonData.isMember("sys_setting")) {
-        handleSetting(dispType, jsonData["sys_setting"]);
-    } else if (jsonData.isMember("tl_count")) {
-        dispType->tl_count = jsonData["tl_count"].asInt();
-    } else {
+    }  else {
         // LOGERR(TAG, "---------Unkown Error");
     }
 
@@ -1141,7 +1082,12 @@ void ProtoManager::handleDispType(Json::Value& jsonData)
 }
 
 
-void ProtoManager::handleQueryLeftInfo(Json::Value& queryJson)
+/*
+ * 需要测试
+ */
+
+
+void ProtoManager::handleQueryLeftInfo(SocketClient* cli, Json::Value& root)
 {
     u32 uLeft = 0;
 
@@ -1161,13 +1107,13 @@ void ProtoManager::handleQueryLeftInfo(Json::Value& queryJson)
      * 2.录像/直播存片
      * 录像分为普通录像和timelapse
      */
-    if (queryJson.isMember("name")) {
-        if (!strcmp(queryJson["name"].asCString(), "camera._takePicture") ) {
-            uLeft = vm->calcTakepicLefNum(queryJson, false);
-        } else if (!strcmp(queryJson["name"].asCString(), "camera._startRecording")) {
-            uLeft = vm->calcTakeRecLefSec(queryJson);
-        } else if (!strcmp(queryJson["name"].asCString(), "camera._startLive")) {
-            uLeft = vm->calcTakeLiveRecLefSec(queryJson);
+    if (root.isMember("param") && root["param"].isMember("name")) {
+        if (!strcmp(root["param"]["name"].asCString(), "camera._takePicture") ) {
+            uLeft = vm->calcTakepicLefNum(root["param"], false);
+        } else if (!strcmp(root["param"]["name"].asCString(), "camera._startRecording")) {
+            uLeft = vm->calcTakeRecLefSec(root["param"]);
+        } else if (!strcmp(root["param"]["name"].asCString(), "camera._startLive")) {
+            uLeft = vm->calcTakeLiveRecLefSec(root["param"]);
         }
     } else {
         uLeft = 0;
@@ -1179,7 +1125,7 @@ void ProtoManager::handleQueryLeftInfo(Json::Value& queryJson)
 	writer->write(rootNode, &osOutput);
     sendDataStr = osOutput.str();
 
-    // write_fifo(EVENT_QUERY_LEFT, sendDataStr.c_str());
+    cli->sendRspBinaryMsg(sendDataStr.c_str(), sendDataStr.length());
 }
 
 
@@ -1193,7 +1139,9 @@ void ProtoManager::handleGpsStateChange(SocketClient* cli, Json::Value& queryJso
             msg->setWhat(UI_MSG_UPDATE_GPS_STATE);
             msg->post();
         }
-    } 
+    } else {
+        LOGERR(TAG, "--> handleGpsStateChange argument no parameter node");
+    }
 }
 
 
@@ -1272,16 +1220,16 @@ void ProtoManager::handleSetSn(SocketClient* cli, Json::Value& jsonData)
 }
 
 
-void ProtoManager::handleErrInfo(Json::Value& jsonData)
+void ProtoManager::handleErrInfo(SocketClient* cli, Json::Value& jsonData)
 {
     sp<ERR_TYPE_INFO> errInfo = std::make_shared<ERR_TYPE_INFO>();
 
-    if (jsonData.isMember("type")) {
-        errInfo->type = jsonData["type"].asInt();
+    if (jsonData.isMember("parameters") && jsonData["parameters"].isMember("type")) {
+        errInfo->type = jsonData["parameters"]["type"].asInt();
     }    
 
-    if (jsonData.isMember("err_code")) {
-        errInfo->err_code = jsonData["err_code"].asInt();
+    if (jsonData.isMember("parameters") && jsonData["parameters"].isMember("err_code")) {
+        errInfo->err_code = jsonData["parameters"]["err_code"].asInt();
     }    
 
     if (mNotify) {
@@ -1289,7 +1237,6 @@ void ProtoManager::handleErrInfo(Json::Value& jsonData)
         msg->setWhat(UI_MSG_DISP_ERR_MSG);
         msg->set<sp<ERR_TYPE_INFO>>("err_type_info", errInfo);
         msg->post();
-
     }
 }
 
@@ -1371,7 +1318,8 @@ void ProtoManager::handleTfcardFormatResult(Json::Value& jsonData)
 }
 
 
-void ProtoManager::handleSpeedTestResult(Json::Value& jsonData) 
+
+void ProtoManager::handleSpeedTestResult(SocketClient* cli, Json::Value& jsonData) 
 {
     LOGDBG(TAG, "Return Speed Test Result");
 
@@ -1379,51 +1327,80 @@ void ProtoManager::handleSpeedTestResult(Json::Value& jsonData)
     sp<Volume> tmpVol = NULL;
     storageList.clear();
 
-    if (jsonData.isMember("local")) {
-        tmpVol = std::make_shared<Volume>();
-        tmpVol->iType = VOLUME_TYPE_NV;
-        tmpVol->iSpeedTest = jsonData["local"].asInt();
-        LOGDBG(TAG, "Local Device Test Speed Result: %d", tmpVol->iSpeedTest);
-        storageList.push_back(tmpVol);
-    }
+    if (jsonData["parameters"].isMember("state")) {
 
-    if (jsonData.isMember("module")) {
-        if (jsonData["module"].isArray()) {
-            for (u32 i = 0; i < jsonData["module"].size(); i++) {
-                tmpVol = (sp<Volume>)(new Volume());
+        sp<ARMessage> msg = nullptr;
+        
+        if (mNotify) 
+            msg = mNotify->dup();        
 
-                tmpVol->iType       = VOLUME_TYPE_MODULE;
-                tmpVol->iIndex      = jsonData["module"][i]["index"].asInt();
-                tmpVol->iSpeedTest  = jsonData["module"][i]["result"].asInt();
+        if (strcmp(jsonData["parameters"]["state"].asCString(), "done")) {  /* 测速失败 */
+            msg->set<int>("result", -1);
+            int iErrNo = -1;
 
-                /* 类型为"SD"
-                * 外部TF卡的命名规则
-                * 名称: "tf-1","tf-2","tf-3"....
-                */
-                snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "SD%d", tmpVol->iIndex);
-                LOGDBG(TAG, "SD card node[%s] info index[%d], speed[%d]",
-                                tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
+            if (jsonData["parameters"].isMember("error")) {
+                if (jsonData["parameters"]["error"].isMember("code")) {
+                    iErrNo = jsonData["parameters"]["error"]["code"].asInt();
+                }
+            }
+            msg->set<int>("reason", iErrNo);
+        } else {    /* 测速成功 */
 
+            if (jsonData["parameters"]["results"].isMember("local")) {
+                tmpVol = std::make_shared<Volume>();
+                tmpVol->iType = VOLUME_TYPE_NV;
+                tmpVol->iSpeedTest = jsonData["parameters"]["results"]["local"].asInt();
+                LOGDBG(TAG, "Local Device Test Speed Result: %d", tmpVol->iSpeedTest);
                 storageList.push_back(tmpVol);
             }
-        } else {
-            LOGERR(TAG, "node module not array!!");
-        }
-    }
 
-    if (mNotify) {
-        sp<ARMessage> msg = mNotify->dup();
-        msg->setWhat(UI_MSG_SPEEDTEST_RESULT);
-        msg->set<std::vector<sp<Volume>>>("speed_test", storageList);
-        msg->post();   
+            if (jsonData["parameters"]["results"].isMember("module")) {
+                if (jsonData["parameters"]["results"]["module"].isArray()) {
+                    for (u32 i = 0; i < jsonData["parameters"]["results"]["module"].size(); i++) {
+                        tmpVol = (sp<Volume>)(new Volume());
+
+                        tmpVol->iType       = VOLUME_TYPE_MODULE;
+                        tmpVol->iIndex      = jsonData["parameters"]["results"]["module"][i]["index"].asInt();
+                        tmpVol->iSpeedTest  = jsonData["parameters"]["results"]["module"][i]["result"].asInt();
+
+                        /* 类型为"SD"
+                        * 外部TF卡的命名规则
+                        * 名称: "tf-1","tf-2","tf-3"....
+                        */
+                        snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "SD%d", tmpVol->iIndex);
+                        LOGDBG(TAG, "SD card node[%s] info index[%d], speed[%d]",
+                                        tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
+
+                        storageList.push_back(tmpVol);
+            
+                    }
+                } else {
+                    LOGERR(TAG, "node module not array!!");
+                }
+    
+                msg->set<std::vector<sp<Volume>>>("speed_test", storageList);
+                msg->set<int>("result", 1);
+            }
+        }
+
+        if (msg) {
+            msg->setWhat(UI_MSG_SPEEDTEST_RESULT);
+            msg->post();   
+        }
+    } else {
+        LOGERR(TAG, "--> handleSpeedTestResult arguments lost parameter node");
     }
 }
+
 
 void ProtoManager::handleSwitchMountMode(SocketClient* cli, Json::Value& paramJson)
 {
     LOGDBG(TAG, "Switch Mount Mode");
     std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
+    /*
+     * TODO：将实际挂载的状态返回给Client
+     */
     if (paramJson.isMember("parameters")) {
         if (paramJson["parameters"].isMember("mode")) {
                 if (!strcmp(paramJson["parameters"]["mode"].asCString(), "ro")) {
@@ -1448,27 +1425,10 @@ void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
 
 
 
-#if 0
-消息格式:
-{
-    "name": "",
-    "parameters": {
-
-    }
-}
-#endif
-
 
 #if 0
-void ProtoManager::registerProtocol()
-{
-#define INS_REGISTER_PROTOCOL(name, func) mMsgHandler[name] = std::bind(func, this, std::placeholders::_1, std::placeholders::_2);
 
-	// INS_REGISTER_PROTOCOL(PROTO_CMD_DISP_TYPE, &ProtoManager::handleDispType)
-	// INS_REGISTER_PROTOCOL(PROTO_CMD_QUERY_LEFT_INFO, &ProtoManager::handleQueryLeftInfo)
-	// INS_REGISTER_PROTOCOL(PROTO_CMD_DISP_ERRINFO, &ProtoManager::handleErrInfo)
 	// INS_REGISTER_PROTOCOL(PROTO_CMD_TF_FORMAT_RESULT, &ProtoManager::handleTfcardFormatResult)
-	// INS_REGISTER_PROTOCOL(PROTO_CMD_TF_SPEED_TEST_RESULT, &ProtoManager::handleSpeedTestResult)
 }
 #endif
 
@@ -1492,11 +1452,126 @@ bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonDa
         handleTfCardChanged(cli, jsonData);
     } else if (cmd == PROTO_CMD_SET_SN) {
         handleSetSn(cli, jsonData);
+    } else if (cmd == PROTO_CMD_TF_SPEED_TEST_RESULT) {
+        handleSpeedTestResult(cli, jsonData);
+    } else if (cmd == PROTO_CMD_DISP_ERRINFO) {
+        handleErrInfo(cli, jsonData);
+    } else if (cmd == PROTO_CMD_QUERY_LEFT_INFO) {
+        handleQueryLeftInfo(cli, jsonData);
+    } else if (cmd == PROTO_CMD_UPDATE_TIMELAPSE_CNT) {
+        handleUpdateTimelapseCnt(cli, jsonData);
+    } else if (cmd == PROTO_CMD_DISP_TYPE) {
+        handDispType(cli, jsonData);
+    } else if (cmd == PROTO_CMD_SET_GET_SYS_SETTING) {
+        handSysSetting(cli, jsonData);
+    } else if (cmd == PROTO_CMD_QR_SCAN_RESULT) {
+        LOGINFO(TAG, "Not implement in this version yet!");
     } else {
         LOGERR(TAG, ">>>> Not support notify recved!");
     }
 
     return true;
+}
+
+
+/*
+ {"name": "camera._sys_setting", "parameters": {"mode": "get/set", "sys_setting": {}}}
+ */
+void ProtoManager::handSysSetting(SocketClient* cli, Json::Value& jsonData)
+{
+    if (jsonData.isMember("parameters") && jsonData["parameters"].isMember("mode")) {
+
+        if (!strcmp(jsonData["parameters"]["mode"].asCString(), "set")) {   /* 设置系统参数 */
+            /* 直接将内容传递给UI线程 */
+            std::shared_ptr<SYS_SETTING> curSetting = std::make_shared<SYS_SETTING>();
+            Json::Value sysSetting = jsonData["parameters"]["sys_setting"];
+
+            memset(curSetting.get(), -1, sizeof(SYS_SETTING));
+
+            if (sysSetting.isMember("flicker") && sysSetting["flicker"].isInt()) {
+               curSetting->flicker = sysSetting["flicker"].asInt();
+            }
+
+            if (sysSetting.isMember("speaker") && sysSetting["speaker"].isInt()) {
+                curSetting->speaker = sysSetting["speaker"].asInt();
+            }
+
+            if (sysSetting.isMember("led_on") && sysSetting["led_on"].isInt()) {
+                curSetting->led_on = sysSetting["led_on"].asInt();
+            }
+
+            if (sysSetting.isMember("fan_on") && sysSetting["fan_on"].isInt()) {
+                curSetting->fan_on = sysSetting["fan_on"].asInt();
+            }
+
+            if (sysSetting.isMember("aud_on") && sysSetting["aud_on"].isInt()) {
+                curSetting->aud_on = sysSetting["aud_on"].asInt();
+            }
+
+            if (sysSetting.isMember("aud_spatial") && sysSetting["aud_spatial"].isInt()) {
+                curSetting->aud_spatial = sysSetting["aud_spatial"].asInt();
+            }
+
+            if (sysSetting.isMember("set_logo") && sysSetting["set_logo"].isInt()) {
+                curSetting->set_logo = sysSetting["set_logo"].asInt();
+            }
+
+            if (sysSetting.isMember("gyro_on") && sysSetting["gyro_on"].isInt()) {
+                curSetting->gyro_on = sysSetting["gyro_on"].asInt();
+            }
+
+            if (sysSetting.isMember("video_fragment") && sysSetting["video_fragment"].isInt()) {
+                curSetting->video_fragment = sysSetting["video_fragment"].asInt();
+            }
+
+            LOGDBG(TAG, "%d %d %d %d %d %d %d %d %d",
+                        curSetting->flicker,
+                        curSetting->speaker,
+                        curSetting->led_on,
+                        curSetting->fan_on,
+                        curSetting->aud_on,
+                        curSetting->aud_spatial,
+                        curSetting->set_logo,
+                        curSetting->gyro_on,
+                        curSetting->video_fragment);   
+
+            if (mNotify) {
+                sp<ARMessage> msg = mNotify->dup();
+                msg->setWhat(UI_MSG_SET_GET_SYS_SETTING);
+                msg->set<sp<SYS_SETTING>>("sys_setting", curSetting);
+                msg->post();
+            }                        
+
+        } else {    /* 获取系统参数 */
+            LOGINFO(TAG, "---> not implement here");
+        }
+    } else {
+        LOGERR(TAG, "--> handSysSetting: lost parameters node");
+    }
+}
+
+void ProtoManager::handQrScanResult(SocketClient* cli, Json::Value& jsonData)
+{
+
+}
+
+void ProtoManager::handDispType(SocketClient* cli, Json::Value& jsonData)
+{
+
+}
+
+
+void ProtoManager::handleUpdateTimelapseCnt(SocketClient* cli, Json::Value& jsonData) 
+{
+    if (jsonData.isMember("parameters") && jsonData["parameters"].isMember("sequence")) {
+        uint32_t  count = jsonData["parameters"]["sequence"].asUInt();
+        if (mNotify) {
+            sp<ARMessage> msg = mNotify->dup();
+            msg->setWhat(UI_MSG_UPDATE_TIMELAPSE_CNT);
+            msg->set<uint32_t>("tl_count", count);
+            msg->post();     
+        }
+    }
 }
 
 
@@ -1507,26 +1582,9 @@ bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             handleDispType(jsonData);
             break;
         }
-
-        case MSG_QUERY_LEFT_INFO: {  /* 查询剩余量信息 */
-            LOGDBG(TAG, "Query Left Info now....");
-            handleQueryLeftInfo(jsonData);
-            break;
-        }
    
-        case MSG_DISP_TYPE_ERR: {	/* 给UI发送显示错误信息:  错误类型和错误码 */
-            handleErrInfo(jsonData);
-            break;
-        }
-
-
         case MSG_TF_FORMAT: {    /* 格式化结果 */
             handleTfcardFormatResult(jsonData);
-            break;
-        }
-
-        case MSG_TEST_SPEED_RES: {
-            handleSpeedTestResult(jsonData);
             break;
         }
 

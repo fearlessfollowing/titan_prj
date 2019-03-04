@@ -87,7 +87,7 @@ _SET_WIFI_CONFIG        = 'camera._setWifiConfig'
 
 _STATE_NOTIFY           = 'camera._stateIndication'
 _RECORD_FINISH          = 'camera._record_finish_'
-_PIC_NOTIFY             = 'camera._pic_finish_'
+_PIC_FINISH             = 'camera._pic_finish_'
 _RESET_NOTIFY           = 'camera._resetIndication'
 _LIVE_FINISH            = 'camera._live_finish_'
 _LIVE_REC_FINISH        = 'camera._live_rec_finish_'
@@ -491,8 +491,9 @@ ORG_URL_LIST    = '_orgURLList'
 # OLED_KEY_RES = 'oled_key_res'
 OLED_DISP_TYPE  = 'oled_disp_type'
 OLED_DISP_TYPE_ERR = 'oled_disp_type_err'
-OLED_CONIFIG_WIFI = 'oled_config_wifi'
+
 OLED_SET_SN = 'oled_set_sn'
+
 # OLED_POWER_OFF = 'oled_power_off'
 OLED_SYNC_INIT              = 'oled_sync_init'
 UI_NOTIFY_STORAGE_STATE     = 'tf_storage_info'
@@ -503,7 +504,7 @@ UI_NOTIFY_QUERY_LEFT_INFO   = 'query_left_info'
 UI_NOTIFY_GPS_STATE_CHANGE  = "gps_state_change"
 UI_NOTIFY_SHUT_DOWN         = 'shut_down'
 UI_NOTIFY_CHECK_ENTER_UDISK = 'check_enter_udisk'
-UI_NOTIFY_SWITCH_MOUNT_MODE = 'switch_mount_mode'
+
 
 # STR_START_REC = 1
 # STR_START_REC = 1

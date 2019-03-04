@@ -48,6 +48,9 @@ public:
     int sendMsg(int code, const char *msg, bool addErrno, bool useCmdNum);
     int sendMsg(const char *msg);
 
+
+    int sendRspBinaryMsg(const void *data, int len);
+    
     // Provides a mechanism to send a response code to the client.
     // Sends the code and a null character.
     int sendCode(int code);

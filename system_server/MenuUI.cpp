@@ -7647,23 +7647,6 @@ int MenuUI::oled_disp_type(int type)
             break;
         }
 		
-        /* 
-         * 更新timelapse值
-         */
-        case TIMELPASE_COUNT: { 
-            LOGDBG(TAG, ">>>>>>>>>> tl_count %d", tl_count);
-            disp_tl_count(tl_count);    /* 显示timelpase拍摄值以及剩余可拍的张数 */
-
-            if (vm->getTakeTimelapseCnt() > 0) {
-                vm->decTakeTimelapseCnt();
-                dispBottomLeftSpace();
-                Singleton<ProtoManager>::getInstance()->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
-            } else {
-                LOGDBG(TAG, "Disk is Full, Stop Timelapse take");
-            }
-                
-            break;
-        }
 
         /* 1.客户端发起的陀螺仪校正,此时服务器已经处于STATE_START_GYRO状态
          *
@@ -8173,6 +8156,25 @@ void MenuUI::handleKeyMsg(int iAppKey)
     }
 }
 
+
+void MenuUI::handleUpdateTimelapseCnt(uint32_t cnt)
+{
+    LOGDBG(TAG, ">>>>>>>>>> tl_count %d", cnt);
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
+
+    set_tl_count(cnt);
+    disp_tl_count(cnt);    /* 显示timelpase拍摄值以及剩余可拍的张数 */
+
+    if (vm->getTakeTimelapseCnt() > 0) {
+        vm->decTakeTimelapseCnt();
+        dispBottomLeftSpace();
+        Singleton<ProtoManager>::getInstance()->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
+    } else {
+        LOGDBG(TAG, "Disk is Full, Stop Timelapse take");
+    }
+
+
+}
 
 
 /*************************************************************************
@@ -8879,7 +8881,15 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 }
 				break;
             }
-					
+
+            case UI_MSG_SET_GET_SYS_SETTING: {
+                sp<SYS_SETTING> sysSetting;
+                if (msg->find<sp<SYS_SETTING>>("sys_setting", &sysSetting)) {
+                    updateSysSetting(sysSetting);
+                }                
+                break;
+            }            
+
             case UI_MSG_DISP_ERR_MSG: {     /* 显示错误消息 */
                 std::unique_lock<std::mutex> lock(mutexState);
                 sp<ERR_TYPE_INFO> mErrInfo;
@@ -8903,6 +8913,14 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
     				handleLongKeyMsg(key);
                 }
 				 break;
+            }
+
+            case UI_MSG_UPDATE_TIMELAPSE_CNT: {
+                uint32_t cnt = 0;
+                if (msg->find<uint32_t>("tl_count", &cnt)) {
+                    handleUpdateTimelapseCnt(cnt);
+                }                
+                break;
             }
 
             case UI_MSG_SHUT_DOWN: {
