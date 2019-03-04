@@ -232,6 +232,8 @@ enum {
     UI_MSG_SHUT_DOWN,
     UI_MSG_COMMON,
     UI_MSG_UPDATE_TIMELAPSE_CNT,
+    UI_MSG_SET_CUSTOMER,
+    UI_MSG_DISP_CLIENT_REQ,         /* 客户端请求拍照,录像,直播 */
     UI_EXIT,                        /* 退出消息循环 */
 };
 
@@ -1011,6 +1013,9 @@ private:
     void    handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo);
     bool    handleCheckBatteryState(bool bUpload = false);
     void    handleUpdateTimelapseCnt(uint32_t cnt);
+    void    handleSetCustomer(std::shared_ptr<CUSTOMER_ARG> ptr);
+
+
 
     void    handleShutdown();
 

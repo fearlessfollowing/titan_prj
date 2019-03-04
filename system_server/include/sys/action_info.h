@@ -178,6 +178,12 @@ typedef struct _disp_type_ {
     Json::Value         jsonArg;        /* 新版本将使用jsonArg来保存接收到的参数 */
 } DISP_TYPE;
 
+
+typedef struct stSetCustom {
+    int            iAction;
+    Json::Value    jsonArg;        /* 模板参数 */
+} CUSTOMER_ARG;
+
 typedef struct _wifi_config_ {
     char    ssid[128];
     char    pwd[64];

@@ -99,7 +99,7 @@
 #define PROTO_CMD_DISP_TYPE                 "camera._dispType"
 #define PROTO_CMD_QR_SCAN_RESULT            "camera._qrScanResult"
 #define PROTO_CMD_SET_GET_SYS_SETTING       "camera._sys_setting"
-
+#define PROTO_CMD_SET_CUSTOMER              "camera._setCustom"
 
 /*********************************************************************************************
  *  外部函数
@@ -1108,9 +1108,9 @@ void ProtoManager::handleQueryLeftInfo(SocketClient* cli, Json::Value& root)
      * 录像分为普通录像和timelapse
      */
     if (root.isMember("param") && root["param"].isMember("name")) {
-        if (!strcmp(root["param"]["name"].asCString(), "camera._takePicture") ) {
+        if (!strcmp(root["param"]["name"].asCString(), REQ_TAKE_PIC) ) {
             uLeft = vm->calcTakepicLefNum(root["param"], false);
-        } else if (!strcmp(root["param"]["name"].asCString(), "camera._startRecording")) {
+        } else if (!strcmp(root["param"]["name"].asCString(), REQ_START_REC)) {
             uLeft = vm->calcTakeRecLefSec(root["param"]);
         } else if (!strcmp(root["param"]["name"].asCString(), "camera._startLive")) {
             uLeft = vm->calcTakeLiveRecLefSec(root["param"]);
@@ -1466,6 +1466,8 @@ bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonDa
         handSysSetting(cli, jsonData);
     } else if (cmd == PROTO_CMD_QR_SCAN_RESULT) {
         LOGINFO(TAG, "Not implement in this version yet!");
+    } else if (cmd == PROTO_CMD_SET_CUSTOMER) {
+        handleSetCustomer(cli, jsonData);
     } else {
         LOGERR(TAG, ">>>> Not support notify recved!");
     }
@@ -1559,6 +1561,45 @@ void ProtoManager::handDispType(SocketClient* cli, Json::Value& jsonData)
 {
 
 }
+
+/*
+ * Set customer
+ * - 根据参数来决定写哪个文件
+ */
+void ProtoManager::handleSetCustomer(SocketClient* cli, Json::Value& jsonData)
+{
+    LOGINFO(TAG, "---> handSetCustomer, print json as follow:")
+    printJson(jsonData);
+    std::shared_ptr<CUSTOMER_ARG> pCustomer = std::make_shared<CUSTOMER_ARG>()
+    if (pCustomer) {
+        if (jsonData.isMember("name") && jsonData.isMember("parameters")) {
+            if (!strcmp(jsonData["name"].asCString(), REQ_START_LIVE) {
+                pCustomer->iAction = ACTION_LIVE;
+            } else if (!strcmp(jsonData["name"].asCString(), REQ_TAKE_PIC) {
+                pCustomer->iAction = ACTION_PIC;
+            } else if (!strcmp(jsonData["name"].asCString(), REQ_START_REC) {
+                if (jsonData["parameters"].isMember("timelapse")) {
+                    pCustomer->iAction = ACTION_PIC;
+                } else {
+                    pCustomer->iAction = ACTION_VIDEO;
+                }
+            } else {
+                LOGERR(TAG, "--> handSetCustomer: Not support action[%s]", jsonData["name"].asCString());
+                pCustomer->iAction = -1;
+            }
+
+            pCustomer->jsonArg = jsonData;
+
+            if (mNotify) {
+                sp<ARMessage> msg = mNotify->dup();
+                msg->setWhat(UI_MSG_SET_CUSTOMER);
+                msg->set<CUSTOMER_ARG>("parameters", pCustomer);
+                msg->post();     
+            }
+        }
+    }
+}
+
 
 
 void ProtoManager::handleUpdateTimelapseCnt(SocketClient* cli, Json::Value& jsonData) 

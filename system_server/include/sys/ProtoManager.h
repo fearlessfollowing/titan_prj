@@ -293,6 +293,7 @@ private:
     void            handSysSetting(SocketClient* cli, Json::Value& jsonData);
     void            handQrScanResult(SocketClient* cli, Json::Value& jsonData);
     void            handDispType(SocketClient* cli, Json::Value& jsonData);
+    void            handleSetCustomer(SocketClient* cli, Json::Value& jsonData);
 
 
     /* 解析查询小卡的结果 */

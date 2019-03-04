@@ -3364,6 +3364,24 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
 }
 
 
+void MenuUI::handleSetCustomer(std::shared_ptr<CUSTOMER_ARG> ptr)
+{
+    std::string filePath = "";
+    switch (ptr->iAction) {
+        case ACTION_PIC:    filePath = TAKE_PIC_TEMPLET_PATH  break;
+        case ACTION_VIDEO:  filePath = TAKE_VID_TEMPLET_PATH  break;
+        case ACTION_PIC:    filePath = TAKE_LIVE_TEMPLET_PATH break;
+        default:
+            LOGERR(TAG, "Invalid Action recved");
+            break;
+    }
+
+    if (filePath != "") {
+        writeJson2File(ptr->iAction, filePath.c_str(), ptr->jsonArg);
+    }
+}
+
+
 void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& jsonRoot)
 {
 
@@ -8889,6 +8907,14 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 }                
                 break;
             }            
+
+            case UI_MSG_SET_CUSTOMER: {
+                std::shared_ptr<CUSTOMER_ARG> setCustomer;
+                if (msg->find<sp<SYS_SETTING>>("parameters", &setCustomer)) {
+                    handleSetCustomer(setCustomer);
+                }                
+                break;
+            }
 
             case UI_MSG_DISP_ERR_MSG: {     /* 显示错误消息 */
                 std::unique_lock<std::mutex> lock(mutexState);

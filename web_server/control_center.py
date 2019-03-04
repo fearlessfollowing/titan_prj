@@ -331,13 +331,11 @@ class control_center:
             config.GET_IMAGE:               self.camera_get_image,
             config.GET_META_DATA:           self.camera_get_meta_data,
             config._DISCONNECT:             self.camera_disconnect,
-            config._SET_CUSTOM:             self.set_custom,
+            config._SET_CUSTOM:             self.handleClientSetCustom,
             config._SET_SN:                 self.set_sn,
             config._START_SHELL:            self.start_shell,
 
             config._QUERY_GPS_STATE:        self.queryGpsState,
-
-            # config.CAMERA_RESET:          self.camera_reset,
         })
 
         self.non_camera_stitch_func = OrderedDict({
@@ -735,7 +733,7 @@ class control_center:
                     Info('2sync_init_info_to_p res {}  cam_state {} st {}'.format(res, self.get_cam_state(), hex(st)))
 
                 # U盘模式下不需要状态同步
-                if self.check_need_sync(st,self.get_cam_state()):
+                if self.check_need_sync(st, self.get_cam_state()):
                     self.set_cam_state(st)  # 如果需要同步，会在此处修改camera的状态
                     req = OrderedDict()
                     req['state'] = st
@@ -1012,7 +1010,7 @@ class control_center:
 
 
     def set_sn(self, req):
-        Info('[------- APP Req: camera_set_sys_setting ------] req: {}'.format(req))
+        Info('[------- APP Req: set_sn ------] req: {}'.format(req))
         self._unix_sender.sendAsyncNotify(req)        
         return cmd_done(req[_name])
 
@@ -1030,12 +1028,20 @@ class control_center:
         return ret
 
 
-    def set_custom(self, req, from_ui = False):
-        Info('set custom req {}'.format(req))
+    ###########################################################################################
+    # 方法名称: handleClientSetCustom
+    # 功能描述: 处理客户端的设置Customer请求
+    #           
+    # 入口参数: 
+    #   req - 请求
+    # 返回值: 
+    ############################################################################################
+    def handleClientSetCustom(self, req, from_ui = False):
+        Info('[------- APP Req: handleClientSetCustom ------] req: {}'.format(req))
         if check_dic_key_exist(req, _param):
-            self.sendDispType2SystemServer(config.SET_CUS_PARAM, req[_param])
+            self._unix_sender.sendAsyncNotify(req)            
         else:
-            Info('set custom no _param')
+            Error('set custom no _param')
         return cmd_done(req[_name])
 
 

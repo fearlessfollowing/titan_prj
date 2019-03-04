@@ -124,7 +124,7 @@ int SocketClient::sendRspBinaryMsg(const void *data, int len)
     // 4 bytes for the code & null + 4 bytes for the len
     char buf[8];
  
-    uint32_t hdr = htonl(0xBEADBEEF);
+    uint32_t hdr = htonl(0xDEADBEEF);
     uint32_t tmp = htonl(len);
 
     memcpy(buf, &hdr, sizeof(uint32_t));
