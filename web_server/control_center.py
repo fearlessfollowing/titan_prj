@@ -42,7 +42,6 @@ from poll.monitor_event import monitor_fifo_read, mointor_fifo_write_handle, mon
 
 from thread_utils import *
 from state_machine import *
-from exception.my_exception import *
 
 import shutil
 import time
@@ -3554,7 +3553,7 @@ class control_center:
                     Err('camera not connected req {}'.format(req))
                     ret = cmd_exception(error_dic('disabledCommand', 'camera not connected'), name)
         except Exception as e:
-            Err('osc_cmd_exectue exception e {} req {}'.format(e,req))
+            Err('osc_cmd_exectue exception e {} req {}'.format(e, req))
             ret = cmd_exception(str(e), name)
         return ret
 

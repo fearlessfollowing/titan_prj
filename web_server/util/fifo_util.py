@@ -3,7 +3,6 @@ import select
 # from util.log_util import *
 from util.ins_log_util import *
 from util.ins_util import *
-from exception.my_exception import *
 
 class select_wrapper:
     @classmethod
@@ -35,7 +34,7 @@ class fifo_wrapper:
         content = os.read(fd, read_len)
         while len(content) == 0:
             # Warn('fifo broken read fd {}'.format(fd))
-            raise ReadFIFOException('read fifo zero bytes')
+            raise Exception('read fifo zero bytes')
         # else:
         #     Print(' read_response {} {} {} '.format(len(content), read_len, content))
             # assert_match(len(content), read_len)
@@ -52,10 +51,10 @@ class fifo_wrapper:
                 Err('select fail')
                 if len(exceptional) > 0:
                     Err('read fifo exception')
-                    raise FIFOSelectException('read fifo exception')
+                    raise Exception('read fifo exception')
                 else:
                     Err('read fifo to')
-                    raise FIFOReadTOException('read fifo to')
+                    raise Exception('read fifo to')
         else:
             # Info('read_fifo direct'.format(to))
             return cls.start_read(fd, read_len)
@@ -64,7 +63,7 @@ class fifo_wrapper:
     def write_fifo(cls,fd ,content):
         write_len =  os.write(fd, content)
         if write_len == 0:
-            raise WriteFIFOException('write fifo 0bytes')
+            raise Exception('write fifo 0bytes')
         # Print('write req: {} {}'.format(write_len, len(content)))
         # assert_match(write_len, len(content))
         return write_len

@@ -25,6 +25,10 @@ typedef struct _icon_info_ {
     const u8 *dat;
 } ICON_INFO;
 
+#define COL_MAX 	(128)
+#define ROW_MAX 	(64)
+#define PAGE_MAX 	(8)
+#define MAX_BUF 	(1024)
 
 
 class ins_i2c;
@@ -32,8 +36,7 @@ struct _char_info_;
 struct _icon_info_;
 struct _page_info_;
 
-class oled_module
-{
+class oled_module {
 public:
     oled_module();
     ~oled_module();
@@ -101,8 +104,8 @@ private:
     sp<ins_i2c> pstI2C_OLED;
 
     // byte0 --page0,col0 byte1 -- page0 col1  ...
-    u8  *ucBuf;
-    u8  *ucBufLast;
+    u8  ucBuf[MAX_BUF];
+    u8  ucBufLast[MAX_BUF];
     u8  mTmpBuf[32];
     sp<struct _page_info_> mPageInfo;
 };

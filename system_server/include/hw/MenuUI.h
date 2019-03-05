@@ -768,7 +768,7 @@ private:
     void    drawGpsState(bool bShow);
     void    drawRTS(bool bShow);
     void    dispInNeedTfCard();
-
+    void    dispNeedSD0();
 
 
     bool    checkCurMenuShowGps();
@@ -1173,10 +1173,17 @@ private:
      */
     int                         mGpsState;  
 
-    sp<Json::Value>             mCurTakePicJson;
+    Json::Value*                mCurTakePicJson;
     sp<Json::Value>             mCurTakeVidJson;
     sp<Json::Value>             mCurTakeLiveJson;
 
+    Json::Value                 mTakeVideoTemplate;
+    Json::Value                 mTakePictureTemplate;
+    Json::Value                 mTakeLiveTemplate;
+
+    Json::Value                 mTakepictureCustomer;
+    Json::Value                 mTakeVideoCustomer;
+    Json::Value                 mTakeLiveCustomer;
 
 	/*
 	 * 菜单管理相关 MENU_INFO stPicVideoCfg

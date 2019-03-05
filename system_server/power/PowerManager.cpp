@@ -236,6 +236,7 @@ static void powerModule(PwrCtl* pPwrCtl, int iOnOff)
 				msg_util::sleep_ms(pPwrCtl->iModulePwrInterval);
 			}
 
+#if 0
 			int iWaitTime = pPwrCtl->iModulePwrOnWaitTime;
 			const char* pWaitTime = property_get(PROP_MODULE_PWR_WAIT);
 			if (pWaitTime) {
@@ -250,6 +251,7 @@ static void powerModule(PwrCtl* pPwrCtl, int iOnOff)
 					modulePwrCtl(pPwrCtl, i, true, 1);		/* 高电平有效,上电操作 */
 				}
 			}
+#endif			
 			break;
 		}
 

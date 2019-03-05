@@ -44,7 +44,7 @@ VOLD_DIR        = SDK_ROOT + 'vold'
 INC_PATH = []
 INC_PATH += [SDK_ROOT + 'include']
 INC_PATH += [SDK_ROOT + 'include/init']
-INC_PATH += [UI_SERVICE + '/include']
+INC_PATH += [SYSTEM_SERVER + '/include']
 
 # Common flags
 COM_FLAGS = ''

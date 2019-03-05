@@ -1,1 +1,0 @@
-{"name":"camera._startRecording","parameters":{"origin":{"mime":"h264","framerate":60,"bitrate":184320,"saveOrigin":true,"width":3840,"height":2160,"storage_loc":1},"audio": {"mime": "aac", "sampleFormat": "s16", "samplerate": 48000, "bitrate": 128, "channelLayout": "stereo"}}}

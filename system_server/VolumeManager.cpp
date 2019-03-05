@@ -2334,6 +2334,8 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
 
     LOGINFO(TAG, "----++ Local Volume Size[%lu], Remote Volume Size[%ld] ++--------", uLocalVolSize, uRemoteVolSize);
 
+    printJson(jsonCmd);
+    
     pEvlJson = getTakePicStorageCfgFromJsonCmd(jsonCmd);
     if (pEvlJson) {
 
@@ -2635,13 +2637,13 @@ void VolumeManager::syncTakePicLeftSapce(Json::Value& jsonCmd)
 
 
 
-void VolumeManager::syncTakePicLeftSapce(sp<Json::Value>& jsonCmd)
+void VolumeManager::syncTakePicLeftSapce(Json::Value* jsonCmd)
 {
     /*
      * 如果拍照命令中含raw,并且Raw存储在模组中,需要更新各个模组的剩余容量
      * 否则,只需要更新本地存储的剩余容量
      */
-    Json::Value* pJsonCmd = getTakePicStorageCfgFromJsonCmd(*(jsonCmd.get()));
+    Json::Value* pJsonCmd = getTakePicStorageCfgFromJsonCmd(*jsonCmd);
     if (pJsonCmd) {
         Json::Value& jCalcObj = *pJsonCmd;
         
@@ -2667,7 +2669,7 @@ void VolumeManager::syncTakePicLeftSapce(sp<Json::Value>& jsonCmd)
 
     } else {
         LOGERR(TAG, "---> syncTakePicLeftSapce: Invalid TakePicture Json Command:");
-        printJson(*(jsonCmd.get()));
+        printJson(*jsonCmd);
     }
 
 }
