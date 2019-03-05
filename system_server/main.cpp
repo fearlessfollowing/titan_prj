@@ -126,7 +126,7 @@ int main(int argc ,char *argv[])
 
     LogWrapper::init(DEFAULT_LOG_FILE_PATH_BASE, "sys_log", true);
 
-    LOGDBG(TAG, "\n>>> Start ui_service now, Firm Version [%s], CompileInfo[%s - %s] <<<<<<<<<<<<\n", property_get(PROP_SYS_FIRM_VER), __DATE__, __TIME__);
+    LOGDBG(TAG, "\n\n>>> Start ui_service now, Firm Version [%s], CompileInfo[%s - %s] <<<<<<<<<<<<\n", property_get(PROP_SYS_FIRM_VER), __DATE__, __TIME__);
 
     {
         /* 构造MenuUI对象 */

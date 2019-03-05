@@ -240,7 +240,7 @@ public:
     void        updateModuleVolumeSpace(int iAddDecSize);
 
     void        syncTakePicLeftSapce(Json::Value& jsonCmd);
-    void        syncTakePicLeftSapce(sp<Json::Value>& jsonCmd);
+    void        syncTakePicLeftSapce(Json::Value* jsonCmd);
 
 
     /*

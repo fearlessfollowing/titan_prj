@@ -1,9 +1,12 @@
 # -*- coding: UTF-8 -*-
+########################################################################################################################
 # 文件名：  ins_log_util.py 
 # 版本：    V1.0.1
 # 修改记录：
 # 日期              修改人                  版本            备注
-# 2018年10月15日    Skymixos                V1.0.1          按日志的文件的大小进行分段
+# 2018年10月15日    Skymixos                V1.0.1         按日志的文件的大小进行分段
+# 2019年3月5日      Skymixos                V1.0.2         打印日志中添加调用的文件名及行号 
+########################################################################################################################
 
 import os
 import logging
@@ -17,7 +20,6 @@ from logging import handlers
 
 # 单个日志文件的最大长度为30MB
 MAX_LOG_LIMIT = 20*1024*1024
-
 class Logger(object):
     #日志级别关系映射
     level_relations = {
@@ -27,7 +29,6 @@ class Logger(object):
         'error':    logging.ERROR,
         'crit':     logging.CRITICAL
     }
-
     def __init__(self, filename, level='info', createMode='a', backCount=5, fmt='%(asctime)s - %(levelname)s: %(message)s'):
         
         self.logger = logging.getLogger(filename)
@@ -46,10 +47,6 @@ class Logger(object):
 
     def getlog(self):
         return self.logger
-
-# log_wrapper = Logger('/home/nvidia/insta360/log/h_log', level='debug').logger()
-
-
 def Print(*args):
     log_wrapper.debug(*args)
 
@@ -69,6 +66,4 @@ class LogInit:
         cls.LoggerObj = Logger(config.LOG_FILE, level='debug')
         global log_wrapper
         log_wrapper = cls.LoggerObj.getlog()
-
-
 LogInit.init()

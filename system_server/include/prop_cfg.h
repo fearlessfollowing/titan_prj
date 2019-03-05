@@ -250,6 +250,11 @@
 #define PREVIEW_JSON_FILE               "/home/nvidia/insta360/etc/preview.json"
 
 
+#define TAKE_VIDEO_TEMPLATE_PATH        "/home/nvidia/insta360/etc/takevideo_template.json"
+#define TAKE_PICTURE_TEMPLATE_PATH      "/home/nvidia/insta360/etc/takepicture_template.json"
+#define TAKE_LIVE_TEMPLATE_PATH         "/home/nvidia/insta360/etc/takelive_template.json"
+
+
 /*
  * CPU/GPU温度读取路径
  */
@@ -297,13 +302,18 @@
 
 
 #define TAKE_VID_MODE_10K_30F_3D         "vid_10k_30f_3d"
-#define TAKE_VID_MODE_3K_240F_3D         "vid_3k_240f_3d"
+#define TAKE_VID_MODE_4K_240F            "vid_4k_240f"
 #define TAKE_VID_MODE_11K_30F            "vid_11k_30f"
 #define TAKE_VID_MODE_8K_60F             "vid_8k_60f"
 #define TAKE_VID_MODE_5K2_120F           "vid_5k2_120f"
-#define TAKE_VID_8K_5F                   "vid_8k_5f"
+#define TAKE_VID_11K_5F                   "vid_11k_5f"
 #define TAKE_VID_MODE_8K30F3D_10BIT      "vid_8k30f3d_10bit"
 #define TAKE_VID_MODE_8K30F_10BIT        "vid_8k30f_10bit"
+
+#define TAKE_VID_MODE_8K60F_10BIT        "vid_8k60f_10bit"
+#define TAKE_VID_MODE_8K_3D_30F          "vid_8k_3d_30f"
+#define TAKE_VID_MODE_8K_3D_50F          "vid_8k_3d_50f"
+
 
 
 #define TAKE_VID_4K_30F_3D_RTS          "vid_4k_30f_3d_rts"
@@ -414,5 +424,7 @@
 #define BAT_LOW_VAL             (5)
 
 
+#define PIC_VIDEO_LIVE_ITEM_MAX     10
 
-#endif /* PRO2_OSC_CODE_CODE_CORE_INCLUDE_PROP_CFG_H_ */
+
+#endif /* _PROP_CFG_H_ */

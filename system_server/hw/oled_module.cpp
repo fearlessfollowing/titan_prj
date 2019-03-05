@@ -11,10 +11,7 @@
 #define OLED_RESET_GPIO		259     // PRO1 -> 174; PRO2 ->259
 
 
-#define COL_MAX 	(128)
-#define ROW_MAX 	(64)
-#define PAGE_MAX 	(8)
-#define MAX_BUF 	(1024)
+
 
 // REG INDEX
 #define SSD_SET_COL0_START_ADDR     0x00    // Set  Lower Column Start Address for Page Addressing Mode (00h~0Fh)
@@ -105,13 +102,7 @@ oled_module::~oled_module()
 }
 
 void oled_module::init()
-{
-    ucBuf = (u8 *)malloc(MAX_BUF);
-    CHECK_NE(ucBuf, nullptr);
-    
-    ucBufLast = (u8 *)malloc(MAX_BUF);
-    CHECK_NE(ucBufLast, nullptr);
-    
+{    
     memset(ucBuf, 0, MAX_BUF);
     memset(ucBufLast, 0, MAX_BUF);
 
@@ -129,16 +120,6 @@ void oled_module::deinit()
 {
     ssd1306_set_off();
     ssd1306_reset(); 
-
-    if (ucBuf) {
-        free(ucBuf);
-        ucBuf = nullptr;
-    }
-
-    if (ucBufLast) {
-        free(ucBufLast);
-        ucBufLast = nullptr;
-    }
 }
 
 void oled_module::ssd1306_reset()

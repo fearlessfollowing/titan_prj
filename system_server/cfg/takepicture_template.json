@@ -1,0 +1,119 @@
+{
+	"name":"takePictureArgs",
+	"gear":[
+		{
+			"gear_name":"11k_3d_of",
+            "arguments": {
+                "name":"camera._takePicture",
+                "parameters":{
+                    "delay":0,
+                    "origin":{
+                        "mime":"jpeg",
+                        "saveOrigin": true, 
+                        "width": 5280, 
+                        "height": 3956
+                    }, 
+                    "stiching": {
+                        "mode": "3d_top_left", 
+                        "height": 10560, 
+                        "width": 10560, 
+                        "mime": "jpeg", 
+                        "algorithm": "opticalFlow"
+                    }
+                }
+            }
+        },
+		{
+			"gear_name":"11k_of",
+			"arguments": {
+                "name":"camera._takePicture",
+                "parameters":{
+                    "delay":0,
+                    "origin":{
+                        "mime":"jpeg",
+                        "saveOrigin": true, 
+                        "width": 5280, 
+                        "height": 3956
+                    }, 
+                    "stiching": {
+                        "mode": "pano", 
+                        "height": 5280, 
+                        "width": 10560, 
+                        "mime": "jpeg", 
+                        "algorithm": "opticalFlow"
+                    }
+                }
+            }
+		},
+		{
+			"gear_name": "11k",
+			"arguments": {
+				"name": "camera._takePicture", 
+				"parameters": {
+                    "delay":0,
+                    "origin":{
+                        "mime":"jpeg",
+                        "saveOrigin": true, 
+                        "width": 5280, 
+                        "height": 3956
+                    }
+                }
+            }   
+		},
+		{
+			"gear_name":"aeb",
+			"arguments": {
+                "name":"camera._takePicture",
+                "parameters":{
+                    "delay":0,
+                    "bracket":{
+                        "enable":true,
+                        "count":9,
+                        "min_ev":-10,
+                        "max_ev":10
+                    },
+                    "origin":{
+                        "mime":"raw+jpeg",
+                        "saveOrigin":true,
+                        "width":5280,
+                        "height":3956
+                    }
+                }
+			}
+		},
+		{
+			"gear_name":"burst",
+			"arguments": {
+                "name":"camera._takePicture",
+                "parameters":{
+                    "delay":0,
+                    "burst":{
+                        "enable":true,
+                        "count":10
+                    },
+                    "origin":{
+                        "mime":"jpeg",
+                        "saveOrigin":true,
+                        "width":5280,
+                        "height":3956
+                    }
+                }
+            }            
+		},
+		{
+			"gear_name":"pic_customer",
+			"arguments": {
+                "name":"camera._takePicture",
+                "parameters":{
+                    "delay":0,
+                    "origin":{
+                        "mime":"jpeg",
+                        "saveOrigin": true, 
+                        "width": 5280, 
+                        "height": 3956
+                    }
+                }
+            } 
+		}
+	]
+}

@@ -101,11 +101,19 @@ static void sendKeyEvt(std::string evt_path, std::string evt)
         iSleepInterval = atoi(pInterval);
     }
 
-    if (evt == ACTION_UP)           code = KEY_CODE_UP;
-    else if (evt == ACTION_DOWN)    code = KEY_CODE_DOWN;
-    else if (evt == ACTION_BACK)    code = KEY_CODE_BACK;
-    else if (evt == ACTION_SETTING) code = KEY_CODE_SETTING;
-    else code = KEY_CODE_POWER;
+    if (evt == ACTION_UP) 
+        code = KEY_CODE_UP;
+    else if (evt == ACTION_DOWN) 
+        code = KEY_CODE_DOWN;
+    else if (evt == ACTION_BACK) 
+        code = KEY_CODE_BACK;
+    else if (evt == ACTION_SETTING) 
+        code = KEY_CODE_SETTING;
+    else if (evt == ACTION_SHUTDOWN) {
+        code = KEY_CODE_POWER;
+        iSleepInterval = 3000;
+    } else 
+        code = KEY_CODE_POWER;
 
     event[0].type = EVT_TYPE_KEY;
     event[0].code = code;
@@ -128,6 +136,8 @@ static void sendKeyEvt(std::string evt_path, std::string evt)
         fprintf(stderr, "could not open %s, %s\n", path, strerror(errno));
         return;
     }
+
+    fprintf(stdout, "+++++++ Key [%s] Pressed!!! +++++++\n", evt.c_str());
 
     write(fd, &event[0], 2 * sizeof(struct input_event));
     sleep_ms(iSleepInterval);

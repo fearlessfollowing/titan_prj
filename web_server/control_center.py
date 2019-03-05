@@ -3530,7 +3530,7 @@ class control_center:
                     Err('camera not connected req {}'.format(req))
                     ret = cmd_exception(error_dic('disabledCommand', 'camera not connected'), name)
         except Exception as e:
-            Err('osc_cmd_exectue exception e {} req {}'.format(e,req))
+            Err('osc_cmd_exectue exception e {} req {}'.format(e, req))
             ret = cmd_exception(str(e), name)
         return ret
 

@@ -68,6 +68,7 @@
 #include <sys/Mutex.h>
 #include <icon/setting_menu_icon.h>
 #include <icon/pic_video_select.h>
+
 #include <util/SingleInstance.h>
 
 #include <log/log_wrapper.h>
@@ -430,8 +431,9 @@ void MenuUI::init()
     LOGDBG(TAG, "Create OLED display Object...");
 
 	/* OLED对象： 显示系统 */
-    mOLEDModule = std::make_shared<oled_module>();
+    mOLEDModule = sp<oled_module>(new oled_module());
     CHECK_NE(mOLEDModule, nullptr);
+
 
     LOGDBG(TAG, "Create System Configure Object...");
     Singleton<CfgManager>::getInstance();   /* 配置管理器初始化 */
@@ -717,7 +719,9 @@ void MenuUI::subSysDeInit()
 void MenuUI::startUI()
 {
     init();					    /* MenuUI内部成员初始化 */
-    subSysInit();               /* 各个子系统初始化 */    
+    LOGDBG(TAG, "-----> startUI --> init done");
+    subSysInit();               /* 各个子系统初始化 */  
+
     send_init_disp();		    /* 给消息处理线程发送初始化显示消息 */
 }
 
@@ -1675,7 +1679,7 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
             } else {                            /* 以文字的形式显示 */
                 char cPrefix[128] = {0};
                 if (iRawVal) {
-                    sprintf(cPrefix, "AEB%d|RAW",convIndex2AebNum(iAebVal));
+                    sprintf(cPrefix, "AEB%d|RAW", convIndex2AebNum(iAebVal));
                 } else {
                     sprintf(cPrefix, "AEB%d", convIndex2AebNum(iAebVal));
                 }
@@ -1708,6 +1712,7 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
 }
 
 
+
 void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct stPicVideoCfg*>& pItemLists)
 {
     if (pParentMenu && pItemLists.empty()) {
@@ -1720,183 +1725,153 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
 
         PicVideoCfg** pSetItems = static_cast<PicVideoCfg**>(pParentMenu->priv);
         sp<Json::Value> pRoot;
-        bool bParseFileFlag = false;
 
         switch (pParentMenu->iMenuId) {
 
             case MENU_PIC_SET_DEF: {      /* PIC */
-
                 iIndex = cm->getKeyVal("mode_select_pic");
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
+                LOGDBG(TAG, "--> MENU_PIC_SET_DEF: default index: %d", iIndex);
+                mTakePictureTemplate.clear();
 
-                for (int i = 0; i < size; i++) {
-
-                    pSetItems[i]->stPos = tmPos;
-                    if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
-                        pSetItems[i]->stPos.xPos = 2;
-                        pSetItems[i]->stPos.iWidth = 90;
-                    }
-
-                    sp<Json::Value> pRoot = (sp<Json::Value>)(new Json::Value());
-                    bParseFileFlag = false;
-
-                    /* 根据当前项的名称，找到对应的 */
-                    cfgItemJsonFilePath = JSON_CFG_FILE_PATH;
-                    cfgItemJsonFilePath +=  pSetItems[i]->pItemName;
-                    cfgItemJsonFilePath += ".json";
-                    const char* path = cfgItemJsonFilePath.c_str();
-                    LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
-
-                    if (loadJsonFromFile(cfgItemJsonFilePath, pRoot.get())) {
-                        bParseFileFlag = true;   
-                        pSetItems[i]->jsonCmd = pRoot;                                                 
-                    }
-
-                    if (bParseFileFlag == false) {
-                        LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
+                if (loadJsonFromFile(TAKE_PICTURE_TEMPLATE_PATH, &mTakePictureTemplate)) {
+                    if (mTakePictureTemplate.isMember("gear") && mTakePictureTemplate["gear"].isArray()) {
                         
-                        const char* pCommJsonCmd = NULL;
-                        if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K_3D_OF)) {
-                            pCommJsonCmd = pCmdTakePic_11K3DOF;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K_OF)) {
-                            pCommJsonCmd = pCmdTakePic_11KOF;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_11K)) {
-                            pCommJsonCmd = pCmdTakePic_11K;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_AEB)) {
-                            pCommJsonCmd = pCmdTakePic_AEB;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_BURST)) {
-                            pCommJsonCmd = pCmdTakePic_Burst;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_CUSTOMER)) {
-                            pCommJsonCmd = pCmdTakePic_Customer;
+                        for (int i = 0; i < size; i++) {                            
+                            pSetItems[i]->stPos = tmPos;
+                            if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
+                                pSetItems[i]->stPos.xPos = 2;
+                                pSetItems[i]->stPos.iWidth = 90;
+                            }
+
+                            /*
+                             * pic_customer另外存文件pic_customer.json避免升级是被覆盖
+                             * - 如果有pic_customer.json文件,加载文件的内容
+                             * - 如果没有使用程序里固化的参数
+                             */
+                            if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_CUSTOMER)) {
+                                if (loadJsonFromFile(TAKE_PIC_TEMPLET_PATH, &mTakepictureCustomer)) {
+                                    pSetItems[i]->pJsonCmd = &mTakepictureCustomer;                                              
+                                } else {
+                                    LOGINFO(TAG, "pic customer gear, use default arguments!!");
+                                    if (loadJsonFromString(pCmdTakePic_Customer, &mTakepictureCustomer)) {
+                                        pSetItems[i]->pJsonCmd = &mTakepictureCustomer;
+                                    }                                    
+                                }
+                            } else {    /* 非customer挡位的参数直接使用takepicture_template.json中固定参数 */
+                                for (u32 j = 0; j < mTakePictureTemplate["gear"].size(); j++) {
+                                    if (!strcmp(mTakePictureTemplate["gear"][j]["gear_name"].asCString(), pSetItems[i]->pItemName)) {
+                                        pSetItems[i]->pJsonCmd = &(mTakePictureTemplate["gear"][j]["arguments"]);
+                                        break;                                    
+                                    }
+                                }
+                            }
+                            cfgPicModeItemCurVal(pSetItems[i]);
+                            pItemLists.push_back(pSetItems[i]);
                         } 
-                        
-                        if (loadJsonFromString(pCommJsonCmd, pRoot.get())) {
-                            pSetItems[i]->jsonCmd = pRoot;
-                        }
-                    }
 
-                    cfgPicModeItemCurVal(pSetItems[i]);
-                    pItemLists.push_back(pSetItems[i]);
-                }
+                    } else {
+                        LOGERR(TAG, "--> Invalid template file[%s], kill ourself now!", TAKE_PICTURE_TEMPLATE_PATH);
+                        system("killall system_server");
+                    }
+                } else {
+                    LOGERR(TAG, "--> Check template file[%s] is exist and syntax is correct, exit now");
+                    system("killall system_server");
+                } 
                 break;
             }
 
             case MENU_VIDEO_SET_DEF: {
                 iIndex = cm->getKeyVal("mode_select_video");
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
-                
-                for (int i = 0; i < size; i++) {
-                    
-                    pSetItems[i]->stPos = tmPos;
-                    if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
-                        pSetItems[i]->stPos.xPos = 1;
-                        // pSetItems[i]->stPos.iWidth = 90;
-                    }
+                LOGDBG(TAG, "--> MENU_VIDEO_SET_DEF: default index: %d", iIndex);
+                mTakeVideoTemplate.clear();
 
-                    pSetItems[i]->iCurVal = 0;
-                    sp<Json::Value> pRoot = (sp<Json::Value>)(new Json::Value());
-                    bParseFileFlag = false;
-                    
-                    cfgItemJsonFilePath = JSON_CFG_FILE_PATH;
-                    cfgItemJsonFilePath +=  pSetItems[i]->pItemName;
-                    cfgItemJsonFilePath += ".json";
-                    const char* path = cfgItemJsonFilePath.c_str();
-                    LOGDBG(TAG, "Takepic [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
-
-                    if (loadJsonFromFile(cfgItemJsonFilePath, pRoot.get())) {
-                        bParseFileFlag = true;   
-                        pSetItems[i]->jsonCmd = pRoot;                                              
-                    }
-
-                    if (bParseFileFlag == false) {
-                        LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
+                if (loadJsonFromFile(TAKE_VIDEO_TEMPLATE_PATH, &mTakeVideoTemplate)) {
+                    if (mTakeVideoTemplate.isMember("gear") && mTakeVideoTemplate["gear"].isArray()) {
                         
-                        const char* pCommJsonCmd = NULL;
-                        if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_10K_30F_3D)) {
-                            pCommJsonCmd = pCmdTakeVid_10K30F3D;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_3K_240F_3D)) {
-                            pCommJsonCmd = pCmdTakeVid_3K240F3D;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_11K_30F)) {
-                            pCommJsonCmd = pCmdTakeVid_11K30F;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K_60F)) {
-                            pCommJsonCmd = pCmdTakeVid_8K60F;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_5K2_120F)) {
-                            pCommJsonCmd = pCmdTakeVid_5_2K120F;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_8K_5F)) {
-                            pCommJsonCmd = pCmdTakeVid_8K5F;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K30F3D_10BIT)) {
-                            pCommJsonCmd = pCmdTakeVid_8K30F3D_10bit;
+                        for (int i = 0; i < size; i++) {                            
+                            pSetItems[i]->stPos = tmPos;
+                            if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
+                                pSetItems[i]->stPos.xPos = 1;
+                                // pSetItems[i]->stPos.iWidth = 90;
+                            }
 
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MODE_8K30F_10BIT)) {
-                            pCommJsonCmd = pCmdTakeVid_8K30F_10bit;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_4K_30F_3D_RTS)) {
-                            pCommJsonCmd = pCmdTakeVid_4K30F3DRTS;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_4K_30F_RTS)) {
-                            pCommJsonCmd = pCmdTakeVid_4K30FRTS;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MOD_CUSTOMER)) {
-                            pCommJsonCmd = pCmdTakeVid_Customer;
-                        }                     
+                            pSetItems[i]->iCurVal = 0;
+                            if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MOD_CUSTOMER)) {
+                                if (loadJsonFromFile(TAKE_VID_TEMPLET_PATH, &mTakeVideoCustomer)) {
+                                    pSetItems[i]->pJsonCmd = &mTakeVideoCustomer;                                              
+                                } else {
+                                    LOGINFO(TAG, "pic customer gear, use default arguments!!");
+                                    if (loadJsonFromString(pCmdTakeVid_Customer, &mTakeVideoCustomer)) {
+                                        pSetItems[i]->pJsonCmd = &mTakeVideoCustomer;
+                                    }                                    
+                                }
+                            } else {    /* 非customer挡位的参数直接使用takepicture_template.json中固定参数 */
+                                for (u32 j = 0; j < mTakeVideoTemplate["gear"].size(); j++) {
+                                    if (!strcmp(mTakeVideoTemplate["gear"][j]["gear_name"].asCString(), pSetItems[i]->pItemName)) {
+                                        pSetItems[i]->pJsonCmd = &(mTakeVideoTemplate["gear"][j]["arguments"]);
+                                        break;                                    
+                                    }
+                                }
+                            }
+                            pItemLists.push_back(pSetItems[i]);
+                        } 
 
-                        if (loadJsonFromString(pCommJsonCmd, pRoot.get())) {
-                            pSetItems[i]->jsonCmd = pRoot;
-                        }
+                    } else {
+                        LOGERR(TAG, "--> Invalid template file[%s]", TAKE_VIDEO_TEMPLATE_PATH);
+                        system("killall system_server");
                     }
-
-                    pItemLists.push_back(pSetItems[i]);
-                }                
+                } else {
+                    LOGERR(TAG, "--> Check template file[%s] is exist and syntax is correct, exit now");
+                    system("killall system_server");
+                }                              
                 break;
             }
+
 
             case MENU_LIVE_SET_DEF: {
                 iIndex = cm->getKeyVal("mode_select_live");
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
-                
-                for (int i = 0; i < size; i++) {
-                    bParseFileFlag = false;
-                    pSetItems[i]->stPos = tmPos;
-                    pSetItems[i]->iCurVal = 0;
-                    sp<Json::Value> pRoot = (sp<Json::Value>)(new Json::Value());
+                LOGDBG(TAG, "--> MENU_LIVE_SET_DEF: default index: %d", iIndex);
+                mTakeLiveTemplate.clear();
 
 
-                    cfgItemJsonFilePath = JSON_CFG_FILE_PATH;
-                    cfgItemJsonFilePath +=  pSetItems[i]->pItemName;
-                    cfgItemJsonFilePath += ".json";
-                    const char* path = cfgItemJsonFilePath.c_str();
-
-                    LOGDBG(TAG, "TakeLive [%s] Configure json file path: %s", pSetItems[i]->pItemName, path);
-
-                    if (loadJsonFromFile(cfgItemJsonFilePath, pRoot.get())) {
-                        bParseFileFlag = true;
-                        pSetItems[i]->jsonCmd = pRoot;                                              
-                    }
-
-                    if (bParseFileFlag == false) {
-                        LOGDBG(TAG, "Json cfg file not exist or Parse Failed, Used Default Configuration");
+                if (loadJsonFromFile(TAKE_LIVE_TEMPLATE_PATH, &mTakeLiveTemplate)) {
+                    if (mTakeLiveTemplate.isMember("gear") && mTakeLiveTemplate["gear"].isArray()) {
                         
-                        const char* pCommJsonCmd = NULL;
-                        if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_4K_30F)) {
-                            pCommJsonCmd = pCmdLive_4K30F;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_4K_30F_HDMI)) {
-                            pCommJsonCmd = pCmdLive_4K30FHDMI;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_4K_30F_3D)) {
-                            pCommJsonCmd = pCmdLive_4K30F3D;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_4K_30F_3D_HDMI)) {
-                            pCommJsonCmd = pCmdLive_4K30F3DHDMI;
-                        } else if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_CUSTOMER)) {
-                            pCommJsonCmd = pCmdLive_Customer;
-                        }
-                        #ifdef ENABLE_LIVE_ORG_MODE
-                        else if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_ORIGIN)) {
-                            pCommJsonCmd = pCmdLive_LiveOrigin;
-                        }
-                        #endif
+                        for (int i = 0; i < size; i++) {                            
+                            pSetItems[i]->stPos = tmPos;
+                            pSetItems[i]->iCurVal = 0;
 
-                        if (loadJsonFromString(pCommJsonCmd, pRoot.get())) {
-                            pSetItems[i]->jsonCmd = pRoot;
-                        }
+                            if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_CUSTOMER)) {
+                                if (loadJsonFromFile(TAKE_LIVE_TEMPLET_PATH, &mTakeLiveCustomer)) {
+                                    pSetItems[i]->pJsonCmd = &mTakeLiveCustomer;                                              
+                                } else {
+                                    LOGINFO(TAG, "live customer gear, use default arguments!!");
+                                    if (loadJsonFromString(pCmdLive_Customer, &mTakeLiveCustomer)) {
+                                        pSetItems[i]->pJsonCmd = &mTakeLiveCustomer;
+                                    }                                    
+                                }
+                            } else {    /* 非customer挡位的参数直接使用takepicture_template.json中固定参数 */
+                                for (u32 j = 0; j < mTakeLiveTemplate["gear"].size(); j++) {
+                                    if (!strcmp(mTakeLiveTemplate["gear"][j]["gear_name"].asCString(), pSetItems[i]->pItemName)) {
+                                        pSetItems[i]->pJsonCmd = &(mTakeLiveTemplate["gear"][j]["arguments"]);
+                                        break;                                    
+                                    }
+                                }
+                            }
+                            pItemLists.push_back(pSetItems[i]);
+                        } 
+
+                    } else {
+                        LOGERR(TAG, "--> Invalid template file[%s]", TAKE_VIDEO_TEMPLATE_PATH);
+                        system("killall system_server");
                     }
-                    pItemLists.push_back(pSetItems[i]);
-                }                
+                } else {
+                    LOGERR(TAG, "--> Check template file[%s] is exist and syntax is correct, exit now");
+                    system("killall system_server");
+                }              
                 break;
             }
 
@@ -2204,8 +2179,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
             pTmpPicVidCfg = mPicAllItemsList.at(iIndex);
 
             if (pTmpPicVidCfg) {                                
-                pTakePicJson = (pTmpPicVidCfg->jsonCmd).get();  
-
+                pTakePicJson = pTmpPicVidCfg->pJsonCmd;  
                 if ((*pTakePicJson)["parameters"].isMember("properties")) {
                     LOGDBG(TAG, "-----------> Send Takepic Customer args First");
                     pm->sendSetCustomLensReq(*pTakePicJson);
@@ -2262,7 +2236,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                             iIndex = getMenuSelectIndex(MENU_VIDEO_SET_DEF);
                             pTmpPicVidCfg = mVidAllItemsList.at(iIndex);
                             if (pTmpPicVidCfg) {
-                                pTakeVidJson = (pTmpPicVidCfg->jsonCmd).get();
+                                pTakeVidJson = pTmpPicVidCfg->pJsonCmd;
                                 if (pTakeVidJson) {
                                     
                                     if ((*pTakeVidJson)["parameters"].isMember("properties")) {
@@ -2301,7 +2275,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 /* customer和非customer */
                 iIndex = getMenuSelectIndex(MENU_LIVE_SET_DEF);
                 pTmpPicVidCfg = mLiveAllItemsList.at(iIndex);
-                pTakeLiveJson = pTmpPicVidCfg->jsonCmd.get();
+                pTakeLiveJson = pTmpPicVidCfg->pJsonCmd;
                 LOGDBG(TAG, "Take Live mode [%s]", pTmpPicVidCfg->pItemName);
 
 #ifdef ENABLE_LIVE_ORG_MODE
@@ -3384,7 +3358,6 @@ void MenuUI::handleSetCustomer(std::shared_ptr<CUSTOMER_ARG> ptr)
 
 void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& jsonRoot)
 {
-
     Json::CharReaderBuilder builder;
     builder["collectComments"] = false;
     JSONCPP_STRING errs;    
@@ -3400,7 +3373,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
                 PicVideoCfg* pTmpCfg = mPicAllItemsList.at(iLen - 1);
                 if (pTmpCfg) {
                     LOGDBG(TAG, "Update  Cutomer Json Command for TakePic");
-                    pTmpCfg->jsonCmd = pRoot;
+                    *(pTmpCfg->pJsonCmd) = jsonRoot;
                 }                   
                 break;
             }
@@ -3410,7 +3383,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
                 PicVideoCfg* pTmpCfg = mVidAllItemsList.at(iLen - 1);
                 if (pTmpCfg) {
                     LOGDBG(TAG, "Update  Cutomer Json Command for TakeVideo");
-                    pTmpCfg->jsonCmd = pRoot;
+                    *(pTmpCfg->pJsonCmd) = jsonRoot;
                 }                   
                 break;
             }
@@ -3420,7 +3393,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
                 PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(iLen - 1);
                 if (pTmpCfg) {
                     LOGDBG(TAG, "Update  Cutomer Json Command for TakeLive");
-                    pTmpCfg->jsonCmd = pRoot;
+                    *(pTmpCfg->pJsonCmd) = jsonRoot;
                 }                   
                 break;
             }
@@ -3448,7 +3421,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
     switch (control_act) {
 
         case ACTION_PIC: {          /* 客户端发起的拍照,录像，直播 CAPTURE */
-            LOGDBG(TAG, "Client Control Takepicture ..");
+            LOGDBG(TAG, "---> Client Control Takepicture ..");
             mClientTakePicUpdate = true;    /* 检查是否需要进行组装 */
             mControlPicJsonCmd["name"] = "camera._takePicture";
             mControlPicJsonCmd["parameters"] = actionJson;
@@ -3500,8 +3473,6 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
 
                     /* 将拍照的Customer的模板参数保存为json文件 */
                     LOGDBG(TAG, "Save Take Picture Templet");
-                    // LOGDBG(TAG, "Templet args: %s", actionStr.c_str());
-
                     Json::Value picRoot;
 
                     /*
@@ -3510,6 +3481,8 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
                      */
                     picRoot["name"] = "camera._takePicture";
                     picRoot["parameters"] = actionJson;
+
+                    printJson(picRoot);
                     writeJson2File(ACTION_PIC, TAKE_PIC_TEMPLET_PATH, picRoot);
                     break;
                 }
@@ -3711,18 +3684,18 @@ void MenuUI::calcRemainSpace(bool bUseCached)
 
         if (mClientTakePicUpdate == true) { /* 远端控制的拍照 */
             mCanTakePicNum = vm->calcTakepicLefNum(mControlPicJsonCmd, false);
-            LOGDBG(TAG, "--> App Mode, Left take picture num[%d]", mCanTakePicNum);
+            // LOGDBG(TAG, "--> App Mode, Left take picture num[%d]", mCanTakePicNum);
         } else {    /* 本地的拍照 - 非Customer模式 */
             int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
             struct stPicVideoCfg* pPicVidCfg = mPicAllItemsList.at(item);
             if (pPicVidCfg) {   /* 非timelapse和timelapse的两种计算方式 */
                 if (checkIsTakeTimelpaseInCustomer()) {
-                    vm->calcTakeTimelapseCnt(*(pPicVidCfg->jsonCmd.get()));                        
+                    vm->calcTakeTimelapseCnt(*(pPicVidCfg->pJsonCmd));                        
                     Singleton<ProtoManager>::getInstance()->sendUpdateTakeTimelapseLeft(vm->getTakeTimelapseCnt());
                 } else {
-                    Json::Value* pTakePicJson = (pPicVidCfg->jsonCmd).get();  
+                    Json::Value* pTakePicJson = pPicVidCfg->pJsonCmd;  
                     std::string gearStr = pPicVidCfg->pItemName;
-                    mCurTakePicJson = pPicVidCfg->jsonCmd;
+                    mCurTakePicJson = pPicVidCfg->pJsonCmd;
                     
                     struct stSetItem* pAebSetItem = getSetItemByName(mSetItemsList, SET_ITEM_NAME_AEB);
                     struct stPicVideoCfg* pAebPicVidCfg = getPicVidCfgByName(mPicAllItemsList, TAKE_PIC_MODE_AEB);
@@ -3747,7 +3720,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                         }
                     }
 
-                    mCanTakePicNum = vm->calcTakepicLefNum(*(pPicVidCfg->jsonCmd.get()), false);
+                    mCanTakePicNum = vm->calcTakepicLefNum(*(pPicVidCfg->pJsonCmd), false);
                 }
             } else {
                 LOGERR(TAG, "Invalid item[%d]", item);
@@ -3802,7 +3775,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                     int item = getMenuSelectIndex(MENU_VIDEO_SET_DEF);
                     PicVideoCfg* pTmpCfg = mVidAllItemsList.at(item); 
                     if (pTmpCfg) {
-                        u32 uRecLeftSec = vm->calcTakeRecLefSec(*((pTmpCfg->jsonCmd).get()));
+                        u32 uRecLeftSec = vm->calcTakeRecLefSec(*(pTmpCfg->pJsonCmd));
                         vm->setRecLeftSec(uRecLeftSec);                    
                         LOGDBG(TAG, "--> UI Mode, Record left secs: %u", uRecLeftSec);
                     }
@@ -3820,9 +3793,9 @@ void MenuUI::calcRemainSpace(bool bUseCached)
             int item = getMenuSelectIndex(MENU_LIVE_SET_DEF);
             PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(item); 
             if (pTmpCfg) {
-                int iRet = check_live_save((pTmpCfg->jsonCmd).get());
+                int iRet = check_live_save(pTmpCfg->pJsonCmd);
                 if (iRet != LIVE_SAVE_NONE) {
-                    u32 uLiveRecLeftSec = vm->calcTakeLiveRecLefSec(*((pTmpCfg->jsonCmd).get()));
+                    u32 uLiveRecLeftSec = vm->calcTakeLiveRecLefSec(*(pTmpCfg->pJsonCmd));
                     LOGDBG(TAG, "--> UI Mode, Live left secs: %u", uLiveRecLeftSec);
                     vm->setLiveRecLeftSec(uLiveRecLeftSec);                    
                 }
@@ -4538,7 +4511,7 @@ void MenuUI::updateBottomMode(bool bLight)
                     if (pTmpCfg) {
                         LOGNULL(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
                         cfgPicModeItemCurVal(pTmpCfg);                  /* 更新拍照各项的当前值(根据设置系统的值，比如RAW, AEB) */
-                        dispGpsRtsInfo(*(pTmpCfg->jsonCmd.get()));
+                        dispGpsRtsInfo(*(pTmpCfg->pJsonCmd));
                         dispPicVidCfg(pTmpCfg, bLight);                 /* 显示左下角拍照的挡位 */
                     } else {
                         LOGERR(TAG, "++++> Error: invalid pointer pTmpCfg");
@@ -4591,7 +4564,7 @@ void MenuUI::updateBottomMode(bool bLight)
                     if (pTmpCfg) {
                         LOGNULL(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
 
-                        dispGpsRtsInfo(*(pTmpCfg->jsonCmd.get()));
+                        dispGpsRtsInfo(*(pTmpCfg->pJsonCmd));
                         dispPicVidCfg(pTmpCfg, bLight); /* 显示配置 */
                     } else {
                         LOGERR(TAG, "invalid pointer pTmpCfg");
@@ -4628,7 +4601,7 @@ void MenuUI::updateBottomMode(bool bLight)
                     pTmpCfg = mLiveAllItemsList.at(iIndex);
                     if (pTmpCfg) {
                         LOGNULL(TAG, "------->>> Current PicVidCfg name [%s]", pTmpCfg->pItemName);
-                        dispGpsRtsInfo(*(pTmpCfg->jsonCmd.get()));
+                        dispGpsRtsInfo(*(pTmpCfg->pJsonCmd));
                         dispPicVidCfg(pTmpCfg, bLight);     /* 显示配置 */
                     } else {
                         LOGERR(TAG, "invalid pointer pTmpCfg");
@@ -5601,8 +5574,7 @@ bool MenuUI::checkIsTakeTimelpaseInCustomer()
         /* 拍照挡位选中的拍照参数 */
         int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
         PicVideoCfg* pTmpCfg = mPicAllItemsList.at(item);   
-        picJsonCmd = (pTmpCfg->jsonCmd).get();
-
+        picJsonCmd = pTmpCfg->pJsonCmd;
         if (picJsonCmd) {            
             if ( (*picJsonCmd)["parameters"].isMember("timelapse")) {
                 if ((*picJsonCmd)["parameters"]["timelapse"]["enable"].asBool() == true) {
@@ -5778,7 +5750,7 @@ void MenuUI::procPowerKeyEvent()
                 LOGDBG(TAG, ">>>>>>>> enter Timelapse Mode int Takepic Customer");
                 int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
                 PicVideoCfg* pTmpCfg = mPicAllItemsList.at(item);   
-                Json::Value* picJsonCmd = pTmpCfg->jsonCmd.get();
+                Json::Value* picJsonCmd = pTmpCfg->pJsonCmd;
 
                 mTakeVideInTimelapseMode = true;
                 mControlVideoJsonCmd = *picJsonCmd;
@@ -7011,7 +6983,7 @@ int MenuUI::getTakepicCustomerDelay()
     int size = mPicAllItemsList.size();
 
     PicVideoCfg* pTmpCfg = mPicAllItemsList.at(size - 1);
-    pJsonVal = pTmpCfg->jsonCmd.get();
+    pJsonVal = pTmpCfg->pJsonCmd;
     if (pJsonVal) {
         if ((*pJsonVal).isMember("parameters")) {
             if ((*pJsonVal)["parameters"].isMember("delay")) {
@@ -7238,7 +7210,7 @@ int MenuUI::oled_disp_type(int type)
                         /* 同步数据到磁盘 - 为了防止卡住,将剩余张数转换为空间设置回卷管理器中 */
                         mCanTakePicNum--;
                         vm->syncTakePicLeftSapce(mCurTakePicJson);  /* 单位为MB */
-                        mCurTakePicJson = nullptr;
+                        mCurTakePicJson = NULL;
                     }
 
                     /* 拍照成功后，按照原来的计算量进行显示 */
@@ -7253,13 +7225,13 @@ int MenuUI::oled_disp_type(int type)
             }
 
             play_sound(SND_COMPLE);
-            mCurTakePicJson = nullptr;
+            mCurTakePicJson = NULL;
             break;
         }
 			
         case CAPTURE_FAIL: { 
             mClientTakePicUpdate = false;
-            mCurTakePicJson = nullptr;        
+            mCurTakePicJson = NULL;        
             disp_sys_err(type);
             break;
         }
@@ -9354,7 +9326,7 @@ bool MenuUI::checkisLiveRecord()
     if (mClientTakeLiveUpdate == true) {    /* 远端发起的直播 */
         iRet = check_live_save(&mControlLiveJsonCmd);
     } else {
-        iRet = check_live_save((pTmpCfg->jsonCmd).get());
+        iRet = check_live_save(pTmpCfg->pJsonCmd);
     }
 
     if (iRet == LIVE_SAVE_NONE) {
@@ -9366,52 +9338,7 @@ bool MenuUI::checkisLiveRecord()
 
 
 
-void MenuUI::dispLiveReady()
-{
-    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
-
-    int iRet = 0;
-    int item = getMenuSelectIndex(MENU_LIVE_SET_DEF);
-
-    PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(item);
-
-    LOGDBG(TAG, "dispLiveReady: select item [%s]", pTmpCfg->pItemName);    
-    
-    iRet = check_live_save((pTmpCfg->jsonCmd).get());
-    switch (iRet) {
-        case LIVE_SAVE_NONE: {
-            dispIconByType(ICON_CAMERA_READY_20_16_76_32);
-            break;
-        }
-
-        default: {
-            /* 调用存储管理器来判断显示图标 */
-            if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* 大卡,小卡都在 */
-
-                #ifdef ENABLE_DEBUG_MODE
-                LOGDBG(TAG, "^++^ All Card is Exist ....");        
-                #endif
-                dispIconByType(ICON_CAMERA_READY_20_16_76_32);
-            } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
-
-                #ifdef ENABLE_DEBUG_MODE
-                LOGDBG(TAG, "Warnning Need TF Card ....");
-                #endif
-                dispIconByLoc(&needTfCardIconInfo);
-
-            } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
-
-                #ifdef ENABLE_DEBUG_MODE
-                LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
-                #endif
-                dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
-            }
-            break;
-        }
-    }    
-}
-
-/* 大卡 + 6小卡 --> 显示 Ready
+/* 大卡 + 8小卡 --> 显示 Ready
  * 只有大卡,无(缺)小卡 --> 显示: Need TF Card
  * 只有小卡无大卡 --> 显示 NO SD CARD
  * 没有任何卡 --> 显示 NO SD CARD
@@ -9436,7 +9363,12 @@ void MenuUI::dispReady(bool bDispReady)
                 dispInNeedTfCard();
             } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
                 LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
+
+                #if 0
                 dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
+                #else 
+                dispNeedSD0();
+                #endif
             }            
             break;
         }
@@ -9451,7 +9383,7 @@ void MenuUI::dispReady(bool bDispReady)
 
             LOGDBG(TAG, "dispReady: select item [%s]", pTmpCfg->pItemName);    
             
-            iRet = check_live_save((pTmpCfg->jsonCmd).get());
+            iRet = check_live_save(pTmpCfg->pJsonCmd);
             switch (iRet) {
                 case LIVE_SAVE_NONE: {
                     dispIconByType(ICON_CAMERA_READY_20_16_76_32);
@@ -9465,12 +9397,14 @@ void MenuUI::dispReady(bool bDispReady)
                         #ifdef ENABLE_DEBUG_MODE
                         LOGDBG(TAG, "^++^ All Card is Exist ....");        
                         #endif
+
                         dispIconByType(ICON_CAMERA_READY_20_16_76_32);
                     } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
 
                         #ifdef ENABLE_DEBUG_MODE
                         LOGDBG(TAG, "Warnning Need TF Card ....");
                         #endif
+
                         dispInNeedTfCard();
 
                     } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
@@ -9478,7 +9412,12 @@ void MenuUI::dispReady(bool bDispReady)
                         #ifdef ENABLE_DEBUG_MODE
                         LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
                         #endif
+
+                        #if 0
                         dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
+                        #else 
+                        dispNeedSD0();
+                        #endif
                     }
                     break;
                 }
@@ -9488,13 +9427,13 @@ void MenuUI::dispReady(bool bDispReady)
     }
 }
 
-/* @func 
- *  dispInNeedTfCard - 显示却卡信息(无卡或卡被写保护)
- * @param
- *  无
- * @return
- *  
- */
+
+void MenuUI::dispNeedSD0()
+{
+    dispStr((const u8*)"No SD card", 34, 16);  
+    dispStr((const u8*)"(0)", 55, 32);  
+}
+
 void MenuUI::dispInNeedTfCard()
 {
     char cIndex[128] = {0};

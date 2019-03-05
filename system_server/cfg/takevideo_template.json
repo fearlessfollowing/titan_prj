@@ -1,0 +1,361 @@
+{
+	"name":"takeVideoArgs",
+	"gear":[
+		{
+			"gear_name":"vid_10k_30f_3d",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitrate": 184320, 
+						"framerate": 30, 
+						"height": 3072, 
+						"mime": "h264", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 4800
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_4k_240f",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitrate": 184320, 
+						"framerate": 240, 
+						"height": 1080, 
+						"mime": "h264", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 1920
+					}
+				}
+			}
+		},
+		{
+			"gear_name": "vid_11k_30f",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitrate": 184320, 
+						"framerate": 30, 
+						"height": 2972, 
+						"mime": "h264", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 5280
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_8k_60f",
+			"arguments": {
+				"name":"camera._startRecording",
+				"parameters":{
+					"origin":{
+						"mime":"h264",
+						"framerate":60,
+						"bitrate":184320,
+						"saveOrigin":true,
+						"width":3840,
+						"height":2160,
+						"storage_loc":1
+					},
+					"audio": {
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000, 
+						"bitrate": 128, 
+						"channelLayout": "stereo"
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_5k2_120f",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitrate": 184320, 
+						"framerate": 120, 
+						"height": 1486, 
+						"mime": "h264", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 2624
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_11k_5f",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitrate": 184320, 
+						"framerate": 5, 
+						"height": 2972, 
+						"mime": "h264", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 5280
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_8k30f3d_10bit",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": 
+						"stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitDepth": 10, 
+						"bitrate": 184320, 
+						"framerate": 30, 
+						"height": 2880, 
+						"mime": "h265", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 3840
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_8k30f_10bit",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitDepth": 10, 
+						"bitrate": 184320, 
+						"framerate": 30, 
+						"height": 2880, 
+						"mime": "h265", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 3840
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_8k60f_10bit",
+			"arguments": {
+				"name": "camera._startRecording",
+				"parameters":{
+					"origin":{
+						"mime":"h265",
+						"framerate":60,
+						"bitrate":184320,
+						"saveOrigin":true,
+						"width":3840,
+						"height":2160,
+						"storage_loc":1, 
+						"bitDepth":10
+					},
+					"audio": {
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000, 
+						"bitrate": 128, 
+						"channelLayout": "stereo"
+					}
+				}
+			}
+		},		
+		{
+			"gear_name":"vid_8k_3d_30f",
+			"arguments": {
+				"name":"camera._startRecording",
+				"parameters":{
+					"origin":{
+						"mime":"h264",
+						"framerate":30,
+						"bitrate":184320,
+						"saveOrigin":true,
+						"width":3840,
+						"height":2880,
+						"storage_loc":1
+					},
+					"audio":{
+						"mime":"aac",
+						"sampleFormat":"s16",
+						"samplerate":48000,
+						"bitrate":128,
+						"channelLayout":"stereo"
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_8k_3d_50f",
+			"arguments": {
+				"name":"camera._startRecording",
+				"parameters":{
+					"origin":{
+						"mime":"h264",
+						"framerate":50,
+						"bitrate":184320,
+						"saveOrigin":true,
+						"width":3840,
+						"height":2880,
+						"storage_loc":1
+					},
+					"audio":{
+						"mime":"aac",
+						"sampleFormat":"s16",
+						"samplerate":48000,
+						"bitrate":128,
+						"channelLayout":"stereo"
+					}
+				}
+			}
+		},	
+		{
+			"gear_name":"vid_4k_30f_3d_rts",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitrate": 61440, 
+						"framerate": 30, 
+						"height": 2880, 
+						"mime": "h264", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 3840
+					}, 
+					"stiching": {
+						"bitrate": 51200, 
+						"framerate": 30, 
+						"height": 3840, 
+						"mime": "h264", 
+						"mode": "3d_top_left", 
+						"width": 3840
+					}
+				}
+			}
+		},
+		{
+			"gear_name":"vid_4k_30f_rts",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitrate": 61440, 
+						"framerate": 30, 
+						"height": 2880, 
+						"mime": "h264", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 3840
+					}, 
+					"stiching": {
+						"bitrate": 40960, 
+						"framerate": 30, 
+						"height": 1920, 
+						"mime": "h264", 
+						"mode": "pano", 
+						"width": 3840
+					}
+				}
+			}
+		},	
+		{
+			"gear_name":"vid_customer",
+			"arguments": {
+				"name": "camera._startRecording", 
+				"parameters": {
+					"audio": {
+						"bitrate": 128, 
+						"channelLayout": "stereo", 
+						"mime": "aac", 
+						"sampleFormat": "s16", 
+						"samplerate": 48000
+					}, 
+					"origin": {
+						"bitrate": 184320, 
+						"framerate": 30, 
+						"height": 2972, 
+						"mime": "h264", 
+						"saveOrigin": true, 
+						"storage_loc": 1, 
+						"width": 5280
+					}
+				}
+			}
+		}										
+	]
+}
