@@ -2,13 +2,7 @@
 **					Copyrigith(C) 2018	Insta360 Pro2 Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: VolumeManager.cpp
-** 功能描述: 存储管理器（管理设备的外部内部设备）,卷管理器设计为单例模式，进程内唯一，外部可以用过调用
-**          VolumeManager::Instance()来获取卷管理器: 
-**          VolumeManager* vm = VolumeManager::Instance();
-**          vm->xxxx()
-**
-**
-**
+** 功能描述: 存储管理器（管理设备的外部内部设备）
 ** 作     者: Skymixos
 ** 版     本: V1.0
 ** 日     期: 2018年08月04日
@@ -33,7 +27,8 @@
 ** 2.剩余量计算的配置化
 ** V3.6         Skymixos        2019年2月14日   去掉文件/目录监视器相关代码
 **                                              fixup Vold线程启动前，缓存了复位USB2SD芯片得到的热插拔事件
-**
+** V3.7         Skymixos        2019年3月7日    修改Raw存储在模组中的一组Raw size(如aeb3 Raw size = 40*3)
+**                                              修改底部USB接口对应的USB地址(2.0, 3.0)
 ******************************************************************************************************/
 
 #include <stdio.h>
@@ -121,11 +116,9 @@ extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit
 /*********************************************************************************************
  *  全局变量
  *********************************************************************************************/
-// VolumeManager *VolumeManager::sInstance = NULL;
 
 u32 VolumeManager::lefSpaceThreshold = 1024U;
 
-static std::mutex gVolumeManagerMutex;
 static Mutex gRecLeftMutex;
 static Mutex gLiveRecLeftMutex;
 static Mutex gRecMutex;
@@ -157,9 +150,10 @@ static Volume gSysVols[] = {
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
     },
 
+    /* 底部USB接口: 2.0, 3.0 */
     {   /* Udisk1 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
-        .pBusAddr       = "usb2-1.2,usb1-2.2",           /* 接3.0设备时的总线地址 */
+        .pBusAddr       = "usb2-1.3,usb1-2.3",           /* 接3.0设备时的总线地址 */
         .pMountPath     = "/mnt/udisk1",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
@@ -176,6 +170,7 @@ static Volume gSysVols[] = {
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
     },
 
+    /* 顶部USB接口: 3.0, 2.0 */
     {   /* Udisk2 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
         .pBusAddr       = "usb1-2.3",           /* 3.0 */
@@ -556,54 +551,70 @@ void VolumeManager::loadPicVidStorageCfgBill()
             mTakePicStorageCfg["11k_3d_of"]["raw_size"]             = 40;       /* dng以40M算 */
             mTakePicStorageCfg["11k_3d_of"]["misc_size"]            = 65;       /* 60 - 65MB */         
             mTakePicStorageCfg["11k_3d_of"]["raw_enable"]           = 0;              
+            mTakePicStorageCfg["11k_3d_of"]["name"]                 = "11k_3d_of";
 
             mTakePicStorageCfg["11k_of"]["raw_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
             mTakePicStorageCfg["11k_of"]["other_storage_loc"]       = PIC_RAW_STORAGE_LOC_NV;
             mTakePicStorageCfg["11k_of"]["raw_size"]                = 40;
             mTakePicStorageCfg["11k_of"]["misc_size"]               = 48;   /* 45 - 50MB */  
             mTakePicStorageCfg["11k_of"]["raw_enable"]              = 0;              
+            mTakePicStorageCfg["11k_of"]["name"]                    = "11k_of";
+
 
             mTakePicStorageCfg["11k"]["raw_storage_loc"]            = PIC_RAW_STORAGE_LOC_NV;
             mTakePicStorageCfg["11k"]["other_storage_loc"]          = PIC_RAW_STORAGE_LOC_NV;
             mTakePicStorageCfg["11k"]["raw_size"]                   = 40;
             mTakePicStorageCfg["11k"]["misc_size"]                  = 28;   /* 25 - 30MB */ 
             mTakePicStorageCfg["11k"]["raw_enable"]                 = 0;              
+            mTakePicStorageCfg["11k"]["name"]                       = "11k";
+
 
             mTakePicStorageCfg["aeb3"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
             mTakePicStorageCfg["aeb3"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["aeb3"]["raw_size"]                  = 40;
+            mTakePicStorageCfg["aeb3"]["raw_size"]                  = 40 * 3;
             mTakePicStorageCfg["aeb3"]["misc_size"]                 = 95;   /* 95 - 100MB */  
             mTakePicStorageCfg["aeb3"]["raw_enable"]                = 0;              
+            mTakePicStorageCfg["aeb3"]["name"]                      = "aeb3";
+
 
             mTakePicStorageCfg["aeb5"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
             mTakePicStorageCfg["aeb5"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["aeb5"]["raw_size"]                  = 40;
+            mTakePicStorageCfg["aeb5"]["raw_size"]                  = 40 * 5;
             mTakePicStorageCfg["aeb5"]["misc_size"]                 = 150;    
             mTakePicStorageCfg["aeb5"]["raw_enable"]                = 0;              
+            mTakePicStorageCfg["aeb5"]["name"]                      = "aeb5";
+
 
             mTakePicStorageCfg["aeb7"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
             mTakePicStorageCfg["aeb7"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["aeb7"]["raw_size"]                  = 40;
+            mTakePicStorageCfg["aeb7"]["raw_size"]                  = 40 * 7;
             mTakePicStorageCfg["aeb7"]["misc_size"]                 = 200;  /* 190 - 200MB */  
             mTakePicStorageCfg["aeb7"]["raw_enable"]                = 0;              
+            mTakePicStorageCfg["aeb7"]["name"]                      = "aeb7";
+
 
             mTakePicStorageCfg["aeb9"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
             mTakePicStorageCfg["aeb9"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["aeb9"]["raw_size"]                  = 40;
+            mTakePicStorageCfg["aeb9"]["raw_size"]                  = 40 * 9;
             mTakePicStorageCfg["aeb9"]["misc_size"]                 = 260;  /* 260 - 280MB */ 
             mTakePicStorageCfg["aeb9"]["raw_enable"]                = 0; 
+            mTakePicStorageCfg["aeb9"]["name"]                      = "aeb9";
+
 
             mTakePicStorageCfg["burst"]["raw_storage_loc"]          = PIC_RAW_STORAGE_LOC_MODULE;
             mTakePicStorageCfg["burst"]["other_storage_loc"]        = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["burst"]["raw_size"]                 = 40;
+            mTakePicStorageCfg["burst"]["raw_size"]                 = 40 * 10;
             mTakePicStorageCfg["burst"]["misc_size"]                = 260;   /* 256 - 300MB */
             mTakePicStorageCfg["burst"]["raw_enable"]               = 0; 
+            mTakePicStorageCfg["burst"]["name"]                     = "burst";
+
 
             mTakePicStorageCfg["timelapse"]["raw_storage_loc"]      = PIC_RAW_STORAGE_LOC_MODULE;
             mTakePicStorageCfg["timelapse"]["other_storage_loc"]    = PIC_RAW_STORAGE_LOC_NV;
             mTakePicStorageCfg["timelapse"]["raw_size"]             = 40;
             mTakePicStorageCfg["timelapse"]["misc_size"]            = 20; 
             mTakePicStorageCfg["timelapse"]["raw_enable"]           = 0; 
+            mTakePicStorageCfg["timelapse"]["name"]                 = "timelapse";
         }
     }
 }
@@ -2612,7 +2623,7 @@ void VolumeManager::syncTakePicLeftSapce(Json::Value& jsonCmd)
         /* 更新模组的剩余容量,并同时更新NV剩余容量 */
         if (jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
             if (jCalcObj["raw_enable"].asInt()) {
-                int iRawSize = jCalcObj["raw_size"].asInt();
+                int iRawSize = jCalcObj["raw_size"].asInt();    /* 一组Raw的大小: AEB3,5,7,9, busrt有多组 */
                 updateModuleVolumeSpace(-iRawSize);            
             }
         } else if ((jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_NV)) {

@@ -13,6 +13,7 @@
 ** V1.0			Skymixos		2018-09-28		创建文件，添加注释
 ** V2.0         Skymixos        2019-01-16      预览参数支持模板化配置
 ** V2.1         Skymixos        2019-01-26      优化代码结构
+** V2.2         Skymixos        2019-03-07      传输层新增Unix套接字传输请求(to web_server)
 ******************************************************************************************************/
 #include <thread>
 #include <sys/ins_types.h>
@@ -21,10 +22,16 @@
 #include <common/sp.h>
 #include <iostream>
 
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #include <sstream>
 #include <iostream>
 #include <fstream>
 #include <util/util.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <stddef.h>
 #include <util/SingleInstance.h>
 #include <sys/ProtoManager.h>
 
@@ -82,43 +89,41 @@
 
 #define REQ_UPDATE_SYS_TEMP         "camera._updateSysTemp"
 
+
+/** 使用Unix套接字传输给web_server发请求 */
+#define USE_UNIX_TRAN
+
+
 /*********************************************************************************************
  *  外部函数
  *********************************************************************************************/
+extern unsigned int bytes_to_int(const char *buf);
+extern void int_to_bytes(char *buf,unsigned int val);
+
 
 
 /*********************************************************************************************
  *  全局变量
  *********************************************************************************************/
-// ProtoManager *ProtoManager::sInstance = NULL;
-
-static std::mutex gProtoManagerMutex;
 static std::mutex gSyncReqMutex;
 static const std::string gReqUrl = "http://127.0.0.1:20000/ui/commands/execute";
 static const char* gPExtraHeaders = "Content-Type:application/json\r\nReq-Src:ProtoManager\r\n";     // Req-Src:ProtoManager\r\n
 
-
 int ProtoManager::mSyncReqErrno = 0;
 Json::Value* ProtoManager::mSaveSyncReqRes = NULL;
 
-#if 0
-
-ProtoManager* ProtoManager::Instance() 
-{
-    std::unique_lock<std::mutex> _lock(gProtoManagerMutex);
-    if (!sInstance)
-        sInstance = new ProtoManager();
-    return sInstance;
-}
-#endif
 
 
-ProtoManager::ProtoManager(): mSyncReqExitFlag(false), 
-                              mAsyncReqExitFlag(false)
+
+
+/*********************************************************************************************
+ *                              类成员函数
+ *********************************************************************************************/
+
+ProtoManager::ProtoManager(): mSyncReqExitFlag(false), mAsyncReqExitFlag(false)
 {
     LOGDBG(TAG, "Constructor ProtoManager now ...");
     mCurRecvData.clear();
-
     /*
      * 检查是否有用户配置的预览参数模板,如果有加载模板参数
      */
@@ -182,8 +187,10 @@ ProtoManager::~ProtoManager()
 /*
  * 发送同步请求(支持头部参数及post的数据))),支持超时时间
  */
-int ProtoManager::sendHttpSyncReq(const std::string &url, Json::Value* pJsonRes, 
-                                    const char* pExtraHeaders, const char* pPostData)
+int ProtoManager::sendHttpSyncReq(const std::string &url, 
+                                    Json::Value* pJsonRes, 
+                                    const char* pExtraHeaders, 
+                                    const char* pPostData)
 {
 
     std::unique_lock<std::mutex> _lock(gSyncReqMutex);
@@ -259,6 +266,21 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
 }
 
 
+bool ProtoManager::innerSendSyncReqWithoutCallback(Json::Value& root, syncReqResultCallback callBack)
+{
+#ifndef USE_UNIX_TRAN               
+    return sendSyncRequest(root, callBack);   
+#else                               
+    if (sendSyncReqUseUnix(root, callBack) == PROTO_ERROR_SUC) {  
+        return true;    
+    } else {    
+        return false;   
+    }   
+#endif    
+}
+
+
+
 bool ProtoManager::sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack)
 {
     int iResult = -1;
@@ -293,6 +315,7 @@ bool ProtoManager::sendSyncRequest(Json::Value& requestJson, syncReqResultCallba
     }
     return bRet;    
 }
+
 
 
 /*************************************************************************
@@ -338,9 +361,9 @@ bool ProtoManager::getServerState(uint64_t* saveState)
     root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
 
-    bRet = sendSyncRequest(root, getServerStateCb);
-    if (bRet) {
+    if (innerSendSyncReqWithoutCallback(root, getServerStateCb)) {
         *saveState = mServerState;
+        bRet = true;        
     }
     return bRet;
 }
@@ -367,7 +390,8 @@ bool ProtoManager::setServerState(uint64_t saveState)
     root[_param] = param;
 
     LOGDBG(TAG, "Add state: 0x%x", saveState);
-    return sendSyncRequest(root);
+
+    return innerSendSyncReqWithoutCallback(root);
 }
 
 
@@ -391,7 +415,7 @@ bool ProtoManager::rmServerState(uint64_t saveState)
     root[_param] = param;
 
     LOGDBG(TAG, "Clear state: 0x%x", saveState);
-    return sendSyncRequest(root);
+    return innerSendSyncReqWithoutCallback(root);
 }
 
 
@@ -405,7 +429,7 @@ bool ProtoManager::rmServerState(uint64_t saveState)
 *************************************************************************/
 bool ProtoManager::sendStartPreview()
 {
-    return sendSyncRequest(mPreviewJson);
+    return innerSendSyncReqWithoutCallback(mPreviewJson);    
 }
 
 
@@ -420,7 +444,7 @@ bool ProtoManager::sendStopPreview()
 {
     Json::Value root;
     root[_name_] = REQ_STOP_PREVIEW;
-    return sendSyncRequest(root);
+    return innerSendSyncReqWithoutCallback(root);
 }
 
 
@@ -528,7 +552,7 @@ bool ProtoManager::sendQueryTfCard()
     Json::Value param;
     root[_param] = param;
     root[_name_] = REQ_QUERY_TF_CARD;
-    return sendSyncRequest(root, queryTfcardCb);
+    return innerSendSyncReqWithoutCallback(root, queryTfcardCb);
 }
 
 
@@ -544,8 +568,7 @@ bool ProtoManager::sendUpdateSysTempReq(Json::Value& param)
     Json::Value root;
     root[_name_] = REQ_UPDATE_SYS_TEMP;
     root[_param] = param;
-
-    return sendSyncRequest(root);
+    return innerSendSyncReqWithoutCallback(root);
 }
 
 
@@ -561,7 +584,7 @@ bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
     Json::Value root;
     root[_name_] = REQ_SET_CUSTOMER_PARAM;
     root[_param] = customParam["parameters"]["properties"];
-    return sendSyncRequest(root);  
+    return innerSendSyncReqWithoutCallback(root);
 }
 
 
@@ -580,7 +603,7 @@ bool ProtoManager::sendSpeedTestReq(const char* path)
     param[_path] = path;
     root[_name_] = REQ_SPEED_TEST;
     root[_param] = param;
-    return sendSyncRequest(root);        
+    return innerSendSyncReqWithoutCallback(root);      
 }
 
 
@@ -593,7 +616,7 @@ bool ProtoManager::sendSpeedTestReq(const char* path)
 *************************************************************************/
 bool ProtoManager::sendTakePicReq(Json::Value& takePicReq)
 {
-    return sendSyncRequest(takePicReq);   
+    return innerSendSyncReqWithoutCallback(takePicReq);     
 }
 
 
@@ -607,7 +630,7 @@ bool ProtoManager::sendTakePicReq(Json::Value& takePicReq)
 *************************************************************************/
 bool ProtoManager::sendTakeVideoReq(Json::Value& takeVideoReq)
 {
-    return sendSyncRequest(takeVideoReq);      
+    return innerSendSyncReqWithoutCallback(takeVideoReq);        
 }
 
 
@@ -622,7 +645,7 @@ bool ProtoManager::sendStopVideoReq()
 {
     Json::Value root;
     root[_name_] = REQ_STOP_REC; 
-    return sendSyncRequest(root);    
+    return innerSendSyncReqWithoutCallback(root); 
 }
 
 
@@ -635,7 +658,7 @@ bool ProtoManager::sendStopVideoReq()
 *************************************************************************/
 bool ProtoManager::sendStartLiveReq(Json::Value& takeLiveReq)
 {
-    return sendSyncRequest(takeLiveReq);       
+    return innerSendSyncReqWithoutCallback(takeLiveReq);     
 }
 
 
@@ -650,7 +673,7 @@ bool ProtoManager::sendStopLiveReq()
 {
     Json::Value root;   
     root[_name_] = REQ_STOP_LIVE;    
-    return sendSyncRequest(root);      
+    return innerSendSyncReqWithoutCallback(root);    
 }
 
 
@@ -669,7 +692,7 @@ bool ProtoManager::sendStichCalcReq()
     param[_delay] = 5;      /* 默认为5秒 */
     root[_name_] = REQ_STITCH_CALC;    
     root[_param] = param;
-    return sendSyncRequest(root);       
+    return innerSendSyncReqWithoutCallback(root);      
 }
 
 
@@ -689,7 +712,7 @@ bool ProtoManager::sendSavePathChangeReq(const char* savePath)
     param[_path]    = savePath;      
     root[_name_]    = REQ_CHANGE_SAVEPATH;  
     root[_param]    = param;
-    return sendSyncRequest(root);  
+    return innerSendSyncReqWithoutCallback(root);
 }
 
 
@@ -705,7 +728,7 @@ bool ProtoManager::sendStorageListReq(const char* devList)
     Json::Value root;
     root[_name_]         = REQ_UPDATE_DEV_LIST;
     root[_param]        = devList;
-    return sendSyncRequest(root);   
+    return innerSendSyncReqWithoutCallback(root);   
 }
 
 
@@ -720,7 +743,7 @@ bool ProtoManager::sendStartNoiseSample()
 {
     Json::Value root;
     root[_name_] = REQ_NOISE_SAMPLE;
-    return sendSyncRequest(root);       
+    return innerSendSyncReqWithoutCallback(root);      
 }
 
 
@@ -735,7 +758,7 @@ bool ProtoManager::sendGyroCalcReq()
 {
     Json::Value root;
     root[_name_] = REQ_GYRO_CALC;
-    return sendSyncRequest(root);     
+    return innerSendSyncReqWithoutCallback(root);    
 }
 
 
@@ -751,7 +774,7 @@ bool ProtoManager::sendLowPowerReq()
 {
     Json::Value root;
     root[_name_] = REQ_LOW_POWER;
-    return sendSyncRequest(root);    
+    return innerSendSyncReqWithoutCallback(root);  
 }
 
 
@@ -766,7 +789,7 @@ bool ProtoManager::sendWbCalcReq()
 {
     Json::Value root;
     root[_name_] = REQ_AWB_CALC;
-    return sendSyncRequest(root);    
+    return innerSendSyncReqWithoutCallback(root); 
 }
 
 
@@ -778,8 +801,8 @@ bool ProtoManager::sendWbCalcReq()
 ** 调 用: 
 *************************************************************************/
 bool ProtoManager::sendSetOptionsReq(Json::Value& optionsReq)
-{
-    return sendSyncRequest(optionsReq);       
+{  
+    return innerSendSyncReqWithoutCallback(optionsReq);        
 }
 
 
@@ -803,7 +826,7 @@ bool ProtoManager::sendSwitchUdiskModeReq(bool bEnterExitFlag)
     } 
     root[_name_] = REQ_SWITCH_UDISK_MODE;
     root[_param] = param;
-    return sendSyncRequest(root);   
+    return innerSendSyncReqWithoutCallback(root); 
 }
 
 
@@ -830,8 +853,10 @@ bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uL
     param[_live_rec_left_sec] = uLiveRecLeftSec;
     root[_name_] = REQ_UPDATE_REC_LIVE_INFO;
     root[_param] = param;  
-    return sendSyncRequest(root);   
+    return innerSendSyncReqWithoutCallback(root); 
 }
+
+
 
 
 
@@ -851,7 +876,7 @@ bool ProtoManager::sendUpdateTakeTimelapseLeft(u32 leftVal)
     param[_tl_left] = leftVal;
     root[_name_] = REQ_UPDATE_TIMELAPSE_LEFT;
     root[_param] = param;
-    return sendSyncRequest(root);   
+    return innerSendSyncReqWithoutCallback(root); 
 }
 
 
@@ -875,8 +900,7 @@ bool ProtoManager::sendStateSyncReq(REQ_SYNC* pReqSyncInfo)
 
     root[_name_] = REQ_SYNC_INFO;
     root[_param] = param;
- 
-    return sendSyncRequest(root);   
+     return innerSendSyncReqWithoutCallback(root); 
 }
 
 
@@ -919,7 +943,8 @@ int ProtoManager::sendQueryGpsState()
     Json::Value root;
 
     root[_name_] = REQ_QUERY_GPS_STATE;
-    if (sendSyncRequest(root, getGpsStateCb)) {
+
+    if (innerSendSyncReqWithoutCallback(root, getGpsStateCb)) {
         iResult = mGpsState;
     }
     return iResult;
@@ -962,6 +987,23 @@ bool ProtoManager::formatTfcardCb(Json::Value& resultJson)
 }
 
 
+void TransBuffer::fillData(const char* data) 
+{
+    int iDataLen = strlen(data);
+    if (iDataLen > MAX_DATA_LEN - COM_HDR_LEN) {
+        return;
+    } else {
+        mBuffer = new char[iDataLen + COM_HDR_LEN];
+        if (mBuffer) {
+            mBufferLen = iDataLen + COM_HDR_LEN;
+            int_to_bytes(&mBuffer[0], 0xDEADBEEF);
+            int_to_bytes(&mBuffer[4], iDataLen);
+            LOGINFO(TAG, "------> len = %d",  iDataLen);
+            memcpy(&(mBuffer[COM_HDR_LEN]), data, iDataLen);
+        }
+    }
+}
+
 /*************************************************************************
 ** 方法名称: sendFormatmSDReq
 ** 方法功能: 发送格式化TF卡请求
@@ -979,10 +1021,105 @@ int ProtoManager::sendFormatmSDReq(int iIndex)
     param[_index] = iIndex;
     root[_name_] = REQ_FORMAT_TFCARD;
     root[_param] = param;
-    if (sendSyncRequest(root, formatTfcardCb)) {
+
+    if (innerSendSyncReqWithoutCallback(root, formatTfcardCb)) {
         iResult = mFormatTfResult;
     }
     return iResult;
+}
+
+
+int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback callBack)
+{
+    struct sockaddr_un addr;
+    socklen_t alen;
+    size_t namelen;
+    int iSocket;
+    int r;
+    Json::Value jsonRes;  
+    char recvHdr[COM_HDR_LEN] = {0};
+
+    std::string sendStr = "";
+
+    convJsonObj2String(req, sendStr);
+
+    LOGINFO(TAG, "send string: %s", sendStr.c_str());
+
+    /* 1.Creat and connect Unix Server */
+    iSocket = socket(AF_LOCAL, SOCK_STREAM, 0);
+    if (iSocket < 0) {
+        LOGERR(TAG, "---> sendSyncReqUseUnix: create socket failed!");
+        return PROTO_ERROR_CREATE_SOCKET;
+    }
+
+    /* 2.Constructor format data to Server */
+    memset(&addr, 0, sizeof(addr));
+    namelen = strlen(SERVER_UNIX_PATH);
+    strncpy(addr.sun_path, SERVER_UNIX_PATH, sizeof addr.sun_path);
+    addr.sun_family = AF_LOCAL;
+    alen = namelen + offsetof(struct sockaddr_un, sun_path) + 1;
+
+    if (TEMP_FAILURE_RETRY(connect(iSocket, (struct sockaddr *) &addr, alen)) < 0) {
+        LOGERR(TAG, "---> Connect to Server Failed");        
+        close(iSocket);
+        return PROTO_ERROR_CONNECT_SERVER;
+    }
+
+    /* 3.Send Request: 0xDEADBEEF + content_len + data */
+    std::shared_ptr<TransBuffer> buffer = std::make_shared<TransBuffer>();
+    buffer->fillData(sendStr.c_str());
+    r = TEMP_FAILURE_RETRY(send(iSocket, buffer->data(), buffer->size(), 0));
+    if (r != buffer->size()) {
+        LOGERR(TAG, "send data failed, what's wront!!");
+        close(iSocket);
+        return PROTO_ERROR_SEND_ERROR;
+    }
+
+    /* 4.Read Rsponse From Server */
+    r = TEMP_FAILURE_RETRY(recv(iSocket, &recvHdr, sizeof(recvHdr), 0));
+    if (r != sizeof(recvHdr)) {
+        LOGERR(TAG, "---> recv Header error, len = %d", r);
+        close(iSocket);
+        return PROTO_ERROR_RECV_HDR;
+    }
+
+    int iRecvMagic = bytes_to_int(recvHdr);
+    int iRecvLen = bytes_to_int(&recvHdr[4]);
+
+    if (iRecvMagic != 0xDEADBEEF || iRecvLen <= 0) {
+        LOGERR(TAG, "Magic error or len error");
+        close(iSocket);
+        return PROTO_ERROR_HEADER;   
+    }
+
+    std::shared_ptr<TransBuffer> recvBuffer = std::make_shared<TransBuffer>(iRecvLen);
+
+    r = TEMP_FAILURE_RETRY(recv(iSocket, recvBuffer->data(), recvBuffer->size(), 0));
+    if (r != recvBuffer->size()) {
+        LOGERR(TAG, "---> recv content error, len = %d", r);
+        close(iSocket);
+        return PROTO_ERROR_READ_CONTENT;
+    }
+
+    if (recvBuffer->getJsonResult(&jsonRes)) {
+        if (callBack) {
+            if (callBack(jsonRes)) {
+                return PROTO_ERROR_SUC;
+            } else {
+                return PROTO_ERROR_CALLBACK_RET;
+            }
+        } else {
+            if (jsonRes.isMember(_state)) {
+                if (jsonRes[_state] == _done) {
+                    return PROTO_ERROR_SUC;
+                }
+            }            
+        }
+    } else {
+        LOGERR(TAG, "---> conv result to json Failed");
+    }
+
+    return PROTO_ERROR_UNKOWN;
 }
 
 
@@ -1000,6 +1137,11 @@ void ProtoManager::setSyncReqExitFlag(bool bFlag)
 }
 
 
+
+
+/*********************************************************************************************
+ *                         处理来自web_server的通知
+ *********************************************************************************************/
 void ProtoManager::handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode)
 {
 	

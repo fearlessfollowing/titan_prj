@@ -32,6 +32,7 @@ from util.fifo_util import *
 import config
 from util.str_util import *
 
+from util.unix_socket import *
 from util.ins_log_util import *
 from util.timer_util import *
 from util.time_util import *
@@ -616,8 +617,17 @@ class control_center:
         self.init_fifo_read_write()
         self.init_fifo_monitor_camera_active()
 
+        self.unixSocketClient = UnixSocketClient()
 
-    def send_sync_init(self,req):
+        #
+        # 启动Unix Socket Server,用来处理来自system_server的请求
+        # 套接字地址: /dev/socket/web_server
+        #
+        UnixSocketServerHandle('socket_server', self).start()
+
+
+
+    def send_sync_init(self, req):
         Info('send sync init req {}'.format(req))
         self.send_req(self.get_write_req(config.OLED_SYNC_INIT, req))
 

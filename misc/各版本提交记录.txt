@@ -1476,3 +1476,30 @@ fixup:
 
 
 固件类型：测试组测试
+
+
+
+版本号：V0.1.4
+固件地址：禅道
+开发自测通过：是
+
+修改点：
+
+
+（罗品京）
+1.discard frame when first seq not 1 (肖)
+2.streamoff before wait decoder stop （肖）
+3.camaeradGPS对时,会先修改时区为UTC
+4.增加4K_240F档位及修改档位顺序
+5.拍照,录像,直播各档位参数保存在takeXXXX_template.json中
+
+
+（建聪）
+
+
+测试风险点:
+
+遗留问题：
+
+
+固件类型：测试组测试

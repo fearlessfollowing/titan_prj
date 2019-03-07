@@ -202,6 +202,10 @@ PBB0需要内部上拉
 音频问题：
 音频模块的上电问题
 
+查看是否插入外置MIC
+amixer cget -c 1 name="Jack-state"
+
+
 
 网络问题：
 udhcpc获取IP的时间是否比dhclient的时间更短？
@@ -1248,3 +1252,55 @@ F S UID        PID  PPID  C PRI  NI ADDR SZ WCHAN  STIME TTY          TIME CMD
 
 
 setprop sys.stab_on false
+
+
+在Pro1上插入LineIn和未插入LineIn的寄存器对比分析:
+MX-FAh General Control 1
+0b01 -> 3b01
+
+MX-BEh IRQ Control 2
+8000 -> 8008
+
+MX-BFh GPIO and Internal Status
+0190 -> 000
+
+MX-93h MICBIAS Control
+3000 -> 3810
+
+
+MX-63h Power Management Control 3
+e8d8 -> a814
+
+MX-64h Power Management Control 4
+8000 ->8800
+
+
+adb connect 192.168.1.188
+adb shell setprop ctl.stop camerad
+
+
+--------------------------------------------------------------------------------------
+阿里云账号: luopinjing@163.com Code: Lpj461976553
+拼接库:
+git@code.aliyun.com:insta360_research/AutoStitcherLib2.git
+
+HDR:
+git@code.aliyun.com:insta360_research/InsImgProcLib.git
+
+
+
+
+1.跟新usb测试脚本(不管插入的是2.0还是3.0设备)
+
+
+2.HDMI测试:
+2.1 打开HDMI显示
+factory_test hdmi_on
+
+2.2 关闭HDMI显示
+factory_test hdmi_off
+
+3.音频录音第一次爆音:
+命令中去掉：in1p_record_setup.sh / in1n_record_setup.sh的调用
+
+

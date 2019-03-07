@@ -109,6 +109,71 @@ enum {
 
 using syncReqResultCallback = std::function<bool (Json::Value& resultJson)>;
 
+#define COM_HDR_LEN     8
+#define MAX_DATA_LEN    4096
+
+struct stTranHdr {
+    int     iMagic;
+    int     iLen;
+};
+
+class TransBuffer {
+
+public:
+        TransBuffer() { }
+        
+        TransBuffer(int iLen) {
+            mBuffer = new char[iLen];
+            if (mBuffer) mBufferLen = iLen;
+        }
+
+        ~TransBuffer() {
+            if (mBuffer) delete mBuffer;
+            mBuffer = nullptr;
+            mBufferLen = 0;
+        }
+
+    void fillData(const char* data);
+
+    bool getJsonResult(Json::Value* pJson) {
+        if (mBuffer && loadJsonFromCString(mBuffer, pJson)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    char* data() {
+        return mBuffer;
+    }
+
+    int size() {
+        return mBufferLen;
+    }
+
+private:
+    char*   mBuffer;
+    int     mBufferLen;
+};
+
+
+#define SERVER_UNIX_PATH "/dev/socket/web_server"
+
+
+enum {
+    PROTO_ERROR_SUC             = 0,
+    PROTO_ERROR_CREATE_SOCKET = -1,
+    PROTO_ERROR_CONNECT_SERVER = -2,
+    PROTO_ERROR_SEND_ERROR     = -3,
+    PROTO_ERROR_RECV_HDR       = -4,
+    PROTO_ERROR_HEADER         = -5,
+    PROTO_ERROR_READ_CONTENT   = -6,
+    PROTO_ERROR_UNKOWN         = -7,
+    PROTO_ERROR_CALLBACK_RET   = -8,
+};
+
+
+
 
 /*
  * 传输管理器对象 - 负责提供与服务器交互接口(使用http)
@@ -120,20 +185,12 @@ public:
     virtual                         ~ProtoManager();
 
 
-    /* 获取服务器的状态 */
-    bool            getServerState(uint64_t* saveState);
+    bool            getServerState(uint64_t* saveState);            /* 获取服务器的状态 */
+    bool            setServerState(uint64_t saveState);             /* 设置服务器的状态 */
+    bool            rmServerState(uint64_t saveState);              /* 清除服务器的状态 */
 
-    /* 设置服务器的状态 */
-    bool            setServerState(uint64_t saveState);
-
-    /* 清除服务器的状态 */
-    bool            rmServerState(uint64_t saveState);
-
-    /* 启动预览 */
-    bool            sendStartPreview();
-
-    /* 停止预览 */
-    bool            sendStopPreview();
+    bool            sendStartPreview();                             /* 启动预览 */
+    bool            sendStopPreview();                              /* 停止预览 */
 
     /* 查询进入U盘模式（注: 进入U盘模式之前需要禁止InputManager上报,在返回结果之后再使能） */
     bool            sendSwitchUdiskModeReq(bool bEnterExitFlag);
@@ -248,6 +305,8 @@ private:
     int                     mFormatTfResult;
 
 
+    int             sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback callBack = nullptr);
+
     bool            getSyncReqExitFlag();
     void            setSyncReqExitFlag(bool bFlag);
 
@@ -275,6 +334,9 @@ private:
 
     bool            sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack = nullptr);
 
+
+    bool            innerSendSyncReqWithoutCallback(Json::Value& root, syncReqResultCallback callBack = nullptr);
+    
     /* 解析查询小卡的结果 */
     static bool     parseQueryTfcardResult(Json::Value& jsonData);
 

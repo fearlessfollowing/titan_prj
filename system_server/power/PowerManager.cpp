@@ -197,15 +197,6 @@ static void powerModule(PwrCtl* pPwrCtl, int iOnOff)
 	const char* pFirstPwrOn = NULL;
 
 	switch (iOnOff) {
-
-		/*
-		 * 模组上电新逻辑: 2019年02月25日
-		 * - 1.检查两个HUB是否存在,如果不存在，重新复位HUB
-		 * - 2.依次给各个模组上电
-		 * 		2.1 按上电顺序给各个模组上电
-		 * 		2.2 等待一定的时间
-		 * 		2.3 如果某个模组没有起来,再次给它断电/上电
-		 */
 		case CMD_POWER_ON: {
 
 			/* 1.设置时钟 */
@@ -263,25 +254,18 @@ static void powerModule(PwrCtl* pPwrCtl, int iOnOff)
 
 			/* 给所有的模组下电 */
 			for (int i = 0; i < pPwrCtl->iModuleNum; i++) {
-				int j = 0;
 				do {
-					if (checkModuleIsStartup(pPwrCtl, i) == true) {
-						modulePwrCtl(pPwrCtl, i, false, 1);		/* 高电平有效,上电操作 */
-					} else {
-						break;
-					}
+                    modulePwrCtl(pPwrCtl, i, false, 1);		/* 高电平有效,上电操作 */
 					msg_util::sleep_ms(10);
-					j++;
-				} while (j < 3);
+                    modulePwrCtl(pPwrCtl, i, false, 1);		/* 高电平有效,上电操作 */
+				} while (0);
 			}
-
 
 			/* 复位HUB */
 			if (pPwrCtl->iResetHubNum == 2) {
 				resetHub(pPwrCtl->iHub2ResetGpio, pPwrCtl->iHubResetLevel, pPwrCtl->iHubResetDuration);
 			} 
 			resetHub(pPwrCtl->iHub1ResetGpio, pPwrCtl->iHubResetLevel, pPwrCtl->iHubResetDuration);
-
 			break;
 		}
 

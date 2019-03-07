@@ -715,29 +715,13 @@ static PicVideoCfg vid_Customer_Cfg = {
 };
 
 
-#if 0
-11K2D30F, 
-10K3D30F, 
-8K3D30F10bit, 
-8K2D60F10bit, 
-8K3D30F, 
-
-8K3D50F, 
-8K2D60F, 
-5.2K2D120F, 
-4K2D240F, 
-11K5FGSV, 
-
-4K3DRTS，
-4K2DRTS，
-customize
-#endif
-
 PicVideoCfg* gVidAllModeCfgList[] = {
 	&vid11K_30F_Cfg,
 	&vid10K_30F_3D_Cfg,
 	&vid8K_30F_3D_10bit_Cfg,
+#if 0	
 	&vid8K60F10bit_Cfg,
+#endif
 	&vid8K_3D_30F_Cfg,
 
 	&vid8K_3D_50F_Cfg,

@@ -72,16 +72,20 @@ int main(int argc ,char *argv[])
 	if (strcmp(argv[1], "awb") == 0) {
 		factoryTestHndl->awbTest();
 	} else if (strcmp(argv[1], "oled") == 0) {
-        property_set("ctl.stop", "ui_service");
+        property_set("ctl.stop", "system_server");
         msg_util::sleep_ms(1000);
 		factoryTestHndl->oledTest();
         msg_util::sleep_ms(1000);
-        property_set("ctl.start", "ui_service");
-    } else if (strcmp(argv[1], "enter_blcbpc") == 0) {
+        property_set("ctl.start", "system_server");
+    } else if (strcmp(argv[1], "hdmi_on") == 0) {
+		property_set("ctl.stop", "camerad");
+	} else if (strcmp(argv[1], "hdmi_off") == 0) {
+		property_set("ctl.start", "camerad");
+	} else if (strcmp(argv[1], "enter_blcbpc") == 0) {
 		factoryTestHndl->enterBlcbpc();
 	} else if (strcmp(argv[1], "exit_blcbpc") == 0) {
 		factoryTestHndl->exitBlcbpc();
-        system("killall ui_service");
+        system("killall system_server");
 	}
 
 	exit(0);
