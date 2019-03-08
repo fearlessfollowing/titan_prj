@@ -858,8 +858,6 @@ bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uL
 
 
 
-
-
 /*************************************************************************
 ** 方法名称: sendUpdateTakeTimelapseLeft
 ** 方法功能: 发送更新可拍timelapse张数请求
@@ -1004,6 +1002,8 @@ void TransBuffer::fillData(const char* data)
     }
 }
 
+
+
 /*************************************************************************
 ** 方法名称: sendFormatmSDReq
 ** 方法功能: 发送格式化TF卡请求
@@ -1086,6 +1086,8 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
     int iRecvMagic = bytes_to_int(recvHdr);
     int iRecvLen = bytes_to_int(&recvHdr[4]);
 
+    LOGDBG(TAG, "======>>> Magic = 0x%x, content len = %d", iRecvMagic, iRecvLen);
+
     if (iRecvMagic != 0xDEADBEEF || iRecvLen <= 0) {
         LOGERR(TAG, "Magic error or len error");
         close(iSocket);
@@ -1100,6 +1102,9 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
         close(iSocket);
         return PROTO_ERROR_READ_CONTENT;
     }
+    close(iSocket);
+
+    LOGINFO(TAG, "Recv info: %s", recvBuffer->data());
 
     if (recvBuffer->getJsonResult(&jsonRes)) {
         if (callBack) {

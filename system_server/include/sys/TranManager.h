@@ -6,6 +6,9 @@
 #include <common/sp.h>
 #include <mutex>
 
+#include <sys/SocketClient.h>
+#include <sys/SocketListener.h>
+
 
 /*
  * 使用FIFO进行数据收发
@@ -19,7 +22,7 @@
 
 #define     MAX_RECV_BUF_SIZE       1024
 
-class TranManager {
+class TranManager: public SocketListener {
 
 public:
                             TranManager();
@@ -27,7 +30,9 @@ public:
 
 	bool 					start();
 	bool 					stop();
-    
+
+#if 0
+
 private:
 
     std::mutex 				mLock;
@@ -56,6 +61,21 @@ private:
     void                    writePipe(int p, int val);
 
     bool                    onDataAvailable(int iFd);
+
+#else 
+
+protected:
+    virtual bool            onDataAvailable(SocketClient *cli);
+
+private:
+
+    std::mutex 				mLock;
+
+    char                    mRecvBuf[MAX_RECV_BUF_SIZE];        /* 接收数据的缓冲区 */
+
+    int                     getTranListenerSocket();
+
+#endif
 
 };
 

@@ -368,9 +368,9 @@ class control_center:
         )
 
 
-        self.state_notify_func = OrderedDict({
+        self.asyncNotifyHandler = OrderedDict({
             config._STATE_NOTIFY:           self.state_notify,
-            config._RECORD_FINISH:          self.rec_notify,
+            config._RECORD_FINISH:          self.recStopFinishNotifyHandler,
             config._PIC_NOTIFY:             self.pic_notify,
             config._RESET_NOTIFY:           self.reset_notify,
             config._QR_NOTIFY:              self.qr_notify,
@@ -446,7 +446,7 @@ class control_center:
         Info('------- Send module poweroff -------')
         req = OrderedDict()
         req[_name] = config._MODULE_POWER_OFF
-        self.write_and_read(req)
+        self.sendReq2Camerad(req)
 
     def reset_state(self):
         Info('reset busy to idle')
@@ -459,7 +459,7 @@ class control_center:
         self.send_oled_type(config.START_AGEING)
 
         # 给camerad发送录像
-        read_info = self.write_and_read(content)
+        read_info = self.sendReq2Camerad(content)
 
         Info('start_ageing_test result {}'.format(read_info))
 
@@ -702,23 +702,23 @@ class control_center:
 
     def camera_set_options(self, req, from_ui = False):
         Info('[---------- APP Request: camera_set_options ----] req {}'.format(req))
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
 
     def camera_get_options(self, req, from_ui = False):
         Info('[---------- APP Request: camera_get_options ----] req {}'.format(req))
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def camera_set_image_param(self, req, from_ui = False):
         Info('[---------- APP Request: camera_set_image_param ----] req {}'.format(req))
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def camera_get_image_param(self, req, from_ui = False):
         Info('[---------- APP Request: camera_get_image_param ----] req {}'.format(req))
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def get_last_info(self):
@@ -787,7 +787,7 @@ class control_center:
 
     def camera_query_state(self, req, from_ui = False):
 
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def camera_set_time_change_fail(self,err = -1):
@@ -797,11 +797,11 @@ class control_center:
         Info('sys time change done')
 
     def camera_sys_time_change(self, req, from_ui = False):
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def camera_update_gamma_curve(self, req, from_ui = False):
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def camera_get_last_info(self):
@@ -1074,7 +1074,7 @@ class control_center:
     # 返回值: 请求结果
     def queryGpsState(self, req, from_ui = False):
         Info('queryGpsState {}'.format(req))
-        info = self.write_and_read(req)
+        info = self.sendReq2Camerad(req)
         return info
 
 
@@ -1085,7 +1085,7 @@ class control_center:
         
         if check_dic_key_exist(param, 'reset_all'):
             self.reset_user_cfg()
-            self.send_oled_type(config.RESET_ALL_CFG)
+            self.notifyDispType(config.RESET_ALL_CFG)
         else:
             if check_dic_key_exist(param, 'flicker'):
                 p = OrderedDict({'property': 'flicker', 'value': param['flicker']})
@@ -1205,7 +1205,7 @@ class control_center:
 
 
     def start_rec(self, req, from_oled = False):
-        read_info = self.write_and_read(req, from_oled)
+        read_info = self.sendReq2Camerad(req, from_oled)
         return read_info
 
 
@@ -1233,11 +1233,11 @@ class control_center:
 
         if req is not None:
             if oled:
-                self.send_oled_type(config.START_REC_SUC)
+                self.notifyDispType(config.START_REC_SUC)
             else:
                 self.send_oled_type(config.START_REC_SUC, req)
         else:
-            self.send_oled_type(config.START_REC_SUC)
+            self.notifyDispType(config.START_REC_SUC)
 
         # 启动录像成功后，返回剩余信息
         res['_left_info'] = osc_state_handle.get_rec_info()        
@@ -1274,7 +1274,7 @@ class control_center:
 
 
     def stop_rec(self,req,from_oled = False):
-        read_info = self.write_and_read(req, from_oled)
+        read_info = self.sendReq2Camerad(req, from_oled)
         return read_info
 
 
@@ -1290,12 +1290,12 @@ class control_center:
 
     def get_offset(self, req, from_ui = False):
         Info('[------- APP Req: get_offset ------] req: {}'.format(req))                
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def set_offset(self, req, from_ui = False):
         Info('[------- APP Req: set_offset ------] req: {}'.format(req))                
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def set_wifi_config(self, req, from_ui = False):
@@ -1309,17 +1309,17 @@ class control_center:
 
     def camera_get_ntsc_pal(self, req, from_ui = False):
         Info('[------- APP Req: camera_get_ntsc_pal ------] req: {}'.format(req))                
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def camera_set_ntsc_pal(self, req, from_ui = False):
         Info('[------- APP Req: camera_set_ntsc_pal ------] req: {}'.format(req))                
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
     def set_storage_path(self, req, from_ui = False):
         Info('[------- APP Req: set_storage_path ------] req: {}'.format(req))                
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info
 
 
@@ -1338,7 +1338,7 @@ class control_center:
 
 
     def take_pic(self, req, from_oled = False):
-        read_info = self.write_and_read(req, from_oled)
+        read_info = self.sendReq2Camerad(req, from_oled)
         return read_info
 
 
@@ -1392,11 +1392,11 @@ class control_center:
             if self.checkLiveSave(req) is True:
                 StateMachine.addCamState(config.STATE_RECORD)
             if oled:
-                self.send_oled_type(config.START_LIVE_SUC)
+                self.notifyDispType(config.START_LIVE_SUC)
             else:
                 self.send_oled_type(config.START_LIVE_SUC, req)
         else:
-            self.send_oled_type(config.START_LIVE_SUC)
+            self.notifyDispType(config.START_LIVE_SUC)
 
         if res is not None:
             # 启动直播成功后，返回剩余信息
@@ -1410,7 +1410,7 @@ class control_center:
         self.send_oled_type_err(config.START_LIVE_FAIL, err)
 
     def start_live(self, req, from_oled = False):
-        read_info = self.write_and_read(req, from_oled)
+        read_info = self.sendReq2Camerad(req, from_oled)
         return read_info
 
     def camera_live(self, req, from_ui = False):
@@ -1454,7 +1454,7 @@ class control_center:
         self.send_oled_type_err(config.STOP_LIVE_FAIL, err)
 
     def stop_live(self, req, from_oled = False):
-        read_info = self.write_and_read(req,from_oled)
+        read_info = self.sendReq2Camerad(req,from_oled)
         return read_info
 
     def camera_stop_live(self, req, from_ui = False):
@@ -1493,7 +1493,7 @@ class control_center:
             self.set_preview_url(res[config.PREVIEW_URL])
 
         # 通知UI，启动预览成功
-        self.send_oled_type(config.START_PREVIEW_SUC)
+        self.notifyDispType(config.START_PREVIEW_SUC)
 
 
     # 方法名称: start_preview(同步操作)
@@ -1502,7 +1502,7 @@ class control_center:
     #           from_oled - 请求是否来自UI
     # 返回值: 请求的结果
     def start_preview(self, req, from_oled = False):
-        read_info = self.write_and_read(req, from_oled)
+        read_info = self.sendReq2Camerad(req, from_oled)
         return read_info
 
     def camera_start_preview(self, req):
@@ -1531,11 +1531,11 @@ class control_center:
         self.set_preview_url(None)
         StateMachine.rmServerState(config.STATE_PREVIEW)
         StateMachine.rmServerState(config.STATE_STOP_PREVIEWING)
-        self.send_oled_type(config.STOP_PREVIEW_SUC)
+        self.notifyDispType(config.STOP_PREVIEW_SUC)
 
     def stop_preview(self, req, from_oled = False):
         Info('stop preview {}'.format(req))
-        read_info = self.write_and_read(req, from_oled)
+        read_info = self.sendReq2Camerad(req, from_oled)
         return read_info
 
 
@@ -1797,7 +1797,7 @@ class control_center:
             deleteDir['dir'] = remote_del_lists
             deleteReq['parameters'] = deleteDir
             
-            read_info = self.write_and_read(deleteReq)   
+            read_info = self.sendReq2Camerad(deleteReq)   
 
             Info('>>>>>>>> read delete req res {}'.format(deleteReq))
         else:
@@ -1808,11 +1808,13 @@ class control_center:
 
 ###################################################### UI与Server交互接口 ##########################################################
 
+    #############################################################################################################
     # 方法名称: cameraUiGetSetCamState
     # 功能描述: 获取或设置服务器的状态
     # 入口参数: req - 请求参数{"name": "camera._getSetCamState", "parameters": {"method":"get"}}
     # {"name": "camera._getSetCamState", "parameters": {"method":"set", "state": int}}
     # 返回值: {"name": "camera._getSetCamState", "parameters": {"state":"done/error", "error": "reason"}}
+    #############################################################################################################
     def cameraUiGetSetCamState(self, req):
         # Info('[------- UI Req: get/set Server state ------] req: {}'.format(req))
         result = OrderedDict()
@@ -1834,10 +1836,12 @@ class control_center:
         return read_info
 
 
+    #############################################################################################################
     # 方法名称: cameraUiSwitchUdiskMode
     # 功能描述: 请求服务器进入U盘模式
     # 入口参数: req - 请求参数{"name": "camera._change_udisk_mode", "parameters": {"mode":1}}
     # 返回值: {"name": "camera._change_udisk_mode", "parameters": {"state":"done/error", "error": "reason"}}
+    #############################################################################################################
     def cameraUiSwitchUdiskMode(self, req):
         Info('[------- UI Req: cameraUiSwitchUdiskMode ------] req: {}'.format(req))
         res = OrderedDict()
@@ -1848,7 +1852,7 @@ class control_center:
             if StateMachine.checkAllowEnterUdiskMode(): # 允许进入U盘
                 Info('----------> Enter Udisk Req: {}'.format(req))
                 StateMachine.addServerState(config.STATE_UDISK)
-                read_info = self.write_and_read(req)
+                read_info = self.sendReq2Camerad(req)
                 Info('>>>> check can enter udisk, ret {} '.format(read_info))
                 res = json.loads(read_info)
                 if res[_state] != config.DONE:
@@ -1862,17 +1866,19 @@ class control_center:
                 return json.dumps(res)
         else:
             Info('----------> Exit Udisk Req: {}'.format(req))
-            read_info = self.write_and_read(req)
+            read_info = self.sendReq2Camerad(req)
             res = json.loads(read_info)
             if res[_state] == config.DONE:  #退出U盘模式成功，清除状态
                 StateMachine.rmServerState(config.STATE_UDISK)
             return read_info
 
 
+    #############################################################################################################
     # 方法名称: cameraUiUpdateTimelapaseLeft
     # 功能描述: 请求服务器更新拍摄timelapse的剩余值到心跳包
     # 入口参数: req - 请求参数{"name": "camera._update_tl_left_count", "parameters": {"tl_left":int}}
     # 返回值: {"name": "camera._update_tl_left_count", "state":"done/error", "error": "reason"}}
+    #############################################################################################################
     def cameraUiUpdateTimelapaseLeft(self, req):
         Info('[------- UI Req: cameraUiUpdateTimelapaseLeft ------] req: {}'.format(req))        
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.UPDATE_TIME_LAPSE_LEFT, req[_param]))
@@ -1882,10 +1888,12 @@ class control_center:
         return json.dumps(res)
 
 
+    #############################################################################################################
     # 方法名称: cameraUiUpddateRecLeftSec
     # 功能描述: 请求服务器更新录像,直播已进行的秒数及存片的剩余秒数
     # 入口参数: req - 请求参数
     # 返回值: 
+    #############################################################################################################
     def cameraUiUpdateRecLeftSec(self, req):
         Info('[------- UI Req: cameraUiUpdateRecLeftSec ------] req: {}'.format(req))        
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.UPDATE_REC_LEFT_SEC, req[_param]))
@@ -1895,12 +1903,14 @@ class control_center:
         return json.dumps(res)        
 
 
+    #############################################################################################################
     # 方法名称: cameraUiStartPreview
     # 功能描述: 请求服务器启动预览(由于之前UI将启动预览设置为异步的,因此在允许启动预览时，将服务器的状态设置为正在启动预览状态
     #           然后返回UI操作完成，并启动一个线程来实现耗时的启动预览同步操作)
     #           
     # 入口参数: req - 请求参数
     # 返回值: 
+    #############################################################################################################
     def cameraUiStartPreview(self, req):
         Info('[------- UI Req: cameraUiStartPreview ------] req: {}'.format(req))        
         res = OrderedDict()
@@ -1921,12 +1931,14 @@ class control_center:
         return read_info
 
 
+    #############################################################################################################
     # 方法名称: cameraUiStopPreview
     # 功能描述: 请求服务器启动预览(由于之前UI将启动预览设置为异步的,因此在允许启动预览时，将服务器的状态设置为正在启动预览状态
     #           然后返回UI操作完成，并启动一个线程来实现耗时的启动预览同步操作)
     #           
     # 入口参数: req - 请求参数
     # 返回值: 
+    #############################################################################################################
     def cameraUiStopPreview(self, req):
         Info('[------- UI Req: cameraUiStopPreview ------] req: {}'.format(req))        
         res = OrderedDict()
@@ -1945,10 +1957,12 @@ class control_center:
         return read_info
 
 
+    #############################################################################################################
     # 方法名称: cameraUiRequestSyncInfo
     # 功能描述: 请求服务器同步状态
     # 入口参数: req - 请求参数
     # 返回值: 
+    #############################################################################################################
     def cameraUiRequestSyncInfo(self, req):
         Info('[------- UI Req: cameraUiRequestSyncInfo ------] req: {}'.format(req))                
         self.set_cam_state(config.STATE_TEST)
@@ -1967,20 +1981,24 @@ class control_center:
         return ret
 
 
+    #############################################################################################################
     # 方法名称: cameraUiqueryGpsState
     # 功能描述: 请求服务器查询GPS状态
     # 入口参数: req - 请求参数
     # 返回值: 
+    #############################################################################################################
     def cameraUiqueryGpsState(self, req):
         Info('[------- UI Req: cameraUiqueryGpsState ------] req: {}'.format(req))                
-        read_info = self.write_and_read(req)
+        read_info = self.sendReq2Camerad(req)
         return read_info        
 
 
+    #############################################################################################################
     # 方法名称: cameraUiSetCustomerParam
     # 功能描述: 请求服务器设置Customer参数
     # 入口参数: req - 请求参数
     # 返回值: 
+    #############################################################################################################
     def cameraUiSetCustomerParam(self, req):
         Info('[------- UI Req: cameraUiSetCustomerParam ------] req: {}'.format(req))                
         res = OrderedDict()
@@ -1999,11 +2017,13 @@ class control_center:
         return read_info
 
 
+    #############################################################################################################
     # 方法名称: cameraUiSpeedTest
     # 功能描述: 测速
     # 入口参数: req - 请求参数
     # 返回值: 
     # 注: 
+    #############################################################################################################
     def cameraUiSpeedTest(self, req):
         Info('[------- UI Req: cameraUiSpeedTest ------] req: {}'.format(req))                
         name = config._SPEED_TEST
@@ -2231,7 +2251,7 @@ class control_center:
         Info('[------- UI Req: cameraUiCalcAwb ------] req: {}'.format(req))  
         if StateMachine.checkAllowAwbCalc():
             StateMachine.addCamState(config.STATE_AWB_CALC)
-            read_info = self.write_and_read(req)
+            read_info = self.sendReq2Camerad(req)
             Info('----- result: {}'.format(read_info))
             StateMachine.rmServerState(config.STATE_AWB_CALC)
             return read_info
@@ -2257,7 +2277,7 @@ class control_center:
 
         StateMachine.addServerState(config.STATE_QUERY_STORAGE)
 
-        read_info = self.write_and_read(self.get_req(config._QUERY_STORAGE))
+        read_info = self.sendReq2Camerad(self.get_req(config._QUERY_STORAGE))
         ret = json.loads(read_info)
         Info('resut info is {}'.format(read_info))
 
@@ -2292,7 +2312,7 @@ class control_center:
         if StateMachine.checkAllowEnterFormatState():
             StateMachine.addCamState(config.STATE_FORMATING)
             Info('-------> enter format tfcard now ...') 
-            read_info = self.write_and_read(req)
+            read_info = self.sendReq2Camerad(req)
             ret = json.loads(read_info)
 
             # 格式化成功的话，更新心跳包中各个卡的test字段
@@ -2438,7 +2458,7 @@ class control_center:
             ret = cmd_exception(error_dic('AssertionError', str(e)), config.CAMERA_RESET)
         except Exception as e:
             Err('camera_reset unknown exception {}'.format(str(e)))
-            ret = cmd_exception(error_dic('write_and_read', str(e)), config.CAMERA_RESET)
+            ret = cmd_exception(error_dic('sendReq2Camerad', str(e)), config.CAMERA_RESET)
         self.close_read_reset()
         self.close_write_reset()
         return ret
@@ -2505,32 +2525,32 @@ class control_center:
         try:
             Info('camera_oled_sync_state is {}'.format(self.get_cam_state()))
             if self.get_cam_state() & config.STATE_COMPOSE_IN_PROCESS == config.STATE_COMPOSE_IN_PROCESS:
-                self.send_oled_type(config.COMPOSE_PIC)
+                self.notifyDispType(config.COMPOSE_PIC)
             #move live before rec 170901
             elif StateMachine.checkInLive():
                 if self.get_cam_state() & config.STATE_PREVIEW == config.STATE_PREVIEW:
-                    self.send_oled_type(config.SYNC_LIVE_AND_PREVIEW)
+                    self.notifyDispType(config.SYNC_LIVE_AND_PREVIEW)
                 else:
-                    self.send_oled_type(config.START_LIVE_SUC)
+                    self.notifyDispType(config.START_LIVE_SUC)
             elif (self.get_cam_state() & config.STATE_RECORD) == config.STATE_RECORD:
                 if self.get_cam_state() & config.STATE_PREVIEW == config.STATE_PREVIEW:
-                    self.send_oled_type(config.SYNC_REC_AND_PREVIEW)
+                    self.notifyDispType(config.SYNC_REC_AND_PREVIEW)
                 else:
-                    self.send_oled_type(config.START_REC_SUC)
+                    self.notifyDispType(config.START_REC_SUC)
             elif StateMachine.checkInLiveConnecting():
                 if self.get_cam_state() & config.STATE_PREVIEW == config.STATE_PREVIEW:
-                    self.send_oled_type(config.SYNC_LIVE_CONNECTING_AND_PREVIEW)
+                    self.notifyDispType(config.SYNC_LIVE_CONNECTING_AND_PREVIEW)
                 else:
-                    self.send_oled_type(config.START_LIVE_SUC)
+                    self.notifyDispType(config.START_LIVE_SUC)
             # elif self.get_cam_state() & config.STATE_HDMI == config.STATE_HDMI:
-            #     self.send_oled_type(config.START_HDMI_SUC)
+            #     self.notifyDispType(config.START_HDMI_SUC)
             elif (self.get_cam_state() & config.STATE_CALIBRATING) == config.STATE_CALIBRATING:
-                self.send_oled_type(config.START_CALIBRATIONING)
+                self.notifyDispType(config.START_CALIBRATIONING)
             elif (self.get_cam_state() & config.STATE_PREVIEW) == config.STATE_PREVIEW:
-                self.send_oled_type(config.START_PREVIEW_SUC)
+                self.notifyDispType(config.START_PREVIEW_SUC)
             else:
                 #use stop rec suc for disp ilde for oled panel
-                self.send_oled_type(config.RESET_ALL)
+                self.notifyDispType(config.RESET_ALL)
         except Exception as e:
             Err('camera_oled_sync_state e {}'.format(e))
         return cmd_done(ACTION_REQ_SYNC)
@@ -2561,12 +2581,12 @@ class control_center:
         if StateMachine.checkAllowCalibration():
             StateMachine.addCamState(config.STATE_CALIBRATING)
             if from_oled is False:
-                self.send_oled_type(config.START_CALIBRATIONING)
-            res = self.write_and_read(req, from_oled)
+                self.notifyDispType(config.START_CALIBRATIONING)
+            res = self.sendReq2Camerad(req, from_oled)
         else:
             res = cmd_error_state(req[_name], StateMachine.getCamState())
             if from_oled:
-                self.send_oled_type(config.CALIBRATION_FAIL)
+                self.notifyDispType(config.CALIBRATION_FAIL)
         return res
 
     def camera_calibrate_blc_done(self, res = None, req = None, oled = False):
@@ -2574,9 +2594,9 @@ class control_center:
             if check_dic_key_exist(req, _param) and check_dic_key_exist(req[_param], "reset"):
                 Info('blc reset do nothing')
             else:
-                self.send_oled_type(config.START_BLC)
+                self.notifyDispType(config.START_BLC)
         else:
-            self.send_oled_type(config.START_BLC)
+            self.notifyDispType(config.START_BLC)
 
 
     def camera_calibrate_blc_fail(self, err=-1):
@@ -2589,7 +2609,7 @@ class control_center:
         Info('[------- APP Req: camera_calibrate_blc ------] req: {}'.format(req))                
         if StateMachine.checkAllowBlc():
             StateMachine.addCamState(config.STATE_BLC_CALIBRATE)
-            res = self.write_and_read(req)
+            res = self.sendReq2Camerad(req)
         else:
             res = cmd_error_state(req[_name], StateMachine.getCamState())
         return res
@@ -2598,7 +2618,7 @@ class control_center:
     def camera_calibrate_bpc(self, req, from_ui = False):
         Info('---> camera_calibrate_bpc req {} Server State {}'.format(req, StateMachine.getCamState()))
         if StateMachine.checkAllowBpc():
-            res = self.write_and_read(req)
+            res = self.sendReq2Camerad(req)
         else:
             res = cmd_error_state(req[_name], self.get_cam_state())
         return res
@@ -2610,26 +2630,26 @@ class control_center:
                 Info('blc reset do nothing')
             else:
                 StateMachine.addCamState(config.STATE_BPC_CALIBRATE)
-                self.send_oled_type(config.START_BPC)
+                self.notifyDispType(config.START_BPC)
         else:
             StateMachine.addCamState(config.STATE_BPC_CALIBRATE)
-            self.send_oled_type(config.START_BPC)
+            self.notifyDispType(config.START_BPC)
 
     def camera_calibrate_bpc_fail(self, err = -1):
         Err('---> camera_calibrate_bpc_fail')
         StateMachine.rmServerState(config.STATE_BPC_CALIBRATE)
-        self.send_oled_type(config.STOP_BPC)
+        self.notifyDispType(config.STOP_BPC)
 
 
     def calibration_bpc_notify(self, param):
         Info('---> calibration_bpc_notify param {}'.format(param))
-        self.send_oled_type(config.STOP_BPC)
+        self.notifyDispType(config.STOP_BPC)
         StateMachine.rmServerState(config.STATE_BPC_CALIBRATE)
 
     def camerCalibrateMageter(self, req, from_ui = False):
         Info('camerCalibrateMageter req {} Server State {}'.format(req, StateMachine.getCamState()))
         if StateMachine.checkAllowMagmeter():
-            res = self.write_and_read(req)
+            res = self.sendReq2Camerad(req)
         else:
             res = cmd_error_state(req[_name], StateMachine.getCamState())
         return res
@@ -2713,7 +2733,7 @@ class control_center:
             deleteDir['dir'] = remote_del_lists
             deleteReq['parameters'] = deleteDir
             
-            read_info = self.write_and_read(deleteReq)   
+            read_info = self.sendReq2Camerad(deleteReq)   
 
             Info('>>>>>>>> read delete req res {}'.format(read_info))
         else:
@@ -2847,11 +2867,11 @@ class control_center:
 
     def camera_stop_qr_done(self,req = None):
         self.set_cam_state(self.get_cam_state() & ~config.STATE_START_QR)
-        self.send_oled_type(config.STOP_QR_SUC)
+        self.notifyDispType(config.STOP_QR_SUC)
 
     def stop_qr(self,req):
         Info('stop_qr')
-        read_info = self.write_and_read(req, True)
+        read_info = self.sendReq2Camerad(req, True)
         return read_info
 
     def camera_stop_qr(self,req):
@@ -2863,7 +2883,7 @@ class control_center:
         self.send_oled_type_err(config.START_QR_FAIL,err)
 
     def camera_start_qr_done(self,req = None):
-        self.send_oled_type(config.START_QR_SUC)
+        self.notifyDispType(config.START_QR_SUC)
 
     def camera_start_qr(self,req):
         Info('start_qr')
@@ -2871,7 +2891,7 @@ class control_center:
 
     def start_qr(self,req):
         self.set_cam_state(self.get_cam_state() | config.STATE_START_QR)
-        read_info = self.write_and_read(req, True)
+        read_info = self.sendReq2Camerad(req, True)
         return read_info
 
 
@@ -2888,7 +2908,7 @@ class control_center:
 
     def start_power_off(self, req):
         StateMachine.addCamState(config.STATE_POWER_OFF)
-        read_info = self.write_and_read(req, True)
+        read_info = self.sendReq2Camerad(req, True)
         return read_info
 
 
@@ -2901,7 +2921,7 @@ class control_center:
         self.set_cam_state(config.STATE_IDLE)
 
     def start_low_protect(self,req):
-        read_info = self.write_and_read(req, True)
+        read_info = self.sendReq2Camerad(req, True)
         return read_info
 
     def camera_low_protect(self):
@@ -2917,12 +2937,12 @@ class control_center:
     def camera_power_off_done(self, req = None):
         Info("power off done do nothing")
         self.set_cam_state(config.STATE_IDLE)
-        self.send_oled_type(config.START_LOW_BAT_SUC)
+        self.notifyDispType(config.START_LOW_BAT_SUC)
 
     def camera_power_off_fail(self, err = -1):
         Info("power off fail  err {}".format(err))
         self.set_cam_state(config.STATE_IDLE)
-        self.send_oled_type(config.START_LOW_BAT_FAIL)
+        self.notifyDispType(config.START_LOW_BAT_FAIL)
 
     def camera_gyro_done(self, req=None):
         Info("gyro done")
@@ -2936,12 +2956,12 @@ class control_center:
         if StateMachine.checkAllowGyroCal():
             StateMachine.addCamState(config.STATE_START_GYRO)
             if from_oled is False:
-                self.send_oled_type(config.START_GYRO)
-            read_info = self.write_and_read(req, True)
+                self.notifyDispType(config.START_GYRO)
+            read_info = self.sendReq2Camerad(req, True)
         else:
             read_info = cmd_error_state(req[_name], StateMachine.getCamState())
             if from_oled:
-                self.send_oled_type(config.START_GYRO_FAIL)
+                self.notifyDispType(config.START_GYRO_FAIL)
         return read_info
 
     def camera_start_gyro(self, req, from_ui = False):
@@ -2962,7 +2982,7 @@ class control_center:
     def camera_noise_fail(self, err = -1):
         Err('---> camera_noise_fail')
         StateMachine.rmServerState(config.STATE_NOISE_SAMPLE)
-        self.send_oled_type(config.START_NOISE_FAIL)
+        self.notifyDispType(config.START_NOISE_FAIL)
 
     def camera_noise_done(self, req = None):
         Info("noise done")
@@ -2972,12 +2992,12 @@ class control_center:
         if StateMachine.checkAllowNoise():
             StateMachine.addCamState(config.STATE_NOISE_SAMPLE)
             if from_oled is False:
-                self.send_oled_type(config.START_NOISE)
-            read_info = self.write_and_read(req, True)
+                self.notifyDispType(config.START_NOISE)
+            read_info = self.sendReq2Camerad(req, True)
         else:
             read_info = cmd_error_state(req[_name], StateMachine.getCamState())
             if from_oled:
-                self.send_oled_type(config.START_NOISE_FAIL)
+                self.notifyDispType(config.START_NOISE_FAIL)
         return read_info
 
 
@@ -3003,10 +3023,10 @@ class control_center:
 
             # 测试命令来自客户端，让UI显示响应的状态
             if from_oled is False:
-                self.send_oled_type(config.SPEED_START)
+                self.notifyDispType(config.SPEED_START)
             
             self.test_path = req[_param]['path']
-            read_info = self.write_and_read(req, from_oled)
+            read_info = self.sendReq2Camerad(req, from_oled)
         else:
             read_info = cmd_error_state(req[_name], StateMachine.getCamState())
         return read_info
@@ -3033,18 +3053,21 @@ class control_center:
 
     #same func as reset
     def state_notify(self, state_str):
-        Info('[-------Notify Message -------] state_notify param {}'.format(state_str))
+        Info('[------- Notify Message -------] state_notify param {}'.format(state_str))
         self.clear_all()
         self.send_oled_type_err(config.START_FORCE_IDLE, self.get_err_code(state_str))
 
 
-    # 方法名称: rec_notify
+    #############################################################################################
+    # 方法名称: recStopFinishNotifyHandler
     # 功能描述: 处理录像完成通知(可能是正常停止成功; 也可能发生错误被迫停止)
     #           
     # 入口参数: param - 返回的结果
     # 返回值: 
-    def rec_notify(self, param):
-        Info('[-------Notify Message -------] rec_notify param {}'.format(param))
+    #############################################################################################
+    def recStopFinishNotifyHandler(self, param):
+        Info('[------- Notify Message -------] recStopFinishNotifyHandler param {}'.format(param))
+
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.CLEAR_TL_COUNT))
         
         # 清除服务器的录像状态清除服务器的录像状态
@@ -3055,7 +3078,7 @@ class control_center:
             StateMachine.rmServerState(config.STATE_STOP_RECORDING)
 
         if param[_state] == config.DONE:
-            self.send_oled_type(config.STOP_REC_SUC)
+            self.notifyDispType(config.STOP_REC_SUC)
         else:
             self.send_oled_type_err(config.STOP_REC_FAIL, self.get_err_code(param))
 
@@ -3064,7 +3087,7 @@ class control_center:
         Info('[-------Notify Message -------] handle_noise_finish param {}'.format(param))
         StateMachine.rmServerState(config.STATE_NOISE_SAMPLE)
         if param[_state] == config.DONE:
-            self.send_oled_type(config.START_NOISE_SUC)
+            self.notifyDispType(config.START_NOISE_SUC)
         else:
             self.send_oled_type_err(config.START_NOISE_FAIL, self.get_err_code(param))
 
@@ -3087,7 +3110,7 @@ class control_center:
             self._client_take_pic = False
 
         if param[_state] == config.DONE:
-            self.send_oled_type(config.CAPTURE_SUC)
+            self.notifyDispType(config.CAPTURE_SUC)
         else:
             self.send_oled_type_err(config.CAPTURE_FAIL, self.get_err_code(param))
 
@@ -3124,7 +3147,7 @@ class control_center:
                 self.send_wifi_config(content['pro_w'])
             else:
                 Info('error qr msg {}'.format(content))
-                self.send_oled_type(config.QR_FINISH_UNRECOGNIZE)
+                self.notifyDispType(config.QR_FINISH_UNRECOGNIZE)
         else:
             self.send_oled_type_err(config.QR_FINISH_ERROR,self.get_err_code(param))
         Info('qr_notify param over {}'.format(param))
@@ -3140,7 +3163,7 @@ class control_center:
         # 清除校正状态
         StateMachine.rmServerState(config.STATE_CALIBRATING)
         if param[_state] == config.DONE:
-            self.send_oled_type(config.CALIBRATION_SUC)
+            self.notifyDispType(config.CALIBRATION_SUC)
         else:
             self.send_oled_type_err(config.CALIBRATION_FAIL, self.get_err_code(param))
         
@@ -3164,7 +3187,7 @@ class control_center:
         if param is not None:
             self.send_oled_type_err(config.STOP_PREVIEW_FAIL, self.get_err_code(param))
         else:
-            self.send_oled_type(config.STOP_PREVIEW_FAIL)
+            self.notifyDispType(config.STOP_PREVIEW_FAIL)
 
 
     # 方法名称: live_stats_notify
@@ -3191,14 +3214,14 @@ class control_center:
             if net_state == 'connecting':
                 StateMachine.rmServerState(config.STATE_LIVE)
                 StateMachine.addCamState(config.STATE_LIVE_CONNECTING)
-                self.send_oled_type(config.START_LIVE_CONNECTING)
+                self.notifyDispType(config.START_LIVE_CONNECTING)
         
         # 系统正处于直播连接状态 -> 转为重新连接上的状态
         elif StateMachine.checkInLiveConnecting():
             if net_state == 'connected':
                 StateMachine.rmServerState(config.STATE_LIVE_CONNECTING)
                 StateMachine.addCamState(config.STATE_LIVE)
-                self.send_oled_type(config.RESTART_LIVE_SUC)
+                self.notifyDispType(config.RESTART_LIVE_SUC)
 
 
     # 方法名称: gyro_calibration_finish_notify
@@ -3210,7 +3233,7 @@ class control_center:
         Info('[-------Notify Message -------] gyro_calibration_finish_notify param {}'.format(param))
         StateMachine.rmServerState(config.STATE_START_GYRO)      
         if param[_state] == config.DONE:
-            self.send_oled_type(config.START_GYRO_SUC)
+            self.notifyDispType(config.START_GYRO_SUC)
         else:
             self.send_oled_type_err(config.START_GYRO_FAIL,self.get_err_code(param))
 
@@ -3308,7 +3331,7 @@ class control_center:
             StateMachine.rmServerState(config.STATE_RECORD) 
 
         if param[_state] == config.DONE:
-            self.send_oled_type(config.STOP_LIVE_SUC)
+            self.notifyDispType(config.STOP_LIVE_SUC)
         else:
             self.send_oled_type_err(config.STOP_LIVE_FAIL, self.get_err_code(param))
         self.set_live_url(None)
@@ -3338,7 +3361,7 @@ class control_center:
             StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
 
         StateMachine.addServerState(config.STATE_PIC_STITCHING)
-        self.send_oled_type(config.PIC_ORG_FINISH)
+        self.notifyDispType(config.PIC_ORG_FINISH)
 
 
     # 方法名称: handle_timelapse_pic_finish
@@ -3365,7 +3388,7 @@ class control_center:
     def calibration_blc_notify(self, param):
         Info("[-------Notify Message -------] calibration_blc_notify param {}".format(param))
         StateMachine.rmServerState(config.STATE_BLC_CALIBRATE)    
-        self.send_oled_type(config.STOP_BLC)
+        self.notifyDispType(config.STOP_BLC)
 
 
     # 方法名称: handle_notify_from_camera
@@ -3376,11 +3399,11 @@ class control_center:
         self.acquire_sem_camera()
         try:
             name = content[_name]
-            if check_dic_key_exist(self.state_notify_func, name):
+            if check_dic_key_exist(self.asyncNotifyHandler, name):
                 if check_dic_key_exist(content, _param):
-                    self.state_notify_func[name](content[_param])
+                    self.asyncNotifyHandler[name](content[_param])
                 else:
-                    self.state_notify_func[name]()
+                    self.asyncNotifyHandler[name]()
                     
                 if name in self.async_finish_cmd:
                     self.add_async_finish(content)
@@ -3399,7 +3422,7 @@ class control_center:
         Info('start reset2')
         self.clear_all()
         Info('start reset3')
-        self.send_oled_type(config.RESET_ALL)
+        self.notifyDispType(config.RESET_ALL)
         Info('start reset over')
 
 
@@ -3509,7 +3532,7 @@ class control_center:
     def com_cmd_func(self, req):
         Info('>>>> comon request {}'.format(req))
         self.acquire_sem_camera()
-        info = self.write_and_read(req)
+        info = self.sendReq2Camerad(req)
         self.release_sem_camera()
         return info
 
@@ -3634,11 +3657,11 @@ class control_center:
 
 
     # 暂时添加同步锁操作
-    def write_and_read(self, req, from_oled = False):
+    def sendReq2Camerad(self, req, from_oled = False):
         self.syncWriteReadSem.acquire()
         try:
             name = req[_name]
-            # Info('----------> sync write_and_read req {}'.format(req))
+            # Info('----------> sync sendReq2Camerad req {}'.format(req))
 
             # 1.将请求发送给camerad
             read_seq = self.write_req(req, self.get_write_fd())
@@ -3674,7 +3697,7 @@ class control_center:
                     Err('name {} err_code {}'.format(name,err_code))
                     self.camera_cmd_fail[name](err_code)
                     
-            # write_and_read - 返回的是字符串
+            # sendReq2Camerad - 返回的是字符串
             ret = dict_to_jsonstr(ret)
         except FIFOSelectException as e:
             Err('FIFOSelectException name {} e {}'.format(req[_name], str(e)))
@@ -3708,8 +3731,8 @@ class control_center:
             Err('AssertionError e {}'.format(str(e)))
             ret = cmd_exception(error_dic('AssertionError', str(e)), req)
         except Exception as e:
-            Err('unknown write_and_read e {}'.format(str(e)))
-            ret = cmd_exception(error_dic('write_and_read', str(e)), req)
+            Err('unknown sendReq2Camerad e {}'.format(str(e)))
+            ret = cmd_exception(error_dic('sendReq2Camerad', str(e)), req)
             self.reset_all()
 
         self.syncWriteReadSem.release()
@@ -3729,10 +3752,71 @@ class control_center:
         req['args'] = args
         return req
 
+
     def send_oled_type_err(self, type, code = -1):
         Info("send_oled_type_err type is {} code {}".format(type,code))
         err_dict = OrderedDict({'type':type,'err_code':code})
         self.send_req(self.get_write_req(config.OLED_DISP_TYPE_ERR, err_dict))
+
+
+    # UPDATE_TL_CNT_IND = "camera._updateTlCnt"
+    # GET_SET_SYS_CONFIG = "camera._getSetSysSetting"
+    # NOTIFY_QR_RESULT   = "camera._notifyQrScanResult"
+    # IND_DISP_TYPE      = "camera._notifyDispType"
+    # NOTIFY_SYS_ERROR     = "camera._notifySysError"
+    # IND_SET_CUSTOMER   = "camera._setCustomerTemp"
+    #
+    # {"name": "camera._notifyDispType", "parameters": {"type": int, }}
+    # {"name": "camera._getSetSysSetting", "parameters": {"mode": "get/set", }}
+    # {"name": "camera._updateTlCnt", "parameters": {"tl_count": int}}
+    # {"name": "camera._notifyQrScanResult", "parameters": {"content": string}}
+    # {"name": "camera._notifySysError", "parameters": {"content": string}}
+
+    def updateTlCntInd(self, result):
+        Info('---> updateTlCntInd ,req is {}'.format(result))
+
+        indDict = OrderedDict()
+        param = OrderedDict()
+        param['tl_count'] = result['tl_count']
+        indDict['name'] = config.UPDATE_TL_CNT_IND
+        indDict['parameters'] = param
+        self.unixSocketClient.sendAsyncNotify(indDict)
+
+
+    def notifyQrScanResult(self, result):
+        Info('---- notifyQrScanResult not implement yet ------')
+
+
+    def getSetSysSetting(self, result):
+        Info('---- notifyQrScanResult not implement yet ------')
+
+
+    def setCustomerTemp(self, result):
+        Info('---> updateTlCntInd ,req is {}'.format(result))
+        indDict = OrderedDict()
+        param = OrderedDict()
+        param['tl_count'] = result['tl_count']
+        indDict['name'] = config.IND_SET_CUSTOMER
+        indDict['parameters'] = param
+        self.unixSocketClient.sendAsyncNotify(indDict)
+
+
+    def notifyDispType(self, itype, extra = None):
+        Info('---> notifyDispType')
+        indDict = OrderedDict()
+        param = OrderedDict()
+        param['type'] = itype
+        
+        if extra != None:
+            param['extra'] = extra
+
+        indDict['name'] = config.IND_DISP_TYPE
+        indDict['parameters'] = param
+        self.unixSocketClient.sendAsyncNotify(indDict)
+
+
+    def notifySysError(self, extra):
+        pass
 
     def send_oled_type(self, type, req = None):
         req_dict = OrderedDict({'type': type})

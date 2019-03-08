@@ -188,7 +188,6 @@ class UnixSocketClient(MyUnixSocket):
         except OSError as e:
             Info("Create Unix Socket Error: {}".format(e))
             self._socket = None
-        
         return self._socket
 
 
@@ -199,12 +198,14 @@ class UnixSocketClient(MyUnixSocket):
 
 
 
+    #################################################################################################
     # 方法名称: sendAsyncNotify
     # 方法功能: 发送异步通知
     # 入口参数: 
     #   cmd - 命令ID
     #   data - 命令对应的参数
     # 返 回 值: 成功返回大于0; 失败返回错误码
+    #################################################################################################
     def sendAsyncNotify(self, cmd, data = None):
         self.sendLock.acquire()
         sendAsyncResult = True
@@ -237,11 +238,12 @@ class UnixSocketClient(MyUnixSocket):
         return sendAsyncResult
 
 
-    #
+    #################################################################################################
     # Head： 0xDEADBEEF + Content_Len 
     # Content: {“cmd": rsp_cmd, "parameters"： {}}
     #
     # 发送同步请求
+    ##################################################################################################
     def sendSyncRequest(self, cmd, data = None):
         content = None
         requestResult = None

@@ -123,8 +123,11 @@ public:
         TransBuffer() { }
         
         TransBuffer(int iLen) {
-            mBuffer = new char[iLen];
-            if (mBuffer) mBufferLen = iLen;
+            mBuffer = new char[iLen + 1];
+            if (mBuffer) {
+                memset(mBuffer, '\0', iLen);
+                mBufferLen = iLen;
+            }
         }
 
         ~TransBuffer() {

@@ -880,7 +880,7 @@ static void installVm()
 {
 	if (access("/swap/sfile", F_OK) != 0) {
 		mkdir("/swap", 0766);
-		system("dd if=/dev/zero of=/swap/sfile bs=1024 count=4000000");
+		system("dd if=/dev/zero of=/swap/sfile bs=1024 count=8000000");
 	}
 	
 	system("mkswap /swap/sfile");

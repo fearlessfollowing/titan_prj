@@ -153,7 +153,7 @@ static Volume gSysVols[] = {
     /* 底部USB接口: 2.0, 3.0 */
     {   /* Udisk1 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
-        .pBusAddr       = "usb2-1.3,usb1-2.3",           /* 接3.0设备时的总线地址 */
+        .pBusAddr       = "usb2-1.2,usb1-2.2",           /* 接3.0设备时的总线地址 */
         .pMountPath     = "/mnt/udisk1",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */

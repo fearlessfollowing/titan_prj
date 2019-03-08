@@ -663,3 +663,14 @@ GPIOs 320-511, platform/2200000.gpio, tegra-gpio:
  gpio-484 (                    |bt_ext_wake         ) out hi    
  gpio-488 (                    |Setting             ) in  hi    
  gpio-489 (                    |WL_REG_ON           ) out lo 
+
+
+
+
+ 日期: 2019年3月8日
+ -----------------------------------------------------------------------------------------
+ 禁止Usb Host进入休眠模式测试:
+ echo on > /sys/bus/platform/devices/353000.xhci/power/control
+ 
+ -----------------------------------------------------------------------------------------
+ 
