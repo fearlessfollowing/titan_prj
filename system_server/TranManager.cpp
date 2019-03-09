@@ -366,6 +366,7 @@ TranManager::~TranManager()
 
 bool TranManager::start()
 {
+    LOGINFO(TAG, "-----> start TranManager here .....................");
     return this->startListener();;
 }
 
@@ -380,6 +381,8 @@ bool TranManager::onDataAvailable(SocketClient* cli)
 {
     bool bResult = true;
     int iSockFd = cli->getSocket();
+
+    LOGINFO(TAG, "------------------> TranManager::onDataAvailable");
 
     memset(mRecvBuf, 0, sizeof(mRecvBuf));
     int iLen = read(iSockFd, mRecvBuf, RECV_HEAD_LEN);
@@ -418,9 +421,7 @@ bool TranManager::onDataAvailable(SocketClient* cli)
         }
 
         printJson(rootJson);
-
-        return false;
-        // bResult = Singleton<ProtoManager>::getInstance()->parseAndDispatchRecMsg(cli, rootJson);         
+        bResult = Singleton<ProtoManager>::getInstance()->parseAndDispatchRecMsg(cli, rootJson);         
     }
     return bResult;
 }

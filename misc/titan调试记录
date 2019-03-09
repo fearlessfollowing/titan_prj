@@ -1304,3 +1304,47 @@ factory_test hdmi_off
 命令中去掉：in1p_record_setup.sh / in1n_record_setup.sh的调用
 
 
+
+内置切外置Line  In 
+
+寄存器                      内置                    Line In                     MIC In
+000e                        0100                    0040
+000f                        0808                    1f1f
+0027                        1400                    3420
+0028                        1010                    3030
+0061                        8000                    8006
+0063                        e818                    e81c 
+0064                        0c00                    1c00 
+0065                        0000                    0c00 
+0066                        0000                    0300
+006a                        001b                    003d
+006c                        0200                    3600
+
+
+系统开机后会有线程检测当前是使用内置还是外置的音频设备
+Switch Inner Audio device:
+echo 000e 0100 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 000f 0808 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0027 1400 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0028 1010 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0061 8000 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0063 e818 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0064 0c00 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0065 0000 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0066 0000 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 006a 001b > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 006c 0200 > /sys/bus/i2c/devices/1-001c/codec_reg
+
+
+Switch Outerr Line In: 
+echo 000e 0040 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 000f 1f1f > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0027 3420 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0028 3030 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0061 8006 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0063 e81c > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0064 1c00 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0065 0c00 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 0066 0300 > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 006a 003d > /sys/bus/i2c/devices/1-001c/codec_reg
+echo 006c 3600 > /sys/bus/i2c/devices/1-001c/codec_reg

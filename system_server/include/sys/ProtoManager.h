@@ -19,7 +19,7 @@
 #include <functional>
 #include <system_properties.h>
 #include <sys/VolumeManager.h>
-
+#include <sys/SocketClient.h>
 #include <prop_cfg.h>
 #include <mutex>
 #include <json/value.h>
@@ -197,71 +197,28 @@ public:
 
     /* 查询进入U盘模式（注: 进入U盘模式之前需要禁止InputManager上报,在返回结果之后再使能） */
     bool            sendSwitchUdiskModeReq(bool bEnterExitFlag);
-
-    /* 更新可拍timelapse的剩余值 */
-    bool            sendUpdateTakeTimelapseLeft(u32 leftVal);
-
-    /* 更新录像,直播进行的时间及剩余时间 */
-    bool            sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uLiveSec, u32 uLiveRecLeftSec);
-
-    /* 请求同步 */
-    bool            sendStateSyncReq(REQ_SYNC* pReqSyncInfo);
-
-    /* 查询GPS状态 */
-    int             sendQueryGpsState();
-
-    /* 格式化小卡： 单独格式化一张;或者格式化所有(进入格式化之前需要禁止InputManager上报) */
-    int             sendFormatmSDReq(int iIndex);
-
-
-    /* 查询小卡的容量信息 */
-    bool            sendQueryTfCard();
-
-    /* 设置模板参数 */
-    bool            sendSetCustomLensReq(Json::Value& customParam);
-
-    /* 启动测速 */
-    bool            sendSpeedTestReq(const char* path);
-
-    /* 请求拍照 */
-    bool            sendTakePicReq(Json::Value& takePicReq);
-
-    /* 请求录像 */
-    bool            sendTakeVideoReq(Json::Value& takeVideoReq);
-
-    /* 停止录像 */
-    bool            sendStopVideoReq();
-
-    /* 请求直播 */
-    bool            sendStartLiveReq(Json::Value& startLiveReq);
-
-    /* 停止直播 */
-    bool            sendStopLiveReq();
-
-    /* 拼接校准 */
-    bool            sendStichCalcReq();
-
-    /* 更新存储路径： */
-    bool            sendSavePathChangeReq(const char* savePath);
-
-    /* 发送存储设备列表 
-     */
-    bool            sendStorageListReq(const char* devList);
+    bool            sendUpdateTakeTimelapseLeft(u32 leftVal);           /* 更新可拍timelapse的剩余值 */
+    bool            sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uLiveSec, u32 uLiveRecLeftSec);  /* 更新录像,直播进行的时间及剩余时间 */
+    bool            sendStateSyncReq(REQ_SYNC* pReqSyncInfo);       /* 请求同步 */
+    int             sendQueryGpsState();                            /* 查询GPS状态 */    
+    int             sendFormatmSDReq(int iIndex);                   /* 格式化小卡： 单独格式化一张;或者格式化所有(进入格式化之前需要禁止InputManager上报) */
+    bool            sendQueryTfCard();                              /* 查询小卡的容量信息 */
+    bool            sendSetCustomLensReq(Json::Value& customParam); /* 设置模板参数 */
+    bool            sendSpeedTestReq(const char* path);             /* 启动测速 */
+    bool            sendTakePicReq(Json::Value& takePicReq);        /* 请求拍照 */
+    bool            sendTakeVideoReq(Json::Value& takeVideoReq);    /* 请求录像 */
+    bool            sendStopVideoReq();                             /* 停止录像 */
+    bool            sendStartLiveReq(Json::Value& startLiveReq);    /* 请求直播 */
+    bool            sendStopLiveReq();                              /* 停止直播 */
+    bool            sendStichCalcReq();                             /* 拼接校准 */
+    bool            sendSavePathChangeReq(const char* savePath);    /* 更新存储路径： */
+    bool            sendStorageListReq(const char* devList);        /* 发送存储设备列表 */
 
     bool            sendUpdateSysTempReq(Json::Value& param);
-
-    /* 噪声采样 */
-    bool            sendStartNoiseSample();
-
-    /* 启动陀螺仪校正 */
-    bool            sendGyroCalcReq();
-
-    /* 低电请求 */
-    bool            sendLowPowerReq();
-
-    /* 白平衡校正 */
-    bool            sendWbCalcReq();
-
+    bool            sendStartNoiseSample();                         /* 噪声采样 */
+    bool            sendGyroCalcReq();                              /* 启动陀螺仪校正 */
+    bool            sendLowPowerReq();                              /* 低电请求 */
+    bool            sendWbCalcReq();                                /* 白平衡校正 */
 
 
     /*------------------------------------- 设置页 -----------------------------------
@@ -278,7 +235,10 @@ public:
     bool            sendSetOptionsReq(Json::Value& optionsReq);
 
 
-    bool            parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
+    // bool            parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
+
+    bool            parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData);
+
 
     void            setNotifyRecv(sp<ARMessage> notify);
 
@@ -320,16 +280,11 @@ private:
 
 
     void            handleDispType(Json::Value& jsonData);
-    void            handleQueryLeftInfo(Json::Value& queryJson);
-    void            handleGpsStateChange(Json::Value& queryJson);
-    void            handleShutdownMachine(Json::Value& queryJson);
-    void            handleSwitchMountMode(Json::Value& paramJson);
-    void            handleSetSn(Json::Value& jsonData);
-    void            handleSyncInfo(Json::Value& jsonData);
+
+
     void            handleErrInfo(Json::Value& jsonData);
-    void            handleTfCardChanged(Json::Value& jsonData);
-    void            handleTfcardFormatResult(Json::Value& jsonData);
-    void            handleSpeedTestResult(Json::Value& jsonData);
+
+
 
 
     void            handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode);
@@ -340,8 +295,22 @@ private:
 
     bool            innerSendSyncReqWithoutCallback(Json::Value& root, syncReqResultCallback callBack = nullptr);
     
+
+
+    void            handleSyncInfo(SocketClient* cli, Json::Value& jsonData);
+    void            handleSwitchMountMode(SocketClient* cli, Json::Value& paramJson);
+    void            handleShutdownMachine(SocketClient* cli, Json::Value& queryJson);
+    void            handleGpsStateChange(SocketClient* cli, Json::Value& queryJson);
+    void            handleSetSn(SocketClient* cli, Json::Value& jsonData);
+    void            handleQueryLeftInfo(SocketClient* cli, Json::Value& queryJson);
+    void            handleSpeedTestResult(SocketClient* cli, Json::Value& jsonData);
+    void            handleTfCardChanged(SocketClient* cli, Json::Value& jsonData);
+
+    void            handleTfcardFormatResult(SocketClient* cli, Json::Value& jsonData);
+
     /* 解析查询小卡的结果 */
     static bool     parseQueryTfcardResult(Json::Value& jsonData);
+
 
     /********************************** Callback ***************************************/
     static bool     getServerStateCb(Json::Value& resultJson);

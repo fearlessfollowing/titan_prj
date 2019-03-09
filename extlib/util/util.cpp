@@ -413,7 +413,7 @@ bool loadJsonFromCString(const char* pCstr, Json::Value* root)
     JSONCPP_STRING errs;
     Json::CharReader* reader = builder.newCharReader();
     if (reader->parse(pCstr, pCstr + strlen(pCstr), root, &errs)) {
-        LOGDBG(TAG, "parse [%s] success", pCstr);
+        // LOGDBG(TAG, "parse [%s] success", pCstr);
         bResult = true;
     } else {
         LOGERR(TAG, "Parse Json String Failed!");

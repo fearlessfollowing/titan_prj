@@ -39,7 +39,7 @@ class ComSyncReqThread(Thread):
 
     def run(self):
         Info('----------------> run ComSyncReqThread obj')
-        self.control_obj.write_and_read(self.sync_req, True)
+        self.control_obj.sendReq2Camerad(self.sync_req, True)
 
 
 

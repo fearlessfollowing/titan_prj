@@ -46,7 +46,7 @@ def genSendDataFromDict(req):
 
 
 def genSendDataFromStr(data):
-    Info('genSendDataFromStr conent {}'.format(data))
+    # Info('genSendDataFromStr conent {}'.format(data))
     sendContent = data
     magicHead = int_to_bytes(HEAD_MAGIC)
     dataLen = int_to_bytes(len(sendContent))
@@ -84,11 +84,11 @@ class MyUnixSocket:
         if magicHead != HEAD_MAGIC or contentLen <= 0:
             Error("Recv head error -----")
         else:
-            Info('contentLen is {}'.format(contentLen))
+            # Info('contentLen is {}'.format(contentLen))
             readContent = socket.recv(contentLen)
             content = bytes_to_str(readContent)
                     
-            Print('recv content content {}'.format(content))
+            # Print('recv content content {}'.format(content))
             return jsonstr_to_dic(content)
         
         return None
@@ -98,26 +98,25 @@ class MyUnixSocket:
 #
 class MyUnixServerHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        Info("-----++ MyUnixServerHandler: handle ++----------------")
+        # Info("-----++ MyUnixServerHandler: handle ++----------------")
         header = self.request.recv(COMMON_HDR_LEN)
         if (len(header)) <= 0:
             Info('---------------->>>> header len is 0')
         else:
-            print(header)
             magicHead = bytes_to_int(header, 0)
             contentLen = bytes_to_int(header, 4)
             if magicHead != HEAD_MAGIC or contentLen <= 0:
                 Info("--++ MyUnixServerHandler: handle Recv head error -----")
                 self.request.sendall(genSendDataFromDict(genTransError(PARSE_HDR_ERROR)))            
             else:
-                Info('contentLen is {}'.format(contentLen))
+                # Info('contentLen is {}'.format(contentLen))
                 readContent = self.request.recv(contentLen)
                 if len(readContent) != contentLen:
                     Info("---+ MyUnixServerHandler: handle read len != contentLen ++-------")
                     self.request.sendall(genSendDataFromDict(genTransError(READ_CONTENT_ERROR)))            
                 else:
                     content = bytes_to_str(readContent)
-                    Info('recv content content {}'.format(content))
+                    # Info('recv content content {}'.format(content))
                     reqDict = jsonstr_to_dic(content)
                     if check_dic_key_exist(reqDict, "name"):                
                         if UnixSocketServer.getCallBackEntry() != None:
@@ -214,9 +213,9 @@ class UnixSocketClient(MyUnixSocket):
         if data != None:
             content = self.genSendDataFromDictEx(cmd, data)
         else:
-            content = self.genSendDataFromDict(cmd)
+            content = genSendDataFromDict(cmd)
 
-        Info('sendAsyncNotify conent {}'.format(content))
+        Info('------> sendAsyncNotify conent {}'.format(content))
 
         if self.connectServer() != None:
             try:

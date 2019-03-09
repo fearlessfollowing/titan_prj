@@ -338,7 +338,7 @@ class control_center:
             config.GET_META_DATA:           self.camera_get_meta_data,
             config._DISCONNECT:             self.camera_disconnect,
             config._SET_CUSTOM:             self.set_custom,
-            config._SET_SN:                 self.set_sn,
+            config._SET_SN:                 self.handleSetSn,
             config._START_SHELL:            self.start_shell,
 
             config._QUERY_GPS_STATE:        self.queryGpsState,
@@ -369,46 +369,33 @@ class control_center:
 
 
         self.asyncNotifyHandler = OrderedDict({
-            config._STATE_NOTIFY:           self.state_notify,
+            config._STATE_NOTIFY:           self.stateNotifyHandler,
             config._RECORD_FINISH:          self.recStopFinishNotifyHandler,
-            config._PIC_NOTIFY:             self.pic_notify,
-            config._RESET_NOTIFY:           self.reset_notify,
-            config._QR_NOTIFY:              self.qr_notify,
-            config._CALIBRATION_NOTIFY:     self.calibration_notify,
-            config._PREVIEW_FINISH:         self.preview_finish_notify,
-            config._LIVE_STATUS:            self.live_stats_notify,
-            config._NET_LINK_STATUS:        self.net_link_state_notify,
-            config._GYRO_CALIBRATION:       self.gyro_calibration_finish_notify,
+            config._PIC_NOTIFY:             self.picFinishNotifyHandler,
+            config._RESET_NOTIFY:           self.resetNotifyHandler,
+            config._QR_NOTIFY:              self.qrResultNotifyHandler,
+            config._CALIBRATION_NOTIFY:     self.calbrateNotifyHandler,
+            config._PREVIEW_FINISH:         self.previewFinishNotifyHandler,
+            config._LIVE_STATUS:            self.liveStateNotifyHandler,
+            config._NET_LINK_STATUS:        self.netLinkStateNotifyHandler,
+            config._GYRO_CALIBRATION:       self.gyroCalFinishNotifyHandler,
+            config._SPEED_TEST_NOTIFY:      self.speedTestFinishNotifyHandler,
+            config._LIVE_FINISH:            self.liveFinishNotifyHnadler,
+            config._LIVE_REC_FINISH:        self.liveRecFinishNotifyHandler,
+            config._PIC_ORG_FINISH:         self.orgPicFinishNotifyHandler,
 
-            # 测速完成通知
-            config._SPEED_TEST_NOTIFY:      self.storage_speed_test_finish_notify,
-
-            # 非存片模式的直播
-            config._LIVE_FINISH:            self.handle_live_finsh,
-            
-            config._LIVE_REC_FINISH:        self.handle_live_rec_finish,
-
-            # Origin拍摄完成
-            config._PIC_ORG_FINISH:         self.handle_pic_org_finish,
-
-            config._CAL_ORG_FINISH:         self.handle_cal_org_finish,
-            config._TIMELAPSE_PIC_FINISH:   self.handle_timelapse_pic_finish,
-            config._NOISE_FINISH:           self.handle_noise_finish,
-            config._GPS_NOTIFY:             self.gps_notify,
-            config._STITCH_NOTIFY:          self.stitch_notify,
-
-            # config._BLC_FINISH:             self.calibration_blc_notify,
-            config._SND_NOTIFY:             self.snd_notify,
-            
-            config._BLC_FINISH:             self.calibration_blc_notify,
-            
-            config._BPC_FINISH:             self.calibration_bpc_notify,
+            config._CAL_ORG_FINISH:         self.orgCalFinishNotifyHandler,
+            config._TIMELAPSE_PIC_FINISH:   self.updateTimelapseCntNotifyHandler,
+            config._NOISE_FINISH:           self.sampleNoiseFinishNotifyHandler,
+            config._GPS_NOTIFY:             self.gpsStateChangeNotifyHandler,           # GPS状态变化通知
+            config._STITCH_NOTIFY:          self.stitchProgressNotifyHandler,
+            config._SND_NOTIFY:             self.sndDevChangeNotifyHandler,
+            config._BLC_FINISH:             self.blcFinishNotifyHandler,
+            config._BPC_FINISH:             self.bpcFinishNotifyHandler,
             
             #通知TF卡状态的变化
             config._TF_NOTIFY:              self.tfStateChangedNotify,
 
-            # config._STOP_REC_FINISH:      self.handle_stop_rec_finish,
-            # config._STOP_LIVE_FINISH:     self.handle_stop_live_finish,
             config._MAGMETER_FINISH:        self.CalibrateMageterNotify,
             config._DELETE_TF_FINISH:       self.cameraDeleteFileNotify
         })
@@ -626,18 +613,20 @@ class control_center:
         UnixSocketServerHandle('socket_server', self).start()
 
 
+    def syncState2SystemServer(self, req):
+        Info('-------> send sync init req {}'.format(req))
+        # self.send_req(self.get_write_req(config.OLED_SYNC_INIT, req))
+        syncInd = OrderedDict()
+        syncInd[_name] = 'camera._indSyncState'
+        syncInd[_param] = req
+        self.sendIndMsg2SystemServer(syncInd)
 
-    def send_sync_init(self, req):
-        Info('send sync init req {}'.format(req))
-        self.send_req(self.get_write_req(config.OLED_SYNC_INIT, req))
 
-    def send_set_sn(self,req):
-        self.send_req(self.get_write_req(config.OLED_SET_SN, req))
+
 
     def send_wifi_config(self, req):
         Info('wifi req'.format(req))
         self.send_req(self.get_write_req(config.OLED_CONIFIG_WIFI, req))
-
 
     # 方法名称: sendQueryStorageResults
     # 功能: 将查询到的卡信息发送给UI
@@ -661,11 +650,9 @@ class control_center:
     def set_cam_state(self,state):
         osc_state_handle.set_cam_state(state)
 
-    def set_gps_state(self,state):
-        osc_state_handle.set_gps_state(state)
 
-    def set_snd_state(self,param):
-        osc_state_handle.set_snd_state(param)
+
+
 
     #req is reserved
     def get_osc_info(self):
@@ -774,9 +761,10 @@ class control_center:
                     if m_v in res.keys():
                         req['c_v'] = res[m_v]
                     req['h_v'] = ins_version.get_version()
-                    self.send_sync_init(req)
+                    self.syncState2SystemServer(req)
         except Exception as e:
             Err('sync_init_info_to_p exception {}'.format(str(e)))
+
 
     def camera_query_state_done(self, res = None):
         if res is not None:
@@ -849,12 +837,16 @@ class control_center:
         except Exception as e:
             Err('set hw exception {}'.format(e))
 
+
+
     def set_sys_time_change(self, delta_t):
         Info('set_sys_time_change a')
         param = OrderedDict()
         param['delta_time_s'] = delta_t
         self.start_camera_cmd_func(config._SYS_TIME_CHANGE, self.get_req(config._SYS_TIME_CHANGE, param))
         Info('set_sys_time_change b')
+
+
 
     def set_sys_time(self, req):
         if check_dic_key_exist(req, 'hw_time') and check_dic_key_exist(req,'time_zone'):
@@ -1040,10 +1032,13 @@ class control_center:
                     return
 
 
-    def set_sn(self, req):
-        Info('set_sn {}'.format(req))
-        self.send_set_sn(req[_param])
+
+    def handleSetSn(self, req):
+        Info('[------- APP Req: handleSetSn ------] req: {}'.format(req))
+        self.sendIndMsg2SystemServer(req)
+        # self.send_set_sn(req[_param])
         return cmd_done(req[_name])
+
 
 
     def start_shell(self, req, from_ui = False):
@@ -2641,10 +2636,7 @@ class control_center:
         self.notifyDispType(config.STOP_BPC)
 
 
-    def calibration_bpc_notify(self, param):
-        Info('---> calibration_bpc_notify param {}'.format(param))
-        self.notifyDispType(config.STOP_BPC)
-        StateMachine.rmServerState(config.STATE_BPC_CALIBRATE)
+
 
     def camerCalibrateMageter(self, req, from_ui = False):
         Info('camerCalibrateMageter req {} Server State {}'.format(req, StateMachine.getCamState()))
@@ -2670,10 +2662,6 @@ class control_center:
         Err('------> cameraCalibrateMagmeterFail')
         StateMachine.rmServerState(config.STATE_MAGMETER_CALIBRATE)
 
-    def CalibrateMageterNotify(self, param):
-        Info('CalibrateMageterNotify param {}'.format(param))
-        StateMachine.rmServerState(config.STATE_MAGMETER_CALIBRATE)
-
 
 ################################## 文件删除操作 #######################################
  
@@ -2685,30 +2673,6 @@ class control_center:
         else:
             return False    
 
-    # 如果小卡删除成功，则删除对应大卡里的文件
-    def cameraDeleteFileNotify(self, param):
-        Info('>>>>>>> cameraDeleteFileNotify param {}'.format(param))
-        # 根据返回结果来删除本地文件
-        if param['state'] == config.DONE:
-            for i in self.delete_lists:
-                Info('---------> delete item test {}'.format(i))
-                if os.path.isdir(i):
-                    Info('--------------> delete dir {}'.format(i))
-                    shutil.rmtree(i)
-                else:
-                    Info('--------------> delete file {}'.format(i))
-                    os.remove(i)
-        else:
-            Info('>>>>>>>>>> remote delete File failed, can not rm local file/dir ...')
-            # for i in self.delete_lists:
-            #     Info('>>>>>>>>>>delete item test {}'.format(i))
-            #     if os.path.isdir(i):
-            #         Info('--------------> delete dir {}'.format(i))
-            #         shutil.rmtree(i)
-            #     else:
-            #         Info('--------------> delete file {}'.format(i))
-            #         os.remove(i)
-        self.set_cam_state(self.get_cam_state() & ~config.STATE_DELETE_FILE)
 
 
     def cameraDeleteFile(self, req, from_ui = False):
@@ -2757,8 +2721,9 @@ class control_center:
 
 
     def cameraShutdown(self, req):
-        Info('------> cameraShutdown req from client {} Server State {}'.format(req, StateMachine.getCamState()))
-        self.send_req(self.get_write_req(config.UI_NOTIFY_SHUT_DOWN, req))
+        Info('[------- APP Req: cameraShutdown ------] req: {}'.format(req))            
+        # self.send_req(self.get_write_req(config.UI_NOTIFY_SHUT_DOWN, req))
+        self.sendIndMsg2SystemServer(req)           
         result = OrderedDict()
         result['name'] = req[_name]
         result['state'] = config.DONE
@@ -2766,8 +2731,10 @@ class control_center:
 
 
     def cameraSwitchMountMode(self, req):
-        Info('----> cameraSwitchMountMode req from client {} Server State {}'.format(req, StateMachine.getCamState()))
-        self.send_req(self.get_write_req(config.UI_NOTIFY_SWITCH_MOUNT_MODE, req))
+        Info('[------- APP Req: cameraSwitchMountMode ------] req: {}'.format(req))            
+        # self.send_req(self.get_write_req(config.UI_NOTIFY_SWITCH_MOUNT_MODE, req))
+
+        self.sendIndMsg2SystemServer(req)        
         result = OrderedDict()
         result['name'] = req[_name]        
         result['state'] = config.DONE
@@ -3051,22 +3018,30 @@ class control_center:
 
 ######################################### Notify Start ################################
 
-    #same func as reset
-    def state_notify(self, state_str):
-        Info('[------- Notify Message -------] state_notify param {}'.format(state_str))
+    #############################################################################################
+    # 方法名称: stateNotifyHandler
+    # 功能描述: 状态变化通知
+    #           
+    # 入口参数: param - 返回的结果
+    # 返回值: 
+    #############################################################################################
+    def stateNotifyHandler(self, content):
+        Info('[------- Notify Message -------] stateNotifyHandler {}'.format(content))
+        param = content[_param]
         self.clear_all()
-        self.send_oled_type_err(config.START_FORCE_IDLE, self.get_err_code(state_str))
+        self.send_oled_type_err(config.START_FORCE_IDLE, self.get_err_code(param))
 
 
     #############################################################################################
     # 方法名称: recStopFinishNotifyHandler
     # 功能描述: 处理录像完成通知(可能是正常停止成功; 也可能发生错误被迫停止)
     #           
-    # 入口参数: param - 返回的结果
+    # 入口参数: content - 返回的结果
     # 返回值: 
     #############################################################################################
-    def recStopFinishNotifyHandler(self, param):
-        Info('[------- Notify Message -------] recStopFinishNotifyHandler param {}'.format(param))
+    def recStopFinishNotifyHandler(self, content):
+        Info('[------- Notify Message -------] recStopFinishNotifyHandler {}'.format(content))
+        param = content[_param]
 
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.CLEAR_TL_COUNT))
         
@@ -3083,22 +3058,16 @@ class control_center:
             self.send_oled_type_err(config.STOP_REC_FAIL, self.get_err_code(param))
 
 
-    def handle_noise_finish(self, param):
-        Info('[-------Notify Message -------] handle_noise_finish param {}'.format(param))
-        StateMachine.rmServerState(config.STATE_NOISE_SAMPLE)
-        if param[_state] == config.DONE:
-            self.notifyDispType(config.START_NOISE_SUC)
-        else:
-            self.send_oled_type_err(config.START_NOISE_FAIL, self.get_err_code(param))
-
-
-    # 方法名称: pic_notify
+    #############################################################################################
+    # 方法名称: picFinishNotifyHandler
     # 功能描述: 处理拍照完成通知(可能是正常停止成功;也可能发生错误被迫停止,如果有拼接,拼接已经完成)
     #           
     # 入口参数: param - 返回的结果
     # 返回值: 
-    def pic_notify(self, param):
-        Info('[-------Notify Message -------] pic_notify param {}'.format(param))
+    #############################################################################################
+    def picFinishNotifyHandler(self, content):
+        Info('[-------Notify Message -------] picFinishNotifyHandler {}'.format(content))
+        param = content[_param]
 
         if StateMachine.checkStateIn(config.STATE_TAKE_CAPTURE_IN_PROCESS):
             StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
@@ -3115,24 +3084,29 @@ class control_center:
             self.send_oled_type_err(config.CAPTURE_FAIL, self.get_err_code(param))
 
 
-
-    # 方法名称: reset_notify
+    #############################################################################################
+    # 方法名称: resetNotifyHandler
     # 功能描述: 复位通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值: 
-    def reset_notify(self):
-        Info('[-------Notify Message -------] reset_notify')
+    #############################################################################################
+    def resetNotifyHandler(self, content):
+        Info('[-------Notify Message -------] resetNotifyHandler')
         self.reset_all()
-        Info('reset_notify rec over')
 
-    # 方法名称: qr_notify
+
+    #############################################################################################
+    # 方法名称: qrResultNotifyHandler
     # 功能描述: 二维码扫描结束通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值: 
-    def qr_notify(self, param):
-        Info('[-------Notify Message -------] qr_notify param {}'.format(param))
+    #############################################################################################
+    def qrResultNotifyHandler(self, content):
+        Info('[-------Notify Message -------] qrResultNotifyHandler {}'.format(content))
+        param = content[_param]
+
         # 清除正在启动二维码扫描状态
         StateMachine.rmServerState(config.STATE_START_QR)
         if param[_state] == config.DONE:
@@ -3150,30 +3124,37 @@ class control_center:
                 self.notifyDispType(config.QR_FINISH_UNRECOGNIZE)
         else:
             self.send_oled_type_err(config.QR_FINISH_ERROR,self.get_err_code(param))
-        Info('qr_notify param over {}'.format(param))
+        Info('qrResultNotifyHandler param over {}'.format(param))
 
 
-    # 方法名称: calibration_notify
+    #############################################################################################
+    # 方法名称: calbrateNotifyHandler
     # 功能描述: 校正通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值:
-    def calibration_notify(self, param):
-        Info('[-------Notify Message -------] calibration_notify param {}'.format(param))
+    #############################################################################################
+    def calbrateNotifyHandler(self, content):
+        Info('[-------Notify Message -------] calbrateNotifyHandler {}'.format(content))
+        param = content[_param]        
         # 清除校正状态
         StateMachine.rmServerState(config.STATE_CALIBRATING)
         if param[_state] == config.DONE:
             self.notifyDispType(config.CALIBRATION_SUC)
         else:
             self.send_oled_type_err(config.CALIBRATION_FAIL, self.get_err_code(param))
-        
-    # 方法名称: preview_finish_notify
+
+
+    #############################################################################################
+    # 方法名称: previewFinishNotifyHandler
     # 功能描述: 停止预览结束通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值:   
-    def preview_finish_notify(self, param = None):
-        Info('[-------Notify Message -------] preview_finish_notify param {}'.format(param))
+    #############################################################################################
+    def previewFinishNotifyHandler(self, content):
+        Info('[-------Notify Message -------] previewFinishNotifyHandler {}'.format(content))
+        param = content[_param]         
         if StateMachine.checkStateIn(config.STATE_PREVIEW):
             StateMachine.rmServerState(config.STATE_PREVIEW)
 
@@ -3190,25 +3171,28 @@ class control_center:
             self.notifyDispType(config.STOP_PREVIEW_FAIL)
 
 
-    # 方法名称: live_stats_notify
+    #############################################################################################
+    # 方法名称: liveStateNotifyHandler
     # 功能描述: 直播状态通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值:  
-    def live_stats_notify(self, param):
-        Info('[-------Notify Message -------] live_stats_notify param {}'.format(param))
-        # if param is not None:
-        #     Info('live_stats_notify param {}'.format(param))
+    #############################################################################################
+    def liveStateNotifyHandler(self, content):
+        Info('[-------Notify Message -------] liveStateNotifyHandler {}'.format(content))
 
 
-    # 方法名称: net_link_state_notify
+    #############################################################################################
+    # 方法名称: netLinkStateNotifyHandler
     # 功能描述: 网络状态变化通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值: 
     # 1.直播的过程中,setprop ctl.stop crtmpserver进入STATE_LIVE_CONNECTING状态
-    def net_link_state_notify(self, param):
-        Info('[-------Notify Message -------] net_link_state_notify param {}'.format(param))
+    #############################################################################################
+    def netLinkStateNotifyHandler(self, content):
+        Info('[-------Notify Message -------] netLinkStateNotifyHandler {}'.format(content))
+        param = content[_param]          
         net_state = param['state']
         if StateMachine.checkInLive():  
             if net_state == 'connecting':
@@ -3224,85 +3208,33 @@ class control_center:
                 self.notifyDispType(config.RESTART_LIVE_SUC)
 
 
-    # 方法名称: gyro_calibration_finish_notify
+    #############################################################################################
+    # 方法名称: gyroCalFinishNotifyHandler
     # 功能描述: 陀螺仪校正结束通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值: 
-    def gyro_calibration_finish_notify(self, param):
-        Info('[-------Notify Message -------] gyro_calibration_finish_notify param {}'.format(param))
+    #############################################################################################
+    def gyroCalFinishNotifyHandler(self, content):
+        Info('[-------Notify Message -------] gyroCalFinishNotifyHandler {}'.format(content))
+        param = content[_param]           
         StateMachine.rmServerState(config.STATE_START_GYRO)      
         if param[_state] == config.DONE:
             self.notifyDispType(config.START_GYRO_SUC)
         else:
-            self.send_oled_type_err(config.START_GYRO_FAIL,self.get_err_code(param))
+            self.send_oled_type_err(config.START_GYRO_FAIL, self.get_err_code(param))
 
 
-    # 方法名称: gps_notify
-    # 功能描述: GPS状态变化通知
-    #           
-    # 入口参数: param - 返回的结果
-    # 返回值:     
-    def gps_notify(self, param):
-        Info('[-------Notify Message -------] gps_notify param {}'.format(param))
-        self.set_gps_state(param['state'])
-        self.send_req(self.get_write_req(config.UI_NOTIFY_GPS_STATE_CHANGE, param))
-
-
-    # {
-    #     "name": "camera._snd_state_",
-    #     "parameters": {
-    #                       "type": int, // 0:没有音频
-    # 1:内存mic
-    # 2:3.5
-    # mm
-    # 3:usb
-    # "is_spatial":bool, // 0:非全景声
-    # 1:全景声
-    # "dev_name":string
-    # }
-    # 方法名称: snd_notify
-    # 功能描述: 音频设备变化及声音模式变化通知
-    #           
-    # 入口参数: param - 返回的结果
-    # 返回值:  
-    def snd_notify(self, param, from_ui = False):
-        Info('[-------Notify Message -------] snd_notify param {}'.format(param))
-        self.set_snd_state(param)
-
-
-    # 方法名称: tfStateChangedNotify - TF状态变化通知（必须在预览状态，即模组上电的状态）
-    # 功能: 通知TF卡状态
-    # 参数: 通知信息
-    # 返回值: 无
-    # 需要将信息传递给UI(有TF卡被移除))
-    def tfStateChangedNotify(self, param):
-        Info('[-------Notify Message -------] tfStateChangedNotify param {}'.format(param))
-        # 将更新的信息发给状态机
-        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.TF_STATE_CHANGE, param['module']))
-        # 将更新的信息发给UI(2018年8月7日)
-        self.send_req(self.get_write_req(config.UI_NOTIFY_TF_CHANGED, param))
-
-
-    # 方法名称: stitch_notify
-    # 功能描述: 拼接进度变化通知
-    #           
-    # 入口参数: param - 返回的结果
-    # 返回值:  
-    def stitch_notify(self, param):
-        Info('[-------Notify Message -------] stitch_notify param {}'.format(param))
-        res = OrderedDict({'stitch_progress': param})
-        self.send_oled_type(config.STITCH_PROGRESS, res)
-
-
-    # 方法名称: storage_speed_test_finish_notify
+    #############################################################################################
+    # 方法名称: speedTestFinishNotifyHandler
     # 功能描述: 存储速度测试完成通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值:     
-    def storage_speed_test_finish_notify(self, param):
-        Info('[-------Notify Message -------] storage_speed_test_finish_notify param {}'.format(param))
-        
+    #############################################################################################
+    def speedTestFinishNotifyHandler(self, content):
+        Info('[-------Notify Message -------] speedTestFinishNotifyHandler {}'.format(content))
+        param = content[_param]          
         if StateMachine.checkStateIn(config.STATE_SPEED_TEST):
             StateMachine.rmServerState(config.STATE_SPEED_TEST) 
 
@@ -3314,13 +3246,16 @@ class control_center:
         self.test_path = None
 
 
-    # 方法名称: handle_live_finsh
+    #############################################################################################
+    # 方法名称: liveFinishNotifyHnadler
     # 功能描述: 直播结束通知(不存片)
     #           
     # 入口参数: param - 返回的结果
     # 返回值:
-    def handle_live_finsh(self, param):
-        Info('[-------Notify Message -------] handle_live_finsh param {}'.format(param))
+    #############################################################################################
+    def liveFinishNotifyHnadler(self, content):
+        Info('[-------Notify Message -------] liveFinishNotifyHnadler {}'.format(content))
+        param = content[_param]          
         if StateMachine.checkStateIn(config.STATE_LIVE):
             StateMachine.rmServerState(config.STATE_LIVE) 
         if StateMachine.checkStateIn(config.STATE_LIVE_CONNECTING):        
@@ -3337,8 +3272,16 @@ class control_center:
         self.set_live_url(None)
 
 
-    def handle_live_rec_finish(self, param):
-        Info('[-------Notify Message -------] handle_live_rec_finish param {}'.format(param))
+    #############################################################################################
+    # 方法名称: liveFinishNotifyHnadler
+    # 功能描述: 直播结束通知(不存片)
+    #           
+    # 入口参数: param - 返回的结果
+    # 返回值:
+    #############################################################################################
+    def liveRecFinishNotifyHandler(self, content):
+        Info('[-------Notify Message -------] liveRecFinishNotifyHandler {}'.format(content))
+        param = content[_param]          
         if StateMachine.checkStateIn(config.STATE_RECORD):
             StateMachine.rmServerState(config.STATE_RECORD)
 
@@ -3347,16 +3290,19 @@ class control_center:
         elif self.get_err_code(param) == -434:
             self.send_oled_type_err(config.LIVE_REC_OVER, 391)
         else:
-            Info('handle_live_rec_finish　error code {}'.format(self.get_err_code(param)))
+            Info('liveRecFinishNotifyHandler　error code {}'.format(self.get_err_code(param)))
 
 
-    # 方法名称: handle_pic_org_finish
+    #############################################################################################
+    # 方法名称: orgPicFinishNotifyHandler
     # 功能描述: 拍照完成(原片拍完)
     #           
     # 入口参数: param - 返回的结果
     # 返回值:
-    def handle_pic_org_finish(self, param):
-        Info('[-------Notify Message -------] take pic finish notify param {} state {}'.format(param, StateMachine.getCamStateFormatHex()))
+    #############################################################################################
+    def orgPicFinishNotifyHandler(self, content):
+        Info('[-------Notify Message -------] orgPicFinishNotifyHandler {} '.format(content))
+        param = content[_param]           
         if StateMachine.checkStateIn(config.STATE_TAKE_CAPTURE_IN_PROCESS):
             StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
 
@@ -3364,31 +3310,183 @@ class control_center:
         self.notifyDispType(config.PIC_ORG_FINISH)
 
 
-    # 方法名称: handle_timelapse_pic_finish
+    #############################################################################################
+    # 方法名称: orgCalFinishNotifyHandler
     # 功能描述: org校正结束通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值:
-    def handle_cal_org_finish(self, param):
-        Info('[-------Notify Message -------] handle_cal_org_finish param {} state {}'.format(param, StateMachine.getCamStateFormatHex()))
+    #############################################################################################
+    def orgCalFinishNotifyHandler(self, content):
+        Info('[-------Notify Message -------] orgCalFinishNotifyHandler {}'.format(content))
 
 
-    # 方法名称: handle_timelapse_pic_finish
+    #############################################################################################
+    # 方法名称: updateTimelapseCntNotifyHandler
     # 功能描述: 拍timelapse一张完成通知
     #           
     # 入口参数: param - 返回的结果
     # 返回值:
-    def handle_timelapse_pic_finish(self, param):
-        Info("[-------Notify Message -------] timeplapse pic finish param {}".format(param))
+    #############################################################################################
+    def updateTimelapseCntNotifyHandler(self, content):
+        Info("[-------Notify Message -------] updateTimelapseCntNotifyHandler {}".format(content))
+        param = content[_param]        
         count = param["sequence"]
         self.send_oled_type(config.TIMELPASE_COUNT, OrderedDict({'tl_count': count}))
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.SET_TL_COUNT, count))
 
 
-    def calibration_blc_notify(self, param):
-        Info("[-------Notify Message -------] calibration_blc_notify param {}".format(param))
+
+    #############################################################################################
+    # 方法名称: updateTimelapseCntNotifyHandler
+    # 功能描述: 拍timelapse一张完成通知
+    #           
+    # 入口参数: param - 返回的结果
+    # 返回值:
+    #############################################################################################
+    def sampleNoiseFinishNotifyHandler(self, content):
+        Info('[-------Notify Message -------] sampleNoiseFinishNotifyHandler  {}'.format(content))
+        param = content[_param]          
+        StateMachine.rmServerState(config.STATE_NOISE_SAMPLE)
+        if param[_state] == config.DONE:
+            self.notifyDispType(config.START_NOISE_SUC)
+        else:
+            self.send_oled_type_err(config.START_NOISE_FAIL, self.get_err_code(param))
+
+
+    ###############################################################################################
+    # 方法名称: gpsStateChangeNotifyHandler
+    # 功能描述: GPS状态变化通知
+    #           
+    # 入口参数: param - 返回的结果
+    # 返回值:     
+    ###############################################################################################
+    def gpsStateChangeNotifyHandler(self, content):
+        Info('[-------Notify Message -------] gpsStateChangeNotifyHandler {}'.format(content))
+        param = content[_param]    
+
+        # 1.更新GPS状态到心跳包中
+        osc_state_handle.set_gps_state(param['state'])        
+
+        # 2.将GPS状态信息同步给system_server
+        self.send_req(self.get_write_req(config.UI_NOTIFY_GPS_STATE_CHANGE, param))
+
+
+    ###############################################################################################
+    # 方法名称: stitchProgressNotifyHandler
+    # 功能描述: 拼接进度变化通知
+    #           
+    # 入口参数: param - 返回的结果
+    # 返回值:  
+    ###############################################################################################
+    def stitchProgressNotifyHandler(self, content):
+        Info('[-------Notify Message -------] stitchProgressNotifyHandler {}'.format(content))
+        param = content[_param]         
+        res = OrderedDict({'stitch_progress': param})
+        self.send_oled_type(config.STITCH_PROGRESS, res)
+
+
+    ###############################################################################################
+    # 方法名称: stitchProgressNotifyHandler
+    # 功能描述: 拼接进度变化通知
+    #           
+    # 入口参数: param - 返回的结果
+    # 返回值:  
+    ###############################################################################################
+    def sndDevChangeNotifyHandler(self, content):
+        Info('[-------Notify Message -------] sndDevChangeNotifyHandler {}'.format(content))
+        osc_state_handle.set_snd_state(content[_param])
+
+
+
+    ###############################################################################################
+    # 方法名称: stitchProgressNotifyHandler
+    # 功能描述: BLC校准完成通知
+    #           
+    # 入口参数: content - 返回的结果
+    # 返回值:  
+    ###############################################################################################
+    def blcFinishNotifyHandler(self, content):
+        Info("[-------Notify Message -------] blcFinishNotifyHandler {}".format(content))        
         StateMachine.rmServerState(config.STATE_BLC_CALIBRATE)    
         self.notifyDispType(config.STOP_BLC)
+
+
+    ###############################################################################################
+    # 方法名称: stitchProgressNotifyHandler
+    # 功能描述: BLC校准完成通知
+    #           
+    # 入口参数: content - 返回的结果
+    # 返回值:  
+    ###############################################################################################
+    def bpcFinishNotifyHandler(self, content):
+        Info('---> bpcFinishNotifyHandler {}'.format(content))
+        StateMachine.rmServerState(config.STATE_BPC_CALIBRATE)
+        self.notifyDispType(config.STOP_BPC)
+
+
+    ###############################################################################################
+    # 方法名称: tfStateChangedNotify - TF状态变化通知（必须在预览状态，即模组上电的状态）
+    # 功能: 通知TF卡状态
+    # 参数: 通知信息
+    # 返回值: 无
+    # 需要将信息传递给UI(有TF卡被移除))
+    ###############################################################################################
+    def tfStateChangedNotify(self, content):
+        Info('[-------Notify Message -------] tfStateChangedNotify {}'.format(content))
+        param = content[_param]  
+
+        # 将更新的信息发给状态机
+        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.TF_STATE_CHANGE, param['module']))
+        # 将更新的信息发给UI(2018年8月7日)
+        self.send_req(self.get_write_req(config.UI_NOTIFY_TF_CHANGED, param))
+
+
+    ###############################################################################################
+    # 方法名称: CalibrateMageterNotify
+    # 功能: 磁力计校正完成通知
+    # 参数: 通知信息
+    # 返回值: 无
+    # 需要将信息传递给UI(有TF卡被移除))
+    ###############################################################################################
+    def CalibrateMageterNotify(self, content):
+        Info('[-------Notify Message -------] CalibrateMageterNotify {}'.format(content))
+        StateMachine.rmServerState(config.STATE_MAGMETER_CALIBRATE)
+
+
+    ###############################################################################################
+    # 方法名称: cameraDeleteFileNotify
+    # 功能: 删除文件成功通知
+    # 参数: 通知信息
+    # 返回值: 无
+    # 需要将信息传递给UI(有TF卡被移除))
+    ###############################################################################################
+    def cameraDeleteFileNotify(self, content):
+        Info('[-------Notify Message -------] cameraDeleteFileNotify {}'.format(content))
+        param = content[_param]  
+
+        # 根据返回结果来删除本地文件
+        if param['state'] == config.DONE:
+            for i in self.delete_lists:
+                Info('---------> delete item test {}'.format(i))
+                if os.path.isdir(i):
+                    Info('--------------> delete dir {}'.format(i))
+                    shutil.rmtree(i)
+                else:
+                    Info('--------------> delete file {}'.format(i))
+                    os.remove(i)
+        else:
+            Info('>>>>>>>>>> remote delete File failed, can not rm local file/dir ...')
+            # for i in self.delete_lists:
+            #     Info('>>>>>>>>>>delete item test {}'.format(i))
+            #     if os.path.isdir(i):
+            #         Info('--------------> delete dir {}'.format(i))
+            #         shutil.rmtree(i)
+            #     else:
+            #         Info('--------------> delete file {}'.format(i))
+            #         os.remove(i)
+        self.set_cam_state(self.get_cam_state() & ~config.STATE_DELETE_FILE)
+
 
 
     # 方法名称: handle_notify_from_camera
@@ -3400,11 +3498,8 @@ class control_center:
         try:
             name = content[_name]
             if check_dic_key_exist(self.asyncNotifyHandler, name):
-                if check_dic_key_exist(content, _param):
-                    self.asyncNotifyHandler[name](content[_param])
-                else:
-                    self.asyncNotifyHandler[name]()
-                    
+                self.asyncNotifyHandler[name](content)
+
                 if name in self.async_finish_cmd:
                     self.add_async_finish(content)
             else:
@@ -3746,6 +3841,7 @@ class control_center:
         except Exception as e:
             Err('send req exception {}'.format(e))
 
+
     def get_write_req(self, msg_what, args):
         req = OrderedDict()
         req['msg_what'] = msg_what
@@ -3757,6 +3853,10 @@ class control_center:
         Info("send_oled_type_err type is {} code {}".format(type,code))
         err_dict = OrderedDict({'type':type,'err_code':code})
         self.send_req(self.get_write_req(config.OLED_DISP_TYPE_ERR, err_dict))
+
+
+    def sendIndMsg2SystemServer(self, indDict):
+        self.unixSocketClient.sendAsyncNotify(indDict)
 
 
     # UPDATE_TL_CNT_IND = "camera._updateTlCnt"
@@ -3817,6 +3917,8 @@ class control_center:
 
     def notifySysError(self, extra):
         pass
+
+
 
     def send_oled_type(self, type, req = None):
         req_dict = OrderedDict({'type': type})

@@ -90,6 +90,19 @@
 #define REQ_UPDATE_SYS_TEMP         "camera._updateSysTemp"
 
 
+/*
+ * {"name": "camera._indSyncState", "parameters": {"state": int, "c_v": string, "k_v": string, "v_v": string}}
+ */
+#define IND_SYNC_STATE              "camera._indSyncState"
+
+#define IND_SWITCH_MOUNT_MODE       "camera._change_mount_mode"
+#define IND_SHUTDOWN                "camera._shutdown"
+#define IND_GPS_STATE_CHANGE        "camera._gps_state_"
+#define IND_SET_SN                  "camera._setSN"
+#define IND_QUERY_LEF               "camera._queryLeftInfo"
+#define IND_SPEED_TEST_RESULT       "camera._storage_speed_test_finish_"
+#define IND_TF_STATE_CHANGE         "camera._storage_state_"
+
 /** 使用Unix套接字传输给web_server发请求 */
 #define USE_UNIX_TRAN
 
@@ -996,7 +1009,7 @@ void TransBuffer::fillData(const char* data)
             mBufferLen = iDataLen + COM_HDR_LEN;
             int_to_bytes(&mBuffer[0], 0xDEADBEEF);
             int_to_bytes(&mBuffer[4], iDataLen);
-            LOGINFO(TAG, "------> len = %d",  iDataLen);
+            // LOGINFO(TAG, "------> len = %d",  iDataLen);
             memcpy(&(mBuffer[COM_HDR_LEN]), data, iDataLen);
         }
     }
@@ -1043,7 +1056,7 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
 
     convJsonObj2String(req, sendStr);
 
-    LOGINFO(TAG, "send string: %s", sendStr.c_str());
+    // LOGINFO(TAG, "send string: %s", sendStr.c_str());
 
     /* 1.Creat and connect Unix Server */
     iSocket = socket(AF_LOCAL, SOCK_STREAM, 0);
@@ -1086,7 +1099,7 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
     int iRecvMagic = bytes_to_int(recvHdr);
     int iRecvLen = bytes_to_int(&recvHdr[4]);
 
-    LOGDBG(TAG, "======>>> Magic = 0x%x, content len = %d", iRecvMagic, iRecvLen);
+    // LOGDBG(TAG, "======>>> Magic = 0x%x, content len = %d", iRecvMagic, iRecvLen);
 
     if (iRecvMagic != 0xDEADBEEF || iRecvLen <= 0) {
         LOGERR(TAG, "Magic error or len error");
@@ -1104,7 +1117,7 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
     }
     close(iSocket);
 
-    LOGINFO(TAG, "Recv info: %s", recvBuffer->data());
+    // LOGINFO(TAG, "Recv info: %s", recvBuffer->data());
 
     if (recvBuffer->getJsonResult(&jsonRes)) {
         if (callBack) {
@@ -1126,7 +1139,6 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
 
     return PROTO_ERROR_UNKOWN;
 }
-
 
 
 bool ProtoManager::getSyncReqExitFlag()
@@ -1281,131 +1293,7 @@ void ProtoManager::handleDispType(Json::Value& jsonData)
 }
 
 
-void ProtoManager::handleQueryLeftInfo(Json::Value& queryJson)
-{
-    u32 uLeft = 0;
 
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-    std::ostringstream osOutput;  
-
-    std::string sendDataStr;
-    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
-
-    Json::Value rootNode;
-
-    /* 
-     * 1.拍照
-     * 2.录像/直播存片
-     * 录像分为普通录像和timelapse
-     */
-    if (queryJson.isMember("name")) {
-        if (!strcmp(queryJson["name"].asCString(), "camera._takePicture") ) {
-            uLeft = vm->calcTakepicLefNum(queryJson, false);
-        } else if (!strcmp(queryJson["name"].asCString(), "camera._startRecording")) {
-            uLeft = vm->calcTakeRecLefSec(queryJson);
-        } else if (!strcmp(queryJson["name"].asCString(), "camera._startLive")) {
-            uLeft = vm->calcTakeLiveRecLefSec(queryJson);
-        }
-    } else {
-        uLeft = 0;
-    }
-
-    LOGDBG(TAG, "-------- handleQueryLeftInfo");
-
-    rootNode["left"] = uLeft;    
-	writer->write(rootNode, &osOutput);
-    sendDataStr = osOutput.str();
-
-    // write_fifo(EVENT_QUERY_LEFT, sendDataStr.c_str());
-}
-
-
-void ProtoManager::handleGpsStateChange(Json::Value& queryJson)
-{
-    if (queryJson.isMember("state")) {
-        int iGpstate = queryJson["state"].asInt();
-        if (mNotify) {
-            sp<ARMessage> msg = mNotify->dup();
-            msg->set<int>("gps_state", iGpstate);    
-            msg->setWhat(UI_MSG_UPDATE_GPS_STATE);
-            msg->post();
-        }
-    } 
-}
-
-
-void ProtoManager::handleShutdownMachine(Json::Value& queryJson)
-{
-    LOGDBG(TAG, "Recv Shut down machine message ...");
-    if (mNotify) {
-        sp<ARMessage> msg = mNotify->dup();
-        msg->setWhat(UI_MSG_SHUT_DOWN);
-        msg->post();
-    }
-}
-
-
-void ProtoManager::handleSetSn(Json::Value& jsonData)
-{
-    sp<SYS_INFO> sysInfo = std::make_shared<SYS_INFO>();
-    
-    if (jsonData.isMember("sn") && jsonData["sn"].isString()) {
-        snprintf(sysInfo->sn, sizeof(sysInfo->sn), "%s", jsonData["sn"].asCString());    
-        LOGDBG(TAG, "Recv SN: %s", sysInfo->sn);
-    }
-
-    if (jsonData.isMember("uuid") && jsonData["uuid"].isString()) {
-        snprintf(sysInfo->uuid, sizeof(sysInfo->uuid), "%s", jsonData["uuid"].asCString());    
-        LOGDBG(TAG, "Recv SN: %s", sysInfo->uuid);
-    }
-
-    if (mNotify) {
-        sp<ARMessage> msg = mNotify->dup();
-        msg->set<sp<SYS_INFO>>("sys_info", sysInfo);
-        msg->setWhat(UI_MSG_SET_SN);
-        msg->post();
-    }
-}
-
-void ProtoManager::handleSyncInfo(Json::Value& jsonData)
-{
-    sp<SYNC_INIT_INFO> syncInfo = std::make_shared<SYNC_INIT_INFO>();
-      
-    LOGDBG(TAG, "----------> CMD_OLED_SYNC_INIT");
-    LOGDBG(TAG, "state: %d", jsonData["state"].asInt());
-    LOGDBG(TAG, "a_v: %s ", jsonData["a_v"].asCString());
-    LOGDBG(TAG, "h_v: %s ", jsonData["h_v"].asCString());
-    LOGDBG(TAG, "c_v: %s ", jsonData["c_v"].asCString());
-
-
-    if (jsonData.isMember("state")) {
-        syncInfo->state = jsonData["state"].asInt();
-    } else {
-        syncInfo->state = 0;
-    }
-    
-    if (jsonData.isMember("a_v")) {
-        snprintf(syncInfo->a_v, sizeof(syncInfo->a_v), "%s", jsonData["a_v"].asCString());
-    }            
-    
-    if (jsonData.isMember("h_v")) {
-        snprintf(syncInfo->h_v, sizeof(syncInfo->h_v), "%s", jsonData["h_v"].asCString());
-    }                
-
-    if (jsonData.isMember("c_v")) {
-        snprintf(syncInfo->c_v, sizeof(syncInfo->c_v), "%s", jsonData["c_v"].asCString());
-    }         
-
-    if (mNotify) {
-        sp<ARMessage> msg = mNotify->dup();    
-        msg->setWhat(UI_MSG_SET_SYNC_INFO);
-        msg->set<sp<SYNC_INIT_INFO>>("sync_info", syncInfo);
-        msg->post();
-    }       
-}
 
 
 void ProtoManager::handleErrInfo(Json::Value& jsonData)
@@ -1430,7 +1318,48 @@ void ProtoManager::handleErrInfo(Json::Value& jsonData)
 }
 
 
-void ProtoManager::handleTfCardChanged(Json::Value& jsonData)
+
+
+
+
+
+
+
+void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
+{
+    mNotify = notify;
+}
+
+
+bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData)
+{
+    if (jsonData.isMember(_name_) && jsonData.isMember(_param)) {   
+        std::string cmd = jsonData[_name_].asCString();
+        if (cmd == IND_SYNC_STATE) {
+            handleSyncInfo(cli, jsonData[_param]);
+        } else if (cmd == IND_SWITCH_MOUNT_MODE) {
+            handleSwitchMountMode(cli, jsonData[_param]);
+        } else if (cmd == IND_SHUTDOWN) {
+            handleShutdownMachine(cli, jsonData[_param]);
+        } else if (cmd == IND_GPS_STATE_CHANGE) {
+            handleGpsStateChange(cli, jsonData[_param]);
+        } else if (cmd == IND_SET_SN) {
+            handleSetSn(cli, jsonData[_param]);
+        } else if (cmd == IND_QUERY_LEF) {
+            handleQueryLeftInfo(cli, jsonData["param"]);
+        } else if (cmd == IND_SPEED_TEST_RESULT) {
+            handleSpeedTestResult(cli, jsonData[_param]);
+        } else if (cmd == IND_TF_STATE_CHANGE) {
+            handleTfCardChanged(cli, jsonData[_param]);
+        }
+    } else {
+        LOGERR(TAG, "Node have not name or parameter loss");  
+        printJson(jsonData);
+        return false;   
+    }                       
+}
+
+void ProtoManager::handleTfCardChanged(SocketClient* cli, Json::Value& jsonData)
 {
     LOGDBG(TAG, "Get Tfcard Changed....");      
 
@@ -1480,7 +1409,7 @@ void ProtoManager::handleTfCardChanged(Json::Value& jsonData)
 }
 
 
-void ProtoManager::handleTfcardFormatResult(Json::Value& jsonData)
+void ProtoManager::handleTfcardFormatResult(SocketClient* cli, Json::Value& jsonData)
 {
     LOGDBG(TAG, "Get Notify(SD Format Info)");
 
@@ -1507,7 +1436,8 @@ void ProtoManager::handleTfcardFormatResult(Json::Value& jsonData)
 }
 
 
-void ProtoManager::handleSpeedTestResult(Json::Value& jsonData) 
+
+void ProtoManager::handleSpeedTestResult(SocketClient* cli, Json::Value& jsonData) 
 {
     LOGDBG(TAG, "Return Speed Test Result");
 
@@ -1555,9 +1485,132 @@ void ProtoManager::handleSpeedTestResult(Json::Value& jsonData)
     }
 }
 
-void ProtoManager::handleSwitchMountMode(Json::Value& paramJson)
+
+
+void ProtoManager::handleQueryLeftInfo(SocketClient* cli, Json::Value& queryJson)
 {
-    LOGDBG(TAG, "Switch Mount Mode");
+    u32 uLeft = 0;
+
+    Json::StreamWriterBuilder builder;
+
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+    std::ostringstream osOutput;  
+
+    std::string sendDataStr;
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
+
+    Json::Value rootNode;
+
+    /* 
+     * 1.拍照
+     * 2.录像/直播存片
+     * 录像分为普通录像和timelapse
+     */
+    if (queryJson.isMember("name")) {
+        if (!strcmp(queryJson["name"].asCString(), "camera._takePicture") ) {
+            uLeft = vm->calcTakepicLefNum(queryJson, false);
+        } else if (!strcmp(queryJson["name"].asCString(), "camera._startRecording")) {
+            uLeft = vm->calcTakeRecLefSec(queryJson);
+        } else if (!strcmp(queryJson["name"].asCString(), "camera._startLive")) {
+            uLeft = vm->calcTakeLiveRecLefSec(queryJson);
+        }
+    } else {
+        uLeft = 0;
+    }
+
+    LOGDBG(TAG, "-------- handleQueryLeftInfo");
+
+    rootNode["left"] = uLeft;    
+	writer->write(rootNode, &osOutput);
+    sendDataStr = osOutput.str();
+
+    // write_fifo(EVENT_QUERY_LEFT, sendDataStr.c_str());
+}
+
+
+
+void ProtoManager::handleSetSn(SocketClient* cli, Json::Value& jsonData)
+{
+    sp<SYS_INFO> sysInfo = std::make_shared<SYS_INFO>();
+    
+    if (jsonData.isMember("sn") && jsonData["sn"].isString()) {
+        snprintf(sysInfo->sn, sizeof(sysInfo->sn), "%s", jsonData["sn"].asCString());    
+        LOGDBG(TAG, "Recv SN: %s", sysInfo->sn);
+    }
+
+    if (jsonData.isMember("uuid") && jsonData["uuid"].isString()) {
+        snprintf(sysInfo->uuid, sizeof(sysInfo->uuid), "%s", jsonData["uuid"].asCString());    
+        LOGDBG(TAG, "Recv SN: %s", sysInfo->uuid);
+    }
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->set<sp<SYS_INFO>>("sys_info", sysInfo);
+        msg->setWhat(UI_MSG_SET_SN);
+        msg->post();
+    }
+}
+
+
+
+
+void ProtoManager::handleGpsStateChange(SocketClient* cli, Json::Value& queryJson)
+{
+    if (queryJson.isMember("state")) {
+        int iGpstate = queryJson["state"].asInt();
+        if (mNotify) {
+            sp<ARMessage> msg = mNotify->dup();
+            msg->set<int>("gps_state", iGpstate);    
+            msg->setWhat(UI_MSG_UPDATE_GPS_STATE);
+            msg->post();
+        }
+    } 
+}
+
+
+void ProtoManager::handleSyncInfo(SocketClient* cli, Json::Value& jsonData)
+{
+    sp<SYNC_INIT_INFO> syncInfo = std::make_shared<SYNC_INIT_INFO>();
+
+
+    LOGDBG(TAG, "----------> CMD_OLED_SYNC_INIT");
+    LOGDBG(TAG, "state: %d", jsonData["state"].asInt());
+    LOGDBG(TAG, "a_v: %s ", jsonData["a_v"].asCString());
+    LOGDBG(TAG, "h_v: %s ", jsonData["h_v"].asCString());
+    LOGDBG(TAG, "c_v: %s ", jsonData["c_v"].asCString());
+
+
+    if (jsonData.isMember("state")) {
+        syncInfo->state = jsonData["state"].asInt();
+    } else {
+        syncInfo->state = 0;
+    }
+    
+    if (jsonData.isMember("a_v")) {
+        snprintf(syncInfo->a_v, sizeof(syncInfo->a_v), "%s", jsonData["a_v"].asCString());
+    }            
+    
+    if (jsonData.isMember("h_v")) {
+        snprintf(syncInfo->h_v, sizeof(syncInfo->h_v), "%s", jsonData["h_v"].asCString());
+    }                
+
+    if (jsonData.isMember("c_v")) {
+        snprintf(syncInfo->c_v, sizeof(syncInfo->c_v), "%s", jsonData["c_v"].asCString());
+    }         
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();    
+        msg->setWhat(UI_MSG_SET_SYNC_INFO);
+        msg->set<sp<SYNC_INIT_INFO>>("sync_info", syncInfo);
+        msg->post();
+    }       
+}
+
+
+void ProtoManager::handleSwitchMountMode(SocketClient* cli, Json::Value& paramJson)
+{
+    LOGDBG(TAG, ">>> Switch Mount Mode");
     std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
     if (paramJson.isMember("parameters")) {
@@ -1577,12 +1630,19 @@ void ProtoManager::handleSwitchMountMode(Json::Value& paramJson)
     }
 }
 
-void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
+
+void ProtoManager::handleShutdownMachine(SocketClient* cli, Json::Value& queryJson)
 {
-    mNotify = notify;
+    LOGDBG(TAG, "ProtoManager: Recv Shut down machine message ...");
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_SHUT_DOWN);
+        msg->post();
+    }
 }
 
 
+#if 0
 bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
 {
     switch (iMsgType) {
@@ -1590,35 +1650,7 @@ bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             handleDispType(jsonData);
             break;
         }
-
-        case MSG_QUERY_LEFT_INFO: {  /* 查询剩余量信息 */
-            LOGDBG(TAG, "Query Left Info now....");
-            handleQueryLeftInfo(jsonData);
-            break;
-        }
-
-        case MSG_GPS_STATE_CHANGE: {
-            LOGDBG(TAG, "Gps State change now....");
-            handleGpsStateChange(jsonData);
-            break;
-        }
-
-        case MSG_SHUT_DOWN: {
-            LOGDBG(TAG, "shut down machine ....");
-            handleShutdownMachine(jsonData);
-            break;
-        }
-
-        case MSG_SET_SN: {
-            handleSetSn(jsonData);
-            break;
-        }
-
-        case MSG_SYNC_INIT: {	/* 给UI发送同步信息: state, a_v, h_v, c_v */
-            handleSyncInfo(jsonData);
-            break;
-        }    
-   
+       
         case MSG_DISP_TYPE_ERR: {	/* 给UI发送显示错误信息:  错误类型和错误码 */
             handleErrInfo(jsonData);
             break;
@@ -1639,16 +1671,11 @@ bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             break;
         }
 
-        case MSG_SWITCH_MOUNT_MODE: {
-            handleSwitchMountMode(jsonData);
-            break;
-        }
-
         default: 
             break;
     }
     return true;
 }
-
+#endif
 
 
