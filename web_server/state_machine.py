@@ -69,6 +69,15 @@ class StateMachine:
             return False
 
     @classmethod
+    def checkInQrScan(cls):
+        if StateMachine.getCamState() & config.STATE_START_QR == config.STATE_START_QR:
+            return True
+        else:
+            return False
+
+
+
+    @classmethod
     def checkInPreviewState(cls):
         if StateMachine.getCamState() & config.STATE_PREVIEW == config.STATE_PREVIEW:
             return True
@@ -304,6 +313,22 @@ class StateMachine:
     @classmethod
     def checkAllowAwbCalc(cls):
         Info('--------> checkAllowAwbCalc, cam state {}'.format(StateMachine.getCamStateFormatHex()))
+        if (StateMachine.getCamState() in (config.STATE_IDLE, config.STATE_PREVIEW)):
+            return True
+        else:
+            return False
+
+    @classmethod
+    def checkAllowQueryLeft(cls):
+        Info('--------> checkAllowQueryLeft, cam state {}'.format(StateMachine.getCamStateFormatHex()))
+        if (StateMachine.getCamState() in (config.STATE_IDLE, config.STATE_PREVIEW)):
+            return True
+        else:
+            return False
+
+    @classmethod
+    def checkAllowQrScan(cls):
+        Info('--------> checkAllowQueryLeft, cam state {}'.format(StateMachine.getCamStateFormatHex()))
         if (StateMachine.getCamState() in (config.STATE_IDLE, config.STATE_PREVIEW)):
             return True
         else:

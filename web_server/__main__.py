@@ -70,11 +70,14 @@ def flask_osc_path_execute(path):
 
         if check_dic_key_exist(h, config.FINGERPRINT):
             fp = h[config.FINGERPRINT]
-        ret = app_controller.osc_path_execute(join_str_list(('/osc/',path)), fp)
+        ret = app_controller.excuteOscPathFunc(join_str_list(('/osc/',path)), fp)
     except Exception as err:
         Err('flask_osc_path_execute osc path exception {}'.format(str(err)))
         ret = cmd_exception(error_dic('flask_osc_path_execute', str(err)))
     return ret
+
+
+
 
 @app.route(config.PATH_CMD_EXECUTE, methods=['GET', 'POST'])
 # @add_header
@@ -82,17 +85,15 @@ def flask_osc_cmd_execute():
     try:
         h = request.headers
         content_type = h.get('Content-Type')
-        # Print('osc execute h is {} '.format(h))
         fp = None
         data = None
         if 'application/json' in content_type:
             data = request.get_json()
-            # Print('data is {}'.format(data))
 
         if check_dic_key_exist(h, config.FINGERPRINT):
             fp = h[config.FINGERPRINT]
 
-        ret = app_controller.osc_cmd_execute(fp, data)
+        ret = app_controller.callAppReqEntry(fp, data)
     except Exception as err:
         ret = cmd_exception(error_dic('flask_osc_cmd_execute', str(err)))
         Err('flask_osc_cmd_execute osc command exception {} ret {}'.format(str(err), ret))

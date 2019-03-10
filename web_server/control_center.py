@@ -80,485 +80,7 @@ MAX_FIFO_LEN = 4096
 
 class control_center:
 
-    def init_thread(self):
-        self._write_fd = -1
-        self._read_fd = -1
-        self._reset_read_fd = -1
-        self._reset_write_fd = -1
-        self.finger_print = None
-        self.random_data = 0
-        self._list_progress = False   
-        self._list_file_seq = -1  
-        self._client_take_pic = False   
-        self._client_take_live = False
-        self._client_stitch_calc = False
-
-
-        # 
-        # 来自客户端的命令
-        #
-        self.camera_cmd_func = OrderedDict({
-            config._START_PREVIEW:          self.camera_start_preview,          # 客户端请求启动预览    
-            config._STOP_PREVIEW:           self.camera_stop_preview,           # 客户端请求停止预览
-            config._TAKE_PICTURE:           self.camera_take_pic,               # 客户端请求拍照 - DYZ
-            config._START_RECORD:           self.camera_rec,                    # 启动录像
-            config._STOP_RECORD:            self.camera_rec_stop,
-            config._START_LIVE:             self.camera_live,                   # 客户端请求启动直播
-            config._STOP_LIVE:              self.camera_stop_live,
-            
-            # 设置Flicker - OK
-            config._SET_NTSC_PAL:           self.camera_set_ntsc_pal,
-
-            # 获取Flicker - OK
-            config._GET_NTSC_PAL:           self.camera_get_ntsc_pal,
-
-            # 设置拼接的Offset - OK
-            config._SETOFFSET:              self.set_offset,
-
-            # 获取拼接的Offset - OK
-            config._GETOFFSET:              self.get_offset,
-            
-            # s设置图像参数 - OK
-            config._SET_IMAGE_PARAM:        self.camera_set_image_param,
-
-            config.SET_OPTIONS:             self.camera_set_options,
-
-            config.GET_OPTIONS:             self.camera_get_options,
-
-            config._GET_IMAGE_PARAM:        self.camera_get_image_param,
-
-            config._SET_STORAGE_PATH:       self.set_storage_path,
-
-            config._CALIBRATION:            self.camera_start_calibration,
-
-            config._QUERY_STATE:            self.camera_query_state,
-
-            config._START_GYRO:             self.camera_start_gyro,
-            
-            # 存储速度测试
-            config._SPEED_TEST:             self.camera_start_speed_test,
-            
-            # 系统时间更改 - OK
-            config._SYS_TIME_CHANGE:        self.camera_sys_time_change,
-
-            # 更新Gamma曲线 - OK
-            config._UPDATE_GAMMA_CURVE:     self.camera_update_gamma_curve,
-
-            # 设置系统设置 - CHECK
-            config._SET_SYS_SETTING:        self.camera_set_sys_setting,
-
-            # 获取系统设置
-            config._GET_SYS_SETTING:        self.camera_get_sys_setting,
-
-            # 产测功能: BLC和BPC校正(异步)
-            config._CALIBTRATE_BLC:         self.camera_calibrate_blc,
-
-            # BPC矫正
-            config._CALIBTRATE_BPC:         self.camera_calibrate_bpc,
-
-            # 磁力计矫正
-            config._CALIBRATE_MAGMETER:     self.camerCalibrateMageter,
-
-            # 删除TF里的文件
-            config._DELETE_TF_CARD:         self.cameraDeleteFile,
-
-            config._QUERY_LEFT_INFO:         self.cameraQueryLeftInfo,
-
-            # 关机
-            config._SHUT_DOWN_MACHINE:       self.cameraShutdown,
-
-            # 切换TF卡的挂载方式
-            config._SWITCH_MOUNT_MODE:       self.cameraSwitchMountMode,
-
-            # 列出文件的异步命令
-            config._LIST_FILES:              self.cameraListFile,
-
-            # AWB校正
-            config._REQ_AWB_CALC:            self.cameraUiCalcAwb,
-
-        })
-
-
-        self.camera_cmd_done = OrderedDict({
-            # 启动预览完成
-            config._START_PREVIEW:          self.camera_start_preview_done,
-
-            # 停止预览完成
-            config._STOP_PREVIEW:           self.camera_stop_preview_done,
-
-            config._START_RECORD:           self.camera_rec_done,
-
-            config._STOP_RECORD:            self.camera_rec_stop_done,
-            
-            config._START_LIVE:             self.camera_live_done,
-            
-            config._STOP_LIVE:              self.camera_stop_live_done,
-
-            config._TAKE_PICTURE:           self.camera_take_pic_done,
-
-            config._CALIBRATION:            self.camera_start_calibration_done,
-            
-            config._QUERY_STATE:            self.camera_query_state_done,
-            
-            config._START_QR:               self.camera_start_qr_done,
-            
-            config._STOP_QR:                self.camera_stop_qr_done,
-            
-            # config._LOW_BAT:              self.camera_low_bat_done,
-            
-            config._LOW_BAT_PROTECT:        self.camera_low_protect_done,
-            
-            config._POWER_OFF:              self.camera_power_off_done,
-            
-            config._SPEED_TEST:             self.camera_speed_test_done,
-            
-            config._START_GYRO:             self.camera_gyro_done,
-
-            config._START_NOISE:            self.camera_noise_done,
-
-            config._SYS_TIME_CHANGE:        self.camera_sys_time_change_done,
-            config._STITCH_START:           self.camera_start_stitch_done,
-            config._STITCH_STOP:            self.camera_stop_stitch_done,
-
-            config._CALIBTRATE_BLC:         self.camera_calibrate_blc_done,
-            config._CALIBTRATE_BPC:         self.camera_calibrate_bpc_done,
-            config._CALIBRATE_MAGMETER:     self.cameraCalibrateMagmeterDone,
-
-            config._DELETE_TF_CARD:         self.cameraDeleteFileDone,
-
-            # 给定一json命令，返回对应的剩余量
-            # 拍照: 返回能拍的剩余张数
-            # 录像: 返回能录的时长
-            # 直播存片: 返回能直播存片的时长
-            config._QUERY_LEFT_INFO:        self.cameraQueryLeftInfo,
-
-        })
-
-        self.async_cmd = [config._TAKE_PICTURE,
-                          config._SPEED_TEST,
-                          config._CALIBRATION,
-                          config._START_GYRO,
-                          config._STOP_RECORD,
-                          config._STOP_LIVE,
-                          config._CALIBTRATE_BLC,
-                          config._CALIBTRATE_BPC,
-                          config._CALIBRATE_MAGMETER,
-                          config._DELETE_TF_CARD,
-                          config._QUERY_LEFT_INFO,
-                          config._LIST_FILES,
-                          ]
-
-
-        self.camera_cmd_fail = OrderedDict({
-
-            # 启动预览失败
-            config._START_PREVIEW:          self.camera_preview_fail,
-
-            # 停止预览失败
-            config._STOP_PREVIEW:           self.camera_preview_stop_fail,
-
-            config._START_RECORD:           self.camera_rec_fail,
-
-            config._STOP_RECORD:            self.camera_rec_stop_fail,
-            
-            config._START_LIVE:             self.camera_live_fail,
-            
-            config._STOP_LIVE:              self.camera_stop_live_fail,
-
-            config._TAKE_PICTURE:           self.camera_take_pic_fail,
-            
-            config._CALIBRATION:            self.camera_start_calibration_fail,
-            config._START_QR:               self.camera_start_qr_fail,
-            config._STOP_QR:                self.camera_stop_qr_fail,
-
-            # config._LOW_BAT:              self.camera_low_bat_fail,
-            config._POWER_OFF:              self.camera_power_off_fail,
-            config._LOW_BAT_PROTECT:        self.camera_low_protect_fail,
-            config._SPEED_TEST:             self.camera_speed_test_fail,
-            config._START_GYRO:             self.camera_gyro_fail,
-
-            config._START_NOISE:            self.camera_noise_fail,
-
-            config._SYS_TIME_CHANGE:        self.camera_set_time_change_fail,
-
-            config._STITCH_START:           self.camera_start_stitch_fail,
-
-            config._STITCH_STOP:            self.camera_stop_stitch_fail,
-
-            config._CALIBTRATE_BLC:         self.camera_calibrate_blc_fail,
-
-            config._CALIBTRATE_BPC:         self.camera_calibrate_bpc_fail,
-
-            config._CALIBRATE_MAGMETER:     self.cameraCalibrateMagmeterFail,
-
-            config._DELETE_TF_CARD:         self.cameraDeleteFileFail,
-
-        })
-
-
-        # UI客户端
-        self.ui_cmd_func = OrderedDict({
-            config._GET_SET_CAM_STATE:          self.cameraUiGetSetCamState,                # 请求查询Camera的状态
-            config._REQ_ENTER_UDISK_MOD:        self.cameraUiSwitchUdiskMode,               # 请求Server进入U盘模式
-            config._UPDAT_TIMELAPSE_LEFT:       self.cameraUiUpdateTimelapaseLeft,          # 更新拍timelapse的剩余值
-            config._REQ_SYNC_INFO:              self.cameraUiRequestSyncInfo,               # 请求同步状态
-            config._REQ_FORMART_TFCARD:         self.cameraUiFormatTfCard,                  # 请求格式化TF卡
-            config._REQ_UPDATE_REC_LIVE_INFO:   self.cameraUiUpdateRecLeftSec,              # 请求更新录像,直播的时间
-            config._REQ_START_PREVIEW:          self.cameraUiStartPreview,                  # 请求启动预览
-            config._REQ_STOP_PREVIEW:           self.cameraUiStopPreview,                   # 请求停止预览
-            config._REQ_QUERY_TF_CARD:          self.cameraUiQueryTfcard,                   # 查询TF卡状态
-            config._REQ_QUERY_GPS_STATE:        self.cameraUiqueryGpsState,                 # 查询GPS状态
-            config._REQ_SET_CUSTOM_PARAM:       self.cameraUiSetCustomerParam,              # 设置Customer
-            config._REQ_SPEED_TEST:             self.cameraUiSpeedTest,                     # 测速请求
-            config._REQ_TAKE_PIC:               self.cameraUiTakePic,                       # 请求拍照
-            config._REQ_TAKE_VIDEO:             self.cameraUiTakeVideo,                     # 请求录像
-            config._REQ_STOP_VIDEO:             self.cameraUiStopVideo,                     # 停止录像
-            config._REQ_START_LIVE:             self.cameraUiStartLive,                     # 请求启动直播
-            config._REQ_STOP_LIVE:              self.cameraUiStopLive,                      # 请求停止直播
-            config._REQ_STITCH_CALC:            self.cameraUiStitchCalc,                    # 拼接校正
-            config._REQ_SAVEPATH_CHANGE:        self.cameraUiSavepathChange,                # 存储路径改变
-            config._REQ_UPDATE_STORAGE_LIST:    self.cameraUiUpdateStorageList,             # 更新存储设备列表
-            config._REQ_UPDATE_BATTERY_IFNO:    self.cameraUiUpdateBatteryInfo,             # 更新电池信息
-            config._REQ_START_NOISE:            self.cameraUiNoiseSample,                   # 请求噪声采样
-            config._REQ_START_GYRO:             self.cameraUiGyroCalc,                      # 请求陀螺仪校正
-            config._REQ_POWER_OFF:              self.cameraUiLowPower,                      # 低电请求
-            config._REQ_SET_OPTIONS:            self.cameraUiSetOptions,                    # 设置Options
-            config._REQ_AWB_CALC:               self.cameraUiCalcAwb,                       # AWB校正
-            config._REQ_UPDATE_SYS_TMP:         self.cameraUiUpdateSysTemp,                 # 更新系统温度
-
-        })
-
-
-        self.non_camera_cmd_func = OrderedDict({
-            config._GET_RESULTS:            self.camera_get_result,
-            # config._SET_WIFI_CONFIG:      self.set_wifi_config,
-            config.LIST_FILES:              self.camera_list_files,
-            config.DELETE:                  self.camera_delete,
-            config.GET_IMAGE:               self.camera_get_image,
-            config.GET_META_DATA:           self.camera_get_meta_data,
-            config._DISCONNECT:             self.camera_disconnect,
-            config._SET_CUSTOM:             self.set_custom,
-            config._SET_SN:                 self.handleSetSn,
-            config._START_SHELL:            self.start_shell,
-
-            config._QUERY_GPS_STATE:        self.queryGpsState,
-
-            # config.CAMERA_RESET:          self.camera_reset,
-        })
-
-        self.non_camera_stitch_func = OrderedDict({
-            config.LIST_FILES:              self.camera_list_files,
-        })
-
-        self.osc_path_func = OrderedDict({
-            
-            # 查询心跳包的状态函数
-            config.PATH_STATE:              self.get_osc_state,   
-            config.PATH_INFO:               self.get_osc_info,
-        })
-
-        self.osc_stitch_path_func = OrderedDict({
-            config.PATH_STATE:              self.get_osc_stich_state,
-        })
-
-        self.oled_func = OrderedDict(
-            {
-                ACTION_REQ_SYNC:            self.start_oled_syn_state,
-            }
-        )
-
-
-        self.asyncNotifyHandler = OrderedDict({
-            config._STATE_NOTIFY:           self.stateNotifyHandler,
-            config._RECORD_FINISH:          self.recStopFinishNotifyHandler,
-            config._PIC_NOTIFY:             self.picFinishNotifyHandler,
-            config._RESET_NOTIFY:           self.resetNotifyHandler,
-            config._QR_NOTIFY:              self.qrResultNotifyHandler,
-            config._CALIBRATION_NOTIFY:     self.calbrateNotifyHandler,
-            config._PREVIEW_FINISH:         self.previewFinishNotifyHandler,
-            config._LIVE_STATUS:            self.liveStateNotifyHandler,
-            config._NET_LINK_STATUS:        self.netLinkStateNotifyHandler,
-            config._GYRO_CALIBRATION:       self.gyroCalFinishNotifyHandler,
-            config._SPEED_TEST_NOTIFY:      self.speedTestFinishNotifyHandler,
-            config._LIVE_FINISH:            self.liveFinishNotifyHnadler,
-            config._LIVE_REC_FINISH:        self.liveRecFinishNotifyHandler,
-            config._PIC_ORG_FINISH:         self.orgPicFinishNotifyHandler,
-
-            config._CAL_ORG_FINISH:         self.orgCalFinishNotifyHandler,
-            config._TIMELAPSE_PIC_FINISH:   self.updateTimelapseCntNotifyHandler,
-            config._NOISE_FINISH:           self.sampleNoiseFinishNotifyHandler,
-            config._GPS_NOTIFY:             self.gpsStateChangeNotifyHandler,           # GPS状态变化通知
-            config._STITCH_NOTIFY:          self.stitchProgressNotifyHandler,
-            config._SND_NOTIFY:             self.sndDevChangeNotifyHandler,
-            config._BLC_FINISH:             self.blcFinishNotifyHandler,
-            config._BPC_FINISH:             self.bpcFinishNotifyHandler,
-            
-            #通知TF卡状态的变化
-            config._TF_NOTIFY:              self.tfStateChangedNotify,
-
-            config._MAGMETER_FINISH:        self.CalibrateMageterNotify,
-            config._DELETE_TF_FINISH:       self.cameraDeleteFileNotify
-        })
-        
-        #which need add res_id to poll_info
-        self.async_finish_cmd = [
-            config._RECORD_FINISH,
-            config._PIC_NOTIFY,
-            config._LIVE_FINISH,
-            config._CALIBRATION_NOTIFY,
-            config._GYRO_CALIBRATION,
-            config._SPEED_TEST_NOTIFY,
-            config._BLC_FINISH,
-            config._BPC_FINISH,
-            config._MAGMETER_FINISH,
-            config._DELETE_TF_FINISH,
-            config._LIST_FILES_FINISH,      # 列出文件结束 
-        ]
-
-        self.req_action = OrderedDict({
-            config._TAKE_PICTURE:ACTION_PIC,
-            config._START_RECORD:ACTION_VIDEO,
-            config._START_LIVE: ACTION_LIVE,
-        })
-
-        self.preview_url = ''
-        self.live_url = ''
-
-
-    # 方法名称: modulePowerOff
-    # 方法描述: 通知camerad退出MODULE_POWRON状态
-    # 入口参数: 
-    # 返 回 值: 
-    def modulePowerOff(self):
-        Info('------- Send module poweroff -------')
-        req = OrderedDict()
-        req[_name] = config._MODULE_POWER_OFF
-        self.sendReq2Camerad(req)
-
-    def reset_state(self):
-        Info('reset busy to idle')
-
-
-    def start_ageing_test(self, content, time):
-        Info('[-------- start_ageing_test --------]')
-        
-        # 给oled_handler发送老化消息
-        self.send_oled_type(config.START_AGEING)
-
-        # 给camerad发送录像
-        read_info = self.sendReq2Camerad(content)
-
-        Info('start_ageing_test result {}'.format(read_info))
-
-        return read_info
-
-    def camera_get_result(self, req, from_ui = False):
-        try:
-            req_ids = req[_param]['list_ids']
-            Info('camera_get_result req_ids {} async_id_list {}'.format(req_ids, self.async_id_list))
-            res_array = []
-
-            # 依次处理需要查询的各个id
-            for id in req_ids:
-                for async_info in self.async_id_list:
-                    if async_info[KEY_ID] == id and async_info[config._ID_GOT] == 1:
-                        Info('found id {}  async_info {}'.format(id,async_info))
-                        res = OrderedDict()
-                        res[KEY_ID] = id
-                        res[_name] = async_info[_name]
-                        res[config.RESULTS] = async_info[config.RESULTS]
-                        res_array.append(res)
-                        
-                        # 从心跳包中移除该ID
-                        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.RM_RES_ID, id))
-                        break
-
-            if len(res_array) > 0:
-                Info('res_array is {}'.format(res_array))
-                read_info = OrderedDict()
-                read_info[_name] = req[_name]
-                read_info[_state] = config.DONE
-                read_info[config.RESULTS] = OrderedDict()
-                read_info[config.RESULTS]['res_array'] = res_array
-                read_info = dict_to_jsonstr(read_info)
-
-                #remove _id_list item got
-                for res_item in res_array:
-                    for id_dict in self.async_id_list:
-                        if id_dict[KEY_ID] == res_item[KEY_ID]:
-                            self.async_id_list.remove(id_dict)
-                            break
-            else:
-                read_info = cmd_error(config._GET_RESULTS, 'camera_get_result', 'id not found')
-        except Exception as e:
-            Err('camera_get_result e {}'.format(e))
-            read_info = cmd_exception(str(e), config._GET_RESULTS)
-        
-        # Info('camera_get_result read_info {}'.format(read_info))
-        return read_info
-
-
-    def get_err_code(self, content):
-        err_code = -1
-        if content is not None:
-            if check_dic_key_exist(content, "error"):
-                if check_dic_key_exist(content['error'], 'code'):
-                    err_code = content['error']['code']
-        return err_code
-
-
-    def send_reset_camerad(self):
-        Info('send_reset_camerad')
-        return self.camera_reset(self.get_req(config.CAMERA_RESET),True)
-
-
-    def camera_start_stitch_fail(self,err = -1):
-        Info('camera_start_stitch_fail')
-
-    def camera_start_stitch_done(self,res = None):
-        Info('camera_start_stitch_done')
-
-    def camera_stop_stitch_fail(self, err=-1):
-        Info('camera_stop_stitch_fail')
-
-    def camera_stop_stitch_done(self, res=None):
-        Info('camera_stop_stitch_done')
-
-
-    def start_non_stich_camera_func(self, name, req):
-        try:
-            ret = self.non_camera_stitch_func[name](req)
-        except AssertionError as e:
-            Err('start_non_stich_camera_func AssertionError e {}'.format(str(e)))
-            ret = cmd_exception(error_dic('start_non_stich_camera_func AssertionError', str(e)), name)
-        except Exception as e:
-            Err('start_non_stich_camera_func exception {} req {}'.format(e,req))
-            ret = cmd_exception(e,req)
-        return ret
-
-
-    def poll_timeout(self):
-        Warn('poll_timeout')
-        if self.get_connect() is False:
-            Warn('poll timeout but cam not connected')
-        self.camera_disconnect(self.get_req(config._DISCONNECT))
-
-
-    def start_poll_timer(self):
-        self.poll_timer.start()
-
-    def stop_poll_timer(self):
-        self.poll_timer.stop()
-
-
-    def aquire_connect_sem(self):
-        self.connect_sem.acquire()
-
-    def release_connect_sem(self):
-        self.connect_sem.release()
-
     def init_all(self):
-
         self.connected = False
 
         # 连接状态锁,用于保护self.connected的互斥访问
@@ -566,9 +88,7 @@ class control_center:
 
         self._write_seq = 0
         self._write_seq_reset = 0
-
         self.last_info = None
-
         self._id = 10000
 
         # 异步命令列表(对于正在处理的异步命令会追加到该列表中)
@@ -613,6 +133,326 @@ class control_center:
         UnixSocketServerHandle('socket_server', self).start()
 
 
+
+    def __init__(self):
+        self.init_all()
+
+    def init_thread(self):
+        self._write_fd = -1
+        self._read_fd = -1
+        self._reset_read_fd = -1
+        self._reset_write_fd = -1
+        self.finger_print = None
+        self.random_data = 0
+        self._list_progress = False   
+        self._list_file_seq = -1  
+        self._client_take_pic = False   
+        self._client_take_live = False
+        self._client_stitch_calc = False
+
+
+        # 
+        # 来自客户端的命令
+        #
+        self.camera_cmd_func = OrderedDict({
+            config._START_PREVIEW:          self.appReqStartPreview,            # 客户端请求启动预览    
+            config._STOP_PREVIEW:           self.appReqStopPreview,             # 客户端请求停止预览
+            config._TAKE_PICTURE:           self.appReqTakePicture,             # 客户端请求拍照 - DYZ
+            config._START_RECORD:           self.appReqTakeVideo,               # 启动录像
+            config._STOP_RECORD:            self.appReqStopRecord,
+            config._START_LIVE:             self.appReqStartLive,               # 客户端请求启动直播
+            config._STOP_LIVE:              self.appReqStopLive,
+            
+            config._SET_NTSC_PAL:           self.appReqSetNtscPal,
+            config._GET_NTSC_PAL:           self.appReqGetNtscPal,
+
+            config._SETOFFSET:              self.appReqSetOffset,
+            config._GETOFFSET:              self.appReqGetOffset,
+            
+            config._SET_IMAGE_PARAM:        self.appReqSetImageParam,
+            config._GET_IMAGE_PARAM:        self.appReqGetImageParam,
+
+            config.SET_OPTIONS:             self.appReqSetOptions,          # 设置/获取Options
+            config.GET_OPTIONS:             self.appReqGetOptions,
+
+            config._SET_STORAGE_PATH:       self.appReqSetStoragePath,      # 设置存储路径
+
+            config._CALIBRATION:            self.appReqStartCalibration,    # 请求拼接校准
+            config._QUERY_STATE:            self.appReqQueryState,
+            config._START_GYRO:             self.appReqStartGyro,
+            config._SPEED_TEST:             self.appReqStartSpeedTest,
+            config._SYS_TIME_CHANGE:        self.appReqSetSysTime,
+            config._UPDATE_GAMMA_CURVE:     self.appReqUpdateGamma,
+
+            config._SET_SYS_SETTING:        self.appReqSetSysSetting,
+            config._GET_SYS_SETTING:        self.appReqGetSysSetting,
+
+            # 产测功能: BLC和BPC校正(异步)
+            config._CALIBTRATE_BLC:         self.appReqBlcCal,
+            config._CALIBTRATE_BPC:         self.appReqBpcCalc,
+
+            config._CALIBRATE_MAGMETER:     self.appReqMageterCalc,             # 磁力计矫正            
+            config._DELETE_TF_CARD:         self.appReqDeleteFile,              # 删除TF里的文件            
+
+            config._QUERY_LEFT_INFO:         self.appReqQueryLefInfo,
+            config._SHUT_DOWN_MACHINE:       self.appReqShutdown,               # 关机
+            config._SWITCH_MOUNT_MODE:       self.appReqSwitchMountMode,        # 切换TF卡的挂载方式
+            config._LIST_FILES:              self.appReqListFile,               # 列出文件的异步命令
+            config._REQ_AWB_CALC:            self.cameraUiCalcAwb,              # AWB校正
+        })
+
+
+        self.camera_cmd_done = OrderedDict({            
+            config._START_PREVIEW:          self.startPreviewDone,
+            config._STOP_PREVIEW:           self.stopPreviewDone,
+            config._TAKE_PICTURE:           self.takePictureDone,
+
+            config._START_RECORD:           self.takeVideoDone,
+            config._STOP_RECORD:            self.stopRecordDone,
+            config._START_LIVE:             self.startLiveDone,            
+            config._STOP_LIVE:              self.stopLiveDone,
+
+            config._CALIBRATION:            self.startCalibrationDone,            
+            config._QUERY_STATE:            self.queryStateDone,
+            config._START_GYRO:             self.startGyroDone,
+            config._SPEED_TEST:             self.startSpeedTestDone,
+            config._CALIBTRATE_BLC:         self.blcCalcDone,
+
+            config._START_QR:               self.startQrScanDone,
+            
+            # config._STOP_QR:                self.camera_stop_qr_done,            
+            # config._LOW_BAT:              self.camera_low_bat_done,
+            
+            # config._LOW_BAT_PROTECT:        self.camera_low_protect_done,
+            
+            config._POWER_OFF:              self.powerOffDone,
+                        
+            config._START_NOISE:            self.sampleNoiseDone,
+            config._SYS_TIME_CHANGE:        self.setTimeChangeDone,
+            config._CALIBTRATE_BPC:         self.bpcCalcDone,
+            config._CALIBRATE_MAGMETER:     self.mageterCalcDone,
+            config._DELETE_TF_CARD:         self.deleteFileDone,
+            config._QUERY_LEFT_INFO:        self.cameraQueryLeftInfo,
+        })
+
+        self.async_cmd = [config._TAKE_PICTURE,
+                          config._SPEED_TEST,
+                          config._CALIBRATION,
+                          config._START_GYRO,
+                          config._STOP_RECORD,
+                          config._STOP_LIVE,
+                          config._CALIBTRATE_BLC,
+                          config._CALIBTRATE_BPC,
+                          config._CALIBRATE_MAGMETER,
+                          config._DELETE_TF_CARD,
+                          config._QUERY_LEFT_INFO,
+                          config._LIST_FILES,
+                          ]
+
+
+        self.camera_cmd_fail = OrderedDict({            
+            config._START_PREVIEW:          self.startPreviewFail,               # 启动预览失败
+            config._STOP_PREVIEW:           self.stopPreviewFail,
+
+            config._TAKE_PICTURE:           self.takePictureFail,
+            
+            config._START_RECORD:           self.takeVideoFail,
+            config._STOP_RECORD:            self.stopRecordFail,            
+            config._START_LIVE:             self.startLiveFail,            
+            config._STOP_LIVE:              self.stopLiveFail,
+            
+            config._CALIBRATION:            self.startCalibrationFail,
+            config._START_GYRO:             self.startGyroFail,
+            config._SPEED_TEST:             self.startSpeedTestFail,
+
+            config._START_QR:               self.startQrScanFail,
+            # config._STOP_QR:                self.camera_stop_qr_fail,
+
+            # config._LOW_BAT:              self.camera_low_bat_fail,
+            config._POWER_OFF:              self.powerOffFail,
+            # config._LOW_BAT_PROTECT:        self.camera_low_protect_fail,
+
+            config._START_NOISE:            self.sampleNoiseFail,
+            config._SYS_TIME_CHANGE:        self.setTimeChangeFail,
+            config._CALIBTRATE_BLC:         self.blcCalcFail,
+            config._CALIBTRATE_BPC:         self.bpcCalcFail,
+            config._CALIBRATE_MAGMETER:     self.mageterCalcFail,
+            config._DELETE_TF_CARD:         self.deleteFileFail,
+        })
+
+
+        # SystemServeer请求
+        self.systemServerReqHandler = OrderedDict({
+            config._GET_SET_CAM_STATE:          self.cameraUiGetSetCamState,                # 请求查询Camera的状态
+            config._REQ_ENTER_UDISK_MOD:        self.cameraUiSwitchUdiskMode,               # 请求Server进入U盘模式
+            config._UPDAT_TIMELAPSE_LEFT:       self.cameraUiUpdateTimelapaseLeft,          # 更新拍timelapse的剩余值
+            config._REQ_SYNC_INFO:              self.cameraUiRequestSyncInfo,               # 请求同步状态
+            config._REQ_FORMART_TFCARD:         self.cameraUiFormatTfCard,                  # 请求格式化TF卡
+            config._REQ_UPDATE_REC_LIVE_INFO:   self.cameraUiUpdateRecLeftSec,              # 请求更新录像,直播的时间
+            config._REQ_START_PREVIEW:          self.cameraUiStartPreview,                  # 请求启动预览
+            config._REQ_STOP_PREVIEW:           self.cameraUiStopPreview,                   # 请求停止预览
+            config._REQ_QUERY_TF_CARD:          self.cameraUiQueryTfcard,                   # 查询TF卡状态
+            config._REQ_QUERY_GPS_STATE:        self.cameraUiqueryGpsState,                 # 查询GPS状态
+            config._REQ_SET_CUSTOM_PARAM:       self.cameraUiSetCustomerParam,              # 设置Customer
+            config._REQ_SPEED_TEST:             self.cameraUiSpeedTest,                     # 测速请求
+            config._REQ_TAKE_PIC:               self.cameraUiTakePic,                       # 请求拍照
+            config._REQ_TAKE_VIDEO:             self.cameraUiTakeVideo,                     # 请求录像
+            config._REQ_STOP_VIDEO:             self.cameraUiStopVideo,                     # 停止录像
+            config._REQ_START_LIVE:             self.cameraUiStartLive,                     # 请求启动直播
+            config._REQ_STOP_LIVE:              self.cameraUiStopLive,                      # 请求停止直播
+            config._REQ_STITCH_CALC:            self.cameraUiStitchCalc,                    # 拼接校正
+            config._REQ_SAVEPATH_CHANGE:        self.cameraUiSavepathChange,                # 存储路径改变
+            config._REQ_UPDATE_STORAGE_LIST:    self.cameraUiUpdateStorageList,             # 更新存储设备列表
+            config._REQ_UPDATE_BATTERY_IFNO:    self.cameraUiUpdateBatteryInfo,             # 更新电池信息
+            config._REQ_START_NOISE:            self.cameraUiNoiseSample,                   # 请求噪声采样
+            config._REQ_START_GYRO:             self.cameraUiGyroCalc,                      # 请求陀螺仪校正
+            config._REQ_POWER_OFF:              self.cameraUiLowPower,                      # 低电请求
+            config._REQ_SET_OPTIONS:            self.cameraUiSetOptions,                    # 设置Options
+            config._REQ_AWB_CALC:               self.cameraUiCalcAwb,                       # AWB校正
+            config._REQ_UPDATE_SYS_TMP:         self.cameraUiUpdateSysTemp,                 # 更新系统温度
+        })
+
+
+        self.non_camera_cmd_func = OrderedDict({
+            config._GET_RESULTS:            self.appReqGetResults,
+            config.LIST_FILES:              self.appReqListFiles,
+            config.DELETE:                  self.appReqDeleteFile,
+            config.GET_IMAGE:               self.appReqGetImage,
+            config.GET_META_DATA:           self.appReqGetMetaData,
+            config._DISCONNECT:             self.appReqDisconnect,
+            config._SET_CUSTOM:             self.appReqSetCustom,
+            config._SET_SN:                 self.appReqSetSN,
+            config._START_SHELL:            self.appReqStartShell,
+            config._QUERY_GPS_STATE:        self.appReqQueryGpsState,
+            # config.CAMERA_RESET:          self.camera_reset,
+        })
+
+
+        self.oscPathFunc = OrderedDict({            
+            config.PATH_STATE:              self.getOscState,     # 查询心跳包的状态函数
+            config.PATH_INFO:               self.getOscInfo,
+        })
+
+
+        self.asyncNotifyHandler = OrderedDict({
+            config._STATE_NOTIFY:           self.stateNotifyHandler,
+            config._RECORD_FINISH:          self.recStopFinishNotifyHandler,
+            config._PIC_NOTIFY:             self.picFinishNotifyHandler,
+            config._RESET_NOTIFY:           self.resetNotifyHandler,
+            config._QR_NOTIFY:              self.qrResultNotifyHandler,
+            config._CALIBRATION_NOTIFY:     self.calbrateNotifyHandler,
+            config._PREVIEW_FINISH:         self.previewFinishNotifyHandler,
+            config._LIVE_STATUS:            self.liveStateNotifyHandler,
+            config._NET_LINK_STATUS:        self.netLinkStateNotifyHandler,
+            config._GYRO_CALIBRATION:       self.gyroCalFinishNotifyHandler,
+            config._SPEED_TEST_NOTIFY:      self.speedTestFinishNotifyHandler,
+            config._LIVE_FINISH:            self.liveFinishNotifyHnadler,
+            config._LIVE_REC_FINISH:        self.liveRecFinishNotifyHandler,
+            config._PIC_ORG_FINISH:         self.orgPicFinishNotifyHandler,
+
+            config._CAL_ORG_FINISH:         self.orgCalFinishNotifyHandler,
+            config._TIMELAPSE_PIC_FINISH:   self.updateTimelapseCntNotifyHandler,
+            config._NOISE_FINISH:           self.sampleNoiseFinishNotifyHandler,
+            config._GPS_NOTIFY:             self.gpsStateChangeNotifyHandler,           # GPS状态变化通知
+            config._STITCH_NOTIFY:          self.stitchProgressNotifyHandler,
+            config._SND_NOTIFY:             self.sndDevChangeNotifyHandler,
+            config._BLC_FINISH:             self.blcFinishNotifyHandler,
+            config._BPC_FINISH:             self.bpcFinishNotifyHandler,
+            
+            #通知TF卡状态的变化
+            config._TF_NOTIFY:              self.tfStateChangedNotify,
+
+            config._MAGMETER_FINISH:        self.CalibrateMageterNotify,
+            config._DELETE_TF_FINISH:       self.cameraDeleteFileNotify
+        })
+        
+        self.async_finish_cmd = [
+            config._RECORD_FINISH,
+            config._PIC_NOTIFY,
+            config._LIVE_FINISH,
+            config._CALIBRATION_NOTIFY,
+            config._GYRO_CALIBRATION,
+            config._SPEED_TEST_NOTIFY,
+            config._BLC_FINISH,
+            config._BPC_FINISH,
+            config._MAGMETER_FINISH,
+            config._DELETE_TF_FINISH,
+            config._LIST_FILES_FINISH,      # 列出文件结束 
+        ]
+
+        self.req_action = OrderedDict({
+            config._TAKE_PICTURE:ACTION_PIC,
+            config._START_RECORD:ACTION_VIDEO,
+            config._START_LIVE: ACTION_LIVE,
+        })
+
+        self.preview_url = ''
+        self.live_url = ''
+
+
+
+############################### 定时器相关 ##################################
+    def poll_timeout(self):
+        Warn('++++++++ poll_timeout +++++++++')
+        if self.get_connect() is False:
+            Warn('poll timeout but cam not connected')
+        self.appReqDisconnect(self.get_req(config._DISCONNECT))
+
+    def startPollTimer(self):
+        self.poll_timer.start()
+
+    def stopPollTimer(self):
+        self.poll_timer.stop()
+
+
+
+############################# Util #########################################
+    # 方法名称: modulePowerOff
+    # 方法描述: 通知camerad退出MODULE_POWRON状态
+    # 入口参数: 
+    # 返 回 值: 
+    def modulePowerOff(self):
+        Info('------- Send module poweroff -------')
+        req = OrderedDict()
+        req[_name] = config._MODULE_POWER_OFF
+        self.sendReq2Camerad(req)
+
+    def aquire_connect_sem(self):
+        self.connect_sem.acquire()
+
+    def release_connect_sem(self):
+        self.connect_sem.release()
+
+    def get_err_code(self, content):
+        err_code = -1
+        if content is not None:
+            if check_dic_key_exist(content, "error"):
+                if check_dic_key_exist(content['error'], 'code'):
+                    err_code = content['error']['code']
+        return err_code
+
+    def clear_url_list(self):
+        self.url_list = {config.PREVIEW_URL: None, config.RECORD_URL: None, config.LIVE_URL: None}
+
+    def get_preview_url(self):
+        return self.url_list[config.PREVIEW_URL]
+
+    def set_preview_url(self, url):
+        self.url_list[config.PREVIEW_URL] = url
+
+    def set_rec_url(self, url):
+        self.url_list[config.RECORD_URL] = url
+
+    def get_rec_url(self):
+        return self.url_list[config.RECORD_URL]
+
+    def set_live_url(self, url):
+        self.url_list[config.LIVE_URL] = url
+
+    def get_live_url(self):
+        return self.url_list[config.LIVE_URL]
+
+
     def syncState2SystemServer(self, req):
         Info('-------> send sync init req {}'.format(req))
         # self.send_req(self.get_write_req(config.OLED_SYNC_INIT, req))
@@ -621,181 +461,134 @@ class control_center:
         syncInd[_param] = req
         self.sendIndMsg2SystemServer(syncInd)
 
-
-
-
-    def send_wifi_config(self, req):
-        Info('wifi req'.format(req))
-        self.send_req(self.get_write_req(config.OLED_CONIFIG_WIFI, req))
-
-    # 方法名称: sendQueryStorageResults
-    # 功能: 将查询到的卡信息发送给UI
-    # 参数: results - 查询的结果信息
-    # 返回值: 无
-    def sendQueryStorageResults(self, results):
-        Info('---> send query storage results to UI {}'.format(results))
-        self.send_req(self.get_write_req(config.UI_NOTIFY_STORAGE_STATE, results))
-
-    def sendTfcardFormatResult(self, results):
-        Info('---> send format tf results to UI {}'.format(results))
-        self.send_req(self.get_write_req(config.UI_NOTIFY_TF_FORMAT_RESULT, results))
-
-
     def get_cam_state(self):
         return osc_state_handle.get_cam_state()
 
-    def get_cam_state_hex(self):
-        return hex(osc_state_handle.get_cam_state())
-
-    def set_cam_state(self,state):
+    def set_cam_state(self, state):
         osc_state_handle.set_cam_state(state)
 
 
+    def fp_decode(self,data):
+        return base64.urlsafe_b64decode(data)
+
+    def fp_encode(self,data):
+        return base64.urlsafe_b64encode(data)
+
+    def generate_fp(self):
+        self.random_data = os.urandom(8)
+        self.finger_print = bytes_to_str(self.fp_encode(self.random_data))
+        Info('generate random data {} fp {}'.format(self.random_data, self.finger_print))
 
 
+    def get_connect(self):
+        self.connectStateLock.acquire()
+        state = self.connected
+        self.connectStateLock.release()
+        return state
 
-    #req is reserved
-    def get_osc_info(self):
-        return osc_info.get_osc_info()
-
-    # 方法名称: get_osc_state
-    # 功能: 查询心跳包信息(由http client发送)
-    # 参数: 无
-    # 
-    def get_osc_state(self):
-        # 停止轮询定时器
-        self.stop_poll_timer()
-        
-        Info('---------- get osc state -------')
-        # 获取状态osc_state
-        ret_state = osc_state_handle.get_osc_state(False)
-        
-        # 重新启动定时器
-        self.start_poll_timer()
-        return ret_state
-
-
-    def get_osc_stich_state(self):
-        return osc_state_handle.get_osc_state(self.get_stitch_mode())
-
-    def check_for_update(self, req):
-        return osc_check_update.check_update(req)
-
-    def get_media_name(self,name):
-        pass
-
-    def __init__(self):
-        self.init_all()
-
-    def camera_set_options(self, req, from_ui = False):
-        Info('[---------- APP Request: camera_set_options ----] req {}'.format(req))
-        read_info = self.sendReq2Camerad(req)
-        return read_info
-
-
-    def camera_get_options(self, req, from_ui = False):
-        Info('[---------- APP Request: camera_get_options ----] req {}'.format(req))
-        read_info = self.sendReq2Camerad(req)
-        return read_info
-
-    def camera_set_image_param(self, req, from_ui = False):
-        Info('[---------- APP Request: camera_set_image_param ----] req {}'.format(req))
-        read_info = self.sendReq2Camerad(req)
-        return read_info
-
-    def camera_get_image_param(self, req, from_ui = False):
-        Info('[---------- APP Request: camera_get_image_param ----] req {}'.format(req))
-        read_info = self.sendReq2Camerad(req)
-        return read_info
+    def set_connect(self, state):
+        self.connectStateLock.acquire()
+        self.connected = state
+        self.connectStateLock.release()
 
     def get_last_info(self):
         return self.last_info
 
-    #last camera info produced by last connection
     def set_last_info(self, info):
         self.last_info = info
 
-    def check_need_sync(self, st, mine):
-        if st != mine:
-            if mine != config.STATE_IDLE:
-                spec_state = [config.STATE_START_QR, config.STATE_UDISK, config.STATE_SPEED_TEST, config.STATE_START_GYRO, config.STATE_NOISE_SAMPLE, config.STATE_CALIBRATING]
-                for i in spec_state:
-                    if mine & i == i:
-                        ret = False
-                        break
-                else:
-                    ret = True
-            else:
-                ret = True
-        else:
-            ret = False
-        Info('st {} mine {} check_need_sync {}'.format(hex(st),hex(mine),ret))
-        return ret
-
-    def check_live_record(self,param):
+    def check_fp(self, fp):
         ret = False
-        if check_dic_key_exist(param,'live'):
-            Info('live param {}'.format(param['live']))
-            if check_dic_key_exist(param['live'], 'liveRecording'):
-                if param['live']['liveRecording'] is True:
-                    ret = True
+        if fp is not None:
+            random = self.fp_decode(fp)
+            if self.random_data == random or fp == 'test':
+                ret = True
+            else:
+                Err('fp mismatch : req {} mine {}'.format(random,self.random_data ))
         return ret
 
+    def acquire_sem_camera(self):
+        self.sem_camera.acquire()
 
-    def sync_init_info_to_p(self,res):
-        try:
-            if res != None:
-                m_v = 'moduleVersion'
-                st = self.convert_state(res['state'])
-                Info('sync_init_info_to_p res {}  cam_state {} st {}'.format(res,self.get_cam_state(),hex(st)))
-                if self.check_live_record(res):
-                    st = (st | config.STATE_RECORD)
-                    Info('2sync_init_info_to_p res {}  cam_state {} st {}'.format(res, self.get_cam_state(), hex(st)))
+    def release_sem_camera(self):
+        self.sem_camera.release()
 
-                # U盘模式下不需要状态同步
-                if self.check_need_sync(st,self.get_cam_state()):
-                    self.set_cam_state(st)  # 如果需要同步，会在此处修改camera的状态
-                    req = OrderedDict()
-                    req['state'] = st
-                    req['a_v'] = res['version']
-                    if m_v in res.keys():
-                        req['c_v'] = res[m_v]
-                    req['h_v'] = ins_version.get_version()
-                    self.syncState2SystemServer(req)
-        except Exception as e:
-            Err('sync_init_info_to_p exception {}'.format(str(e)))
+    def get_req(self, name, param = None):
+        dict = OrderedDict()
+        dict[_name] = name
+        if param is not None:
+            dict[_param] = param
+        return dict
 
 
-    def camera_query_state_done(self, res = None):
-        if res is not None:
-            self.set_last_info(res)
-            Info('query state res {}'.format(res))
+    def startAgingTest(self, content, time):
+        Info('[-------- startAgingTest --------]')        
+        self.notifyDispType(config.START_AGEING)
 
-        self.sync_init_info_to_p(res)
-
-    def camera_query_state(self, req, from_ui = False):
-
-        read_info = self.sendReq2Camerad(req)
+        # 给camerad发送录像
+        read_info = self.sendReq2Camerad(content)
+        Info('startAgingTest result {}'.format(read_info))
         return read_info
 
-    def camera_set_time_change_fail(self,err = -1):
-        Info('sys time change fail')
 
-    def camera_sys_time_change_done(self,res = None):
-        Info('sys time change done')
+    def startSpeedTest(self, req, from_oled = False):
+        if StateMachine.checkAllowSpeedTest():
+            StateMachine.addCamState(config.STATE_SPEED_TEST)
 
-    def camera_sys_time_change(self, req, from_ui = False):
-        read_info = self.sendReq2Camerad(req)
+            # 测试命令来自客户端，让UI显示响应的状态
+            if from_oled is False:
+                self.notifyDispType(config.SPEED_START)
+            
+            self.test_path = req[_param]['path']
+            read_info = self.sendReq2Camerad(req, from_oled)
+        else:
+            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
         return read_info
 
-    def camera_update_gamma_curve(self, req, from_ui = False):
-        read_info = self.sendReq2Camerad(req)
+    def startGyro(self, req, from_oled = False):
+        if StateMachine.checkAllowGyroCal():
+            StateMachine.addCamState(config.STATE_START_GYRO)
+            if from_oled is False:
+                self.notifyDispType(config.START_GYRO)
+            read_info = self.sendReq2Camerad(req, True)
+        else:
+            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
+            if from_oled:
+                self.notifyDispType(config.START_GYRO_FAIL)
         return read_info
 
-    def camera_get_last_info(self):
-        Info('camera_get_last_info a')
-        self.start_camera_cmd_func(config._QUERY_STATE, self.get_req(config._QUERY_STATE))
-        Info('camera_get_last_info b')
+
+    def startCalibration(self, req, from_oled = False):
+        if self._client_stitch_calc == False:
+            if StateMachine.checkStateIn(config.STATE_CALIBRATING):
+                StateMachine.rmServerState(config.STATE_CALIBRATING)
+
+        Info('startCalibration req {} Server State {}'.format(req, StateMachine.getCamState()))
+        if StateMachine.checkAllowCalibration():
+            StateMachine.addCamState(config.STATE_CALIBRATING)
+            if from_oled is False:
+                self.notifyDispType(config.START_CALIBRATIONING)
+            res = self.sendReq2Camerad(req, from_oled)
+        else:
+            res = cmd_error_state(req[_name], StateMachine.getCamState())
+            if from_oled:
+                self.notifyDispType(config.CALIBRATION_FAIL)
+        return res
+
+
+    def startNoise(self, req, from_oled = False):
+        Info("---> startNoise st {}".format(StateMachine.getCamStateFormatHex()))
+        if StateMachine.checkAllowNoise():
+            StateMachine.addCamState(config.STATE_NOISE_SAMPLE)
+            if from_oled is False:
+                self.notifyDispType(config.START_NOISE)
+            read_info = self.sendReq2Camerad(req, True)
+        else:
+            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
+            if from_oled:
+                self.notifyDispType(config.START_NOISE_FAIL)
+        return read_info
+
 
     def convert_state(self, state_str):
         st = config.STATE_IDLE
@@ -821,31 +614,22 @@ class control_center:
             st |= config.STATE_START_QR
         if str_exits(state_str, 'audio_capture'):
             st |= config.STATE_NOISE_SAMPLE
-
         return st
 
-
-    #"MMDDhhmm[[CC]YY][.ss]"
-    #091713272014.30
-    #usage: hwSetTime year month day hour minute second
     def set_hw_set_cmd(self, str):
         try:
-            Info('get hw_time is {}'.format(str))
             Info('hw_time is {}'.format(str))
             cmd='date ' + str
             os.system(cmd)
         except Exception as e:
             Err('set hw exception {}'.format(e))
 
-
-
     def set_sys_time_change(self, delta_t):
         Info('set_sys_time_change a')
         param = OrderedDict()
         param['delta_time_s'] = delta_t
-        self.start_camera_cmd_func(config._SYS_TIME_CHANGE, self.get_req(config._SYS_TIME_CHANGE, param))
+        self.excuteCameraFunc(config._SYS_TIME_CHANGE, self.get_req(config._SYS_TIME_CHANGE, param))
         Info('set_sys_time_change b')
-
 
 
     def set_sys_time(self, req):
@@ -897,766 +681,92 @@ class control_center:
         else:
             Err('not set sys_time')
 
+    def setLensParam(self, len_param):
+        Info('---- setLensParam: ----- {}'.format(len_param))
+        paramDict = OrderedDict()
+        paramDict[_name] = config.SET_OPTIONS
+        param = []
+        len_key = ['aaa_mode','sharpness','brightness','long_shutter','shutter_value','wb','saturation','contrast','ev_bias','iso_value']
+        for k in len_key:
+            if check_dic_key_exist(len_param,k):
+                param.append(OrderedDict({'property': k, 'value': len_param[k]}))
+        if len(param) > 0:
+            paramDict[_param] = param
+        return self.appReqSetOptions(paramDict)
 
 
-    #
-    # camera_connect - 连接web_server请求
-    # @param
-    #   req - 请求参数
-    #  
-    def camera_connect(self, req):
-        Info('[------- APP Req: camera_connect ------] req: {}'.format(req))
-        self.aquire_connect_sem()
+    def sendSavePathChange(self, content):
+        Info('[------ UI Req: sendSavePathChange -----] req: {}'.format(content))
+        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.HAND_SAVE_PATH, content))
+        return self.excuteCameraFunc(config._SET_STORAGE_PATH, self.get_req(config._SET_STORAGE_PATH, content))
 
-        # 停止定时器(确保在连接过程中，定时器处于停止状态)
-        self.stop_poll_timer()
 
-        try:
-            Info('b camera_connect req {}'.format(req))
-            self.generate_fp()
-            
-            ret = OrderedDict({_name:req[_name], _state:config.DONE, config.RESULTS:{config.FINGERPRINT:self.finger_print}})
-            url_list = OrderedDict()
+    def reset_all(self):
+        Info('start reset')
+        self.reset_fifo()
+        Info('start reset2')
+        self.clear_all()
+        Info('start reset3')
+        self.notifyDispType(config.RESET_ALL)
+        Info('start reset over')
 
-            self.set_last_info(None)
 
-            self.camera_get_last_info()
+    def clear_all(self):
+        self.set_cam_state(config.STATE_IDLE)
+        self.clear_url_list()
+        self.async_id_list.clear()
+        osc_state_handle.send_osc_req(
+            osc_state_handle.make_req(osc_state_handle.CLEAR_TL_COUNT))
 
-            if self.get_last_info() != None:
-                ret[config.RESULTS]['last_info'] = self.get_last_info()
 
-            st = StateMachine.getCamState()
-            Info('>>>>>> b camera_connect st {}'.format(hex(st)))
+    #reset INS_FIFO_TO_SERVER and INS_FIFO_TO_CLIENT
+    def reset_fifo(self):
+        Info('reset_fifo a')
+        self.close_read()
+        Info('reset_fifo b')
+        self.close_write()
+        Info('reset_fifo c')
+        self._write_seq = 0
 
-            if st != config.STATE_IDLE:
-                if st & config.STATE_PREVIEW == config.STATE_PREVIEW:
-                    url_list[config.PREVIEW_URL] = self.get_preview_url()
-
-                if ((st & config.STATE_LIVE == config.STATE_LIVE) or (st & config.STATE_LIVE_CONNECTING == config.STATE_LIVE_CONNECTING)):
-                    url_list[config.LIVE_URL] = self.get_live_url()
-                    ret[config.RESULTS]['last_info']['live']['timePast'] = osc_state_handle.get_live_rec_pass_time()
-                    ret[config.RESULTS]['last_info']['live']['timeLeft'] = osc_state_handle.get_live_rec_left_time()
-
-                elif st & config.STATE_RECORD == config.STATE_RECORD:
-                    url_list[config.RECORD_URL] = self.get_rec_url()
-                    ret[config.RESULTS]['last_info']['record']['timePast'] = osc_state_handle.get_rec_pass_time()
-                    ret[config.RESULTS]['last_info']['record']['timeLeft'] = osc_state_handle.get_rec_left_time()
-
-                ret[config.RESULTS]['url_list'] = url_list
-            else:
-                
-                # 参数字典中含有时间参数并且系统没有同步过时间
-                # 是否需要修改时区由time_tz服务来决定
-                # if check_dic_key_exist(req, _param):
-                if check_dic_key_exist(req, _param) and self.has_sync_time is False:
-                    Info('--> Inneed sync time here.')
-                    self.set_sys_time(req[_param])
+    def check_need_sync(self, st, mine):
+        if st != mine:
+            if mine != config.STATE_IDLE:
+                spec_state = [config.STATE_START_QR, config.STATE_UDISK, config.STATE_SPEED_TEST, config.STATE_START_GYRO, config.STATE_NOISE_SAMPLE, config.STATE_CALIBRATING]
+                for i in spec_state:
+                    if mine & i == i:
+                        ret = False
+                        break
                 else:
-                    Info('---> Need not sync time form App')
-
-            ret[config.RESULTS]['_cam_state'] = st
-
-            # 加添一个字段来区分'pro2'
-            ret[config.RESULTS][config.MACHINE_TYPE] = config.MACHINE
-
-            if self.sync_param is not None:
-                Info('self.sync_param is {}'.format(self.sync_param))
-                ret[config.RESULTS]['sys_info'] = self.sync_param
-                ret[config.RESULTS]['sys_info']['h_v'] = ins_version.get_version()
-                ret[config.RESULTS]['sys_info']['s_v'] = get_s_v()
-
-            self.release_connect_sem()
-            self.set_connect(True)
-            
-            Print('>>> connect ret {}'.format(ret))
-            self.start_poll_timer()
-            
-            return dict_to_jsonstr(ret) # 返回链接参数string给客户端
-
-        except Exception as e:
-            Err('connect exception {}'.format(e))
-            self.release_connect_sem()
-            return cmd_exception(error_dic('camera_connect', str(e)), req)
-
-
-    def camera_disconnect(self, req, from_ui = False):
-        Info('[------- APP Req: camera_disconnect ------] req: {}'.format(req))
-        
-        # 避免断网的情况下，camerad一直处于POWERON状态
-        self.modulePowerOff()                
-        ret = cmd_done(req[_name])
-        try:
-            Info('camera_disconnect Server State {}'.format(StateMachine.getCamStateFormatHex()))
-            self.set_connect(False)
-            self.stop_poll_timer()
-            self.random_data = 0
-
-            #stop preview after disconnect if only preview
-            if StateMachine.getCamState() == config.STATE_PREVIEW:
-                Info("stop preview while disconnect")
-                self.start_camera_cmd_func(config._STOP_PREVIEW, self.get_req(config._STOP_PREVIEW))
-            Info('2camera_disconnect ret {} self.get_cam_state() {}'.format(ret, StateMachine.getCamStateFormatHex()))
-        except Exception as e:
-            Err('disconnect exception {}'.format(str(e)))
-            ret = cmd_exception(str(e), config._DISCONNECT)
+                    ret = True
+            else:
+                ret = True
+        else:
+            ret = False
+        Info('st {} mine {} check_need_sync {}'.format(hex(st),hex(mine),ret))
         return ret
 
 
-    def add_async_cmd_id(self, name, id_seq):
-        id_dict = OrderedDict()
-        id_dict[KEY_ID] = id_seq
-        id_dict[_name] = name
-        id_dict[config._ID_GOT] = 0
-
-        Info('add async name {} id_seq {}'.format(name, id_seq))
-        self.async_id_list.append(id_dict)
-
-
-    # add_async_finish
-    # 添加异步结束的结果
-    # 对于新版的测速, camerad不再返回'results'相关信息，需要手动填写
-    def add_async_finish(self, content):
-        Info('add async content {}'.format(content))
-        if check_dic_key_exist(content, 'sequence'):
-            id = content['sequence']
-            for async_info in self.async_id_list:
-                if async_info[KEY_ID] == id:
-                    if check_dic_key_exist(content, _param):
-                        async_info[config.RESULTS] = content[_param]
-                    else:
-                        async_info[config.RESULTS] = {}
-                        
-                    Info('add async_info {}'.format(async_info))
-                    async_info[config._ID_GOT] = 1
-                    osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.ADD_RES_ID, id))
-                    return
-
-
-
-    def handleSetSn(self, req):
-        Info('[------- APP Req: handleSetSn ------] req: {}'.format(req))
-        self.sendIndMsg2SystemServer(req)
-        # self.send_set_sn(req[_param])
-        return cmd_done(req[_name])
-
-
-
-    def start_shell(self, req, from_ui = False):
-        ret = -1
-        if check_dic_key_exist(req,_param):
-            if check_dic_key_exist(req[_param], 'cmd'):
-                ret = sys_cmd(req[_param]['cmd'])
-        if ret == 0:
-            ret = cmd_done(req[_name])
-        else:
-            ret = cmd_error(req[_name], 'start shell', 'exec fail')
-        Info('start_shell {} ret {}'.format(req,ret))
+    def checkLiveRecord(self, param):
+        ret = False
+        if check_dic_key_exist(param, 'live'):
+            Info('live param {}'.format(param['live']))
+            if check_dic_key_exist(param['live'], 'liveRecording'):
+                if param['live']['liveRecording'] is True:
+                    ret = True
         return ret
 
 
-    def set_custom(self, req, from_ui = False):
-        Info('set custom req {}'.format(req))
-        if check_dic_key_exist(req, _param):
-            self.send_oled_type(config.SET_CUS_PARAM, req[_param])
-        else:
-            Info('set custom no _param')
-        return cmd_done(req[_name])
-
-
-    # 方法名称: queryGpsState
-    # 功能: 查询Gps状态
-    # 参数: req - 请求参数
-    # 返回值: 请求结果
-    def queryGpsState(self, req, from_ui = False):
-        Info('queryGpsState {}'.format(req))
-        info = self.sendReq2Camerad(req)
-        return info
-
-
-    # {"flicker": 1, "speaker": 1, "led_on": 1, "fan_on": 1, "aud_on": 1, "aud_spatial": 1, "set_logo": 1, "gyro_on": 1,"video_fragment",1,
-    #  "reset_all": 0}
-    def set_sys_option(self,param):
-        Info("param is {}".format(param))
-        
-        if check_dic_key_exist(param, 'reset_all'):
-            self.reset_user_cfg()
-            self.notifyDispType(config.RESET_ALL_CFG)
-        else:
-            if check_dic_key_exist(param, 'flicker'):
-                p = OrderedDict({'property': 'flicker', 'value': param['flicker']})
-                self.camera_oled_set_option(p)
-
-            if check_dic_key_exist(param,'fan_on'):
-                p = OrderedDict({'property': 'fanless'})
-                if param['fan_on'] == 1:
-                    p['value'] = 0
-                else:
-                    p['value'] = 1
-                self.camera_oled_set_option(p)
-
-            if check_dic_key_exist(param, 'aud_on'):
-                p = OrderedDict({'property': 'panoAudio'})
-                if param['aud_on'] == 0:
-                    p['value'] = 0
-                else:
-                    if check_dic_key_exist(param,'aud_spatial'):
-                        if param['aud_spatial'] == 1:
-                            p['value'] = 2
-                        else:
-                            p['value'] = 1
-                    else:
-                        Info('no aud_spatial')
-                        p['value'] = 1
-                self.camera_oled_set_option(p)
-
-            if check_dic_key_exist(param, 'gyro_on'):
-                p = OrderedDict({'property': 'stabilization_cfg', 'value': param['gyro_on']})
-                self.camera_oled_set_option(p)
-
-            if check_dic_key_exist(param, 'set_logo'):
-                p = OrderedDict({'property': 'logo', 'value': param['set_logo']})
-                self.camera_oled_set_option(p)
-
-            if check_dic_key_exist(param, 'video_fragment'):
-                p = OrderedDict({'property': 'video_fragment', 'value': param['video_fragment']})
-                self.camera_oled_set_option(p)
-
-            self.send_oled_type(config.SET_SYS_SETTING, OrderedDict({'sys_setting': param}))
-
-
-    def reset_user_cfg(self):
-        Info('reset_user_cfg ')
-        src = '/home/nvidia/insta360/etc/def_cfg'
-        dest = '/home/nvidia/insta360/etc/user_cfg'
-        os.remove(dest)
-        shutil.copy2(src, dest)
-        Info('reset_user_cfg suc')
-
-
-    # req = {_name:config.SET_SYS_SETTING,_param:{"flicker":0,"speaker":0,"led_on":0,"fan_on":0,"aud_on":0,"aud_spatial":0,"set_logo":0}};
-    # 注: 设置系统设置,只能在IDLE或PREVIEW状态下才可以进行
-    def camera_set_sys_setting(self, req, from_ui = False):
-        Info('[------- APP Req: camera_set_sys_setting ------] req: {}'.format(req))
-        if StateMachine.checkAllowSetSysConfig():           
-            if check_dic_key_exist(req, _param):
-                self.set_sys_option(req[_param])
-                return cmd_done(req[_name])
-            else:
-                return cmd_error(req[_name],'camera_set_sys_setting','param not exist')
-        else:
-            return cmd_error(req[_name],'camera_set_sys_setting','state not allow')
-
-
-    #{"flicker": 0, "speaker": 0, "light_on": 0, "fan_on": 0, "aud_on": 0, "aud_spatial": 0, "set_logo": 0,"gyro_on":0}};
-    def get_all_sys_cfg(self):
-        filename = '/home/nvidia/insta360/etc/user_cfg'
-
-        all_cfg = ['flicker',
-                   'speaker',
-                   'set_logo',
-                   'light_on',
-                   'fan_on',
-                   'aud_on',
-                   'aud_spatial',
-                   'gyro_on',
-                   'video_fragment',
-                   'pic_gamma',
-                   'vid_gamma',
-                   'live_gamma',
-                   ]
-
-        if file_exist(filename):
-            ret = OrderedDict()
-            try:
-                with open(filename) as fd:
-                    data = fd.readline()
-                    while data != '':
-                        info = data.split(':')
-                        if info[0] in all_cfg:
-                            if info[0] in ['pic_gamma','vid_gamma','live_gamma']:
-                                if str_exits(info[1],'\n'):
-                                    ret[info[0]] = info[1].split('\n')[0]
-                                else:
-                                    ret[info[0]] = info[1]
-                            else:
-                                ret[info[0]] = int(info[1])
-                        data = fd.readline()
-            except Exception as e:
-                Err("get_all_sys_cfg e {}".format(str(e)))
-            Info('get sys setting ret {}'.format(ret))
-            return ret
-        else:
-            return None
-
-    def camera_get_sys_setting(self, req, from_ui = False):
-        Info('[------- APP Req: camera_get_sys_setting ------] req: {}'.format(req))                
-        ret = self.get_all_sys_cfg()
-        if ret is not None:
-            res = OrderedDict({_name:req[_name], _state:config.DONE})
-            res[config.RESULTS] = ret
-            return dict_to_jsonstr(res)
-        else:
-            return cmd_error(req[_name],'camera_get_sys_setting','sys cfg none')
-
-
-    def start_rec(self, req, from_oled = False):
-        read_info = self.sendReq2Camerad(req, from_oled)
-        return read_info
-
-
-    def camera_rec(self, req, from_ui = False):
-        Info('[------- APP Req: camera_rec ------] req: {}'.format(req))                
-
-        if StateMachine.checkAllowTakeVideo():
-            StateMachine.addCamState(config.STATE_START_RECORDING)
-            read_info = self.start_rec(req)
-        elif StateMachine.checkInRecord():
-            res = OrderedDict({config.RECORD_URL: self.get_rec_url()})
-            read_info = cmd_done(req[_name], res)
-        else:
-            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
-        return read_info
-
-
-    def camera_rec_done(self, res = None, req = None, oled = False):
-        Info('rec done param {}'.format(req))
-
-        # 进入录像状态
-        StateMachine.addServerState(config.STATE_RECORD)
-        if StateMachine.checkStateIn(config.STATE_START_RECORDING):
-            StateMachine.rmServerState(config.STATE_START_RECORDING)
-
-        if req is not None:
-            if oled:
-                self.notifyDispType(config.START_REC_SUC)
-            else:
-                self.send_oled_type(config.START_REC_SUC, req)
-        else:
-            self.notifyDispType(config.START_REC_SUC)
-
-        # 启动录像成功后，返回剩余信息
-        res['_left_info'] = osc_state_handle.get_rec_info()        
-
-        if res is not None and check_dic_key_exist(res, config.RECORD_URL):
-            self.set_rec_url(res[config.RECORD_URL])
-
-
-    def camera_rec_fail(self, err = -1):
-        if StateMachine.checkStateIn(config.STATE_START_RECORDING):
-            StateMachine.rmServerState(config.STATE_START_RECORDING)
-
-        if StateMachine.checkStateIn(config.STATE_RECORD):
-            StateMachine.rmServerState(config.STATE_RECORD)
-
-        self.send_oled_type_err(config.START_REC_FAIL, err)
-
-
-    # camera_rec_stop_done
-    # 录像停止成功(camerad接收到,去掉录像状态)
-    def camera_rec_stop_done(self, req = None):
-        if StateMachine.checkStateIn(config.STATE_RECORD):
-            StateMachine.rmServerState(config.STATE_RECORD)
-        Info('---> camera_rec_stop_done')
-
-
-    # camera_rec_stop_fail
-    # 录像停止失败(还处于录像状态???)
-    def camera_rec_stop_fail(self, err = -1):
-        Err('---> Record Stop failed {}'.format(err))
-        if StateMachine.checkStateIn(config.STATE_STOP_RECORDING):
-            StateMachine.rmServerState(config.STATE_STOP_RECORDING)
-        self.send_oled_type_err(config.STOP_REC_FAIL, err)
-
-
-    def stop_rec(self,req,from_oled = False):
-        read_info = self.sendReq2Camerad(req, from_oled)
-        return read_info
-
-
-    def camera_rec_stop(self, req, from_ui = False):
-        Info('[------- APP Req: camera_rec_stop ------] req: {}'.format(req))                
-        if StateMachine.checkInRecord():
-            StateMachine.addServerState(config.STATE_STOP_RECORDING)
-            read_info = self.stop_rec(req)
-        else:
-            read_info =  cmd_error_state(req[_name], self.get_cam_state())
-        return read_info
-
-
-    def get_offset(self, req, from_ui = False):
-        Info('[------- APP Req: get_offset ------] req: {}'.format(req))                
-        read_info = self.sendReq2Camerad(req)
-        return read_info
-
-    def set_offset(self, req, from_ui = False):
-        Info('[------- APP Req: set_offset ------] req: {}'.format(req))                
-        read_info = self.sendReq2Camerad(req)
-        return read_info
-
-    def set_wifi_config(self, req, from_ui = False):
-        Info('set wifi req[_param] {}'.format(req[_param]))
-        if len(req[_param]['ssid']) < 64 and len(req[_param]['pwd']) < 64:
-            self.send_wifi_config(req[_param])
-            read_info = cmd_done(req[_name])
-        else:
-            read_info = cmd_error(req[_name],'length error','ssid or pwd more than 64')
-        return read_info
-
-    def camera_get_ntsc_pal(self, req, from_ui = False):
-        Info('[------- APP Req: camera_get_ntsc_pal ------] req: {}'.format(req))                
-        read_info = self.sendReq2Camerad(req)
-        return read_info
-
-    def camera_set_ntsc_pal(self, req, from_ui = False):
-        Info('[------- APP Req: camera_set_ntsc_pal ------] req: {}'.format(req))                
-        read_info = self.sendReq2Camerad(req)
-        return read_info
-
-    def set_storage_path(self, req, from_ui = False):
-        Info('[------- APP Req: set_storage_path ------] req: {}'.format(req))                
-        read_info = self.sendReq2Camerad(req)
-        return read_info
-
-
-    # camera_take_pic_done
-    # 只是camerad接收到了命令而已
-    def camera_take_pic_done(self, req = None):
-        Info('camera_take_pic_done')
-        # self._client_take_pic = False 
-
-
-    def camera_take_pic_fail(self, err = -1):
-        Info('camera_take_pic_fail happen')
-        self._client_take_pic = False 
-        StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
-        self.send_oled_type_err(config.CAPTURE_FAIL, err)
-
-
-    def take_pic(self, req, from_oled = False):
-        read_info = self.sendReq2Camerad(req, from_oled)
-        return read_info
-
-
-    def camera_take_pic(self, req, from_oled = False):
-        Info('[------- APP Req: camera_take_pic ------] req: {}'.format(req))  
-                              
-        if StateMachine.checkAllowTakePic():
-            StateMachine.addServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
-            
-            # 确实是客户端拍照
-            self._client_take_pic = True
-            if from_oled == False:
-                self.send_oled_type(config.CAPTURE, req)
-
-            # 自己又单独给Camerad发拍照请求??
-            read_info = self.take_pic(req, from_oled)
-        else:
-            Info('not allow take pic')
-            read_info = cmd_error_state(req[_name], self.get_cam_state())
-
-        Info('take pic read_info {}'.format(read_info))
-        return read_info
-
-
-    def check_live_save(self, req):
-        res = False
-        if req[_param][config.ORG][config.SAVE_ORG] is True or req[_param][config.STICH]['fileSave'] is True:
-            res = True
+    def sendSetOption(self, param = None):
+        name = config.SET_OPTIONS
+        if param is not None:
+            Info("oled sendSetOption param {}".format(param))
+        try:
+            res = self.appReqSetOptions(self.get_req(name, param))
+        except Exception as e:
+            Err('sendSetOption e {}'.format(e))
+            res = cmd_exception(e, name)
         return res
 
-    def checkLiveSave(self, req):
-        res = False
-        if config.SAVE_ORG in req[_param][config.ORG]:
-            if req[_param][config.ORG][config.SAVE_ORG] is True:
-                res = True
-        if config.STICH in req[_param]:
-            if 'fileSave' in req[_param][config.STICH] and req[_param][config.STICH]['fileSave'] is True:
-                res = True
-        return res
-
-    # camera_live_done
-    # 启动直播成功
-    def camera_live_done(self, res = None, req = None, oled = False):
-        self._client_take_live = False        
-        if StateMachine.checkStateIn(config.STATE_START_LIVING):
-            StateMachine.rmServerState(config.STATE_START_LIVING)
-
-        StateMachine.addCamState(config.STATE_LIVE)
-
-        if req is not None:
-            if self.checkLiveSave(req) is True:
-                StateMachine.addCamState(config.STATE_RECORD)
-            if oled:
-                self.notifyDispType(config.START_LIVE_SUC)
-            else:
-                self.send_oled_type(config.START_LIVE_SUC, req)
-        else:
-            self.notifyDispType(config.START_LIVE_SUC)
-
-        if res is not None:
-            # 启动直播成功后，返回剩余信息
-            res['_left_info'] = osc_state_handle.get_live_rec_info()    
-            if check_dic_key_exist(res, config.LIVE_URL):
-                self.set_live_url(res[config.LIVE_URL])
-
-    def camera_live_fail(self, err = -1):
-        self._client_take_live = False
-        StateMachine.rmServerState(config.STATE_START_LIVING)
-        self.send_oled_type_err(config.START_LIVE_FAIL, err)
-
-    def start_live(self, req, from_oled = False):
-        read_info = self.sendReq2Camerad(req, from_oled)
-        return read_info
-
-    def camera_live(self, req, from_ui = False):
-        Info('[------- APP Req: camera_live ------] req: {}'.format(req))                
-        if StateMachine.checkAllowLive():
-            StateMachine.addCamState(config.STATE_START_LIVING)
-            self._client_take_live = True
-            read_info = self.start_live(req)
-        elif StateMachine.checkInLive() or StateMachine.checkInLiveConnecting():
-            res = OrderedDict({config.LIVE_URL: self.get_live_url()})
-            read_info = cmd_done(req[_name], res)
-        else:
-            read_info = cmd_error_state(req[_name], self.get_cam_state())
-        
-        #启动直播后，返回直播存片的可用剩余时间
-        ret = json.loads(read_info)
-        ret['_left_info'] = osc_state_handle.get_live_rec_info()
-        return json.dumps(ret)
-
-
-    # 停止直播命令发送成功
-    # 去掉直播状态,添加STATE_STOP_LIVING状态
-    # 如果有录像状态,也去掉录像状态
-    def camera_stop_live_done(self, req = None):
-        Info('------> camera_stop_live_done')
-        StateMachine.addCamState(config.STATE_STOP_LIVING)
-
-        if StateMachine.checkStateIn(config.STATE_LIVE):
-            StateMachine.rmServerState(config.STATE_LIVE)
-
-        if StateMachine.checkStateIn(config.STATE_LIVE_CONNECTING):
-            StateMachine.rmServerState(config.STATE_LIVE_CONNECTING)
-
-        if StateMachine.checkStateIn(config.STATE_RECORD):
-            StateMachine.rmServerState(config.STATE_RECORD)
-
-    def camera_stop_live_fail(self, err = -1):
-        Info('---> camera_stop_live_fail {}'.format(err))
-        if StateMachine.checkStateIn(config.STATE_STOP_LIVING):
-            StateMachine.rmServerState(config.STATE_STOP_LIVING)
-        self.send_oled_type_err(config.STOP_LIVE_FAIL, err)
-
-    def stop_live(self, req, from_oled = False):
-        read_info = self.sendReq2Camerad(req,from_oled)
-        return read_info
-
-    def camera_stop_live(self, req, from_ui = False):
-        Info('[------- APP Req: camera_stop_live ------] req: {}'.format(req))                
-        if StateMachine.checkAllowStopLive():
-            StateMachine.addCamState(config.STATE_STOP_LIVING)
-            read_info = self.stop_live(req)
-        else:
-            read_info =  cmd_error_state(req[_name], StateMachine.getCamState())
-        return read_info
-
-
-    # 方法名称: camera_preview_fail
-    # 功能描述: 启动预览失败
-    # 入口参数: err - 错误信息
-    # 返回值: 
-    def camera_preview_fail(self, err):
-        StateMachine.rmServerState(config.STATE_START_PREVIEWING)
-        self.send_oled_type_err(config.START_PREVIEW_FAIL, err)
-
-
-    # 方法名称: camera_start_preview_done
-    # 功能描述: 启动预览成功的回调处理
-    # 入口参数: res - 启动预览成功返回的结果
-    # 返回值: 
-    def camera_start_preview_done(self, res, from_ui = False):
-
-        # 1.去除Server正在启动预览状态
-        StateMachine.rmServerState(config.STATE_START_PREVIEWING)
-        
-        # 2.添加Server预览状态
-        StateMachine.addServerState(config.STATE_PREVIEW)
-
-        # 如果返回结果中含预览的URL，设置该预览URL到全局参数中
-        if check_dic_key_exist(res, config.PREVIEW_URL):
-            self.set_preview_url(res[config.PREVIEW_URL])
-
-        # 通知UI，启动预览成功
-        self.notifyDispType(config.START_PREVIEW_SUC)
-
-
-    # 方法名称: start_preview(同步操作)
-    # 功能描述: 启动预览
-    # 入口参数:  req - 启动预览请求参数
-    #           from_oled - 请求是否来自UI
-    # 返回值: 请求的结果
-    def start_preview(self, req, from_oled = False):
-        read_info = self.sendReq2Camerad(req, from_oled)
-        return read_info
-
-    def camera_start_preview(self, req):
-        Info('[------- APP Req: camera_start_preview ------] req: {}'.format(req))                
-        if StateMachine.checkAllowPreview():
-            # 占用状态位: STATE_START_PREVIEWING
-            StateMachine.addServerState(config.STATE_START_PREVIEWING)
-            read_info = self.start_preview(req)
-        # Server正处在预览状态
-        elif StateMachine.checkInPreviewState():
-            res = OrderedDict({config.PREVIEW_URL: self.get_preview_url()})
-            read_info = cmd_done(req[_name], res)
-        else:
-            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
-        return read_info
-
-
-    def camera_preview_stop_fail(self, err = -1):
-        Info('camera_preview_stop_fail err {}'.format(err))
-        StateMachine.rmServerState(config.STATE_STOP_PREVIEWING)
-        StateMachine.rmServerState(config.STATE_PREVIEW)
-        self.send_oled_type_err(config.STOP_PREVIEW_FAIL, err)        
-
-
-    def camera_stop_preview_done(self, req = None):
-        self.set_preview_url(None)
-        StateMachine.rmServerState(config.STATE_PREVIEW)
-        StateMachine.rmServerState(config.STATE_STOP_PREVIEWING)
-        self.notifyDispType(config.STOP_PREVIEW_SUC)
-
-    def stop_preview(self, req, from_oled = False):
-        Info('stop preview {}'.format(req))
-        read_info = self.sendReq2Camerad(req, from_oled)
-        return read_info
-
-
-    def camera_stop_preview(self, req, from_ui = False):
-        Info('[------- APP Req: camera_stop_preview ------] req: {}'.format(req))                
-        if StateMachine.checkServerStateEqualPreview():
-            StateMachine.addServerState(config.STATE_STOP_PREVIEWING)
-            read_info = self.stop_preview(req) 
-        else:
-            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
-        return read_info
-
-
-    # Command Input
-    # {
-    #     "parameters": {
-    #         "entryCount": 50,
-    #         "maxSize": 100,
-    #         "includeThumb": true
-    #     }
-    # }
-    # Command Output
-    # {
-    #     "results": {
-    #         "entries": [
-    #             {
-    #                 "name": "abc",
-    #                 "uri": "image URI",
-    #                 "size": image size in of bytes,
-    #                 "dateTimeZone": "2014:12:27 08:00:00+08:00"
-    #                                 "lat": 50.5324
-    # "lng": -120.2332
-    # "width": 2000
-    # "height": 1000
-    # "thumbnail": "ENCODEDSTRING"
-    # }
-    # ...
-    # {
-    #     ...
-    # }
-    # ],
-    # "totalEntries": 250,
-    #                 "continuationToken": "50"
-    # }
-    # }
-    # Command Output(Err)
-    # {
-    #     "error": {
-    #         "code": "invalidParameterValue",
-    #         "message": "Parameter continuationToken is out of range."
-    #     }
-    # }
-
-    # def camera_list_images(self,req):
-    #     assert_key(req, _param)
-    #     self.write_req(req)
-    #     read_info = self.read_response()
-    #     assert_match(req[_name],read_info[_name])
-    #     if read_info[_state] == config.DONE:
-    #         cmd_suc(config.LIST_IMAGES)
-    #         assert_key(read_info, 'results')
-    #     else:
-    #         assert read_info[_state] == 'error', 'state not error'
-    #         cmd_fail(read_info['error'])
-    #
-    #     ret = read_info
-    #     return dict_to_jsonstr(ret)
-
-    # Command Input
-    # {
-    #     "parameters": {
-    #         "entryCount": 50,
-    #         "maxThumbSize": 100
-    #     }
-    # }
-    # Command Output
-    # {
-    #     "results": {
-    #         "entries": [
-    #             {
-    #                 "name": "abc",
-    #                 "fileUrl": "file URL",
-    #                 "size": file size,  # of bytes,
-    #                 "dateTimeZone": "2014:12:27 08:00:00+08:00",
-    #                 "lat": 50.5324,
-    #                 "lng": -120.2332,
-    #                 "width": 2000,
-    #                 "height": 1000,
-    #                 "thumbnail": "ENCODEDSTRING",
-    #                 "isProcessed": true,
-    #                 "previewUrl": ""
-    #               }
-    #               ...
-    #               {
-    #                   ...
-    #               }
-    #                   ],
-    #            "totalEntries": 250
-    #           }
-    # }
-    # Command Output(Err)
-    # {
-    #     "error": {
-    #         "code": "invalidParameterValue",
-    #         "message": "Parameter entryCount is negative."
-    #     }
-    # }
-
-    def list_file(self, rootDir):
-        file_list = []
-        list_dirs = os.walk(rootDir)
-        # print(' list_dirs rootDir ', list_dirs, rootDir)
-        for root, dirs, files in list_dirs:
-            # print('a root {} dirs {}  files {}'.format(root,dirs,files))
-            for d in dirs:
-                # print(os.path.join(root, d))
-                os.path.join(root, d)
-            for f in files:
-                #change from absoulte to relative
-                # parent = root[len(rootDir):]
-                # print('f root parent ', f, root,parent)
-                # file_list.append(os.path.join(parent, f))
-                # print(os.path.join(root, f))
-                file_list.append(os.path.join(root, f))
-        # Print('file list {}'.format(file_list))
-        return file_list
 
     #file type is “image”, ”video”, ”all” ,added for google osc 170914
     def list_path_and_file(self, rootDir, startPos = -1, entryCount = 0, fileType = None, maxThumbSize = None):
@@ -1731,24 +841,1199 @@ class control_center:
         # Print('file list {}'.format(file_list))
         return file_list
 
-
-    def get_res_done(self, name):
+    # 列出文件(异步版本)
+    # 被列出文件线程回调
+    def async_list_file(self, path):
+        all_files = self.list_path_and_file(path)
         read_info = OrderedDict()
-        read_info[_name] = name
+        read_info[_name] = config._LIST_FILES_FINISH
         read_info[_state] = config.DONE
-        return
+        read_info[config.RESULTS] = OrderedDict()
+        read_info[config.RESULTS]['totalEntries'] = len(all_files)
+        read_info[config.RESULTS]['entries'] = all_files
+        content = OrderedDict()
+        content['sequence'] = self._list_file_seq
+        content[_param] = read_info
+        self.add_async_finish(content)
+        self._list_progress = False
 
-    def get_save_p(self):
-        return osc_state_handle.get_save_path()
 
-    def camera_list_files(self, req, from_ui = False):
-        # assert_key(req, _param)
-        # Print(' _param is {}'.format(_param))
+
+############################# OSC Related #########################################
+    def getOscInfo(self):
+        return osc_info.get_osc_info()
+
+    # 方法名称: getOscState
+    # 功能: 查询心跳包信息(由http client发送)
+    # 参数: 无
+    # 
+    def getOscState(self):
+        self.stopPollTimer()          # 停止轮询定时器
+        ret_state = osc_state_handle.get_osc_state(False)   # 获取状态osc_state
+        self.startPollTimer()         # 重新启动定时器
+        return ret_state
+
+    def send_reset_camerad(self):
+        Info('send_reset_camerad')
+        return self.camera_reset(self.get_req(config.CAMERA_RESET), True)
+
+    def setTimeChangeDone(self, res = None):
+        Info('sys time change done')
+
+    def setTimeChangeFail(self, err = -1):
+        Info('sys time change fail')
+
+
+    # 方法名称: sendQueryStorageResults
+    # 功能: 将查询到的卡信息发送给UI
+    # 参数: results - 查询的结果信息
+    # 返回值: 无
+    def sendQueryStorageResults(self, results):
+        Info('---> send query storage results to UI {}'.format(results))
+        self.send_req(self.get_write_req(config.UI_NOTIFY_STORAGE_STATE, results))
+
+
+    def sendTfcardFormatResult(self, results):
+        Info('---> send format tf results to UI {}'.format(results))
+        self.send_req(self.get_write_req(config.UI_NOTIFY_TF_FORMAT_RESULT, results))
+
+
+    def sync_init_info_to_p(self, res):
+        try:
+            if res != None:
+                m_v = 'moduleVersion'
+                st = self.convert_state(res['state'])
+                Info('sync_init_info_to_p res {}  cam_state {} st {}'.format(res,self.get_cam_state(),hex(st)))
+                if self.checkLiveRecord(res):
+                    st = (st | config.STATE_RECORD)
+                    Info('2sync_init_info_to_p res {}  cam_state {} st {}'.format(res, self.get_cam_state(), hex(st)))
+
+                # U盘模式下不需要状态同步
+                if self.check_need_sync(st,self.get_cam_state()):
+                    self.set_cam_state(st)  # 如果需要同步，会在此处修改camera的状态
+                    req = OrderedDict()
+                    req['state'] = st
+                    req['a_v'] = res['version']
+                    if m_v in res.keys():
+                        req['c_v'] = res[m_v]
+                    req['h_v'] = ins_version.get_version()
+                    self.syncState2SystemServer(req)
+        except Exception as e:
+            Err('sync_init_info_to_p exception {}'.format(str(e)))
+
+    def add_async_cmd_id(self, name, id_seq):
+        id_dict = OrderedDict()
+        id_dict[KEY_ID] = id_seq
+        id_dict[_name] = name
+        id_dict[config._ID_GOT] = 0
+
+        Info('add async name {} id_seq {}'.format(name, id_seq))
+        self.async_id_list.append(id_dict)
+
+
+    # add_async_finish
+    # 添加异步结束的结果
+    # 对于新版的测速, camerad不再返回'results'相关信息，需要手动填写
+    def add_async_finish(self, content):
+        Info('add async content {}'.format(content))
+        if check_dic_key_exist(content, 'sequence'):
+            id = content['sequence']
+            for async_info in self.async_id_list:
+                if async_info[KEY_ID] == id:
+                    if check_dic_key_exist(content, _param):
+                        async_info[config.RESULTS] = content[_param]
+                    else:
+                        async_info[config.RESULTS] = {}
+                        
+                    Info('add async_info {}'.format(async_info))
+                    async_info[config._ID_GOT] = 1
+                    osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.ADD_RES_ID, id))
+                    return
+
+    # {"flicker": 1, "speaker": 1, "led_on": 1, "fan_on": 1, "aud_on": 1, "aud_spatial": 1, "set_logo": 1, "gyro_on": 1,"video_fragment",1,
+    #  "reset_all": 0}
+    def set_sys_option(self,param):
+        Info("param is {}".format(param))
+        
+        if check_dic_key_exist(param, 'reset_all'):
+            self.reset_user_cfg()
+            self.notifyDispType(config.RESET_ALL_CFG)
+        else:
+            if check_dic_key_exist(param, 'flicker'):
+                p = OrderedDict({'property': 'flicker', 'value': param['flicker']})
+                self.sendSetOption(p)
+
+            if check_dic_key_exist(param,'fan_on'):
+                p = OrderedDict({'property': 'fanless'})
+                if param['fan_on'] == 1:
+                    p['value'] = 0
+                else:
+                    p['value'] = 1
+                self.sendSetOption(p)
+
+            if check_dic_key_exist(param, 'aud_on'):
+                p = OrderedDict({'property': 'panoAudio'})
+                if param['aud_on'] == 0:
+                    p['value'] = 0
+                else:
+                    if check_dic_key_exist(param,'aud_spatial'):
+                        if param['aud_spatial'] == 1:
+                            p['value'] = 2
+                        else:
+                            p['value'] = 1
+                    else:
+                        Info('no aud_spatial')
+                        p['value'] = 1
+                self.sendSetOption(p)
+
+            if check_dic_key_exist(param, 'gyro_on'):
+                p = OrderedDict({'property': 'stabilization_cfg', 'value': param['gyro_on']})
+                self.sendSetOption(p)
+
+            if check_dic_key_exist(param, 'set_logo'):
+                p = OrderedDict({'property': 'logo', 'value': param['set_logo']})
+                self.sendSetOption(p)
+
+            if check_dic_key_exist(param, 'video_fragment'):
+                p = OrderedDict({'property': 'video_fragment', 'value': param['video_fragment']})
+                self.sendSetOption(p)
+
+            self.getSetSysSetting('set', param)
+
+
+    def reset_user_cfg(self):
+        Info('reset_user_cfg ')
+        src = '/home/nvidia/insta360/etc/def_cfg'
+        dest = '/home/nvidia/insta360/etc/user_cfg'
+        os.remove(dest)
+        shutil.copy2(src, dest)
+        Info('reset_user_cfg suc')
+
+
+    #{"flicker": 0, "speaker": 0, "light_on": 0, "fan_on": 0, "aud_on": 0, "aud_spatial": 0, "set_logo": 0,"gyro_on":0}};
+    def get_all_sys_cfg(self):
+        filename = '/home/nvidia/insta360/etc/user_cfg'
+
+        all_cfg = ['flicker',
+                   'speaker',
+                   'set_logo',
+                   'light_on',
+                   'fan_on',
+                   'aud_on',
+                   'aud_spatial',
+                   'gyro_on',
+                   'video_fragment',
+                   'pic_gamma',
+                   'vid_gamma',
+                   'live_gamma',
+                   ]
+
+        if file_exist(filename):
+            ret = OrderedDict()
+            try:
+                with open(filename) as fd:
+                    data = fd.readline()
+                    while data != '':
+                        info = data.split(':')
+                        if info[0] in all_cfg:
+                            if info[0] in ['pic_gamma','vid_gamma','live_gamma']:
+                                if str_exits(info[1],'\n'):
+                                    ret[info[0]] = info[1].split('\n')[0]
+                                else:
+                                    ret[info[0]] = info[1]
+                            else:
+                                ret[info[0]] = int(info[1])
+                        data = fd.readline()
+            except Exception as e:
+                Err("get_all_sys_cfg e {}".format(str(e)))
+            Info('get sys setting ret {}'.format(ret))
+            return ret
+        else:
+            return None
+
+
+    def checkLiveSave(self, req):
+        res = False
+        if config.SAVE_ORG in req[_param][config.ORG]:
+            if req[_param][config.ORG][config.SAVE_ORG] is True:
+                res = True
+        if config.STICH in req[_param]:
+            if 'fileSave' in req[_param][config.STICH] and req[_param][config.STICH]['fileSave'] is True:
+                res = True
+        return res
+
+
+    def list_file(self, rootDir):
+        file_list = []
+        list_dirs = os.walk(rootDir)
+        # print(' list_dirs rootDir ', list_dirs, rootDir)
+        for root, dirs, files in list_dirs:
+            # print('a root {} dirs {}  files {}'.format(root,dirs,files))
+            for d in dirs:
+                # print(os.path.join(root, d))
+                os.path.join(root, d)
+            for f in files:
+                #change from absoulte to relative
+                # parent = root[len(rootDir):]
+                # print('f root parent ', f, root,parent)
+                # file_list.append(os.path.join(parent, f))
+                # print(os.path.join(root, f))
+                file_list.append(os.path.join(root, f))
+        # Print('file list {}'.format(file_list))
+        return file_list
+
+
+
+
+
+    #keep reset suc even if camerad not response
+    #TODO  -- future use aio mode
+    def camera_reset(self, req, exception = False):
+        Info('reset req {}'.format(req))
+        try:
+            read_seq = self.write_req_reset(req, self.get_reset_write_fd())
+            # Info('reset req 2 {} {}'.format(req,read_seq))
+            ret = self.read_response(read_seq, self.get_reset_read_fd())
+            # Info('reset req 3 {}'.format(req))
+            if ret[_state] == config.DONE:
+                cmd_suc(config.CAMERA_RESET)
+                self.reset_all()
+                if exception:
+                    ret[config.RESULTS] = OrderedDict({'reason': 'exception to reset'})
+            else:
+                cmd_fail(config.CAMERA_RESET)
+            ret = dict_to_jsonstr(ret)
+        except FIFOSelectException as e:
+            Err('camera_reset FIFOSelectException')
+            ret = cmd_exception(error_dic('FIFOSelectException', str(e)), config.CAMERA_RESET)
+        except FIFOReadTOException as e:
+            Err('camera_reset FIFOReadTOException')
+            ret = cmd_exception(error_dic('FIFOReadTOException', str(e)), config.CAMERA_RESET)
+        except WriteFIFOException as e:
+            Err('camera_reset WriteFIFIOException')
+            ret = cmd_exception(error_dic('WriteFIFOException', str(e)), config.CAMERA_RESET)
+        except ReadFIFOException as e:
+            Err('camera_reset ReadFIFIOException')
+            ret = cmd_exception(error_dic('ReadFIFIOException', str(e)), config.CAMERA_RESET)
+        except SeqMismatchException as e:
+            Err('camera_reset SeqMismatchException')
+            ret = cmd_exception(error_dic('SeqMismatchException', str(e)), config.CAMERA_RESET)
+        except BrokenPipeError as e:
+            Err('camera_reset BrokenPipeError')
+            ret = cmd_exception(error_dic('BrokenPipeError', str(e)), config.CAMERA_RESET)
+        except OSError as e:
+            Err('camera_reset OSError')
+            ret = cmd_exception(error_dic('IOError', str(e)), config.CAMERA_RESET)
+        except AssertionError as e:
+            Err('camera_reset AssertionError')
+            ret = cmd_exception(error_dic('AssertionError', str(e)), config.CAMERA_RESET)
+        except Exception as e:
+            Err('camera_reset unknown exception {}'.format(str(e)))
+            ret = cmd_exception(error_dic('sendReq2Camerad', str(e)), config.CAMERA_RESET)
+        self.close_read_reset()
+        self.close_write_reset()
+        return ret
+
+
+
+################################## 文件删除操作 #######################################
+ 
+
+    def queryLeftResult(self, res):
+        Info('>>>>> queryLeftResult req {} self.get_cam_state() {}'.format(res, self.get_cam_state()))
+        self.left_val = res['left']
+
+    def write_req_reset(self, req, write_fd):
+        Print('write_req_reset start req {}'.format(req))
+        content = json.dumps(req)
+        content_len = len(content)
+        content = int_to_bytes(self._write_seq_reset) + int_to_bytes(content_len) + str_to_bytes(content)
+
+        Print('write_req_reset seq: {}'.format(self._write_seq_reset))
+        write_len = fifo_wrapper.write_fifo(write_fd, content)
+        read_seq = self._write_seq_reset
+        self._write_seq_reset += 1
+        return read_seq
+
+
+###################################################### App Request Funcs #######################################################
+
+
+    #######################################################################################################################
+    # 函数名称: appReqConnect - 连接web_server请求
+    # 函数功能: App请求连接
+    # 入口参数:
+    #       req - 请求参数
+    # 返 回 值: 
+    #######################################################################################################################
+    def appReqConnect(self, req):
+        Info('[------- APP Req: appReqConnect ------] req: {}'.format(req))
+        self.aquire_connect_sem()
+
+        self.stopPollTimer()      # 停止定时器(确保在连接过程中，定时器处于停止状态)
+        try:
+            self.generate_fp()            
+            ret = OrderedDict({_name:req[_name], _state:config.DONE, config.RESULTS:{config.FINGERPRINT:self.finger_print}})
+            url_list = OrderedDict()
+
+            self.set_last_info(None)
+            self.excuteCameraFunc(config._QUERY_STATE, self.get_req(config._QUERY_STATE))
+
+            if self.get_last_info() != None:
+                ret[config.RESULTS]['last_info'] = self.get_last_info()
+
+            st = StateMachine.getCamState()
+            Info('>>>>>> b appReqConnect st {}'.format(hex(st)))
+
+            if st != config.STATE_IDLE:
+                if st & config.STATE_PREVIEW == config.STATE_PREVIEW:
+                    url_list[config.PREVIEW_URL] = self.get_preview_url()
+
+                if ((st & config.STATE_LIVE == config.STATE_LIVE) or (st & config.STATE_LIVE_CONNECTING == config.STATE_LIVE_CONNECTING)):
+                    url_list[config.LIVE_URL] = self.get_live_url()
+                    ret[config.RESULTS]['last_info']['live']['timePast'] = osc_state_handle.get_live_rec_pass_time()
+                    ret[config.RESULTS]['last_info']['live']['timeLeft'] = osc_state_handle.get_live_rec_left_time()
+
+                elif st & config.STATE_RECORD == config.STATE_RECORD:
+                    url_list[config.RECORD_URL] = self.get_rec_url()
+                    ret[config.RESULTS]['last_info']['record']['timePast'] = osc_state_handle.get_rec_pass_time()
+                    ret[config.RESULTS]['last_info']['record']['timeLeft'] = osc_state_handle.get_rec_left_time()
+
+                ret[config.RESULTS]['url_list'] = url_list
+            else:
+                
+                # 参数字典中含有时间参数并且系统没有同步过时间
+                # 是否需要修改时区由time_tz服务来决定
+                # if check_dic_key_exist(req, _param):
+                if check_dic_key_exist(req, _param) and self.has_sync_time is False:
+                    Info('--> Inneed sync time here.')
+                    self.set_sys_time(req[_param])
+                else:
+                    Info('---> Need not sync time form App')
+
+            ret[config.RESULTS]['_cam_state'] = st
+
+            # 加添一个字段来区分'pro2'
+            ret[config.RESULTS][config.MACHINE_TYPE] = config.MACHINE
+
+            if self.sync_param is not None:
+                Info('self.sync_param is {}'.format(self.sync_param))
+                ret[config.RESULTS]['sys_info'] = self.sync_param
+                ret[config.RESULTS]['sys_info']['h_v'] = ins_version.get_version()
+                ret[config.RESULTS]['sys_info']['s_v'] = get_s_v()
+
+            self.release_connect_sem()
+            self.set_connect(True)
+            
+            Print('>>> connect ret {}'.format(ret))
+            self.startPollTimer()
+            
+            return dict_to_jsonstr(ret) # 返回链接参数string给客户端
+
+        except Exception as e:
+            Err('connect exception {}'.format(e))
+            self.release_connect_sem()
+            return cmd_exception(error_dic('appReqConnect', str(e)), req)
+
+
+
+    #######################################################################################################################
+    # 函数名称: appReqConnect - 连接web_server请求
+    # 函数功能: App请求连接
+    # 入口参数:
+    #       req - 请求参数
+    # 返 回 值: 
+    #######################################################################################################################
+    def appReqDisconnect(self, req, from_ui = False):
+        Info('[------- APP Req: appReqDisconnect ------] req: {}'.format(req))
+        
+        # 避免断网的情况下，camerad一直处于POWERON状态
+        self.modulePowerOff()                
+        ret = cmd_done(req[_name])
+        try:
+            self.set_connect(False)
+            self.stopPollTimer()
+            self.random_data = 0
+
+            if StateMachine.getCamState() == config.STATE_PREVIEW:
+                Info("stop preview while disconnect")
+                self.excuteCameraFunc(config._STOP_PREVIEW, self.get_req(config._STOP_PREVIEW))
+            Info('2appReqDisconnect ret {} self.get_cam_state() {}'.format(ret, StateMachine.getCamStateFormatHex()))
+        except Exception as e:
+            Err('disconnect exception {}'.format(str(e)))
+            ret = cmd_exception(str(e), config._DISCONNECT)
+        return ret
+
+
+
+
+
+    ###################################################################################
+    # 方法名称: appReqStartPreview
+    # 功能描述: App请求启动预览
+    # 入口参数: 启动预览参数
+    # 返回值: 
+    ###################################################################################
+    def appReqStartPreview(self, req):
+        Info('[------- APP Req: appReqStartPreview ------] req: {}'.format(req))                
+        if StateMachine.checkAllowPreview():
+            StateMachine.addServerState(config.STATE_START_PREVIEWING)
+            read_info = self.sendReq2Camerad(req)
+        elif StateMachine.checkInPreviewState():
+            res = OrderedDict({config.PREVIEW_URL: self.get_preview_url()})
+            read_info = cmd_done(req[_name], res)
+        else:
+            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
+        return read_info
+
+
+    def startPreviewDone(self, res):
+
+        # 1.去除Server正在启动预览状态
+        StateMachine.rmServerState(config.STATE_START_PREVIEWING)
+        
+        # 2.添加Server预览状态
+        StateMachine.addServerState(config.STATE_PREVIEW)
+
+        # 如果返回结果中含预览的URL，设置该预览URL到全局参数中
+        if check_dic_key_exist(res, config.PREVIEW_URL):
+            self.set_preview_url(res[config.PREVIEW_URL])
+        # 通知UI，启动预览成功
+        self.notifyDispType(config.START_PREVIEW_SUC)
+
+    def startPreviewFail(self, err):
+        StateMachine.rmServerState(config.STATE_START_PREVIEWING)
+        self.notifyDispTypeErr(config.START_PREVIEW_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqStopPreview
+    # 功能描述: App请求停止预览
+    # 入口参数: 停止参数
+    # 返回值: 
+    ###################################################################################
+    def appReqStopPreview(self, req):
+        Info('[------- APP Req: appReqStopPreview ------] req: {}'.format(req))                
+        if StateMachine.checkServerStateEqualPreview():
+            StateMachine.addServerState(config.STATE_STOP_PREVIEWING)
+            read_info = self.sendReq2Camerad(req) 
+        else:
+            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
+        return read_info
+
+    def stopPreviewDone(self, req = None):
+        self.set_preview_url(None)
+        StateMachine.rmServerState(config.STATE_PREVIEW)
+        StateMachine.rmServerState(config.STATE_STOP_PREVIEWING)
+        self.notifyDispType(config.STOP_PREVIEW_SUC)
+
+    def stopPreviewFail(self, err = -1):
+        Info('stopPreviewFail err {}'.format(err))
+        StateMachine.rmServerState(config.STATE_STOP_PREVIEWING)
+        StateMachine.rmServerState(config.STATE_PREVIEW)
+        self.notifyDispTypeErr(config.STOP_PREVIEW_FAIL, err)        
+
+
+
+    ###################################################################################
+    # 方法名称: appReqTakePicture
+    # 功能描述: App请求拍照
+    # 入口参数: 
+    #   req - 拍照参数
+    # 返回值: 
+    ###################################################################################
+    def appReqTakePicture(self, req):
+        Info('[------- APP Req: appReqTakePicture ------] req: {}'.format(req))  
+                              
+        if StateMachine.checkAllowTakePic():
+            StateMachine.addServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
+            self._client_take_pic = True    # 确实是客户端拍照
+            if from_oled == False:
+                self.send_oled_type(config.CAPTURE, req)
+
+            # 自己又单独给Camerad发拍照请求??
+            read_info = self.sendReq2Camerad(req)
+        else:
+            read_info = cmd_error_state(req[_name], self.get_cam_state())
+        return read_info
+
+    def takePictureDone(self, req = None):
+        Info('takePictureDone')
+
+    def takePictureFail(self, err = -1):
+        self._client_take_pic = False 
+        StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
+        self.notifyDispTypeErr(config.CAPTURE_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqTakeVideo
+    # 功能描述: App请求启动录像
+    # 入口参数: 
+    #   req - 录像参数
+    # 返回值: 
+    ###################################################################################
+    def appReqTakeVideo(self, req):
+        Info('[------- APP Req: appReqTakeVideo ------] req: {}'.format(req))                
+
+        if StateMachine.checkAllowTakeVideo():
+            StateMachine.addCamState(config.STATE_START_RECORDING)
+            read_info = self.sendReq2Camerad(req)
+        elif StateMachine.checkInRecord():
+            res = OrderedDict({config.RECORD_URL: self.get_rec_url()})
+            read_info = cmd_done(req[_name], res)
+        else:
+            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
+        return read_info
+
+    def takeVideoDone(self, res = None, req = None, oled = False):
+        Info('rec done param {}'.format(req))
+        StateMachine.addServerState(config.STATE_RECORD)
+        if StateMachine.checkStateIn(config.STATE_START_RECORDING):
+            StateMachine.rmServerState(config.STATE_START_RECORDING)
+        if req is not None:
+            if oled:
+                self.notifyDispType(config.START_REC_SUC)
+            else:
+                self.send_oled_type(config.START_REC_SUC, req)
+        else:
+            self.notifyDispType(config.START_REC_SUC)
+        # 启动录像成功后，返回剩余信息
+        res['_left_info'] = osc_state_handle.get_rec_info()        
+
+        if res is not None and check_dic_key_exist(res, config.RECORD_URL):
+            self.set_rec_url(res[config.RECORD_URL])
+
+    def takeVideoFail(self, err = -1):
+        if StateMachine.checkStateIn(config.STATE_START_RECORDING):
+            StateMachine.rmServerState(config.STATE_START_RECORDING)
+        if StateMachine.checkStateIn(config.STATE_RECORD):
+            StateMachine.rmServerState(config.STATE_RECORD)
+
+        self.notifyDispTypeErr(config.START_REC_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqStopRecord
+    # 功能描述: App请求停止录像
+    # 入口参数: 
+    #   req - 录像参数
+    # 返回值: 
+    ###################################################################################
+    def appReqStopRecord(self, req):
+        Info('[------- APP Req: appReqStopRecord ------] req: {}'.format(req))                
+        if StateMachine.checkInRecord():
+            StateMachine.addServerState(config.STATE_STOP_RECORDING)
+            read_info = self.sendReq2Camerad(req)
+        else:
+            read_info =  cmd_error_state(req[_name], self.get_cam_state())
+        return read_info
+
+    def stopRecordDone(self, req = None):
+        if StateMachine.checkStateIn(config.STATE_RECORD):
+            StateMachine.rmServerState(config.STATE_RECORD)
+
+    def stopRecordFail(self, err = -1):
+        Err('---> Record Stop failed {}'.format(err))
+        if StateMachine.checkStateIn(config.STATE_STOP_RECORDING):
+            StateMachine.rmServerState(config.STATE_STOP_RECORDING)
+        self.notifyDispTypeErr(config.STOP_REC_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqStartLive
+    # 功能描述: App请求直播
+    # 入口参数: 
+    #   req - 直播参数
+    # 返回值: 
+    ###################################################################################
+    def appReqStartLive(self, req):
+        Info('[------- APP Req: appReqStartLive ------] req: {}'.format(req))                
+        if StateMachine.checkAllowLive():
+            StateMachine.addCamState(config.STATE_START_LIVING)
+            self._client_take_live = True
+            read_info = self.sendReq2Camerad(req)
+        elif StateMachine.checkInLive() or StateMachine.checkInLiveConnecting():
+            res = OrderedDict({config.LIVE_URL: self.get_live_url()})
+            read_info = cmd_done(req[_name], res)
+        else:
+            read_info = cmd_error_state(req[_name], self.get_cam_state())
+        ret = json.loads(read_info)     #启动直播后，返回直播存片的可用剩余时间
+        ret['_left_info'] = osc_state_handle.get_live_rec_info()
+        return json.dumps(ret)
+
+    def startLiveDone(self, res = None, req = None, oled = False):
+        self._client_take_live = False        
+        if StateMachine.checkStateIn(config.STATE_START_LIVING):
+            StateMachine.rmServerState(config.STATE_START_LIVING)
+
+        StateMachine.addCamState(config.STATE_LIVE)
+        if req is not None:
+            if self.checkLiveSave(req) is True:
+                StateMachine.addCamState(config.STATE_RECORD)
+            if oled:
+                self.notifyDispType(config.START_LIVE_SUC)
+            else:
+                self.send_oled_type(config.START_LIVE_SUC, req)
+        else:
+            self.notifyDispType(config.START_LIVE_SUC)
+
+        if res is not None:
+            res['_left_info'] = osc_state_handle.get_live_rec_info()    
+            if check_dic_key_exist(res, config.LIVE_URL):
+                self.set_live_url(res[config.LIVE_URL])
+
+    def startLiveFail(self, err = -1):
+        self._client_take_live = False
+        StateMachine.rmServerState(config.STATE_START_LIVING)
+        self.notifyDispTypeErr(config.START_LIVE_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqStopLive
+    # 功能描述: App请求停止直播
+    # 入口参数: 
+    #   req - 直播参数
+    # 返回值: 
+    ###################################################################################
+    def appReqStopLive(self, req):
+        Info('[------- APP Req: appReqStopLive ------] req: {}'.format(req))                
+        if StateMachine.checkAllowStopLive():
+            StateMachine.addCamState(config.STATE_STOP_LIVING)
+            read_info = self.sendReq2Camerad(req)
+        else:
+            read_info =  cmd_error_state(req[_name], StateMachine.getCamState())
+        return read_info
+
+    def stopLiveDone(self, req = None):
+        Info('------> stopLiveDone')
+        StateMachine.addCamState(config.STATE_STOP_LIVING)
+        if StateMachine.checkStateIn(config.STATE_LIVE):
+            StateMachine.rmServerState(config.STATE_LIVE)
+
+        if StateMachine.checkStateIn(config.STATE_LIVE_CONNECTING):
+            StateMachine.rmServerState(config.STATE_LIVE_CONNECTING)
+
+        if StateMachine.checkStateIn(config.STATE_RECORD):
+            StateMachine.rmServerState(config.STATE_RECORD)
+
+    def stopLiveFail(self, err = -1):
+        Info('---> stopLiveFail {}'.format(err))
+        if StateMachine.checkStateIn(config.STATE_STOP_LIVING):
+            StateMachine.rmServerState(config.STATE_STOP_LIVING)
+        self.notifyDispTypeErr(config.STOP_LIVE_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqSetNtscPal
+    # 功能描述: App请求设置NTSC/PAL
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqSetNtscPal(self, req):
+        Info('[------- APP Req: appReqSetNtscPal ------] req: {}'.format(req))                
+        return self.sendReq2Camerad(req)
+
+
+    ###################################################################################
+    # 方法名称: appReqGetNtscPal
+    # 功能描述: App请求获取制式
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqGetNtscPal(self, req):
+        Info('[------- APP Req: appReqGetNtscPal ------] req: {}'.format(req))                
+        return self.sendReq2Camerad(req)
+
+
+    ###################################################################################
+    # 方法名称: appReqSetOffset
+    # 功能描述: App请求设置Offset
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqSetOffset(self, req):
+        Info('[------- APP Req: appReqSetOffset ------] req: {}'.format(req))                
+        return self.sendReq2Camerad(req)
+
+    ###################################################################################
+    # 方法名称: appReqGetOffset
+    # 功能描述: App请求获取Offset
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqGetOffset(self, req):
+        Info('[------- APP Req: appReqGetOffset ------] req: {}'.format(req))                
+        return self.sendReq2Camerad(req)
+
+
+    ###################################################################################
+    # 方法名称: appReqSetImageParam
+    # 功能描述: 设置Image参数
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqSetImageParam(self, req):
+        Info('[---------- APP Request: appReqSetImageParam ----] req {}'.format(req))
+        return self.sendReq2Camerad(req)
+
+    ###################################################################################
+    # 方法名称: appReqGetImageParam
+    # 功能描述: 获取Image参数
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqGetImageParam(self, req):
+        Info('[---------- APP Request: appReqGetImageParam ----] req {}'.format(req))
+        return self.sendReq2Camerad(req)
+
+
+    ###################################################################################
+    # 方法名称: appReqSetOptions
+    # 功能描述: App请求设置Options
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqSetOptions(self, req):
+        Info('[---------- APP Request: appReqSetOptions ----] req {}'.format(req))
+        return self.sendReq2Camerad(req)
+
+    ###################################################################################
+    # 方法名称: appReqGetOptions
+    # 功能描述: App请求获取Options
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqGetOptions(self, req):
+        Info('[---------- APP Request: appReqGetOptions ----] req {}'.format(req))
+        return self.sendReq2Camerad(req)
+
+    ###################################################################################
+    # 方法名称: appReqSetStoragePath
+    # 功能描述: App请求存储设备路径
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqSetStoragePath(self, req):
+        Info('[------- APP Req: appReqSetStoragePath ------] req: {}'.format(req))                
+        return self.sendReq2Camerad(req)
+
+
+    ###################################################################################
+    # 方法名称: appReqStartCalibration
+    # 功能描述: App请求拼接校准
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqStartCalibration(self, req):
+        Info('[------- APP Req: appReqStartCalibration ------] req: {}'.format(req))
+        self._client_stitch_calc = True
+        return self.startCalibration(req, False)
+
+    def startCalibrationDone(self, req = None):
+        self._client_stitch_calc = False
+        pass
+
+    def startCalibrationFail(self, err = -1):
+        self._client_stitch_calc = False
+        Info('error etner calibration fail')
+        StateMachine.rmServerState(config.STATE_CALIBRATING)
+        self.notifyDispTypeErr(config.CALIBRATION_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqQueryState
+    # 功能描述: App请求查询camerad状态
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqQueryState(self, req):
+        Info('[------- APP Req: appReqQueryState ------] req: {}'.format(req))
+        return self.sendReq2Camerad(req)
+
+    def queryStateDone(self, res = None):
+        if res is not None:
+            self.set_last_info(res)
+            Info('query state res {}'.format(res))
+        self.sync_init_info_to_p(res)
+
+
+    ###################################################################################
+    # 方法名称: appReqStartGyro
+    # 功能描述: App请求陀螺仪校准
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqStartGyro(self, req):
+        Info('[------- APP Req: appReqStartGyro ------] req: {}'.format(req))
+        return self.startGyro(req)
+
+    def startGyroDone(self, req = None):
+        Info("gyro done")
+
+    def startGyroFail(self, err = -1):
+        Info('--> startGyroFail')
+        StateMachine.rmServerState(config.STATE_START_GYRO)
+        self.notifyDispTypeErr(config.START_GYRO_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqStartSpeedTest
+    # 功能描述: App请求启动相机速度测试
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqStartSpeedTest(self, req):
+        Info('[------- APP Req: appReqStartSpeedTest ------] req: {}'.format(req))                
+        return self.startSpeedTest(req)
+
+    def startSpeedTestDone(self, req = None):
+        Info('speed test done')
+
+    def startSpeedTestFail(self, err = -1):
+        Info('speed test fail')
+        StateMachine.rmServerState(config.STATE_SPEED_TEST)
+        # self.notifyDispTypeErr(config.SPEED_TEST_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqSetSysTime
+    # 功能描述: App请求设置系统时间
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqSetSysTime(self, req):
+        Info('[------- APP Req: appReqSetSysTime ------] req: {}'.format(req))                
+        return self.sendReq2Camerad(req)
+
+
+    ###################################################################################
+    # 方法名称: appReqUpdateGamma
+    # 功能描述: App请求更新Gamma曲线
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqUpdateGamma(self, req):
+        Info('[------- APP Req: appReqUpdateGamma ------] req: {}'.format(req))                
+        return self.sendReq2Camerad(req)
+
+
+    # req = {_name:config.SET_SYS_SETTING,_param:{"flicker":0,"speaker":0,"led_on":0,"fan_on":0,"aud_on":0,"aud_spatial":0,"set_logo":0}};
+    # 注: 设置系统设置,只能在IDLE或PREVIEW状态下才可以进行
+    def appReqSetSysSetting(self, req):
+        Info('[------- APP Req: appReqSetSysSetting ------] req: {}'.format(req))
+        if StateMachine.checkAllowSetSysConfig():           
+            if check_dic_key_exist(req, _param):
+                self.set_sys_option(req[_param])
+                return cmd_done(req[_name])
+            else:
+                return cmd_error(req[_name], 'appReqSetSysSetting', 'param not exist')
+        else:
+            return cmd_error(req[_name], 'appReqSetSysSetting', 'state not allow')
+
+
+    def appReqGetSysSetting(self, req):
+        Info('[------- APP Req: appReqGetSysSetting ------] req: {}'.format(req))                
+        ret = self.get_all_sys_cfg()
+        if ret is not None:
+            res = OrderedDict({_name:req[_name], _state: config.DONE})
+            res[config.RESULTS] = ret
+            return dict_to_jsonstr(res)
+        else:
+            return cmd_error(req[_name],'appReqGetSysSetting','sys cfg none')
+
+
+    ###################################################################################
+    # 方法名称: appReqBlcCal
+    # 功能描述: App请求BLC校准
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqBlcCal(self, req):
+        Info('[------- APP Req: appReqBlcCal ------] req: {}'.format(req))                
+        if StateMachine.checkAllowBlc():
+            StateMachine.addCamState(config.STATE_BLC_CALIBRATE)
+            res = self.sendReq2Camerad(req)
+        else:
+            res = cmd_error_state(req[_name], StateMachine.getCamState())
+        return res
+
+    def blcCalcDone(self, res = None, req = None, oled = False):
+        if req is not None:
+            if check_dic_key_exist(req, _param) and check_dic_key_exist(req[_param], "reset"):
+                Info('blc reset do nothing')
+            else:
+                self.notifyDispType(config.START_BLC)
+        else:
+            self.notifyDispType(config.START_BLC)
+
+    def blcCalcFail(self, err = -1):
+        if StateMachine.checkStateIn(config.STATE_BLC_CALIBRATE):
+            StateMachine.rmServerState(config.STATE_BLC_CALIBRATE)
+        self.notifyDispTypeErr(config.CALIBRATION_FAIL, err)
+
+
+    ###################################################################################
+    # 方法名称: appReqBpcCalc
+    # 功能描述: App请求BPC校准
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqBpcCalc(self, req):
+        Info('[------- APP Req: appReqBpcCalc ------] req: {}'.format(req))                
+        if StateMachine.checkAllowBpc():
+            res = self.sendReq2Camerad(req)
+        else:
+            res = cmd_error_state(req[_name], self.get_cam_state())
+        return res
+
+    def bpcCalcDone(self, res = None, req = None, oled = False):
+        if req is not None:
+            Info('blc done req {}'.format(req))
+            if check_dic_key_exist(req,_param) and check_dic_key_exist(req[_param], "reset"):
+                Info('blc reset do nothing')
+            else:
+                StateMachine.addCamState(config.STATE_BPC_CALIBRATE)
+                self.notifyDispType(config.START_BPC)
+        else:
+            StateMachine.addCamState(config.STATE_BPC_CALIBRATE)
+            self.notifyDispType(config.START_BPC)
+
+    def bpcCalcFail(self, err = -1):
+        Err('---> bpcCalcFail')
+        StateMachine.rmServerState(config.STATE_BPC_CALIBRATE)
+        self.notifyDispType(config.STOP_BPC)
+
+
+    ###################################################################################
+    # 方法名称: appReqMageterCalc
+    # 功能描述: App请求磁力计校准
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqMageterCalc(self, req):
+        Info('[------- APP Req: appReqMageterCalc ------] req: {}'.format(req))                
+        if StateMachine.checkAllowMagmeter():
+            res = self.sendReq2Camerad(req)
+        else:
+            res = cmd_error_state(req[_name], StateMachine.getCamState())
+        return res
+
+    def mageterCalcDone(self, res = None,req = None, oled = False):
+        if req is not None:
+            Info('mageterCalcDone {}'.format(req))
+            if check_dic_key_exist(req, _param) and check_dic_key_exist(req[_param], "reset"):
+                Info('blc reset do nothing')
+            else:
+                StateMachine.addServerState(config.STATE_MAGMETER_CALIBRATE)
+        else:
+            StateMachine.addServerState(config.STATE_MAGMETER_CALIBRATE)
+
+    def mageterCalcFail(self, err = -1):
+        Err('------> mageterCalcFail')
+        StateMachine.rmServerState(config.STATE_MAGMETER_CALIBRATE)
+
+
+    ###################################################################################
+    # 方法名称: appReqDeleteFile
+    # 功能描述: App请求删除文件
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
+    def appReqDeleteFile(self, req):
+        Info('[------- APP Req: appReqDeleteFile ------] req: {}'.format(req))                
+
+        if StateMachine.checkAllowDelete():            
+            # 设置正在删除文件状态
+            # self.set_cam_state(self.get_cam_state() | config.STATE_DELETE_FILE)
+            remote_del_lists = []
+            self.delete_lists = req[_param]['dir']  # dest为删除列表
+            for i in self.delete_lists:
+                dir_name = os.path.basename(i)
+                remote_del_lists.append(dir_name)
+
+            Info('>>>>>>> remote delete lists {}'.format(remote_del_lists))
+
+            deleteReq = OrderedDict()
+            deleteDir = OrderedDict()
+            deleteReq['name'] = config._DELETE_TF_CARD
+            deleteDir['dir'] = remote_del_lists
+            deleteReq['parameters'] = deleteDir
+            
+            read_info = self.sendReq2Camerad(deleteReq)   
+
+            Info('>>>>>>>> read delete req res {}'.format(read_info))
+        else:
+            Info('not allow delete file')
+            read_info = cmd_error_state(req[_name], self.get_cam_state())
+        return read_info
+
+    def deleteFileDone(self, res = None, req = None, oled = False):
+        Info('>>>>> deleteFileDone req {} self.get_cam_state() {}'.format(req, self.get_cam_state()))
+        # self.set_cam_state(self.get_cam_state() & ~config.STATE_DELETE_FILE)
+
+    def deleteFileFail(self, res = None, req = None, oled = False):
+        Info('>>>>> deleteFileFail req {} self.get_cam_state() {}'.format(req, self.get_cam_state()))
+        self.set_cam_state(self.get_cam_state() & ~config.STATE_DELETE_FILE)
+
+
+
+    def appReqQueryLefInfo(self, req):
+        Info('[------- APP Req: appReqQueryLefInfo ------] req: {}'.format(req))                
+
+        queryResult = OrderedDict()
+        queryResult['name'] = req['name']
+
+        if StateMachine.checkAllowQueryLeft():
+
+            # 根据请求的参数做处理
+            # 如果是拍照：
+            # 如果是录像：
+            # 如果是直播：
+            self.send_req(self.get_write_req(config.UI_NOTIFY_QUERY_LEFT_INFO, req['param']))
+        
+            time.sleep(0.5)
+
+            # 等待处理结果
+            queryResult['state'] = config.DONE
+            queryResult['left'] = self.left_val
+            return json.dumps(queryResult)
+        else:
+            read_info = cmd_error_state(req[_name], self.get_cam_state())
+            return read_info
+
+
+    def appReqShutdown(self, req):
+        Info('[------- APP Req: appReqShutdown ------] req: {}'.format(req))            
+        self.sendIndMsg2SystemServer(req)           
+        result = OrderedDict()
+        result['name'] = req[_name]
+        result['state'] = config.DONE
+        return json.dumps(result)
+
+
+    def appReqSwitchMountMode(self, req):
+        Info('[------- APP Req: appReqSwitchMountMode ------] req: {}'.format(req))            
+        self.sendIndMsg2SystemServer(req)        
+        result = OrderedDict()
+        result['name'] = req[_name]        
+        result['state'] = config.DONE
+        return json.dumps(result)
+
+
+    # 列出文件(异步版本)
+    # 1.检查是否在列出文件状态,如果是,返回状态错误;否则通知UI进入列出文件状态
+    # 2.调用add_async_cmd_id，添加一个异步ID
+    # 3.进入列出等待过程
+    # 4.列出完成,返回
+    def appReqListFile(self, req):
+        Info('[------- APP Req: appReqListFile ------] req: {}'.format(req))            
+        if StateMachine.checkAllowListFile():
+            if self._list_progress == False:
+                if check_dic_key_exist(req[_param], 'path'):
+                    path = req[_param]['path']
+                else:
+                    path = osc_state_handle.get_save_path()
+
+                Print('appReqListFile path {} req {}'.format(path, req))
+
+                if path is not None and str_start_with(path, MOUNT_ROOT):
+            
+                    # 1.返回done,通知UI进入列出文件过程
+                    # 2.通知UI进入列出文件状态
+                    # 3.心跳包中加入该异步命令
+                    # 4.列文件是比较耗时的操作，需要启动一个新线程来执行
+                    
+                    self._list_progress = True
+
+                    self.add_async_cmd_id(req[_name], self._list_file_seq)   
+
+                    time.sleep(0.5)
+
+                    result = OrderedDict({config._NAME: req[_name], config._STATE: config.DONE, 'sequence':self._list_file_seq})
+                    read_info = json.dumps(result)
+                    self._list_file_pthread = ListFileThread('list_file', self, path)
+                    self._list_file_pthread.start()
+                else:
+                    read_info = cmd_error(config.LIST_FILES, 'camera_list_files', join_str_list(['error path ', 'none']))
+            else:
+                Info('---------------> list file is progress ...')
+
+        else:
+            Info('-----> not allow list file')
+            read_info = cmd_error_state(req[_name], self.get_cam_state())
+        return read_info
+
+##################################################### App non camerad Request Funcs #######################################################
+    
+    def appReqGetResults(self, req):
+        try:
+            req_ids = req[_param]['list_ids']
+            Info('appReqGetResults req_ids {} async_id_list {}'.format(req_ids, self.async_id_list))
+            res_array = []
+
+            # 依次处理需要查询的各个id
+            for id in req_ids:
+                for async_info in self.async_id_list:
+                    if async_info[KEY_ID] == id and async_info[config._ID_GOT] == 1:
+                        Info('found id {}  async_info {}'.format(id,async_info))
+                        res = OrderedDict()
+                        res[KEY_ID] = id
+                        res[_name] = async_info[_name]
+                        res[config.RESULTS] = async_info[config.RESULTS]
+                        res_array.append(res)
+                        
+                        # 从心跳包中移除该ID
+                        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.RM_RES_ID, id))
+                        break
+
+            if len(res_array) > 0:
+                Info('res_array is {}'.format(res_array))
+                read_info = OrderedDict()
+                read_info[_name] = req[_name]
+                read_info[_state] = config.DONE
+                read_info[config.RESULTS] = OrderedDict()
+                read_info[config.RESULTS]['res_array'] = res_array
+                read_info = dict_to_jsonstr(read_info)
+
+                #remove _id_list item got
+                for res_item in res_array:
+                    for id_dict in self.async_id_list:
+                        if id_dict[KEY_ID] == res_item[KEY_ID]:
+                            self.async_id_list.remove(id_dict)
+                            break
+            else:
+                read_info = cmd_error(config._GET_RESULTS, 'appReqGetResults', 'id not found')
+        except Exception as e:
+            Err('appReqGetResults e {}'.format(e))
+            read_info = cmd_exception(str(e), config._GET_RESULTS)
+        return read_info
+
+    def appReqListFiles(self, req):
         if check_dic_key_exist(req[_param], 'path'):
             path = req[_param]['path']
         else:
-            path = self.get_save_p()
-        Print('camera_list_files path {} req {}'.format(path,req))
+            path = osc_state_handle.get_save_path()
+        Print('appReqListFiles path {} req {}'.format(path,req))
 
         unicode_path = path
         # unicode_path = path.encode('utf-8')
@@ -1765,12 +2050,11 @@ class control_center:
             read_info[config.RESULTS]['entries'] = all_files
             read_info = dict_to_jsonstr(read_info)
         else:
-            read_info = cmd_error(config.LIST_FILES, 'camera_list_files', join_str_list(['error path ', 'none']))
-
+            read_info = cmd_error(config.LIST_FILES, 'appReqListFiles', join_str_list(['error path ', 'none']))
         return read_info
 
 
-    def camera_delete(self, req, from_ui = False):
+    def appReqDeleteFile(self, req):
 
         Info('----> cameraDeleteFile req {} cam state: {}'.format(req, StateMachine.getCamStateFormatHex()))
         if StateMachine.checkAllowDelete():
@@ -1801,8 +2085,49 @@ class control_center:
         return read_info
 
 
-###################################################### UI与Server交互接口 ##########################################################
 
+    def appReqGetImage(self, req):
+        uri = req[_param]['fileUri']
+        Print('get uri {}'.format(uri))
+        if file_exist(uri):
+            # if req[_param]['maxSize'] is not None:
+            #     max_size = req[_param]['maxSize']
+            #     Print('max_size {}'.format(max_size))
+            Print('start read_info')
+            read_info = send_file(uri,mimetype='image/jpeg')
+        else:
+            read_info = cmd_error(req[_name], 'status_id_error', join_str_list([uri, 'not exist']))
+        Print('appReqGetImage read_info {}'.format(read_info))
+        return read_info
+
+    def appReqGetMetaData(self, req):
+        return cmd_done(req[_name])
+
+
+    def appReqSetCustom(self, req):
+        Info('[------- APP Req: appReqSetCustom ------] req: {}'.format(req))
+        self.unixSocketClient.sendAsyncNotify(req)
+        return cmd_done(req[_name])
+
+
+    def appReqSetSN(self, req):
+        Info('[------- APP Req: appReqSetSN ------] req: {}'.format(req))
+        # self.sendIndMsg2SystemServer(req)
+        # self.send_set_sn(req[_param])
+        return cmd_done(req[_name])
+
+
+    def appReqStartShell(self, req):
+        Info('[------- APP Req: appReqStartShell ------] req: {}'.format(req))
+        return cmd_done(req[_name])
+
+    def appReqQueryGpsState(self, req):
+        Info('[------- APP Req: appReqQueryGpsState ------] req: {}'.format(req))
+        info = self.sendReq2Camerad(req)
+        return info
+
+
+##################################################### SystemServer Request Funcs #######################################################
     #############################################################################################################
     # 方法名称: cameraUiGetSetCamState
     # 功能描述: 获取或设置服务器的状态
@@ -1868,6 +2193,7 @@ class control_center:
             return read_info
 
 
+
     #############################################################################################################
     # 方法名称: cameraUiUpdateTimelapaseLeft
     # 功能描述: 请求服务器更新拍摄timelapse的剩余值到心跳包
@@ -1895,7 +2221,60 @@ class control_center:
         res = OrderedDict()
         res[_name] = req[_name]
         res[_state] = config.DONE
-        return json.dumps(res)        
+        return json.dumps(res)  
+
+
+    def cameraUiStartQrScan(self, req):
+        Info('[------- UI Req: cameraUiStartQrScan ------] req: {}'.format(req))        
+        if StateMachine.checkAllowQrScan():
+            StateMachine.addCamState(config.STATE_START_QR)
+        return self.sendReq2Camerad(req)
+
+
+    def startQrScanDone(self, req = None):
+        self.notifyDispType(config.START_QR_SUC)
+
+    def startQrScanFail(self, err = -1):
+        StateMachine.rmServerState(config.STATE_START_QR)
+        self.notifyDispTypeErr(config.START_QR_FAIL, err)
+
+
+    def cameraUiStopQrScan(self, req):
+        Info('[------- UI Req: cameraUiStopQrScan ------] req: {}'.format(req)
+        # return self.sendReq2Camerad(req, True)
+
+    # def camera_stop_qr_fail(self, err = -1):
+    #     self.notifyDispTypeErr(config.STOP_QR_FAIL, err)
+
+    # def camera_stop_qr_done(self, req = None):
+    #     self.set_cam_state(self.get_cam_state() & ~config.STATE_START_QR)
+    #     self.notifyDispType(config.STOP_QR_SUC)
+    # 
+    # 
+    
+    # def camera_low_protect_fail(self, err = -1):
+    #     Info('camera_low_protect_fail')
+    #     self.set_cam_state(config.STATE_IDLE)
+
+    # def camera_low_protect_done(self, res = None):
+    #     Info('camera_low_protect_done')
+    #     self.set_cam_state(config.STATE_IDLE)
+
+    # def start_low_protect(self,req):
+    #     read_info = self.sendReq2Camerad(req, True)
+    #     return read_info
+
+    # def camera_low_protect(self):
+    #     name = config._LOW_BAT_PROTECT
+    #     Info("oled camera_low_protect")
+    #     try:
+    #         res = self.start_low_protect(self.get_req(name))
+    #     except Exception as e:
+    #         Err('camera_low_protect e {}'.format(e))
+    #         res = cmd_exception(e, name)
+    #     return res
+
+
 
 
     #############################################################################################################
@@ -1913,7 +2292,6 @@ class control_center:
         # TODO:启动预览的时间比较长,应该在允许启动预览后,设置Server的状态为正在启动预览
         # 防止客户端正在启动预览时,UI再次发起启动预览的操作
         if StateMachine.checkAllowPreview():
-            
             StateMachine.addServerState(config.STATE_START_PREVIEWING)
 
             res[_name] = req[_name]
@@ -1924,7 +2302,6 @@ class control_center:
             read_info = cmd_error_state(req[_name], StateMachine.getCamState())
         Print('---> cameraUiStartPreview res {}'.format(read_info))
         return read_info
-
 
     #############################################################################################################
     # 方法名称: cameraUiStopPreview
@@ -1962,7 +2339,7 @@ class control_center:
         Info('[------- UI Req: cameraUiRequestSyncInfo ------] req: {}'.format(req))                
         self.set_cam_state(config.STATE_TEST)
         name = config._QUERY_STATE
-        self.set_sync_para(req[_param])
+        self.sync_param = req[_param]        
         req = self.get_req(name)
         try:
             # 调用查询状态接口
@@ -1985,7 +2362,7 @@ class control_center:
     def cameraUiqueryGpsState(self, req):
         Info('[------- UI Req: cameraUiqueryGpsState ------] req: {}'.format(req))                
         read_info = self.sendReq2Camerad(req)
-        return read_info        
+        return read_info    
 
 
     #############################################################################################################
@@ -2002,14 +2379,15 @@ class control_center:
         read_info = json.dumps(res)
         if check_dic_key_exist(req[_param], 'audio_gain'):
             param = OrderedDict({'property':'audio_gain', 'value':req[_param]['audio_gain']})
-            read_info = self.camera_oled_set_option(param)
+            read_info = self.sendSetOption(param)
         if check_dic_key_exist(req[_param], 'len_param'):
-            read_info = self.set_len_param(req[_param]['len_param'])
+            read_info = self.setLensParam(req[_param]['len_param'])
         if check_dic_key_exist(req[_param], 'gamma_param'):
             Info('gamma_param {}'.format(req[_param]['gamma_param']))
             param = OrderedDict({'data': req[_param]['gamma_param']})
-            read_info = self.camera_update_gamma_curve(self.get_req(config._UPDATE_GAMMA_CURVE, param))
+            read_info = self.appReqUpdateGamma(self.get_req(config._UPDATE_GAMMA_CURVE, param))
         return read_info
+
 
 
     #############################################################################################################
@@ -2023,12 +2401,11 @@ class control_center:
         Info('[------- UI Req: cameraUiSpeedTest ------] req: {}'.format(req))                
         name = config._SPEED_TEST
         try:
-            res = self.start_speed_test(req, True)
+            res = self.startSpeedTest(req, True)
         except Exception as e:
             Err('cameraUiSpeedTest e {}'.format(e))
             res = cmd_exception(e, name)
         return res
-
 
     def cameraUiTakePic(self, req):
         Info('[------- UI Req: cameraUiTakePic ------] req: {}'.format(req))                
@@ -2154,14 +2531,13 @@ class control_center:
     # 返回值: 
     def cameraUiStitchCalc(self, req):
         Info('[------- UI Req: cameraUiStitchCalc ------] req: {}'.format(req))                
-        return self.start_calibration(req, True)
+        return self.startCalibration(req, True)
 
 
     def cameraUiSavepathChange(self, req):
         Info('[------- UI Req: cameraUiSavepathChange ------] req: {}'.format(req)) 
         
-        read_info = self.start_change_save_path(req[_param])
-
+        read_info = self.sendSavePathChange(req[_param])
         factory_path = req[_param]['path'] + '/factory.json'
 
         Info('----> root path {}'.format(factory_path))
@@ -2178,8 +2554,7 @@ class control_center:
             
             # 避免多次插入而报错413
             if StateMachine.checkStateIn(config.STATE_RECORD) == False:
-                self.start_ageing_test(file_json, age_time)
-
+                self.startAgingTest(file_json, age_time)
         return read_info
 
 
@@ -2190,7 +2565,6 @@ class control_center:
         res[_state] = config.DONE   
 
         dev_list = jsonstr_to_dic(req[_param])
-
         if dev_list is not None:
             osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.HANDLE_DEV_NOTIFY, dev_list))
         else:
@@ -2210,23 +2584,46 @@ class control_center:
     def cameraUiNoiseSample(self, req):
         Info('[------- UI Req: cameraUiNoiseSample ------] req: {}'.format(req))                
         name = config._START_NOISE
-        return self.start_noise(self.get_req(name), True)
+        return self.startNoise(self.get_req(name), True)
+
+    
+    def sampleNoiseDone(self, req = None):
+        Info("noise done")
+
+    def sampleNoiseFail(self, err = -1):
+        Err('---> sampleNoiseFail')
+        StateMachine.rmServerState(config.STATE_NOISE_SAMPLE)
+        self.notifyDispType(config.START_NOISE_FAIL)
+
 
     def cameraUiGyroCalc(self, req):
         Info('[------- UI Req: cameraUiGyroCalc ------] req: {}'.format(req))                
         name = config._START_GYRO
-        return self.start_gyro(self.get_req(name), True)
+        return self.startGyro(self.get_req(name), True)
 
 
     def cameraUiLowPower(self, req):
         Info('[------- UI Req: cameraUiLowPower ------] req: {}'.format(req))
         name = config._POWER_OFF
-        return self.start_power_off(self.get_req(name))
+        StateMachine.addCamState(config.STATE_POWER_OFF)
+        return self.sendReq2Camerad(self.get_req(name), True)
+
+
+    def powerOffDone(self, req = None):
+        Info("power off done do nothing")
+        self.set_cam_state(config.STATE_IDLE)
+        self.notifyDispType(config.START_LOW_BAT_SUC)
+
+    def powerOffFail(self, err = -1):
+        Info("power off fail err {}".format(err))
+        self.set_cam_state(config.STATE_IDLE)
+        self.notifyDispType(config.START_LOW_BAT_FAIL)
+
 
 
     def cameraUiSetOptions(self, req):
         Info('[------- UI Req: cameraUiSetOptions ------] req: {}'.format(req))      
-        return self.camera_set_options(req)
+        return self.appReqSetOptions(req)
 
 
     def cameraUiUpdateSysTemp(self, req):
@@ -2290,8 +2687,6 @@ class control_center:
         return read_info
 
 
-
-
     # 方法名称: cameraUiFormatTfCard
     # 功能: 格式化TF卡
     # 参数: 无
@@ -2330,694 +2725,7 @@ class control_center:
             return json.dumps(res)
 
 
-    def ui_cmd_execute(self, req):
-        try:
-            name = req[_name]
-
-            # Info('ui_cmd_execute req is {}'.format(req))
-            
-            if name in self.ui_cmd_func:
-                ret = self.ui_cmd_func[name](req) 
-            else:
-                ret = cmd_exception("Warnning not support command", req)
-        except Exception as e:
-            Err('ui_cmd_execute exception e {} req {}'.format(e, req))
-            ret = cmd_exception(str(e), name)
-        return ret
-
-
-    def clear_url_list(self):
-        self.url_list = {config.PREVIEW_URL: None, config.RECORD_URL: None, config.LIVE_URL: None}
-
-    def get_preview_url(self):
-        return self.url_list[config.PREVIEW_URL]
-
-    def set_preview_url(self, url):
-        self.url_list[config.PREVIEW_URL] = url
-
-    def set_rec_url(self, url):
-        self.url_list[config.RECORD_URL] = url
-
-    def get_rec_url(self):
-        return self.url_list[config.RECORD_URL]
-
-    def set_live_url(self, url):
-        self.url_list[config.LIVE_URL] = url
-
-    def get_live_url(self):
-        return self.url_list[config.LIVE_URL]
-
-    # Command Input
-    # {
-    #     "parameters": {
-    #         "fileUri": "file URI",
-    #         "maxSize": 400
-    #     }
-    # }
-    # Command Output Image binary data
-    # Command Output(Err)
-    # {
-    #     "error": {
-    #         "code": "invalidParameterValue",
-    #         "message": "Parameter fileUri doesn't exist."
-    #     }
-    # }
-
-    def read_image(self,uri):
-        with open(uri,'rb') as f:
-            data = f.read()
-            # print('data size ',len(data))
-            # print('type data ',type(data))
-            ret = Response(data, mimetype='image/jpeg')
-            return ret
-
-    def camera_get_image(self,req):
-        # assert_key(req, _param)
-        # assert_key(req[_param],'fileUri')
-        uri = req[_param]['fileUri']
-        Print('get uri {}'.format(uri))
-        if file_exist(uri):
-            # if req[_param]['maxSize'] is not None:
-            #     max_size = req[_param]['maxSize']
-            #     Print('max_size {}'.format(max_size))
-            Print('start read_info')
-            read_info = send_file(uri,mimetype='image/jpeg')
-        else:
-            read_info = cmd_error(req[_name], 'status_id_error', join_str_list([uri, 'not exist']))
-        Print('camera_get_image read_info {}'.format(read_info))
-        return read_info
-
-    def camera_get_meta_data(self, req, from_ui = False):
-        return cmd_done(req[_name])
-
-    #keep reset suc even if camerad not response
-    #TODO  -- future use aio mode
-    def camera_reset(self, req, exception = False):
-        Info('reset req {}'.format(req))
-        try:
-            read_seq = self.write_req_reset(req, self.get_reset_write_fd())
-            # Info('reset req 2 {} {}'.format(req,read_seq))
-            ret = self.read_response(read_seq, self.get_reset_read_fd())
-            # Info('reset req 3 {}'.format(req))
-            if ret[_state] == config.DONE:
-                cmd_suc(config.CAMERA_RESET)
-                self.reset_all()
-                if exception:
-                    ret[config.RESULTS] = OrderedDict({'reason': 'exception to reset'})
-            else:
-                cmd_fail(config.CAMERA_RESET)
-            ret = dict_to_jsonstr(ret)
-        except FIFOSelectException as e:
-            Err('camera_reset FIFOSelectException')
-            ret = cmd_exception(error_dic('FIFOSelectException', str(e)), config.CAMERA_RESET)
-        except FIFOReadTOException as e:
-            Err('camera_reset FIFOReadTOException')
-            ret = cmd_exception(error_dic('FIFOReadTOException', str(e)), config.CAMERA_RESET)
-        except WriteFIFOException as e:
-            Err('camera_reset WriteFIFIOException')
-            ret = cmd_exception(error_dic('WriteFIFOException', str(e)), config.CAMERA_RESET)
-        except ReadFIFOException as e:
-            Err('camera_reset ReadFIFIOException')
-            ret = cmd_exception(error_dic('ReadFIFIOException', str(e)), config.CAMERA_RESET)
-        except SeqMismatchException as e:
-            Err('camera_reset SeqMismatchException')
-            ret = cmd_exception(error_dic('SeqMismatchException', str(e)), config.CAMERA_RESET)
-        except BrokenPipeError as e:
-            Err('camera_reset BrokenPipeError')
-            ret = cmd_exception(error_dic('BrokenPipeError', str(e)), config.CAMERA_RESET)
-        except OSError as e:
-            Err('camera_reset OSError')
-            ret = cmd_exception(error_dic('IOError', str(e)), config.CAMERA_RESET)
-        except AssertionError as e:
-            Err('camera_reset AssertionError')
-            ret = cmd_exception(error_dic('AssertionError', str(e)), config.CAMERA_RESET)
-        except Exception as e:
-            Err('camera_reset unknown exception {}'.format(str(e)))
-            ret = cmd_exception(error_dic('sendReq2Camerad', str(e)), config.CAMERA_RESET)
-        self.close_read_reset()
-        self.close_write_reset()
-        return ret
-
-    def acquire_sem_camera(self):
-        self.sem_camera.acquire()
-
-    def release_sem_camera(self):
-        self.sem_camera.release()
-
-    def get_save_org(self):
-        return self.bSaveOrgEnable
-
-    #set enable while usb3.0 plugged in
-    def set_save_org(self,state):
-        self.bSaveOrgEnable = state
-
-    def get_req(self, name, param = None):
-        dict = OrderedDict()
-        dict[_name] = name
-        if param is not None:
-            dict[_param] = param
-        return dict
-
-    #  {'sharpness': 4, 'brightness': 87, 'long_shutter':1-60(s),'shutter_value': 21, 'wb': 0, 'saturation': 156, 'aaa_mode': 2, 'contrast': 143, 'ev_bias': 0, 'iso_value': 7}
-    def set_len_param(self, len_param):
-        Info('set_len_param {}'.format(len_param))
-        dict = OrderedDict()
-        dict[_name] = config.SET_OPTIONS
-        param = []
-        len_key = ['aaa_mode','sharpness','brightness','long_shutter','shutter_value','wb','saturation','contrast','ev_bias','iso_value']
-        for k in len_key:
-            if check_dic_key_exist(len_param,k):
-                param.append(OrderedDict({'property': k, 'value': len_param[k]}))
-
-        if len(param) > 0:
-            dict[_param] = param
-        return self.camera_set_options(dict)
-
-    def camera_oled_err(self, name, err_des):
-        return cmd_error(name, 'camera_oled_error', err_des)
-
-    def set_sync_para(self,param):
-        Info('sync state param {}'.format(param))
-        self.sync_param = param
-
-    def start_oled_syn_state(self, param):
-        self.set_cam_state(config.STATE_TEST)
-        name = config._QUERY_STATE
-        self.set_sync_para(param)
-        req = self.get_req(name)
-        try:
-            # 调用查询状态接口
-            ret = self.camera_cmd_func[name](req)
-        except AssertionError as e:
-            Err('start_oled_syn_state e {}'.format(str(e)))
-            ret = cmd_exception(error_dic('start_camera_cmd_func AssertionError', str(e)), req)
-        except Exception as e:
-            Err('start_oled_syn_state exception {}'.format(e))
-            ret = cmd_exception(e,name)
-        return ret
-
-    def camera_oled_sync_state(self):
-        try:
-            Info('camera_oled_sync_state is {}'.format(self.get_cam_state()))
-            if self.get_cam_state() & config.STATE_COMPOSE_IN_PROCESS == config.STATE_COMPOSE_IN_PROCESS:
-                self.notifyDispType(config.COMPOSE_PIC)
-            #move live before rec 170901
-            elif StateMachine.checkInLive():
-                if self.get_cam_state() & config.STATE_PREVIEW == config.STATE_PREVIEW:
-                    self.notifyDispType(config.SYNC_LIVE_AND_PREVIEW)
-                else:
-                    self.notifyDispType(config.START_LIVE_SUC)
-            elif (self.get_cam_state() & config.STATE_RECORD) == config.STATE_RECORD:
-                if self.get_cam_state() & config.STATE_PREVIEW == config.STATE_PREVIEW:
-                    self.notifyDispType(config.SYNC_REC_AND_PREVIEW)
-                else:
-                    self.notifyDispType(config.START_REC_SUC)
-            elif StateMachine.checkInLiveConnecting():
-                if self.get_cam_state() & config.STATE_PREVIEW == config.STATE_PREVIEW:
-                    self.notifyDispType(config.SYNC_LIVE_CONNECTING_AND_PREVIEW)
-                else:
-                    self.notifyDispType(config.START_LIVE_SUC)
-            # elif self.get_cam_state() & config.STATE_HDMI == config.STATE_HDMI:
-            #     self.notifyDispType(config.START_HDMI_SUC)
-            elif (self.get_cam_state() & config.STATE_CALIBRATING) == config.STATE_CALIBRATING:
-                self.notifyDispType(config.START_CALIBRATIONING)
-            elif (self.get_cam_state() & config.STATE_PREVIEW) == config.STATE_PREVIEW:
-                self.notifyDispType(config.START_PREVIEW_SUC)
-            else:
-                #use stop rec suc for disp ilde for oled panel
-                self.notifyDispType(config.RESET_ALL)
-        except Exception as e:
-            Err('camera_oled_sync_state e {}'.format(e))
-        return cmd_done(ACTION_REQ_SYNC)
-
-
-    def camera_start_calibration_done(self, req = None):
-        self._client_stitch_calc = False
-        pass
-
-    def camera_start_calibration_fail(self, err = -1):
-        self._client_stitch_calc = False
-        Info('error etner calibration fail')
-        StateMachine.rmServerState(config.STATE_CALIBRATING)
-        self.send_oled_type_err(config.CALIBRATION_FAIL, err)
-
-    def camera_start_calibration(self, req, from_ui = False):
-        self._client_stitch_calc = True
-        Info('[----- Clinet start_calibration Req ---] {}'.format(req))
-        return self.start_calibration(req, False)
-
-
-    def start_calibration(self, req, from_oled = False):
-        if self._client_stitch_calc == False:
-            if StateMachine.checkStateIn(config.STATE_CALIBRATING):
-                StateMachine.rmServerState(config.STATE_CALIBRATING)
-
-        Info('start_calibration req {} Server State {}'.format(req, StateMachine.getCamState()))
-        if StateMachine.checkAllowCalibration():
-            StateMachine.addCamState(config.STATE_CALIBRATING)
-            if from_oled is False:
-                self.notifyDispType(config.START_CALIBRATIONING)
-            res = self.sendReq2Camerad(req, from_oled)
-        else:
-            res = cmd_error_state(req[_name], StateMachine.getCamState())
-            if from_oled:
-                self.notifyDispType(config.CALIBRATION_FAIL)
-        return res
-
-    def camera_calibrate_blc_done(self, res = None, req = None, oled = False):
-        if req is not None:
-            if check_dic_key_exist(req, _param) and check_dic_key_exist(req[_param], "reset"):
-                Info('blc reset do nothing')
-            else:
-                self.notifyDispType(config.START_BLC)
-        else:
-            self.notifyDispType(config.START_BLC)
-
-
-    def camera_calibrate_blc_fail(self, err=-1):
-        if StateMachine.checkStateIn(config.STATE_BLC_CALIBRATE):
-            StateMachine.rmServerState(config.STATE_BLC_CALIBRATE)
-        self.send_oled_type_err(config.CALIBRATION_FAIL, err)
-
-
-    def camera_calibrate_blc(self, req, from_ui = False):
-        Info('[------- APP Req: camera_calibrate_blc ------] req: {}'.format(req))                
-        if StateMachine.checkAllowBlc():
-            StateMachine.addCamState(config.STATE_BLC_CALIBRATE)
-            res = self.sendReq2Camerad(req)
-        else:
-            res = cmd_error_state(req[_name], StateMachine.getCamState())
-        return res
-
-
-    def camera_calibrate_bpc(self, req, from_ui = False):
-        Info('---> camera_calibrate_bpc req {} Server State {}'.format(req, StateMachine.getCamState()))
-        if StateMachine.checkAllowBpc():
-            res = self.sendReq2Camerad(req)
-        else:
-            res = cmd_error_state(req[_name], self.get_cam_state())
-        return res
-
-    def camera_calibrate_bpc_done(self, res = None, req = None, oled = False):
-        if req is not None:
-            Info('blc done req {}'.format(req))
-            if check_dic_key_exist(req,_param) and check_dic_key_exist(req[_param], "reset"):
-                Info('blc reset do nothing')
-            else:
-                StateMachine.addCamState(config.STATE_BPC_CALIBRATE)
-                self.notifyDispType(config.START_BPC)
-        else:
-            StateMachine.addCamState(config.STATE_BPC_CALIBRATE)
-            self.notifyDispType(config.START_BPC)
-
-    def camera_calibrate_bpc_fail(self, err = -1):
-        Err('---> camera_calibrate_bpc_fail')
-        StateMachine.rmServerState(config.STATE_BPC_CALIBRATE)
-        self.notifyDispType(config.STOP_BPC)
-
-
-
-
-    def camerCalibrateMageter(self, req, from_ui = False):
-        Info('camerCalibrateMageter req {} Server State {}'.format(req, StateMachine.getCamState()))
-        if StateMachine.checkAllowMagmeter():
-            res = self.sendReq2Camerad(req)
-        else:
-            res = cmd_error_state(req[_name], StateMachine.getCamState())
-        return res
-
-
-    def cameraCalibrateMagmeterDone(self, res = None,req = None, oled = False):
-        if req is not None:
-            Info('cameraCalibrateMagmeterDone {}'.format(req))
-            if check_dic_key_exist(req, _param) and check_dic_key_exist(req[_param], "reset"):
-                Info('blc reset do nothing')
-            else:
-                StateMachine.addServerState(config.STATE_MAGMETER_CALIBRATE)
-        else:
-            StateMachine.addServerState(config.STATE_MAGMETER_CALIBRATE)
-
-
-    def cameraCalibrateMagmeterFail(self, err = -1):
-        Err('------> cameraCalibrateMagmeterFail')
-        StateMachine.rmServerState(config.STATE_MAGMETER_CALIBRATE)
-
-
-################################## 文件删除操作 #######################################
- 
-
-
-    def check_allow_query_left(self):
-        if (self.get_cam_state() in (config.STATE_IDLE, config.STATE_PREVIEW)):
-            return True
-        else:
-            return False    
-
-
-
-    def cameraDeleteFile(self, req, from_ui = False):
-
-        Info('>>>>> cameraDeleteFile req {} self.get_cam_state() {}'.format(req, self.get_cam_state()))
-        if StateMachine.checkAllowDelete():
-            
-            # 设置正在删除文件状态
-            # self.set_cam_state(self.get_cam_state() | config.STATE_DELETE_FILE)
-
-            remote_del_lists = []
-            self.delete_lists = req[_param]['dir']  # dest为删除列表
-            for i in self.delete_lists:
-                dir_name = os.path.basename(i)
-                remote_del_lists.append(dir_name)
-
-            Info('>>>>>>> remote delete lists {}'.format(remote_del_lists))
-
-            deleteReq = OrderedDict()
-            deleteDir = OrderedDict()
-            deleteReq['name'] = config._DELETE_TF_CARD
-            deleteDir['dir'] = remote_del_lists
-            deleteReq['parameters'] = deleteDir
-            
-            read_info = self.sendReq2Camerad(deleteReq)   
-
-            Info('>>>>>>>> read delete req res {}'.format(read_info))
-        else:
-            Info('not allow delete file')
-            read_info = cmd_error_state(req[_name], self.get_cam_state())
-        return read_info
-
-
-    def cameraDeleteFileDone(self, res = None, req = None, oled = False):
-        Info('>>>>> cameraDeleteFileDone req {} self.get_cam_state() {}'.format(req, self.get_cam_state()))
-        # self.set_cam_state(self.get_cam_state() & ~config.STATE_DELETE_FILE)
-
-    def cameraDeleteFileFail(self, res = None, req = None, oled = False):
-        Info('>>>>> cameraDeleteFileFail req {} self.get_cam_state() {}'.format(req, self.get_cam_state()))
-        self.set_cam_state(self.get_cam_state() & ~config.STATE_DELETE_FILE)
-
-
-    def queryLeftResult(self, res):
-        Info('>>>>> queryLeftResult req {} self.get_cam_state() {}'.format(res, self.get_cam_state()))
-        self.left_val = res['left']
-
-
-    def cameraShutdown(self, req):
-        Info('[------- APP Req: cameraShutdown ------] req: {}'.format(req))            
-        # self.send_req(self.get_write_req(config.UI_NOTIFY_SHUT_DOWN, req))
-        self.sendIndMsg2SystemServer(req)           
-        result = OrderedDict()
-        result['name'] = req[_name]
-        result['state'] = config.DONE
-        return json.dumps(result)
-
-
-    def cameraSwitchMountMode(self, req):
-        Info('[------- APP Req: cameraSwitchMountMode ------] req: {}'.format(req))            
-        # self.send_req(self.get_write_req(config.UI_NOTIFY_SWITCH_MOUNT_MODE, req))
-
-        self.sendIndMsg2SystemServer(req)        
-        result = OrderedDict()
-        result['name'] = req[_name]        
-        result['state'] = config.DONE
-        return json.dumps(result)
-
-
-
-    # 列出文件(异步版本)
-    # 被列出文件线程回调
-    def async_list_file(self, path):
-        all_files = self.list_path_and_file(path)
-        read_info = OrderedDict()
-        read_info[_name] = config._LIST_FILES_FINISH
-        read_info[_state] = config.DONE
-        read_info[config.RESULTS] = OrderedDict()
-        read_info[config.RESULTS]['totalEntries'] = len(all_files)
-        read_info[config.RESULTS]['entries'] = all_files
-        content = OrderedDict()
-        content['sequence'] = self._list_file_seq
-        content[_param] = read_info
-        self.add_async_finish(content)
-        self._list_progress = False
-
-
-
-    # 列出文件(异步版本)
-    # 1.检查是否在列出文件状态,如果是,返回状态错误;否则通知UI进入列出文件状态
-    # 2.调用add_async_cmd_id，添加一个异步ID
-    # 3.进入列出等待过程
-    # 4.列出完成,返回
-    def cameraListFile(self, req):
-        Info('-----> cameraListFile req from client {} Server State {}'.format(req, StateMachine.getCamState()))
-        if StateMachine.checkAllowListFile():
-            if self._list_progress == False:
-                if check_dic_key_exist(req[_param], 'path'):
-                    path = req[_param]['path']
-                else:
-                    path = self.get_save_p()
-
-                Print('cameraListFile path {} req {}'.format(path, req))
-
-                if path is not None and str_start_with(path, MOUNT_ROOT):
-            
-                    # 1.返回done,通知UI进入列出文件过程
-                    # 2.通知UI进入列出文件状态
-                    # 3.心跳包中加入该异步命令
-                    # 4.列文件是比较耗时的操作，需要启动一个新线程来执行
-                    
-                    self._list_progress = True
-
-                    self.add_async_cmd_id(req[_name], self._list_file_seq)   
-
-                    time.sleep(0.5)
-
-                    result = OrderedDict({config._NAME: req[_name], config._STATE: config.DONE, 'sequence':self._list_file_seq})
-                    read_info = json.dumps(result)
-                    self._list_file_pthread = ListFileThread('list_file', self, path)
-                    self._list_file_pthread.start()
-                else:
-                    read_info = cmd_error(config.LIST_FILES, 'camera_list_files', join_str_list(['error path ', 'none']))
-            else:
-                Info('---------------> list file is progress ...')
-
-        else:
-            Info('-----> not allow list file')
-            read_info = cmd_error_state(req[_name], self.get_cam_state())
-        return read_info
-
-
-
-    def cameraQueryLeftInfo(self, req, from_ui = False):
-        Info('>>>>> cameraQueryLeftInfo req {} self.get_cam_state() {}'.format(req, self.get_cam_state()))
-        queryResult = OrderedDict()
-        queryResult['name'] = req['name']
-
-        if self.check_allow_query_left():
-
-            # 根据请求的参数做处理
-            # 如果是拍照：
-            # 如果是录像：
-            # 如果是直播：
-            self.send_req(self.get_write_req(config.UI_NOTIFY_QUERY_LEFT_INFO, req['param']))
-        
-            time.sleep(0.5)
-
-            # 等待处理结果
-            queryResult['state'] = config.DONE
-            queryResult['left'] = self.left_val
-            return json.dumps(queryResult)
-        else:
-            read_info = cmd_error_state(req[_name], self.get_cam_state())
-            return read_info
-
-
-    def camera_stop_qr_fail(self,err = -1):
-        self.send_oled_type_err(config.STOP_QR_FAIL, err)
-
-    def camera_stop_qr_done(self,req = None):
-        self.set_cam_state(self.get_cam_state() & ~config.STATE_START_QR)
-        self.notifyDispType(config.STOP_QR_SUC)
-
-    def stop_qr(self,req):
-        Info('stop_qr')
-        read_info = self.sendReq2Camerad(req, True)
-        return read_info
-
-    def camera_stop_qr(self,req):
-        return self.stop_qr(req)
-
-    def camera_start_qr_fail(self,err = -1):
-        #force to send qr fail
-        self.set_cam_state(self.get_cam_state() & ~config.STATE_START_QR)
-        self.send_oled_type_err(config.START_QR_FAIL,err)
-
-    def camera_start_qr_done(self,req = None):
-        self.notifyDispType(config.START_QR_SUC)
-
-    def camera_start_qr(self,req):
-        Info('start_qr')
-        return self.start_qr(self,req)
-
-    def start_qr(self,req):
-        self.set_cam_state(self.get_cam_state() | config.STATE_START_QR)
-        read_info = self.sendReq2Camerad(req, True)
-        return read_info
-
-
-    def camera_oled_set_option(self, param = None):
-        name = config.SET_OPTIONS
-        if param is not None:
-            Info("oled camera_oled_set_option param {}".format(param))
-        try:
-            res = self.camera_set_options(self.get_req(name, param))
-        except Exception as e:
-            Err('camera_oled_set_option e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-    def start_power_off(self, req):
-        StateMachine.addCamState(config.STATE_POWER_OFF)
-        read_info = self.sendReq2Camerad(req, True)
-        return read_info
-
-
-    def camera_low_protect_fail(self, err = -1):
-        Info('camera_low_protect_fail')
-        self.set_cam_state(config.STATE_IDLE)
-
-    def camera_low_protect_done(self, res = None):
-        Info('camera_low_protect_done')
-        self.set_cam_state(config.STATE_IDLE)
-
-    def start_low_protect(self,req):
-        read_info = self.sendReq2Camerad(req, True)
-        return read_info
-
-    def camera_low_protect(self):
-        name = config._LOW_BAT_PROTECT
-        Info("oled camera_low_protect")
-        try:
-            res = self.start_low_protect(self.get_req(name))
-        except Exception as e:
-            Err('camera_low_protect e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-    def camera_power_off_done(self, req = None):
-        Info("power off done do nothing")
-        self.set_cam_state(config.STATE_IDLE)
-        self.notifyDispType(config.START_LOW_BAT_SUC)
-
-    def camera_power_off_fail(self, err = -1):
-        Info("power off fail  err {}".format(err))
-        self.set_cam_state(config.STATE_IDLE)
-        self.notifyDispType(config.START_LOW_BAT_FAIL)
-
-    def camera_gyro_done(self, req=None):
-        Info("gyro done")
-
-    def camera_gyro_fail(self, err = -1):
-        Info('--> camera_gyro_fail')
-        StateMachine.rmServerState(config.STATE_START_GYRO)
-        self.send_oled_type_err(config.START_GYRO_FAIL, err)
-
-    def start_gyro(self, req, from_oled = False):
-        if StateMachine.checkAllowGyroCal():
-            StateMachine.addCamState(config.STATE_START_GYRO)
-            if from_oled is False:
-                self.notifyDispType(config.START_GYRO)
-            read_info = self.sendReq2Camerad(req, True)
-        else:
-            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
-            if from_oled:
-                self.notifyDispType(config.START_GYRO_FAIL)
-        return read_info
-
-    def camera_start_gyro(self, req, from_ui = False):
-        Info('camera_start_gyro is {}'.format(req))
-        return self.start_gyro(req)
-
-    def camera_oled_gyro(self):
-        name = config._START_GYRO
-        Info("oled camera_oled_gyro")
-        try:
-            res = self.start_gyro(self.get_req(name),True)
-        except Exception as e:
-            Err('camera_power_off e {}'.format(e))
-            res = cmd_exception(e, name)
-        return res
-
-
-    def camera_noise_fail(self, err = -1):
-        Err('---> camera_noise_fail')
-        StateMachine.rmServerState(config.STATE_NOISE_SAMPLE)
-        self.notifyDispType(config.START_NOISE_FAIL)
-
-    def camera_noise_done(self, req = None):
-        Info("noise done")
-
-    def start_noise(self, req, from_oled = False):
-        Info("---> start_noise st {}".format(StateMachine.getCamStateFormatHex()))
-        if StateMachine.checkAllowNoise():
-            StateMachine.addCamState(config.STATE_NOISE_SAMPLE)
-            if from_oled is False:
-                self.notifyDispType(config.START_NOISE)
-            read_info = self.sendReq2Camerad(req, True)
-        else:
-            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
-            if from_oled:
-                self.notifyDispType(config.START_NOISE_FAIL)
-        return read_info
-
-
-    def camera_speed_test_fail(self, err = -1):
-        Info('speed test fail')
-        StateMachine.rmServerState(config.STATE_SPEED_TEST)
-        # self.send_oled_type_err(config.SPEED_TEST_FAIL, err)
-
-    def camera_speed_test_done(self, req = None):
-        Info('speed test done')
-
-
-    # 方法名称: start_speed_test
-    # 功能: 启动速度测试
-    # 参数: req - 请求参数
-    #       from_oled - 请求是否来自UI
-    # 返回值: 测试结果
-    # {"name":"camera._storageSpeedTest", "parameters":{"path":}}
-    def start_speed_test(self, req, from_oled = False):
-        # 允许卡速测试
-        if StateMachine.checkAllowSpeedTest():
-            StateMachine.addCamState(config.STATE_SPEED_TEST)
-
-            # 测试命令来自客户端，让UI显示响应的状态
-            if from_oled is False:
-                self.notifyDispType(config.SPEED_START)
-            
-            self.test_path = req[_param]['path']
-            read_info = self.sendReq2Camerad(req, from_oled)
-        else:
-            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
-        return read_info
-
-
-    # 方法名称: camera_start_speed_test
-    # 功能: 启动相机速度测试
-    # 参数: req - 请求参数
-    # 返回值: 测试结果
-    # 
-    def camera_start_speed_test(self, req, from_ui = False):
-        Info('[------- APP Req: camera_start_speed_test ------] req: {}'.format(req))                
-        return self.start_speed_test(req)
-
-
-    def start_change_save_path(self, content):
-        Info('[------ UI Req: start_change_save_path -----] req: {}'.format(content))
-        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.HAND_SAVE_PATH, content))
-        return self.start_camera_cmd_func(config._SET_STORAGE_PATH, self.get_req(config._SET_STORAGE_PATH, content))
-
-
-
-######################################### Notify Start ################################
-
+##################################################### Async Notify Handlers #######################################################
     #############################################################################################
     # 方法名称: stateNotifyHandler
     # 功能描述: 状态变化通知
@@ -3029,7 +2737,7 @@ class control_center:
         Info('[------- Notify Message -------] stateNotifyHandler {}'.format(content))
         param = content[_param]
         self.clear_all()
-        self.send_oled_type_err(config.START_FORCE_IDLE, self.get_err_code(param))
+        self.notifyDispTypeErr(config.START_FORCE_IDLE, self.get_err_code(param))
 
 
     #############################################################################################
@@ -3055,7 +2763,8 @@ class control_center:
         if param[_state] == config.DONE:
             self.notifyDispType(config.STOP_REC_SUC)
         else:
-            self.send_oled_type_err(config.STOP_REC_FAIL, self.get_err_code(param))
+            self.notifyDispTypeErr(config.STOP_REC_FAIL, self.get_err_code(param))
+
 
 
     #############################################################################################
@@ -3081,10 +2790,10 @@ class control_center:
         if param[_state] == config.DONE:
             self.notifyDispType(config.CAPTURE_SUC)
         else:
-            self.send_oled_type_err(config.CAPTURE_FAIL, self.get_err_code(param))
+            self.notifyDispTypeErr(config.CAPTURE_FAIL, self.get_err_code(param))
 
 
-    #############################################################################################
+   #############################################################################################
     # 方法名称: resetNotifyHandler
     # 功能描述: 复位通知
     #           
@@ -3094,6 +2803,7 @@ class control_center:
     def resetNotifyHandler(self, content):
         Info('[-------Notify Message -------] resetNotifyHandler')
         self.reset_all()
+
 
 
     #############################################################################################
@@ -3123,7 +2833,7 @@ class control_center:
                 Info('error qr msg {}'.format(content))
                 self.notifyDispType(config.QR_FINISH_UNRECOGNIZE)
         else:
-            self.send_oled_type_err(config.QR_FINISH_ERROR,self.get_err_code(param))
+            self.notifyDispTypeErr(config.QR_FINISH_ERROR,self.get_err_code(param))
         Info('qrResultNotifyHandler param over {}'.format(param))
 
 
@@ -3142,7 +2852,7 @@ class control_center:
         if param[_state] == config.DONE:
             self.notifyDispType(config.CALIBRATION_SUC)
         else:
-            self.send_oled_type_err(config.CALIBRATION_FAIL, self.get_err_code(param))
+            self.notifyDispTypeErr(config.CALIBRATION_FAIL, self.get_err_code(param))
 
 
     #############################################################################################
@@ -3166,7 +2876,7 @@ class control_center:
             StateMachine.rmServerState(config.STATE_RECORD)
 
         if param is not None:
-            self.send_oled_type_err(config.STOP_PREVIEW_FAIL, self.get_err_code(param))
+            self.notifyDispTypeErr(config.STOP_PREVIEW_FAIL, self.get_err_code(param))
         else:
             self.notifyDispType(config.STOP_PREVIEW_FAIL)
 
@@ -3180,6 +2890,7 @@ class control_center:
     #############################################################################################
     def liveStateNotifyHandler(self, content):
         Info('[-------Notify Message -------] liveStateNotifyHandler {}'.format(content))
+
 
 
     #############################################################################################
@@ -3222,7 +2933,7 @@ class control_center:
         if param[_state] == config.DONE:
             self.notifyDispType(config.START_GYRO_SUC)
         else:
-            self.send_oled_type_err(config.START_GYRO_FAIL, self.get_err_code(param))
+            self.notifyDispTypeErr(config.START_GYRO_FAIL, self.get_err_code(param))
 
 
     #############################################################################################
@@ -3268,7 +2979,7 @@ class control_center:
         if param[_state] == config.DONE:
             self.notifyDispType(config.STOP_LIVE_SUC)
         else:
-            self.send_oled_type_err(config.STOP_LIVE_FAIL, self.get_err_code(param))
+            self.notifyDispTypeErr(config.STOP_LIVE_FAIL, self.get_err_code(param))
         self.set_live_url(None)
 
 
@@ -3286,9 +2997,9 @@ class control_center:
             StateMachine.rmServerState(config.STATE_RECORD)
 
         if self.get_err_code(param) == -432:
-            self.send_oled_type_err(config.LIVE_REC_OVER, 390)
+            self.notifyDispTypeErr(config.LIVE_REC_OVER, 390)
         elif self.get_err_code(param) == -434:
-            self.send_oled_type_err(config.LIVE_REC_OVER, 391)
+            self.notifyDispTypeErr(config.LIVE_REC_OVER, 391)
         else:
             Info('liveRecFinishNotifyHandler　error code {}'.format(self.get_err_code(param)))
 
@@ -3332,10 +3043,8 @@ class control_center:
         Info("[-------Notify Message -------] updateTimelapseCntNotifyHandler {}".format(content))
         param = content[_param]        
         count = param["sequence"]
-        self.send_oled_type(config.TIMELPASE_COUNT, OrderedDict({'tl_count': count}))
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.SET_TL_COUNT, count))
-
-
+        self.updateTlCntInd(count)
 
     #############################################################################################
     # 方法名称: updateTimelapseCntNotifyHandler
@@ -3351,7 +3060,7 @@ class control_center:
         if param[_state] == config.DONE:
             self.notifyDispType(config.START_NOISE_SUC)
         else:
-            self.send_oled_type_err(config.START_NOISE_FAIL, self.get_err_code(param))
+            self.notifyDispTypeErr(config.START_NOISE_FAIL, self.get_err_code(param))
 
 
     ###############################################################################################
@@ -3381,9 +3090,6 @@ class control_center:
     ###############################################################################################
     def stitchProgressNotifyHandler(self, content):
         Info('[-------Notify Message -------] stitchProgressNotifyHandler {}'.format(content))
-        param = content[_param]         
-        res = OrderedDict({'stitch_progress': param})
-        self.send_oled_type(config.STITCH_PROGRESS, res)
 
 
     ###############################################################################################
@@ -3489,189 +3195,58 @@ class control_center:
 
 
 
-    # 方法名称: handle_notify_from_camera
+    ###############################################################################################
+    # 方法名称: asyncNotifyEntery
     # 功能: 处理来自camerad的通知
     # 参数: content - 传递的参数
     # 返回值: 无
-    def handle_notify_from_camera(self, content):
+    ###############################################################################################
+    def asyncNotifyEntery(self, content):
         self.acquire_sem_camera()
         try:
             name = content[_name]
             if check_dic_key_exist(self.asyncNotifyHandler, name):
                 self.asyncNotifyHandler[name](content)
-
                 if name in self.async_finish_cmd:
                     self.add_async_finish(content)
             else:
                 Info("notify name {} not found".format(name))
-
         except Exception as e:
-            Err('handle_notify_from_camera exception {}'.format(e))
-        self.release_sem_camera()
-######################################### Notify End ################################
-
-
-    def reset_all(self):
-        Info('start reset')
-        self.reset_fifo()
-        Info('start reset2')
-        self.clear_all()
-        Info('start reset3')
-        self.notifyDispType(config.RESET_ALL)
-        Info('start reset over')
-
-
-    def clear_all(self):
-        self.set_cam_state(config.STATE_IDLE)
-        self.clear_url_list()
-        self.async_id_list.clear()
-        osc_state_handle.send_osc_req(
-            osc_state_handle.make_req(osc_state_handle.CLEAR_TL_COUNT))
-
-    def fp_decode(self,data):
-        return base64.urlsafe_b64decode(data)
-
-    def fp_encode(self,data):
-        return base64.urlsafe_b64encode(data)
-
-    def generate_fp(self):
-        self.random_data = os.urandom(8)
-        self.finger_print = bytes_to_str(self.fp_encode(self.random_data))
-        Info('generate random data {} fp {}'.format(self.random_data, self.finger_print))
-
-
-    def get_connect(self):
-        self.connectStateLock.acquire()
-        state = self.connected
-        self.connectStateLock.release()
-        return state
-
-    def set_connect(self, state):
-        self.connectStateLock.acquire()
-        self.connected = state
-        self.connectStateLock.release()
-
-
-    def write_req_reset(self, req, write_fd):
-        Print('write_req_reset start req {}'.format(req))
-        content = json.dumps(req)
-        content_len = len(content)
-        content = int_to_bytes(self._write_seq_reset) + int_to_bytes(content_len) + str_to_bytes(content)
-
-        Print('write_req_reset seq: {}'.format(self._write_seq_reset))
-        write_len = fifo_wrapper.write_fifo(write_fd, content)
-        read_seq = self._write_seq_reset
-        self._write_seq_reset += 1
-        return read_seq
-
-    def check_fp(self, fp):
-        ret = False
-        if fp is not None:
-            random = self.fp_decode(fp)
-            if self.random_data == random or fp == 'test':
-                ret = True
-            else:
-                Err('fp mismatch : req {} mine {}'.format(random,self.random_data ))
-
-        return ret
-
-    #reset INS_FIFO_TO_SERVER and INS_FIFO_TO_CLIENT
-    def reset_fifo(self):
-        Info('reset_fifo a')
-        self.close_read()
-        Info('reset_fifo b')
-        self.close_write()
-        Info('reset_fifo c')
-        self._write_seq = 0
-
-    def check_state_power_offing(self):
-        if self.get_cam_state() & config.STATE_POWER_OFF == config.STATE_POWER_OFF:
-            return True
-        else:
-            return False
-
-    def osc_path_execute(self, path, fp):
-        try:
-            if self.get_connect():
-                if self.check_fp(fp):
-                    ret = self.osc_path_func[path]()
-                else:
-                    Err('error fingerprint fp {} path {}'.format(fp, path))
-                    ret = cmd_exception(error_dic('invalidParameterValue', join_str_list(['error fingerprint ', fp])), path)
-            else:
-                Err('camera not connected path {}'.format(path))
-                ret = cmd_exception(error_dic('disabledCommand', 'camera not connected'), path)
-            
-            # 去掉指纹检查，直接执行命令 - 2018年11月30日
-            # ret = self.osc_path_func[path]()
-        except Exception as e:
-            Err('osc_path_execute Exception is {} path {}'.format(e, path))
-            ret = cmd_exception(error_dic('osc_path_execute', str(e)), path)
-        return ret
-
-
-    def start_camera_cmd_func(self, name, req, from_ui = False):
-        self.acquire_sem_camera()
-        try:
-            ret = self.camera_cmd_func[name](req)
-        except AssertionError as e:
-            Err('start_camera_cmd_func AssertionError e {}'.format(str(e)))
-            ret = cmd_exception(error_dic('start_camera_cmd_func AssertionError', str(e)), req)
-        except Exception as e:
-            Err('start_camera_cmd_func exception {}'.format(e))
-            ret = cmd_exception(e,name)
+            Err('asyncNotifyEntery exception {}'.format(e))
         self.release_sem_camera()
 
-        return ret
 
-    def com_cmd_func(self, req):
-        Info('>>>> comon request {}'.format(req))
-        self.acquire_sem_camera()
-        info = self.sendReq2Camerad(req)
-        self.release_sem_camera()
-        return info
+    ################################################# App 请求入口 #######################################################
 
 
-    def start_non_camera_cmd_func(self, name, req, form_ui = False):
-        try:
-            ret = self.non_camera_cmd_func[name](req)
-        except AssertionError as e:
-            Err('start_non_camera_cmd_func AssertionError e {}'.format(str(e)))
-            ret = cmd_exception(error_dic('start_non_camera_cmd_func AssertionError', str(e)), name)
-        except Exception as e:
-            Err('start_non_camera_cmd_func exception {} req {}'.format(e,req))
-            ret = cmd_exception(e,req)
-        return ret
 
-    # 
-    # osc_cmd_execute - web_server命令执行入口
+    ###################################################################################################################### 
+    # callAppReqEntry - web_server命令执行入口
     # @param
     #   fp  - 指纹数据
     #   req - 请求参数
     # 
-    def osc_cmd_execute(self, fp, req):
+    ###################################################################################################################### 
+    def callAppReqEntry(self, fp, req):
         try:
             name = req[_name]
-            Info('[---- Web_server Cmd execute entery: {} Server connect state: {} ----]'.format(name, self.get_connect()))
-            # 连接命令
-            if name == config._CONNECT:
+            Info('[---- Web_server Cmd Entery: {} Server connect state: {} ----]'.format(name, self.get_connect()))
+            if name == config._CONNECT:     # 连接命令
                 if self.get_connect():
                     ret = cmd_exception(error_dic('connect error', 'already connected by another'), name)
                 else:
-                    # 没有客户端建立连接
-                    ret = self.camera_connect(req)
+                    ret = self.appReqConnect(req)  # 没有客户端建立连接
             else:
                 if self.get_connect():
                     if self.check_fp(fp):
                         if name == config.CAMERA_RESET:
                             ret = self.camera_reset(req)
                         elif name in self.non_camera_cmd_func:
-                            ret = self.start_non_camera_cmd_func(name, req)    
+                            ret = self.excuteNonCameraFunc(name, req)    
                         elif name in self.camera_cmd_func:
-                            ret = self.start_camera_cmd_func(name, req)
+                            ret = self.excuteCameraFunc(name, req)
                         else:
-                            ret = self.com_cmd_func(req)
-                            
+                            ret = self.otherReqEntry(req)                            
                     else:
                         Err('error fingerprint fp {} req {}'.format(fp, req))
                         if fp is None:
@@ -3686,9 +3261,74 @@ class control_center:
         return ret
 
 
+    def otherReqEntry(self, req):
+        Info('[------- otherReqEntry ------] req: {}'.format(req))
+        self.acquire_sem_camera()
+        info = self.sendReq2Camerad(req)
+        self.release_sem_camera()
+        return info
+
+
+    def excuteOscPathFunc(self, path, fp):
+        try:
+            if self.get_connect():
+                if self.check_fp(fp):
+                    ret = self.oscPathFunc[path]()
+                else:
+                    ret = cmd_exception(error_dic('invalidParameterValue', join_str_list(['error fingerprint ', fp])), path)
+            else:
+                Err('camera not connected path {}'.format(path))
+                ret = cmd_exception(error_dic('disabledCommand', 'camera not connected'), path)
+            
+        except Exception as e:
+            Err('excuteOscPathFunc Exception is {} path {}'.format(e, path))
+            ret = cmd_exception(error_dic('excuteOscPathFunc', str(e)), path)
+        return ret
+
+
+    def excuteCameraFunc(self, name, req):
+        self.acquire_sem_camera()
+        try:
+            ret = self.camera_cmd_func[name](req)
+        except AssertionError as e:
+            Err('excuteCameraFunc AssertionError e {}'.format(str(e)))
+            ret = cmd_exception(error_dic('excuteCameraFunc AssertionError', str(e)), req)
+        except Exception as e:
+            Err('excuteCameraFunc exception {}'.format(e))
+            ret = cmd_exception(e,name)
+        self.release_sem_camera()
+        return ret
+
+
+    def excuteSysServerFunc(self, req):
+        try:
+            name = req[_name]            
+            if name in self.systemServerReqHandler:
+                ret = self.systemServerReqHandler[name](req) 
+            else:
+                ret = cmd_exception("Warnning not support command", req)
+        except Exception as e:
+            Err('excuteSysServerFunc exception e {} req {}'.format(e, req))
+            ret = cmd_exception(str(e), name)
+        return ret
+
+
+    def excuteNonCameraFunc(self, name, req):
+        try:
+            ret = self.non_camera_cmd_func[name](req)
+        except AssertionError as e:
+            Err('excuteNonCameraFunc AssertionError e {}'.format(str(e)))
+            ret = cmd_exception(error_dic('excuteNonCameraFunc AssertionError', str(e)), name)
+        except Exception as e:
+            Err('excuteNonCameraFunc exception {} req {}'.format(e,req))
+            ret = cmd_exception(e,req)
+        return ret
+
+
+########################################### Transimite Related ###############################################################
+
+
     def read_response(self, read_seq, read_fd):
-        # debug_cur_info(sys._getframe().f_lineno, sys._getframe().f_code.co_filename, sys._getframe().f_code.co_name)
-        # Print('read_response start read_fd {}'.format(read_fd))
         res = fifo_wrapper.read_fifo(read_fd,config.HEADER_LEN,FIFO_TO)
         if len(res) != config.HEADER_LEN:
             Info('read response header mismatch len(res) {} config.HEADER_LEN {}'.format(len(res),config.HEADER_LEN))
@@ -3713,7 +3353,6 @@ class control_center:
         else:
             while content_len > 0:
                 res1 = bytes_to_str(fifo_wrapper.read_fifo(read_fd, content_len,FIFO_TO))
-                # Info('content_len {}  len res {}'.format(content_len, len(res1)))
                 content_len = content_len - len(res1)
 
         return jsonstr_to_dic(res1)
@@ -3756,20 +3395,14 @@ class control_center:
         self.syncWriteReadSem.acquire()
         try:
             name = req[_name]
-            # Info('----------> sync sendReq2Camerad req {}'.format(req))
 
             # 1.将请求发送给camerad
-            read_seq = self.write_req(req, self.get_write_fd())
-            
+            read_seq = self.write_req(req, self.get_write_fd())            
             # 2.读取camerad的响应
             ret = self.read_response(read_seq, self.get_read_fd())
-
             # 如果camerad成功处理: "state":"done"
             if ret[_state] == config.DONE:
-                #some cmd doesn't need done operationc
                 if check_dic_key_exist(self.camera_cmd_done, name):
-                    #send err is False, so rec or live is sent from http controller -- old
-                    # add old = from_oled to judge whether http req from controlled or oled 171204
                     if name in (config._START_LIVE, config._START_RECORD, config._CALIBTRATE_BLC):
                         if check_dic_key_exist(ret, config.RESULTS):
                             self.camera_cmd_done[name](ret[config.RESULTS], req, oled = from_oled)
@@ -3849,17 +3482,22 @@ class control_center:
         return req
 
 
-    def send_oled_type_err(self, type, code = -1):
-        Info("send_oled_type_err type is {} code {}".format(type,code))
-        err_dict = OrderedDict({'type':type,'err_code':code})
-        self.send_req(self.get_write_req(config.OLED_DISP_TYPE_ERR, err_dict))
+    def notifyDispTypeErr(self, itype, code = -1):
+        Info('---> notifyDispTypeErr')
+        indDict = OrderedDict()
+        param = OrderedDict()
+        param['type'] = itype
+        param['err_code'] = code        
+        indDict['name'] = config._IND_DISP_TYPE_ERR
+        indDict['parameters'] = param
+        self.unixSocketClient.sendAsyncNotify(indDict)
 
 
     def sendIndMsg2SystemServer(self, indDict):
         self.unixSocketClient.sendAsyncNotify(indDict)
 
 
-    # UPDATE_TL_CNT_IND = "camera._updateTlCnt"
+    # _IND_UPDATE_TL_CNT = "camera._updateTlCnt"
     # GET_SET_SYS_CONFIG = "camera._getSetSysSetting"
     # NOTIFY_QR_RESULT   = "camera._notifyQrScanResult"
     # IND_DISP_TYPE      = "camera._notifyDispType"
@@ -3873,12 +3511,11 @@ class control_center:
     # {"name": "camera._notifySysError", "parameters": {"content": string}}
 
     def updateTlCntInd(self, result):
-        Info('---> updateTlCntInd ,req is {}'.format(result))
-
+        Info('---> updateTlCntInd req is {}'.format(result))
         indDict = OrderedDict()
         param = OrderedDict()
-        param['tl_count'] = result['tl_count']
-        indDict['name'] = config.UPDATE_TL_CNT_IND
+        param['tl_count'] = result
+        indDict['name'] = config._IND_UPDATE_TL_CNT
         indDict['parameters'] = param
         self.unixSocketClient.sendAsyncNotify(indDict)
 
@@ -3887,18 +3524,16 @@ class control_center:
         Info('---- notifyQrScanResult not implement yet ------')
 
 
-    def getSetSysSetting(self, result):
-        Info('---- notifyQrScanResult not implement yet ------')
-
-
-    def setCustomerTemp(self, result):
-        Info('---> updateTlCntInd ,req is {}'.format(result))
-        indDict = OrderedDict()
+    def getSetSysSetting(self, mode, result = None):
+        Info('---- getSetSysSetting not implement yet ------')
+        indSysDict = OrderedDict()
         param = OrderedDict()
-        param['tl_count'] = result['tl_count']
-        indDict['name'] = config.IND_SET_CUSTOMER
+        param['mode'] = mode        # mode : set/get
+        if mode == 'set':
+            param['sys_setting'] = result
+        indDict['name'] = config._IND_SET_GET_SYSSETTING
         indDict['parameters'] = param
-        self.unixSocketClient.sendAsyncNotify(indDict)
+        self.unixSocketClient.sendAsyncNotify(indSysDict)
 
 
     def notifyDispType(self, itype, extra = None):
@@ -3910,13 +3545,9 @@ class control_center:
         if extra != None:
             param['extra'] = extra
 
-        indDict['name'] = config.IND_DISP_TYPE
+        indDict['name'] = config._IND_DISP_TYPE
         indDict['parameters'] = param
         self.unixSocketClient.sendAsyncNotify(indDict)
-
-
-    def notifySysError(self, extra):
-        pass
 
 
 
@@ -3943,9 +3574,7 @@ class control_center:
                 Info('nothing found')
         self.send_req(self.get_write_req(config.OLED_DISP_TYPE, req_dict))
 
-
     def init_fifo_monitor_camera_active(self):
-        # Info('init_fifo_monitor_camera_active start')
         self._monitor_cam_active_handle = monitor_camera_active_handle(self)
         self._monitor_cam_active_handle.start()
 
@@ -4031,6 +3660,4 @@ class control_center:
             self._reset_write_fd = fifo_wrapper.open_write_fifo(config.INS_FIFO_RESET_TO)
         Info('get  self._reset_write_fd is {}'.format(self._reset_write_fd))
         return self._reset_write_fd
-
-
 

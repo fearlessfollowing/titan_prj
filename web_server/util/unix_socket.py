@@ -121,7 +121,7 @@ class MyUnixServerHandler(socketserver.BaseRequestHandler):
                     if check_dic_key_exist(reqDict, "name"):                
                         if UnixSocketServer.getCallBackEntry() != None:
                             if reqDict['name'] in UnixSocketServer.getCallBackEntry().ui_cmd_func:
-                                result = UnixSocketServer.getCallBackEntry().ui_cmd_func[reqDict['name']](reqDict) 
+                                result = UnixSocketServer.getCallBackEntry().excuteSysServerFunc[reqDict['name']](reqDict) 
                             else:
                                 result = genTransError(UNSUPPORT_CMD)
                         else:

@@ -163,16 +163,12 @@ typedef struct _stich_progress_ {
 
 
 typedef struct _disp_type_ {
-    /*
-     * 46 - 设置指定的参数
-     */
     int                 type;			// oled_disp_type
     
-    //info according to type
     int                 qr_type;        // pic, vid or live
     int                 control_act;    // control req or save_to_customer
     int                 tl_count;       // timelapse
-    sp<STICH_PROGRESS>  mStichProgress;
+
     sp<ACTION_INFO>     mAct;
     sp<SYS_SETTING>     mSysSetting;
     Json::Value         jsonArg;        /* 新版本将使用jsonArg来保存接收到的参数 */

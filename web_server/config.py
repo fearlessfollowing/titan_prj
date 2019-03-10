@@ -167,6 +167,11 @@ _BPC_FINISH             = 'camera._calibrationBpcResult_'
 # 通知Camerad退出相册页状态
 _MODULE_POWER_OFF       = 'camera._modulePowerOff'        
 
+_IND_DISP_TYPE          = 'camera._dispType'
+_IND_DISP_TYPE_ERR      = 'camera._dsipTypeErr'
+_IND_UPDATE_TL_CNT      = "camera._updateTlCnt"
+_IND_SET_GET_SYSSETTING = 'camera._setGetSysSetting'
+
 
 #stich
 
@@ -499,39 +504,6 @@ UI_NOTIFY_SHUT_DOWN         = 'shut_down'
 UI_NOTIFY_CHECK_ENTER_UDISK = 'check_enter_udisk'
 UI_NOTIFY_SWITCH_MOUNT_MODE = 'switch_mount_mode'
 
-# STR_START_REC = 1
-# STR_START_REC = 1
-# STR_START_REC = 1
-# STR_START_REC = 1
-# STR_START_REC = 1
-# STR_START_REC = 1
-
-# REC = 0
-# REC_FAIL = 1
-# SAVE_REC_SUC = 2
-# SAVE_REC_FAIL = 3
-# CAPTURE = 4
-# CAPTURE_FAIL = 5
-# SAVE_CAPTURE = 6
-# # SAVE_CAPTURE_FAIL = 7
-# START_LIVE_SUC = 8
-# LIVE_FAIL = 9
-# STOP_LIVE_SUC = 10
-# STOP_LIVE_FAIL = 11
-# # COMPOSE_PIC = 12
-# # COMPOSE_PIC_FAIL = 13
-# # COMPOSE_PIC_SUC = 14
-# # COMPOSE_VIDEO = 15
-# # COMPOSE_VIDEO_FAIL = 16
-# COMPOSE = 12
-# COMPOSE_OVER = 13
-# COMPOSE_VIDEO_SUC = 17
-#
-#
-# RESET = 30
-
-# SET_OFFSET = 30
-# SET_OFFSET_FAIL = 31
 
 START_RECING = 0,
 START_REC_SUC = 1

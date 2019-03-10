@@ -102,6 +102,11 @@
 #define IND_QUERY_LEF               "camera._queryLeftInfo"
 #define IND_SPEED_TEST_RESULT       "camera._storage_speed_test_finish_"
 #define IND_TF_STATE_CHANGE         "camera._storage_state_"
+#define IND_DISP_TYPE               "camera._dispType"
+#define IND_UPDATE_TL_CNT           "camera._updateTlCnt"
+#define IND_SET_GET_SYS_SETTING     "camera._setGetSysSetting"
+#define IND_SET_CUSTOMER            "camera._setCustom"
+#define IND_DISP_TYPE_ERR           "camera._dsipTypeErr"
 
 /** 使用Unix套接字传输给web_server发请求 */
 #define USE_UNIX_TRAN
@@ -1202,6 +1207,124 @@ void ProtoManager::handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNo
 }
 
 
+
+
+
+void ProtoManager::handleDispType(Json::Value& jsonData)
+{
+    sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
+    if (jsonData.isMember("type")) {
+        dispType->type = jsonData["type"].asInt();
+    }
+
+    dispType->mSysSetting = nullptr;
+    dispType->mStichProgress = nullptr;
+    dispType->mAct = nullptr;
+    dispType->control_act = -1;
+    dispType->tl_count  = -1;
+    dispType->qr_type  = -1;
+
+    if (jsonData.isMember("content")) {
+        LOGDBG(TAG, "Qr Function Not implement now ..");
+        // handleQrContent(dispType, root, subNode);
+    } else if (jsonData.isMember("req")) {
+        handleReqFormHttp(dispType, jsonData["req"]);
+    } else if (jsonData.isMember("sys_setting")) {
+        handleSetting(dispType, jsonData["sys_setting"]);
+    } else {
+        // LOGERR(TAG, "---------Unkown Error");
+    }
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_DISP_TYPE);
+        msg->set<sp<DISP_TYPE>>("disp_type", dispType);
+        msg->post();
+    }
+}
+
+
+void ProtoManager::handleErrInfo(Json::Value& jsonData)
+{
+    sp<ERR_TYPE_INFO> errInfo = std::make_shared<ERR_TYPE_INFO>();
+
+    if (jsonData.isMember("type")) {
+        errInfo->type = jsonData["type"].asInt();
+    }    
+
+    if (jsonData.isMember("err_code")) {
+        errInfo->err_code = jsonData["err_code"].asInt();
+    }    
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_DISP_ERR_MSG);
+        msg->set<sp<ERR_TYPE_INFO>>("err_type_info", errInfo);
+        msg->post();
+
+    }
+}
+
+
+
+void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
+{
+    mNotify = notify;
+}
+
+
+bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData)
+{
+    if (jsonData.isMember(_name_) && jsonData.isMember(_param)) {   
+        std::string cmd = jsonData[_name_].asCString();
+        if (cmd == IND_SYNC_STATE) {
+            handleSyncInfo(cli, jsonData[_param]);
+        } else if (cmd == IND_SWITCH_MOUNT_MODE) {
+            handleSwitchMountMode(cli, jsonData[_param]);
+        } else if (cmd == IND_SHUTDOWN) {
+            handleShutdownMachine(cli, jsonData[_param]);
+        } else if (cmd == IND_GPS_STATE_CHANGE) {
+            handleGpsStateChange(cli, jsonData[_param]);
+        } else if (cmd == IND_SET_SN) {
+            handleSetSn(cli, jsonData[_param]);
+        } else if (cmd == IND_QUERY_LEF) {
+            handleQueryLeftInfo(cli, jsonData["param"]);
+        } else if (cmd == IND_SPEED_TEST_RESULT) {
+            handleSpeedTestResult(cli, jsonData[_param]);
+        } else if (cmd == IND_TF_STATE_CHANGE) {
+            handleTfCardChanged(cli, jsonData[_param]);
+        } else if (cmd == IND_DISP_TYPE) {
+            handleIndDispType(cli, jsonData[_param]);
+        } else if (cmd == IND_UPDATE_TL_CNT) {
+            handleIndUpdateTlCnt(cli, jsonData[_param]);
+        } else if (cmd == IND_SET_GET_SYS_SETTING) {
+            handleIndSetGetSysSetting(cli, jsonData[_param]);
+        } else if (cmd == IND_SET_CUSTOMER) {
+            handleIndSetCustomer(cli, jsonData[_param]);
+        } else if (cmd == IND_DISP_TYPE_ERR) {
+            handleIndTypeError(cli, jsonData[_param]);
+        }
+    } else {
+        LOGERR(TAG, "Node have not name or parameter loss");  
+        printJson(jsonData);
+        return false;   
+    }                       
+}
+
+
+
+void ProtoManager::handleIndTypeError(SocketClient* cli, Json::Value& jsonData)
+{
+
+}
+
+void ProtoManager::handleIndSetCustomer(SocketClient* cli, Json::Value& jsonData)
+{
+
+}
+
+
+
 void ProtoManager::handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode)
 {
     dispType->mSysSetting = std::make_shared<SYS_SETTING>();
@@ -1257,31 +1380,52 @@ void ProtoManager::handleSetting(sp<struct _disp_type_>& dispType, Json::Value& 
 }
 
 
-void ProtoManager::handleDispType(Json::Value& jsonData)
+void ProtoManager::handleIndSetGetSysSetting(SocketClient* cli, Json::Value& jsonData)
+{
+    sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
+    if (jsonData.isMember("mode")) {
+        if (!strcmp(jsonData["mode"].asCString(), "set")) { /* 设置系统设置 */
+            handleSetting(dispType, jsonData["sys_setting"]);
+            if (mNotify) {
+                sp<ARMessage> msg = mNotify->dup();
+                msg->setWhat(UI_MSG_SET_SYS_SETTING);
+                msg->set<sp<DISP_TYPE>>("sys_setting", dispType);
+                msg->post();
+            }
+        } else {    /* 获取系统设置 */
+            LOGINFO(TAG, "---> get sys setting");
+        }
+    }
+}
+
+
+void ProtoManager::handleIndQrScanResult(SocketClient* cli, Json::Value& jsonData)
+{
+
+}
+
+
+void ProtoManager::handleIndUpdateTlCnt(SocketClient* cli, Json::Value& jsonData)
+{
+    sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
+    if (jsonData.isMember("tl_count")) {
+        dispType->tl_count = jsonData["tl_count"].asInt();
+    }
+
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_UPDATE_TL_CNT);
+        msg->set<sp<DISP_TYPE>>("tl_count", dispType);
+        msg->post();
+    }
+}
+
+
+void ProtoManager::handleIndDispType(SocketClient* cli, Json::Value& jsonData)
 {
     sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
     if (jsonData.isMember("type")) {
         dispType->type = jsonData["type"].asInt();
-    }
-
-    dispType->mSysSetting = nullptr;
-    dispType->mStichProgress = nullptr;
-    dispType->mAct = nullptr;
-    dispType->control_act = -1;
-    dispType->tl_count  = -1;
-    dispType->qr_type  = -1;
-
-    if (jsonData.isMember("content")) {
-        LOGDBG(TAG, "Qr Function Not implement now ..");
-        // handleQrContent(dispType, root, subNode);
-    } else if (jsonData.isMember("req")) {
-        handleReqFormHttp(dispType, jsonData["req"]);
-    } else if (jsonData.isMember("sys_setting")) {
-        handleSetting(dispType, jsonData["sys_setting"]);
-    } else if (jsonData.isMember("tl_count")) {
-        dispType->tl_count = jsonData["tl_count"].asInt();
-    } else {
-        // LOGERR(TAG, "---------Unkown Error");
     }
 
     if (mNotify) {
@@ -1292,72 +1436,6 @@ void ProtoManager::handleDispType(Json::Value& jsonData)
     }
 }
 
-
-
-
-
-void ProtoManager::handleErrInfo(Json::Value& jsonData)
-{
-    sp<ERR_TYPE_INFO> errInfo = std::make_shared<ERR_TYPE_INFO>();
-
-    if (jsonData.isMember("type")) {
-        errInfo->type = jsonData["type"].asInt();
-    }    
-
-    if (jsonData.isMember("err_code")) {
-        errInfo->err_code = jsonData["err_code"].asInt();
-    }    
-
-    if (mNotify) {
-        sp<ARMessage> msg = mNotify->dup();
-        msg->setWhat(UI_MSG_DISP_ERR_MSG);
-        msg->set<sp<ERR_TYPE_INFO>>("err_type_info", errInfo);
-        msg->post();
-
-    }
-}
-
-
-
-
-
-
-
-
-
-void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
-{
-    mNotify = notify;
-}
-
-
-bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData)
-{
-    if (jsonData.isMember(_name_) && jsonData.isMember(_param)) {   
-        std::string cmd = jsonData[_name_].asCString();
-        if (cmd == IND_SYNC_STATE) {
-            handleSyncInfo(cli, jsonData[_param]);
-        } else if (cmd == IND_SWITCH_MOUNT_MODE) {
-            handleSwitchMountMode(cli, jsonData[_param]);
-        } else if (cmd == IND_SHUTDOWN) {
-            handleShutdownMachine(cli, jsonData[_param]);
-        } else if (cmd == IND_GPS_STATE_CHANGE) {
-            handleGpsStateChange(cli, jsonData[_param]);
-        } else if (cmd == IND_SET_SN) {
-            handleSetSn(cli, jsonData[_param]);
-        } else if (cmd == IND_QUERY_LEF) {
-            handleQueryLeftInfo(cli, jsonData["param"]);
-        } else if (cmd == IND_SPEED_TEST_RESULT) {
-            handleSpeedTestResult(cli, jsonData[_param]);
-        } else if (cmd == IND_TF_STATE_CHANGE) {
-            handleTfCardChanged(cli, jsonData[_param]);
-        }
-    } else {
-        LOGERR(TAG, "Node have not name or parameter loss");  
-        printJson(jsonData);
-        return false;   
-    }                       
-}
 
 void ProtoManager::handleTfCardChanged(SocketClient* cli, Json::Value& jsonData)
 {
@@ -1656,18 +1734,8 @@ bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
             break;
         }
 
-        case MSG_TF_CHANGED: {   /* 暂时每次只能解析一张卡的变化 */  
-            handleTfCardChanged(jsonData);
-            break;
-        }
-
         case MSG_TF_FORMAT: {    /* 格式化结果 */
             handleTfcardFormatResult(jsonData);
-            break;
-        }
-
-        case MSG_TEST_SPEED_RES: {
-            handleSpeedTestResult(jsonData);
             break;
         }
 

@@ -235,10 +235,7 @@ public:
     bool            sendSetOptionsReq(Json::Value& optionsReq);
 
 
-    // bool            parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData);
-
     bool            parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData);
-
 
     void            setNotifyRecv(sp<ARMessage> notify);
 
@@ -285,8 +282,6 @@ private:
     void            handleErrInfo(Json::Value& jsonData);
 
 
-
-
     void            handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode);
     void            handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode);
 
@@ -305,8 +300,13 @@ private:
     void            handleQueryLeftInfo(SocketClient* cli, Json::Value& queryJson);
     void            handleSpeedTestResult(SocketClient* cli, Json::Value& jsonData);
     void            handleTfCardChanged(SocketClient* cli, Json::Value& jsonData);
-
     void            handleTfcardFormatResult(SocketClient* cli, Json::Value& jsonData);
+    void            handleIndDispType(SocketClient* cli, Json::Value& jsonData);
+    void            handleIndUpdateTlCnt(SocketClient* cli, Json::Value& jsonData);
+    void            handleIndQrScanResult(SocketClient* cli, Json::Value& jsonData)
+    void            handleIndSetGetSysSetting(SocketClient* cli, Json::Value& jsonData);
+    void            handleIndSetCustomer(SocketClient* cli, Json::Value& jsonData);
+    void            handleIndTypeError(SocketClient* cli, Json::Value& jsonData);
 
     /* 解析查询小卡的结果 */
     static bool     parseQueryTfcardResult(Json::Value& jsonData);

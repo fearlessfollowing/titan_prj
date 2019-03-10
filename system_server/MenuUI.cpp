@@ -8043,7 +8043,6 @@ void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
 		    }
 		
 		default: {
-			// get http req before getting low bat protect in flask 170922
 			if (checkServerStateIn(serverState, STATE_LOW_BAT)) {				
 				LOGDBG(TAG, "STATE_LOW_BAT not allow (0x%u %d)", serverState, disp_type->type);
 			} else if (disp_type->type != RESET_ALL) {
@@ -8060,7 +8059,6 @@ void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
         // LOGDBG(TAG, "handleDispTypeMsg set timelapse value %d", disp_type->tl_count);
 		set_tl_count(disp_type->tl_count);
 	} else if (disp_type->mSysSetting != nullptr) { /* 系统设置不为空 */
-
         LOGDBG(TAG, "update System setting!!!!");
 		updateSysSetting(disp_type->mSysSetting);       /* 更新设置(来自客户端) */
 	} 
