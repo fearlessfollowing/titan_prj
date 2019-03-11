@@ -79,17 +79,19 @@ class MyUnixSocket:
 
     def recvData(self, socket):
         header = socket.recv(COMMON_HDR_LEN)
+        Info('-------> recvData len is {}'.format(header))
+
         magicHead = bytes_to_int(header, 0)
         contentLen = bytes_to_int(header, 4)
         if magicHead != HEAD_MAGIC or contentLen <= 0:
             Error("Recv head error -----")
         else:
-            # Info('contentLen is {}'.format(contentLen))
+            Info('contentLen is {}'.format(contentLen))
             readContent = socket.recv(contentLen)
             content = bytes_to_str(readContent)
                     
-            # Print('recv content content {}'.format(content))
-            return jsonstr_to_dic(content)
+            Print('recv content content {}'.format(content))
+            return content
         
         return None
 
@@ -120,8 +122,8 @@ class MyUnixServerHandler(socketserver.BaseRequestHandler):
                     reqDict = jsonstr_to_dic(content)
                     if check_dic_key_exist(reqDict, "name"):                
                         if UnixSocketServer.getCallBackEntry() != None:
-                            if reqDict['name'] in UnixSocketServer.getCallBackEntry().ui_cmd_func:
-                                result = UnixSocketServer.getCallBackEntry().excuteSysServerFunc[reqDict['name']](reqDict) 
+                            if reqDict['name'] in UnixSocketServer.getCallBackEntry().systemServerReqHandler:
+                                result = UnixSocketServer.getCallBackEntry().systemServerReqHandler[reqDict['name']](reqDict) 
                             else:
                                 result = genTransError(UNSUPPORT_CMD)
                         else:
@@ -257,6 +259,7 @@ class UnixSocketClient(MyUnixSocket):
         if self.connectServer() != None:
             try:
                 self._socket.sendall(content)
+                Info('-----------> send Request over, recv result here...')
                 requestResult = self.recvData(self._socket)
             except InterruptedError as e:
                 Info('sendAsyncNotify got InterruptedError {}'.format(e))

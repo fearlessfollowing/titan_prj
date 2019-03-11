@@ -282,7 +282,8 @@ private:
     void            handleErrInfo(Json::Value& jsonData);
 
 
-    void            handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode);
+    void            handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNode);
+
     void            handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode);
 
     bool            sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack = nullptr);
@@ -294,7 +295,7 @@ private:
 
     void            handleSyncInfo(SocketClient* cli, Json::Value& jsonData);
     void            handleSwitchMountMode(SocketClient* cli, Json::Value& paramJson);
-    void            handleShutdownMachine(SocketClient* cli, Json::Value& queryJson);
+    void            handleShutdownMachine(SocketClient* cli);
     void            handleGpsStateChange(SocketClient* cli, Json::Value& queryJson);
     void            handleSetSn(SocketClient* cli, Json::Value& jsonData);
     void            handleQueryLeftInfo(SocketClient* cli, Json::Value& queryJson);
@@ -303,10 +304,11 @@ private:
     void            handleTfcardFormatResult(SocketClient* cli, Json::Value& jsonData);
     void            handleIndDispType(SocketClient* cli, Json::Value& jsonData);
     void            handleIndUpdateTlCnt(SocketClient* cli, Json::Value& jsonData);
-    void            handleIndQrScanResult(SocketClient* cli, Json::Value& jsonData)
-    void            handleIndSetGetSysSetting(SocketClient* cli, Json::Value& jsonData);
+    void            handleIndQrScanResult(SocketClient* cli, Json::Value& jsonData);
+    void            handleIndSetSysSetting(SocketClient* cli, Json::Value& jsonData);
     void            handleIndSetCustomer(SocketClient* cli, Json::Value& jsonData);
     void            handleIndTypeError(SocketClient* cli, Json::Value& jsonData);
+    void            handleGetSysSetting(SocketClient* cli, Json::Value& reqNode);
 
     /* 解析查询小卡的结果 */
     static bool     parseQueryTfcardResult(Json::Value& jsonData);

@@ -400,6 +400,8 @@ bool TranManager::onDataAvailable(SocketClient* cli)
 
         int iContentLen = bytes_to_int(&mRecvBuf[DATA_LEN_OFFSET]);
 
+        LOGINFO(TAG, "----> data len = %d", iContentLen);
+
         /* 读取传输的数据 */
         iLen = read(iSockFd, &mRecvBuf[RECV_HEAD_LEN], iContentLen);
         if (iLen != iContentLen) {	    /* 读取的数据长度不一致 */
@@ -413,14 +415,13 @@ bool TranManager::onDataAvailable(SocketClient* cli)
         Json::Value rootJson;
 
         Json::CharReader* reader = builder.newCharReader();
-        LOGDBG(TAG, "--> Recv: %s", &mRecvBuf[RECV_HEAD_LEN]);
+        // LOGDBG(TAG, "--> Recv: %s", &mRecvBuf[RECV_HEAD_LEN]);
 
         if (!reader->parse(&mRecvBuf[RECV_HEAD_LEN], &mRecvBuf[RECV_HEAD_LEN + iContentLen], &rootJson, &errs)) {
             LOGERR(TAG, ">>>>>> Parse json format failed");
             return false;
         }
 
-        printJson(rootJson);
         bResult = Singleton<ProtoManager>::getInstance()->parseAndDispatchRecMsg(cli, rootJson);         
     }
     return bResult;

@@ -378,7 +378,7 @@ class osc_state(threading.Thread):
             st = self.poll_info[CAM_STATE]
 
             # 去掉模组的温度
-            # self.poll_info[SYS_TEMP] = self._sys_temp
+            self.poll_info[SYS_TEMP] = self._sys_temp
             self.poll_info[LEFT_INFO][REC_LEFT_INFO] = self._rec_left
             self.poll_info[LEFT_INFO][LIVE_REC_LEFT_INFO] = self._live_rec_left
             self.poll_info[LEFT_INFO][REC_INFO] = self._rec_sec

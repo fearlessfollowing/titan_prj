@@ -168,6 +168,13 @@ class StateMachine:
         else:
             return False
 
+    @classmethod
+    def checkInIdle(cls):
+        if StateMachine.getCamState() in (config.STATE_IDLE, config.STATE_PREVIEW):
+            return True
+        else:
+            return False
+
 
     @classmethod
     def checkAllowLive(cls):
@@ -304,7 +311,7 @@ class StateMachine:
 
     @classmethod
     def checkAllowSetSysConfig(cls):
-        Info('--------> checkAllowEnterFormatState, cam state {}'.format(StateMachine.getCamStateFormatHex()))
+        Info('--------> checkAllowSetSysConfig, cam state {}'.format(StateMachine.getCamStateFormatHex()))
         if (StateMachine.getCamState() in (config.STATE_IDLE, config.STATE_PREVIEW)):
             return True
         else:

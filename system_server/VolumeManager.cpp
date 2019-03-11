@@ -3212,7 +3212,7 @@ void VolumeManager::waitUdiskEvtDealComplete(int iTimeout)
         {
             std::unique_lock<std::mutex> _lock(mEvtLock);
             if (mEventVec.empty()) {
-                msg_util::sleep_ms(2000);   /* 等待最后一个事件处理完成 */
+                msg_util::sleep_ms(5000);   /* 2019年3月12日 - 等待最后一个事件处理完成: 从线程取走到挂载成功/失败的时长(2s太短) */
                 break;
             }
         }

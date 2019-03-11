@@ -34,6 +34,7 @@
 #include <stddef.h>
 #include <util/SingleInstance.h>
 #include <sys/ProtoManager.h>
+#include <sys/CfgManager.h>
 
 #include <log/log_wrapper.h>
 
@@ -104,9 +105,11 @@
 #define IND_TF_STATE_CHANGE         "camera._storage_state_"
 #define IND_DISP_TYPE               "camera._dispType"
 #define IND_UPDATE_TL_CNT           "camera._updateTlCnt"
-#define IND_SET_GET_SYS_SETTING     "camera._setGetSysSetting"
 #define IND_SET_CUSTOMER            "camera._setCustom"
 #define IND_DISP_TYPE_ERR           "camera._dsipTypeErr"
+
+#define IND_GET_SYS_SETTING         "camera._getSysSetting"
+#define IND_SET_SYS_SETTING         "camera._setSysSetting"
 
 /** 使用Unix套接字传输给web_server发请求 */
 #define USE_UNIX_TRAN
@@ -1009,9 +1012,10 @@ void TransBuffer::fillData(const char* data)
     if (iDataLen > MAX_DATA_LEN - COM_HDR_LEN) {
         return;
     } else {
-        mBuffer = new char[iDataLen + COM_HDR_LEN];
+        mBuffer = new char[iDataLen + COM_HDR_LEN + 1];
         if (mBuffer) {
-            mBufferLen = iDataLen + COM_HDR_LEN;
+            mBufferLen = iDataLen + COM_HDR_LEN + 1;
+            memset(mBuffer, '\0', mBufferLen);
             int_to_bytes(&mBuffer[0], 0xDEADBEEF);
             int_to_bytes(&mBuffer[4], iDataLen);
             // LOGINFO(TAG, "------> len = %d",  iDataLen);
@@ -1113,7 +1117,6 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
     }
 
     std::shared_ptr<TransBuffer> recvBuffer = std::make_shared<TransBuffer>(iRecvLen);
-
     r = TEMP_FAILURE_RETRY(recv(iSocket, recvBuffer->data(), recvBuffer->size(), 0));
     if (r != recvBuffer->size()) {
         LOGERR(TAG, "---> recv content error, len = %d", r);
@@ -1164,87 +1167,86 @@ void ProtoManager::setSyncReqExitFlag(bool bFlag)
 /*********************************************************************************************
  *                         处理来自web_server的通知
  *********************************************************************************************/
-void ProtoManager::handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode)
+
+void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
 {
-	
-    if (reqNode.isMember("action")) {
-        /* 设置Customer时，使用该字段来区分是拍照,录像，直播 */
-        dispType->qr_type = reqNode["action"].asInt();
-    }
-
-    if (reqNode.isMember("param")) {
-        dispType->jsonArg = reqNode["param"];
-    }
-						
-	switch (dispType->type) {
-		case START_LIVE_SUC: {	/* 16, 启动录像成功 */
-            LOGDBG(TAG, "Client control Live");
-        	dispType->control_act = ACTION_LIVE;
-			break;
-        }
-										
-		case CAPTURE: {			/* 拍照 */
-            LOGDBG(TAG, "Client control Capture");
-			dispType->control_act = ACTION_PIC;
-			break;
-        }
-										
-		case START_REC_SUC:	{	/* 1, 启动录像成功 */
-            LOGDBG(TAG, "Client control Video");
-			dispType->control_act = ACTION_VIDEO;
-			break;
-        }
-											
-		case SET_CUS_PARAM:	{	/* 46, 设置自定义参数 */
-            LOGDBG(TAG, "Client control Set Customer");
-			dispType->control_act = CONTROL_SET_CUSTOM;
-			break;
-        }
-
-        default:
-            break;
-	}	   
+    mNotify = notify;
 }
 
 
-
-
-
-void ProtoManager::handleDispType(Json::Value& jsonData)
+bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData)
 {
-    sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
-    if (jsonData.isMember("type")) {
-        dispType->type = jsonData["type"].asInt();
-    }
-
-    dispType->mSysSetting = nullptr;
-    dispType->mStichProgress = nullptr;
-    dispType->mAct = nullptr;
-    dispType->control_act = -1;
-    dispType->tl_count  = -1;
-    dispType->qr_type  = -1;
-
-    if (jsonData.isMember("content")) {
-        LOGDBG(TAG, "Qr Function Not implement now ..");
-        // handleQrContent(dispType, root, subNode);
-    } else if (jsonData.isMember("req")) {
-        handleReqFormHttp(dispType, jsonData["req"]);
-    } else if (jsonData.isMember("sys_setting")) {
-        handleSetting(dispType, jsonData["sys_setting"]);
+    bool bResult = false;
+    if (jsonData.isMember(_name_)) {   
+        std::string cmd = jsonData[_name_].asCString();
+        if (jsonData.isMember(_param)) {
+            Json::Value& param = jsonData[_param];
+            if (cmd == IND_SYNC_STATE) {
+                handleSyncInfo(cli, jsonData[_param]);
+            } else if (cmd == IND_SWITCH_MOUNT_MODE) {
+                handleSwitchMountMode(cli, jsonData[_param]);
+            } else if (cmd == IND_GPS_STATE_CHANGE) {
+                handleGpsStateChange(cli, jsonData[_param]);
+            } else if (cmd == IND_SET_SN) {
+                handleSetSn(cli, jsonData[_param]);
+            } else if (cmd == IND_QUERY_LEF) {
+                handleQueryLeftInfo(cli, jsonData["param"]);
+            } else if (cmd == IND_SPEED_TEST_RESULT) {
+                handleSpeedTestResult(cli, jsonData[_param]);
+            } else if (cmd == IND_TF_STATE_CHANGE) {
+                handleTfCardChanged(cli, jsonData[_param]);
+            } else if (cmd == IND_DISP_TYPE) {
+                handleIndDispType(cli, jsonData[_param]);
+            } else if (cmd == IND_UPDATE_TL_CNT) {
+                handleIndUpdateTlCnt(cli, jsonData[_param]);
+            } else if (cmd == IND_SET_CUSTOMER) {
+                handleIndSetCustomer(cli, jsonData[_param]);
+            } else if (cmd == IND_DISP_TYPE_ERR) {
+                handleIndTypeError(cli, jsonData[_param]);
+            } else if (cmd == IND_SET_SYS_SETTING) {
+                handleIndSetSysSetting(cli, jsonData[_param]);
+            }
+        } else {
+            if (cmd == IND_SHUTDOWN) {  /* shutdown不带参数 */
+                handleShutdownMachine(cli);
+            } else if (cmd == IND_GET_SYS_SETTING) {    /* 获取系统设置 */
+                handleGetSysSetting(cli, jsonData);
+                bResult = true;
+            }
+        }
     } else {
-        // LOGERR(TAG, "---------Unkown Error");
-    }
+        LOGERR(TAG, "Node have not name or parameter loss");  
+        printJson(jsonData); 
+    }                       
+    return bResult;      
+}
 
-    if (mNotify) {
-        sp<ARMessage> msg = mNotify->dup();
-        msg->setWhat(UI_MSG_DISP_TYPE);
-        msg->set<sp<DISP_TYPE>>("disp_type", dispType);
-        msg->post();
+
+void ProtoManager::handleGetSysSetting(SocketClient* cli, Json::Value& reqNode)
+{
+    LOGINFO(TAG, "----> handleGetSysSetting");
+    Json::Value retRoot;
+    std::string sendStr;
+
+    retRoot[_name_]     = reqNode[_name_];
+    retRoot[_state]     = _done;
+    retRoot[_results]   = Singleton<CfgManager>::getInstance()->getSysSetting();
+    
+    printJson(retRoot);
+    
+    convJsonObj2String(retRoot, sendStr);
+
+    std::shared_ptr<TransBuffer> buffer = std::make_shared<TransBuffer>();
+    buffer->fillData(sendStr.c_str());
+
+    int r = TEMP_FAILURE_RETRY(send(cli->getSocket(), buffer->data(), buffer->size(), 0));
+    if (r != buffer->size()) {
+        LOGERR(TAG, "send data failed, what's wront!!");
     }
 }
 
 
-void ProtoManager::handleErrInfo(Json::Value& jsonData)
+void ProtoManager::handleIndTypeError(SocketClient* cli, Json::Value& jsonData)
 {
     sp<ERR_TYPE_INFO> errInfo = std::make_shared<ERR_TYPE_INFO>();
 
@@ -1261,147 +1263,103 @@ void ProtoManager::handleErrInfo(Json::Value& jsonData)
         msg->setWhat(UI_MSG_DISP_ERR_MSG);
         msg->set<sp<ERR_TYPE_INFO>>("err_type_info", errInfo);
         msg->post();
-
     }
 }
 
 
 
-void ProtoManager::setNotifyRecv(sp<ARMessage> notify)
-{
-    mNotify = notify;
-}
-
-
-bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData)
-{
-    if (jsonData.isMember(_name_) && jsonData.isMember(_param)) {   
-        std::string cmd = jsonData[_name_].asCString();
-        if (cmd == IND_SYNC_STATE) {
-            handleSyncInfo(cli, jsonData[_param]);
-        } else if (cmd == IND_SWITCH_MOUNT_MODE) {
-            handleSwitchMountMode(cli, jsonData[_param]);
-        } else if (cmd == IND_SHUTDOWN) {
-            handleShutdownMachine(cli, jsonData[_param]);
-        } else if (cmd == IND_GPS_STATE_CHANGE) {
-            handleGpsStateChange(cli, jsonData[_param]);
-        } else if (cmd == IND_SET_SN) {
-            handleSetSn(cli, jsonData[_param]);
-        } else if (cmd == IND_QUERY_LEF) {
-            handleQueryLeftInfo(cli, jsonData["param"]);
-        } else if (cmd == IND_SPEED_TEST_RESULT) {
-            handleSpeedTestResult(cli, jsonData[_param]);
-        } else if (cmd == IND_TF_STATE_CHANGE) {
-            handleTfCardChanged(cli, jsonData[_param]);
-        } else if (cmd == IND_DISP_TYPE) {
-            handleIndDispType(cli, jsonData[_param]);
-        } else if (cmd == IND_UPDATE_TL_CNT) {
-            handleIndUpdateTlCnt(cli, jsonData[_param]);
-        } else if (cmd == IND_SET_GET_SYS_SETTING) {
-            handleIndSetGetSysSetting(cli, jsonData[_param]);
-        } else if (cmd == IND_SET_CUSTOMER) {
-            handleIndSetCustomer(cli, jsonData[_param]);
-        } else if (cmd == IND_DISP_TYPE_ERR) {
-            handleIndTypeError(cli, jsonData[_param]);
-        }
-    } else {
-        LOGERR(TAG, "Node have not name or parameter loss");  
-        printJson(jsonData);
-        return false;   
-    }                       
-}
-
-
-
-void ProtoManager::handleIndTypeError(SocketClient* cli, Json::Value& jsonData)
-{
-
-}
-
+/*
+ * 设置Customer
+ */
 void ProtoManager::handleIndSetCustomer(SocketClient* cli, Json::Value& jsonData)
 {
+    LOGINFO(TAG, "---> handleIndSetCustomer");
+    
+    sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
+    dispType->type = SET_CUS_PARAM;
+    dispType->jsonArg = jsonData;
+     if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_SET_CUSTOMER);
+        msg->set<sp<DISP_TYPE>>("set_customer", dispType);
+        msg->post();
+    }  
 
 }
 
 
 
-void ProtoManager::handleSetting(sp<struct _disp_type_>& dispType, Json::Value& reqNode)
+void ProtoManager::handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNode)
 {
-    dispType->mSysSetting = std::make_shared<SYS_SETTING>();
 
-    memset(dispType->mSysSetting.get(), -1, sizeof(SYS_SETTING));
+    memset(sysSetting.get(), -1, sizeof(SYS_SETTING));
 
-    if (reqNode.isMember("flicker") && reqNode["flicker"].isInt()) {
-        dispType->mSysSetting->flicker = reqNode["flicker"].asInt();
+    if (reqNode.isMember(_flick) && reqNode[_flick].isInt()) {
+        sysSetting->flicker = reqNode[_flick].asInt();
     }
 
-    if (reqNode.isMember("speaker") && reqNode["speaker"].isInt()) {
-        dispType->mSysSetting->speaker = reqNode["speaker"].asInt();
+    if (reqNode.isMember(_speaker) && reqNode[_speaker].isInt()) {
+        sysSetting->speaker = reqNode[_speaker].asInt();
     }
 
-    if (reqNode.isMember("led_on") && reqNode["led_on"].isInt()) {
-        dispType->mSysSetting->led_on = reqNode["led_on"].asInt();
+    if (reqNode.isMember(_light_on) && reqNode[_light_on].isInt()) {
+        sysSetting->led_on = reqNode[_light_on].asInt();
     }
 
-    if (reqNode.isMember("fan_on") && reqNode["fan_on"].isInt()) {
-        dispType->mSysSetting->fan_on = reqNode["fan_on"].asInt();
+    if (reqNode.isMember(_fan_on) && reqNode[_fan_on].isInt()) {
+        sysSetting->fan_on = reqNode[_fan_on].asInt();
     }
 
-    if (reqNode.isMember("aud_on") && reqNode["aud_on"].isInt()) {
-        dispType->mSysSetting->aud_on = reqNode["aud_on"].asInt();
+    if (reqNode.isMember(_audio_on) && reqNode[_audio_on].isInt()) {
+        sysSetting->aud_on = reqNode[_audio_on].asInt();
     }
 
-    if (reqNode.isMember("aud_spatial") && reqNode["aud_spatial"].isInt()) {
-        dispType->mSysSetting->aud_spatial = reqNode["aud_spatial"].asInt();
+    if (reqNode.isMember(_spatial) && reqNode[_spatial].isInt()) {
+        sysSetting->aud_spatial = reqNode[_spatial].asInt();
     }
 
-    if (reqNode.isMember("set_logo") && reqNode["set_logo"].isInt()) {
-        dispType->mSysSetting->set_logo = reqNode["set_logo"].asInt();
+    if (reqNode.isMember(_set_logo) && reqNode[_set_logo].isInt()) {
+        sysSetting->set_logo = reqNode[_set_logo].asInt();
     }
 
-    if (reqNode.isMember("gyro_on") && reqNode["gyro_on"].isInt()) {
-        dispType->mSysSetting->gyro_on = reqNode["gyro_on"].asInt();
+    if (reqNode.isMember(_gyro_on) && reqNode[_gyro_on].isInt()) {
+        sysSetting->gyro_on = reqNode[_gyro_on].asInt();
     }
 
-    if (reqNode.isMember("video_fragment") && reqNode["video_fragment"].isInt()) {
-        dispType->mSysSetting->video_fragment = reqNode["video_fragment"].asInt();
+    if (reqNode.isMember(_video_seg) && reqNode[_video_seg].isInt()) {
+        sysSetting->video_fragment = reqNode[_video_seg].asInt();
     }
 
     LOGDBG(TAG, "%d %d %d %d %d %d %d %d %d",
-                dispType->mSysSetting->flicker,
-                dispType->mSysSetting->speaker,
-                dispType->mSysSetting->led_on,
-                dispType->mSysSetting->fan_on,
-                dispType->mSysSetting->aud_on,
-                dispType->mSysSetting->aud_spatial,
-                dispType->mSysSetting->set_logo,
-                dispType->mSysSetting->gyro_on,
-                dispType->mSysSetting->video_fragment);    
+                sysSetting->flicker,
+                sysSetting->speaker,
+                sysSetting->led_on,
+                sysSetting->fan_on,
+                sysSetting->aud_on,
+                sysSetting->aud_spatial,
+                sysSetting->set_logo,
+                sysSetting->gyro_on,
+                sysSetting->video_fragment);    
 }
 
 
-void ProtoManager::handleIndSetGetSysSetting(SocketClient* cli, Json::Value& jsonData)
+void ProtoManager::handleIndSetSysSetting(SocketClient* cli, Json::Value& jsonData)
 {
-    sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
-    if (jsonData.isMember("mode")) {
-        if (!strcmp(jsonData["mode"].asCString(), "set")) { /* 设置系统设置 */
-            handleSetting(dispType, jsonData["sys_setting"]);
-            if (mNotify) {
-                sp<ARMessage> msg = mNotify->dup();
-                msg->setWhat(UI_MSG_SET_SYS_SETTING);
-                msg->set<sp<DISP_TYPE>>("sys_setting", dispType);
-                msg->post();
-            }
-        } else {    /* 获取系统设置 */
-            LOGINFO(TAG, "---> get sys setting");
-        }
+    sp<SYS_SETTING> sysSetting = std::make_shared<SYS_SETTING>();    
+    handleSetting(sysSetting, jsonData);
+    if (mNotify) {
+        sp<ARMessage> msg = mNotify->dup();
+        msg->setWhat(UI_MSG_SET_SYS_SETTING);
+        msg->set<sp<SYS_SETTING>>("sys_setting", sysSetting);
+        msg->post();
     }
 }
 
 
 void ProtoManager::handleIndQrScanResult(SocketClient* cli, Json::Value& jsonData)
 {
-
+    LOGINFO(TAG, "---> handleIndQrScanResult <-----------");
+    printJson(jsonData);
 }
 
 
@@ -1426,6 +1384,10 @@ void ProtoManager::handleIndDispType(SocketClient* cli, Json::Value& jsonData)
     sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
     if (jsonData.isMember("type")) {
         dispType->type = jsonData["type"].asInt();
+    }
+
+    if (jsonData.isMember("extra")) {
+        dispType->jsonArg = jsonData["extra"];
     }
 
     if (mNotify) {
@@ -1631,8 +1593,6 @@ void ProtoManager::handleSetSn(SocketClient* cli, Json::Value& jsonData)
 }
 
 
-
-
 void ProtoManager::handleGpsStateChange(SocketClient* cli, Json::Value& queryJson)
 {
     if (queryJson.isMember("state")) {
@@ -1691,25 +1651,21 @@ void ProtoManager::handleSwitchMountMode(SocketClient* cli, Json::Value& paramJs
     LOGDBG(TAG, ">>> Switch Mount Mode");
     std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
-    if (paramJson.isMember("parameters")) {
-        if (paramJson["parameters"].isMember("mode")) {
-                if (!strcmp(paramJson["parameters"]["mode"].asCString(), "ro")) {
-                    LOGDBG(TAG, "Change mount mode to ReadOnly");
-                    vm->changeMountMethod("ro");
-                } else if (!strcmp(paramJson["parameters"]["mode"].asCString(), "rw")) {
-                    LOGDBG(TAG, "Change mount mode to Read-Write");
-                    vm->changeMountMethod("rw");
-                }
-        } else {
-            LOGERR(TAG, "not Member mode");
-        }
+    if (paramJson.isMember("mode")) {
+            if (!strcmp(paramJson["mode"].asCString(), "ro")) {
+                LOGDBG(TAG, "Change mount mode to ReadOnly");
+                vm->changeMountMethod("ro");
+            } else if (!strcmp(paramJson["mode"].asCString(), "rw")) {
+                LOGDBG(TAG, "Change mount mode to Read-Write");
+                vm->changeMountMethod("rw");
+            }
     } else {
-        LOGDBG(TAG, "Invalid Arguments");
+        LOGERR(TAG, "not Member mode");
     }
 }
 
 
-void ProtoManager::handleShutdownMachine(SocketClient* cli, Json::Value& queryJson)
+void ProtoManager::handleShutdownMachine(SocketClient* cli)
 {
     LOGDBG(TAG, "ProtoManager: Recv Shut down machine message ...");
     if (mNotify) {
@@ -1718,32 +1674,5 @@ void ProtoManager::handleShutdownMachine(SocketClient* cli, Json::Value& queryJs
         msg->post();
     }
 }
-
-
-#if 0
-bool ProtoManager::parseAndDispatchRecMsg(int iMsgType, Json::Value& jsonData)
-{
-    switch (iMsgType) {
-        case MSG_DISP_TYPE: {	/* 通信UI线程显示指定UI */
-            handleDispType(jsonData);
-            break;
-        }
-       
-        case MSG_DISP_TYPE_ERR: {	/* 给UI发送显示错误信息:  错误类型和错误码 */
-            handleErrInfo(jsonData);
-            break;
-        }
-
-        case MSG_TF_FORMAT: {    /* 格式化结果 */
-            handleTfcardFormatResult(jsonData);
-            break;
-        }
-
-        default: 
-            break;
-    }
-    return true;
-}
-#endif
 
 

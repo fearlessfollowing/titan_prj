@@ -620,3 +620,31 @@ static const char* pCmdLive_4K30F3DHDMI	= "{\"name\":\"camera._startLive\",\"par
 #ifdef ENABLE_LIVE_ORG_MODE
 static const char* pCmdLive_LiveOrigin  = "{\"name\": \"camera._startLive\",\"parameters\":{\"origin\":{\"mime\":\"h264\",\"width\":1920,\"height\":1440,\"framerate\":30,\"bitrate\":20000, \"liveUrl\":\"rtmp://127.0.0.1/live\"}}}";
 #endif
+
+
+
+协议:
+Connect:
+{"name": "camera._connect", "parameters": {"hw_time": "031102412019.16", "time_zone": "GMT+14:00", "date_time": "031116412019.16"}}
+
+For test: 不启动心跳包
+{"name": "camera._connect", "parameters": {"mode": "test"}}
+
+Disconnect:
+{"name": "camera._disconnect"}
+
+
+Shutdown:
+{"name": "camera._shutdown"}
+
+Switch Mount Mode:
+{"name": "camera._change_mount_mode", "parameters": {"mode": "ro"}}
+
+
+QueryGpsState:
+{"name": "camera._queryGpsStatus"}
+
+
+GetSysSetting:
+{"name": "camera._getSysSetting"}
+{"name": "camera._getSysSetting", "state": "done", "results": {"flicker": 0, "speaker": 1, "light_on": 1, "aud_on": 1, "aud_spatial": 1, "gyro_on": 1, "fan_on": 0, "set_logo": 0, "video_fragment": 0}}

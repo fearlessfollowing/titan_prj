@@ -82,7 +82,8 @@ class control_center:
 
     def init_all(self):
         self.connected = False
-
+        self._connectMode = 'Normal'        # 连接模式, 'test'模式时所有的请求不需要维持心跳包
+        
         # 连接状态锁,用于保护self.connected的互斥访问
         self.connectStateLock = Semaphore()
 
@@ -155,37 +156,37 @@ class control_center:
         # 来自客户端的命令
         #
         self.camera_cmd_func = OrderedDict({
-            config._START_PREVIEW:          self.appReqStartPreview,            # 客户端请求启动预览    
-            config._STOP_PREVIEW:           self.appReqStopPreview,             # 客户端请求停止预览
-            config._TAKE_PICTURE:           self.appReqTakePicture,             # 客户端请求拍照 - DYZ
+            config._START_PREVIEW:          self.appReqStartPreview,            # 请求启动预览 - OK   
+            config._STOP_PREVIEW:           self.appReqStopPreview,             # 请求停止预览 - OK
+            config._TAKE_PICTURE:           self.appReqTakePicture,             # 请求拍照 - 
             config._START_RECORD:           self.appReqTakeVideo,               # 启动录像
             config._STOP_RECORD:            self.appReqStopRecord,
             config._START_LIVE:             self.appReqStartLive,               # 客户端请求启动直播
             config._STOP_LIVE:              self.appReqStopLive,
             
-            config._SET_NTSC_PAL:           self.appReqSetNtscPal,
-            config._GET_NTSC_PAL:           self.appReqGetNtscPal,
+            config._SET_NTSC_PAL:           self.appReqSetNtscPal,              # 设置制式 - NTSC/PAL   - OK
+            config._GET_NTSC_PAL:           self.appReqGetNtscPal,              # 获取制式              - OK
 
-            config._SETOFFSET:              self.appReqSetOffset,
-            config._GETOFFSET:              self.appReqGetOffset,
+            config._SETOFFSET:              self.appReqSetOffset,               # 设置Offset            - OK
+            config._GETOFFSET:              self.appReqGetOffset,               # 获取Offset            - OK
             
             config._SET_IMAGE_PARAM:        self.appReqSetImageParam,
             config._GET_IMAGE_PARAM:        self.appReqGetImageParam,
 
-            config.SET_OPTIONS:             self.appReqSetOptions,          # 设置/获取Options
+            config.SET_OPTIONS:             self.appReqSetOptions,              # 设置/获取Options
             config.GET_OPTIONS:             self.appReqGetOptions,
 
-            config._SET_STORAGE_PATH:       self.appReqSetStoragePath,      # 设置存储路径
+            config._SET_STORAGE_PATH:       self.appReqSetStoragePath,          # 设置存储路径
 
-            config._CALIBRATION:            self.appReqStartCalibration,    # 请求拼接校准
-            config._QUERY_STATE:            self.appReqQueryState,
+            config._CALIBRATION:            self.appReqStartCalibration,        # 请求拼接校准
+            config._QUERY_STATE:            self.appReqQueryState,              # 查询状态              - OK
             config._START_GYRO:             self.appReqStartGyro,
             config._SPEED_TEST:             self.appReqStartSpeedTest,
-            config._SYS_TIME_CHANGE:        self.appReqSetSysTime,
+            config._SYS_TIME_CHANGE:        self.appReqSetSysTime,              # 设置系统时间改变      - OK
             config._UPDATE_GAMMA_CURVE:     self.appReqUpdateGamma,
 
             config._SET_SYS_SETTING:        self.appReqSetSysSetting,
-            config._GET_SYS_SETTING:        self.appReqGetSysSetting,
+            config._GET_SYS_SETTING:        self.appReqGetSysSetting,           # 获取系统配置          - OK
 
             # 产测功能: BLC和BPC校正(异步)
             config._CALIBTRATE_BLC:         self.appReqBlcCal,
@@ -195,8 +196,8 @@ class control_center:
             config._DELETE_TF_CARD:         self.appReqDeleteFile,              # 删除TF里的文件            
 
             config._QUERY_LEFT_INFO:         self.appReqQueryLefInfo,
-            config._SHUT_DOWN_MACHINE:       self.appReqShutdown,               # 关机
-            config._SWITCH_MOUNT_MODE:       self.appReqSwitchMountMode,        # 切换TF卡的挂载方式
+            config._SHUT_DOWN_MACHINE:       self.appReqShutdown,               # 关机                  - OK
+            config._SWITCH_MOUNT_MODE:       self.appReqSwitchMountMode,        # 切换TF卡的挂载方式     - OK   
             config._LIST_FILES:              self.appReqListFile,               # 列出文件的异步命令
             config._REQ_AWB_CALC:            self.cameraUiCalcAwb,              # AWB校正
         })
@@ -232,7 +233,7 @@ class control_center:
             config._CALIBTRATE_BPC:         self.bpcCalcDone,
             config._CALIBRATE_MAGMETER:     self.mageterCalcDone,
             config._DELETE_TF_CARD:         self.deleteFileDone,
-            config._QUERY_LEFT_INFO:        self.cameraQueryLeftInfo,
+            # config._QUERY_LEFT_INFO:        self.cameraQueryLeftInfo,
         })
 
         self.async_cmd = [config._TAKE_PICTURE,
@@ -283,84 +284,83 @@ class control_center:
 
         # SystemServeer请求
         self.systemServerReqHandler = OrderedDict({
-            config._GET_SET_CAM_STATE:          self.cameraUiGetSetCamState,                # 请求查询Camera的状态
-            config._REQ_ENTER_UDISK_MOD:        self.cameraUiSwitchUdiskMode,               # 请求Server进入U盘模式
+            config._GET_SET_CAM_STATE:          self.cameraUiGetSetCamState,                # 请求查询Camera的状态      - OK
+            config._REQ_ENTER_UDISK_MOD:        self.cameraUiSwitchUdiskMode,               # 请求Server进入U盘模式     - OK     
             config._UPDAT_TIMELAPSE_LEFT:       self.cameraUiUpdateTimelapaseLeft,          # 更新拍timelapse的剩余值
-            config._REQ_SYNC_INFO:              self.cameraUiRequestSyncInfo,               # 请求同步状态
-            config._REQ_FORMART_TFCARD:         self.cameraUiFormatTfCard,                  # 请求格式化TF卡
-            config._REQ_UPDATE_REC_LIVE_INFO:   self.cameraUiUpdateRecLeftSec,              # 请求更新录像,直播的时间
-            config._REQ_START_PREVIEW:          self.cameraUiStartPreview,                  # 请求启动预览
-            config._REQ_STOP_PREVIEW:           self.cameraUiStopPreview,                   # 请求停止预览
-            config._REQ_QUERY_TF_CARD:          self.cameraUiQueryTfcard,                   # 查询TF卡状态
-            config._REQ_QUERY_GPS_STATE:        self.cameraUiqueryGpsState,                 # 查询GPS状态
+            config._REQ_SYNC_INFO:              self.cameraUiRequestSyncInfo,               # 请求同步状态              - OK 
+            config._REQ_FORMART_TFCARD:         self.cameraUiFormatTfCard,                  # 请求格式化TF卡            - OK
+            config._REQ_UPDATE_REC_LIVE_INFO:   self.cameraUiUpdateRecLeftSec,              # 请求更新录像,直播的时间    - OK
+            config._REQ_START_PREVIEW:          self.cameraUiStartPreview,                  # 请求启动预览              - OK
+            config._REQ_STOP_PREVIEW:           self.cameraUiStopPreview,                   # 请求停止预览              - OK
+            config._REQ_QUERY_TF_CARD:          self.cameraUiQueryTfcard,                   # 查询TF卡状态              - OK
+            config._REQ_QUERY_GPS_STATE:        self.cameraUiqueryGpsState,                 # 查询GPS状态               - OK
             config._REQ_SET_CUSTOM_PARAM:       self.cameraUiSetCustomerParam,              # 设置Customer
-            config._REQ_SPEED_TEST:             self.cameraUiSpeedTest,                     # 测速请求
-            config._REQ_TAKE_PIC:               self.cameraUiTakePic,                       # 请求拍照
-            config._REQ_TAKE_VIDEO:             self.cameraUiTakeVideo,                     # 请求录像
-            config._REQ_STOP_VIDEO:             self.cameraUiStopVideo,                     # 停止录像
-            config._REQ_START_LIVE:             self.cameraUiStartLive,                     # 请求启动直播
-            config._REQ_STOP_LIVE:              self.cameraUiStopLive,                      # 请求停止直播
-            config._REQ_STITCH_CALC:            self.cameraUiStitchCalc,                    # 拼接校正
-            config._REQ_SAVEPATH_CHANGE:        self.cameraUiSavepathChange,                # 存储路径改变
-            config._REQ_UPDATE_STORAGE_LIST:    self.cameraUiUpdateStorageList,             # 更新存储设备列表
-            config._REQ_UPDATE_BATTERY_IFNO:    self.cameraUiUpdateBatteryInfo,             # 更新电池信息
-            config._REQ_START_NOISE:            self.cameraUiNoiseSample,                   # 请求噪声采样
-            config._REQ_START_GYRO:             self.cameraUiGyroCalc,                      # 请求陀螺仪校正
+            config._REQ_SPEED_TEST:             self.cameraUiSpeedTest,                     # 测速请求                  - OK
+            config._REQ_TAKE_PIC:               self.cameraUiTakePic,                       # 请求拍照                  - OK
+            config._REQ_TAKE_VIDEO:             self.cameraUiTakeVideo,                     # 请求录像                  - OK
+            config._REQ_STOP_VIDEO:             self.cameraUiStopVideo,                     # 停止录像                  - OK
+            config._REQ_START_LIVE:             self.cameraUiStartLive,                     # 请求启动直播              - OK
+            config._REQ_STOP_LIVE:              self.cameraUiStopLive,                      # 请求停止直播              - OK
+            config._REQ_STITCH_CALC:            self.cameraUiStitchCalc,                    # 拼接校正                  - OK
+            config._REQ_SAVEPATH_CHANGE:        self.cameraUiSavepathChange,                # 存储路径改变              - OK
+            config._REQ_UPDATE_STORAGE_LIST:    self.cameraUiUpdateStorageList,             # 更新存储设备列表          - OK
+            config._REQ_UPDATE_BATTERY_IFNO:    self.cameraUiUpdateBatteryInfo,             # 更新电池信息              - OK
+            config._REQ_START_NOISE:            self.cameraUiNoiseSample,                   # 请求噪声采样              - OK
+            config._REQ_START_GYRO:             self.cameraUiGyroCalc,                      # 请求陀螺仪校正            - OK
             config._REQ_POWER_OFF:              self.cameraUiLowPower,                      # 低电请求
-            config._REQ_SET_OPTIONS:            self.cameraUiSetOptions,                    # 设置Options
-            config._REQ_AWB_CALC:               self.cameraUiCalcAwb,                       # AWB校正
-            config._REQ_UPDATE_SYS_TMP:         self.cameraUiUpdateSysTemp,                 # 更新系统温度
+            config._REQ_SET_OPTIONS:            self.cameraUiSetOptions,                    # 设置Options              - OK
+            config._REQ_AWB_CALC:               self.cameraUiCalcAwb,                       # AWB校正                  - OK
+            config._REQ_UPDATE_SYS_TMP:         self.cameraUiUpdateSysTemp,                 # 更新系统温度              - OK
         })
 
 
         self.non_camera_cmd_func = OrderedDict({
-            config._GET_RESULTS:            self.appReqGetResults,
-            config.LIST_FILES:              self.appReqListFiles,
-            config.DELETE:                  self.appReqDeleteFile,
-            config.GET_IMAGE:               self.appReqGetImage,
-            config.GET_META_DATA:           self.appReqGetMetaData,
-            config._DISCONNECT:             self.appReqDisconnect,
-            config._SET_CUSTOM:             self.appReqSetCustom,
-            config._SET_SN:                 self.appReqSetSN,
-            config._START_SHELL:            self.appReqStartShell,
-            config._QUERY_GPS_STATE:        self.appReqQueryGpsState,
+            config._GET_RESULTS:            self.appReqGetResults,                          # 获取异步结果
+            config.LIST_FILES:              self.appReqListFiles,                           # 获取查看文件
+            config.DELETE:                  self.appReqDeleteFile,                          # 删除文件
+            config.GET_IMAGE:               self.appReqGetImage,                            # 获取Image         - OK
+            config.GET_META_DATA:           self.appReqGetMetaData,                         # 获取MetaData      - OK
+            config._DISCONNECT:             self.appReqDisconnect,                          # 断开连接           - OK
+            config._SET_CUSTOM:             self.appReqSetCustom,                           # 设置Customer
+            config._SET_SN:                 self.appReqSetSN,                               # 设置SN            - OK
+            config._START_SHELL:            self.appReqStartShell,                          # 启动Shell         - OK
+            config._QUERY_GPS_STATE:        self.appReqQueryGpsState,                       # 查询GPS状态       - OK
             # config.CAMERA_RESET:          self.camera_reset,
         })
 
 
         self.oscPathFunc = OrderedDict({            
-            config.PATH_STATE:              self.getOscState,     # 查询心跳包的状态函数
-            config.PATH_INFO:               self.getOscInfo,
+            config.PATH_STATE:              self.getOscState,               # 查询心跳包的状态函数
+            config.PATH_INFO:               self.getOscInfo,                # 获取osc info
         })
 
 
         self.asyncNotifyHandler = OrderedDict({
             config._STATE_NOTIFY:           self.stateNotifyHandler,
             config._RECORD_FINISH:          self.recStopFinishNotifyHandler,
-            config._PIC_NOTIFY:             self.picFinishNotifyHandler,
+            config._PIC_NOTIFY:             self.picFinishNotifyHandler,                # 拍照处理完成通知 - OK
             config._RESET_NOTIFY:           self.resetNotifyHandler,
             config._QR_NOTIFY:              self.qrResultNotifyHandler,
-            config._CALIBRATION_NOTIFY:     self.calbrateNotifyHandler,
+            config._CALIBRATION_NOTIFY:     self.calbrateNotifyHandler,                 # 拼接完成通知 - OK
             config._PREVIEW_FINISH:         self.previewFinishNotifyHandler,
             config._LIVE_STATUS:            self.liveStateNotifyHandler,
             config._NET_LINK_STATUS:        self.netLinkStateNotifyHandler,
             config._GYRO_CALIBRATION:       self.gyroCalFinishNotifyHandler,
-            config._SPEED_TEST_NOTIFY:      self.speedTestFinishNotifyHandler,
+            config._SPEED_TEST_NOTIFY:      self.speedTestFinishNotifyHandler,          # 测试完成通知 - OK
             config._LIVE_FINISH:            self.liveFinishNotifyHnadler,
             config._LIVE_REC_FINISH:        self.liveRecFinishNotifyHandler,
             config._PIC_ORG_FINISH:         self.orgPicFinishNotifyHandler,
 
             config._CAL_ORG_FINISH:         self.orgCalFinishNotifyHandler,
             config._TIMELAPSE_PIC_FINISH:   self.updateTimelapseCntNotifyHandler,
-            config._NOISE_FINISH:           self.sampleNoiseFinishNotifyHandler,
+            config._NOISE_FINISH:           self.sampleNoiseFinishNotifyHandler,        # 噪声采样结束通知 - OK
             config._GPS_NOTIFY:             self.gpsStateChangeNotifyHandler,           # GPS状态变化通知
-            config._STITCH_NOTIFY:          self.stitchProgressNotifyHandler,
-            config._SND_NOTIFY:             self.sndDevChangeNotifyHandler,
+            config._STITCH_NOTIFY:          self.stitchProgressNotifyHandler,           # Stitch进度通知  - OK
+            config._SND_NOTIFY:             self.sndDevChangeNotifyHandler,             # 音频设备变化通知 - OK   
+
             config._BLC_FINISH:             self.blcFinishNotifyHandler,
             config._BPC_FINISH:             self.bpcFinishNotifyHandler,
-            
-            #通知TF卡状态的变化
-            config._TF_NOTIFY:              self.tfStateChangedNotify,
+            config._TF_NOTIFY:              self.tfStateChangedNotify,                  # TF状态变化通知 - OK
 
             config._MAGMETER_FINISH:        self.CalibrateMageterNotify,
             config._DELETE_TF_FINISH:       self.cameraDeleteFileNotify
@@ -455,7 +455,6 @@ class control_center:
 
     def syncState2SystemServer(self, req):
         Info('-------> send sync init req {}'.format(req))
-        # self.send_req(self.get_write_req(config.OLED_SYNC_INIT, req))
         syncInd = OrderedDict()
         syncInd[_name] = 'camera._indSyncState'
         syncInd[_param] = req
@@ -544,6 +543,7 @@ class control_center:
         else:
             read_info = cmd_error_state(req[_name], StateMachine.getCamState())
         return read_info
+
 
     def startGyro(self, req, from_oled = False):
         if StateMachine.checkAllowGyroCal():
@@ -868,9 +868,11 @@ class control_center:
     # 参数: 无
     # 
     def getOscState(self):
-        self.stopPollTimer()          # 停止轮询定时器
+        self.stopPollTimer()            # 停止轮询定时器
         ret_state = osc_state_handle.get_osc_state(False)   # 获取状态osc_state
-        self.startPollTimer()         # 重新启动定时器
+        
+        if self._connectMode != 'test': # 非测试模式, 重新启动定时器
+            self.startPollTimer()         
         return ret_state
 
     def send_reset_camerad(self):
@@ -882,21 +884,6 @@ class control_center:
 
     def setTimeChangeFail(self, err = -1):
         Info('sys time change fail')
-
-
-    # 方法名称: sendQueryStorageResults
-    # 功能: 将查询到的卡信息发送给UI
-    # 参数: results - 查询的结果信息
-    # 返回值: 无
-    def sendQueryStorageResults(self, results):
-        Info('---> send query storage results to UI {}'.format(results))
-        self.send_req(self.get_write_req(config.UI_NOTIFY_STORAGE_STATE, results))
-
-
-    def sendTfcardFormatResult(self, results):
-        Info('---> send format tf results to UI {}'.format(results))
-        self.send_req(self.get_write_req(config.UI_NOTIFY_TF_FORMAT_RESULT, results))
-
 
     def sync_init_info_to_p(self, res):
         try:
@@ -952,105 +939,53 @@ class control_center:
 
     # {"flicker": 1, "speaker": 1, "led_on": 1, "fan_on": 1, "aud_on": 1, "aud_spatial": 1, "set_logo": 1, "gyro_on": 1,"video_fragment",1,
     #  "reset_all": 0}
-    def set_sys_option(self,param):
+    def set_sys_option(self, param):
         Info("param is {}".format(param))
         
-        if check_dic_key_exist(param, 'reset_all'):
+        if check_dic_key_exist(param, 'reset_all'):         # 复位所有的参数
             self.reset_user_cfg()
             self.notifyDispType(config.RESET_ALL_CFG)
-        else:
-            if check_dic_key_exist(param, 'flicker'):
-                p = OrderedDict({'property': 'flicker', 'value': param['flicker']})
-                self.sendSetOption(p)
+        else:   # 设置部分的项
+            # if check_dic_key_exist(param, 'flicker'):
+            #     p = OrderedDict({'property': 'flicker', 'value': param['flicker']})
+            #     self.sendSetOption(p)
 
-            if check_dic_key_exist(param,'fan_on'):
-                p = OrderedDict({'property': 'fanless'})
-                if param['fan_on'] == 1:
-                    p['value'] = 0
-                else:
-                    p['value'] = 1
-                self.sendSetOption(p)
+            # if check_dic_key_exist(param, 'fan_on'):
+            #     p = OrderedDict({'property': 'fanless'})
+            #     if param['fan_on'] == 1:
+            #         p['value'] = 0
+            #     else:
+            #         p['value'] = 1
+            #     self.sendSetOption(p)
 
-            if check_dic_key_exist(param, 'aud_on'):
-                p = OrderedDict({'property': 'panoAudio'})
-                if param['aud_on'] == 0:
-                    p['value'] = 0
-                else:
-                    if check_dic_key_exist(param,'aud_spatial'):
-                        if param['aud_spatial'] == 1:
-                            p['value'] = 2
-                        else:
-                            p['value'] = 1
-                    else:
-                        Info('no aud_spatial')
-                        p['value'] = 1
-                self.sendSetOption(p)
+            # if check_dic_key_exist(param, 'aud_on'):
+            #     p = OrderedDict({'property': 'panoAudio'})
+            #     if param['aud_on'] == 0:
+            #         p['value'] = 0
+            #     else:
+            #         if check_dic_key_exist(param,'aud_spatial'):
+            #             if param['aud_spatial'] == 1:
+            #                 p['value'] = 2
+            #             else:
+            #                 p['value'] = 1
+            #         else:
+            #             Info('no aud_spatial')
+            #             p['value'] = 1
+            #     self.sendSetOption(p)
 
-            if check_dic_key_exist(param, 'gyro_on'):
-                p = OrderedDict({'property': 'stabilization_cfg', 'value': param['gyro_on']})
-                self.sendSetOption(p)
+            # if check_dic_key_exist(param, 'gyro_on'):
+            #     p = OrderedDict({'property': 'stabilization_cfg', 'value': param['gyro_on']})
+            #     self.sendSetOption(p)
 
-            if check_dic_key_exist(param, 'set_logo'):
-                p = OrderedDict({'property': 'logo', 'value': param['set_logo']})
-                self.sendSetOption(p)
+            # if check_dic_key_exist(param, 'set_logo'):
+            #     p = OrderedDict({'property': 'logo', 'value': param['set_logo']})
+            #     self.sendSetOption(p)
 
-            if check_dic_key_exist(param, 'video_fragment'):
-                p = OrderedDict({'property': 'video_fragment', 'value': param['video_fragment']})
-                self.sendSetOption(p)
+            # if check_dic_key_exist(param, 'video_fragment'):
+            #     p = OrderedDict({'property': 'video_fragment', 'value': param['video_fragment']})
+            #     self.sendSetOption(p)
 
             self.getSetSysSetting('set', param)
-
-
-    def reset_user_cfg(self):
-        Info('reset_user_cfg ')
-        src = '/home/nvidia/insta360/etc/def_cfg'
-        dest = '/home/nvidia/insta360/etc/user_cfg'
-        os.remove(dest)
-        shutil.copy2(src, dest)
-        Info('reset_user_cfg suc')
-
-
-    #{"flicker": 0, "speaker": 0, "light_on": 0, "fan_on": 0, "aud_on": 0, "aud_spatial": 0, "set_logo": 0,"gyro_on":0}};
-    def get_all_sys_cfg(self):
-        filename = '/home/nvidia/insta360/etc/user_cfg'
-
-        all_cfg = ['flicker',
-                   'speaker',
-                   'set_logo',
-                   'light_on',
-                   'fan_on',
-                   'aud_on',
-                   'aud_spatial',
-                   'gyro_on',
-                   'video_fragment',
-                   'pic_gamma',
-                   'vid_gamma',
-                   'live_gamma',
-                   ]
-
-        if file_exist(filename):
-            ret = OrderedDict()
-            try:
-                with open(filename) as fd:
-                    data = fd.readline()
-                    while data != '':
-                        info = data.split(':')
-                        if info[0] in all_cfg:
-                            if info[0] in ['pic_gamma','vid_gamma','live_gamma']:
-                                if str_exits(info[1],'\n'):
-                                    ret[info[0]] = info[1].split('\n')[0]
-                                else:
-                                    ret[info[0]] = info[1]
-                            else:
-                                ret[info[0]] = int(info[1])
-                        data = fd.readline()
-            except Exception as e:
-                Err("get_all_sys_cfg e {}".format(str(e)))
-            Info('get sys setting ret {}'.format(ret))
-            return ret
-        else:
-            return None
-
 
     def checkLiveSave(self, req):
         res = False
@@ -1081,9 +1016,6 @@ class control_center:
                 file_list.append(os.path.join(root, f))
         # Print('file list {}'.format(file_list))
         return file_list
-
-
-
 
 
     #keep reset suc even if camerad not response
@@ -1213,7 +1145,7 @@ class control_center:
 
             ret[config.RESULTS]['_cam_state'] = st
 
-            # 加添一个字段来区分'pro2'
+            # 加添一个字段来区分'pro2'/ 'titan'
             ret[config.RESULTS][config.MACHINE_TYPE] = config.MACHINE
 
             if self.sync_param is not None:
@@ -1225,10 +1157,16 @@ class control_center:
             self.release_connect_sem()
             self.set_connect(True)
             
-            Print('>>> connect ret {}'.format(ret))
-            self.startPollTimer()
+            if check_dic_key_exist(req, _param) and check_dic_key_exist(req[_param], 'mode'):
+                if req[_param]['mode'] == 'test':
+                    Info('--- For test mode connect, not start poll timer')
+                    self._connectMode = 'test'
+                    self.stopPollTimer()
+            else:             
+                self._connectMode = 'Normal'
+                self.startPollTimer()
             
-            return dict_to_jsonstr(ret) # 返回链接参数string给客户端
+            return dict_to_jsonstr(ret)     # 返回链接参数string给客户端
 
         except Exception as e:
             Err('connect exception {}'.format(e))
@@ -1238,7 +1176,7 @@ class control_center:
 
 
     #######################################################################################################################
-    # 函数名称: appReqConnect - 连接web_server请求
+    # 函数名称: appReqDisconnect - 断开web_server请求
     # 函数功能: App请求连接
     # 入口参数:
     #       req - 请求参数
@@ -1254,18 +1192,13 @@ class control_center:
             self.set_connect(False)
             self.stopPollTimer()
             self.random_data = 0
-
+            self._connectMode = 'Normal'
             if StateMachine.getCamState() == config.STATE_PREVIEW:
-                Info("stop preview while disconnect")
                 self.excuteCameraFunc(config._STOP_PREVIEW, self.get_req(config._STOP_PREVIEW))
-            Info('2appReqDisconnect ret {} self.get_cam_state() {}'.format(ret, StateMachine.getCamStateFormatHex()))
         except Exception as e:
-            Err('disconnect exception {}'.format(str(e)))
+            Err('appReqDisconnect exception {}'.format(str(e)))
             ret = cmd_exception(str(e), config._DISCONNECT)
         return ret
-
-
-
 
 
     ###################################################################################
@@ -1288,7 +1221,6 @@ class control_center:
 
 
     def startPreviewDone(self, res):
-
         # 1.去除Server正在启动预览状态
         StateMachine.rmServerState(config.STATE_START_PREVIEWING)
         
@@ -1298,6 +1230,7 @@ class control_center:
         # 如果返回结果中含预览的URL，设置该预览URL到全局参数中
         if check_dic_key_exist(res, config.PREVIEW_URL):
             self.set_preview_url(res[config.PREVIEW_URL])
+
         # 通知UI，启动预览成功
         self.notifyDispType(config.START_PREVIEW_SUC)
 
@@ -1349,7 +1282,7 @@ class control_center:
             StateMachine.addServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
             self._client_take_pic = True    # 确实是客户端拍照
             if from_oled == False:
-                self.send_oled_type(config.CAPTURE, req)
+                self.notifyDispType(config.CAPTURE, req)
 
             # 自己又单独给Camerad发拍照请求??
             read_info = self.sendReq2Camerad(req)
@@ -1395,7 +1328,7 @@ class control_center:
             if oled:
                 self.notifyDispType(config.START_REC_SUC)
             else:
-                self.send_oled_type(config.START_REC_SUC, req)
+                self.notifyDispType(config.START_REC_SUC, req)                
         else:
             self.notifyDispType(config.START_REC_SUC)
         # 启动录像成功后，返回剩余信息
@@ -1474,7 +1407,7 @@ class control_center:
             if oled:
                 self.notifyDispType(config.START_LIVE_SUC)
             else:
-                self.send_oled_type(config.START_LIVE_SUC, req)
+                self.notifyDispType(config.START_LIVE_SUC, req)                
         else:
             self.notifyDispType(config.START_LIVE_SUC)
 
@@ -1737,9 +1670,13 @@ class control_center:
     # 注: 设置系统设置,只能在IDLE或PREVIEW状态下才可以进行
     def appReqSetSysSetting(self, req):
         Info('[------- APP Req: appReqSetSysSetting ------] req: {}'.format(req))
+        param = req[_param]
         if StateMachine.checkAllowSetSysConfig():           
             if check_dic_key_exist(req, _param):
-                self.set_sys_option(req[_param])
+                if check_dic_key_exist(param, 'reset_all'):         # 复位所有的参数
+                    self.notifyDispType(config.RESET_ALL_CFG)                     
+                else:
+                    self.sendIndMsg2SystemServer(req)           
                 return cmd_done(req[_name])
             else:
                 return cmd_error(req[_name], 'appReqSetSysSetting', 'param not exist')
@@ -1747,15 +1684,17 @@ class control_center:
             return cmd_error(req[_name], 'appReqSetSysSetting', 'state not allow')
 
 
+
+    ###################################################################################
+    # 方法名称: appReqGetSysSetting
+    # 功能描述: App请求获取系统设置
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
     def appReqGetSysSetting(self, req):
         Info('[------- APP Req: appReqGetSysSetting ------] req: {}'.format(req))                
-        ret = self.get_all_sys_cfg()
-        if ret is not None:
-            res = OrderedDict({_name:req[_name], _state: config.DONE})
-            res[config.RESULTS] = ret
-            return dict_to_jsonstr(res)
-        else:
-            return cmd_error(req[_name],'appReqGetSysSetting','sys cfg none')
+        return self.sendSyncMsg2SystemServer(req)
 
 
     ###################################################################################
@@ -2094,7 +2033,7 @@ class control_center:
             #     max_size = req[_param]['maxSize']
             #     Print('max_size {}'.format(max_size))
             Print('start read_info')
-            read_info = send_file(uri,mimetype='image/jpeg')
+            read_info = send_file(uri, mimetype='image/jpeg')
         else:
             read_info = cmd_error(req[_name], 'status_id_error', join_str_list([uri, 'not exist']))
         Print('appReqGetImage read_info {}'.format(read_info))
@@ -2113,13 +2052,13 @@ class control_center:
     def appReqSetSN(self, req):
         Info('[------- APP Req: appReqSetSN ------] req: {}'.format(req))
         # self.sendIndMsg2SystemServer(req)
-        # self.send_set_sn(req[_param])
         return cmd_done(req[_name])
 
 
     def appReqStartShell(self, req):
         Info('[------- APP Req: appReqStartShell ------] req: {}'.format(req))
         return cmd_done(req[_name])
+
 
     def appReqQueryGpsState(self, req):
         Info('[------- APP Req: appReqQueryGpsState ------] req: {}'.format(req))
@@ -2240,8 +2179,8 @@ class control_center:
 
 
     def cameraUiStopQrScan(self, req):
-        Info('[------- UI Req: cameraUiStopQrScan ------] req: {}'.format(req)
-        # return self.sendReq2Camerad(req, True)
+        Info('[------- UI Req: cameraUiStopQrScan ------] req: {}'.format(req))
+        return self.sendReq2Camerad(req, True)
 
     # def camera_stop_qr_fail(self, err = -1):
     #     self.notifyDispTypeErr(config.STOP_QR_FAIL, err)
@@ -2406,6 +2345,7 @@ class control_center:
             Err('cameraUiSpeedTest e {}'.format(e))
             res = cmd_exception(e, name)
         return res
+
 
     def cameraUiTakePic(self, req):
         Info('[------- UI Req: cameraUiTakePic ------] req: {}'.format(req))                
@@ -2633,11 +2573,10 @@ class control_center:
         res[_state] = config.DONE   
 
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.HANDLE_BAT, req[_param]["bat"]))
-
         # 将温度信息更新到心跳包中
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.UPDATE_SYS_TEMP, req[_param]["temp"]))
-
         return json.dumps(res) 
+
 
     def cameraUiCalcAwb(self, req):
         Info('[------- UI Req: cameraUiCalcAwb ------] req: {}'.format(req))  
@@ -2673,13 +2612,11 @@ class control_center:
         ret = json.loads(read_info)
         Info('resut info is {}'.format(read_info))
 
-        if ret[config._STATE] == config.DONE:
-            Info('>>>>>> query storage is ok.....')
-            
+        if ret[config._STATE] == config.DONE:            
             # 将查询到的小卡的信息发送到心跳包
             osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.SET_TF_INFO, ret['results']))
         else:
-            Info('++++++++>>> query storage bad......')
+            Info('++> cameraUiQueryTfcard query storage failed')
             # 查询失败，将心跳包中小卡的信息去除(不删除之前的结果以避免出现心跳包中没有小卡信息)
             # osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.CLEAR_TF_INFO))
 
@@ -2701,16 +2638,13 @@ class control_center:
         #   1.2 如果不允许,直接返回客户端状态不允许的结果
         if StateMachine.checkAllowEnterFormatState():
             StateMachine.addCamState(config.STATE_FORMATING)
-            Info('-------> enter format tfcard now ...') 
             read_info = self.sendReq2Camerad(req)
             ret = json.loads(read_info)
 
             # 格式化成功的话，更新心跳包中各个卡的test字段
             if ret['state'] == config.DONE:
                 osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.TF_FORMAT_CLEAR_SPEED))
-    
-            Info('--------> format result is {}'.format(read_info))
-            
+                
             # 格式化完成后，用UI负责清除STATE_FORMATING状态
             # StateMachine.rmServerState(config.STATE_FORMATING)
             return read_info
@@ -2824,16 +2758,16 @@ class control_center:
             Info('qr notify content {}'.format(content))
             if check_dic_key_exist(content,'pro'):
                 if check_dic_key_exist(content, 'proExtra'):
-                    self.send_oled_type(config.QR_FINISH_CORRECT, OrderedDict({'content': content['pro'],'proExtra':content['proExtra']}))
+                    Info('--> qrResultNotifyHandler have proExtra')
                 else:
-                    self.send_oled_type(config.QR_FINISH_CORRECT, OrderedDict({'content':content['pro']}))
+                    Info('--> qrResultNotifyHandler have pro')
             elif check_dic_key_exist(content,'pro_w'):
                 self.send_wifi_config(content['pro_w'])
             else:
                 Info('error qr msg {}'.format(content))
                 self.notifyDispType(config.QR_FINISH_UNRECOGNIZE)
         else:
-            self.notifyDispTypeErr(config.QR_FINISH_ERROR,self.get_err_code(param))
+            self.notifyDispTypeErr(config.QR_FINISH_ERROR, self.get_err_code(param))
         Info('qrResultNotifyHandler param over {}'.format(param))
 
 
@@ -2949,11 +2883,12 @@ class control_center:
         if StateMachine.checkStateIn(config.STATE_SPEED_TEST):
             StateMachine.rmServerState(config.STATE_SPEED_TEST) 
 
-        # 将测试结果区更新心跳包  
-        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.SET_DEV_SPEED_SUC, param['results']))
+        if param[_state] == config.DONE:
+            # 将测试结果区更新心跳包  
+            osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.SET_DEV_SPEED_SUC, param['results']))
         
         # 将测试结果发送给UI线程，让其本地保存一份各张卡的测试结果  
-        self.send_req(self.get_write_req(config.UI_NOTIFY_SPEED_TEST_RESULT, param['results']))        
+        self.sendIndMsg2SystemServer(content)     
         self.test_path = None
 
 
@@ -3047,7 +2982,7 @@ class control_center:
         self.updateTlCntInd(count)
 
     #############################################################################################
-    # 方法名称: updateTimelapseCntNotifyHandler
+    # 方法名称: sampleNoiseFinishNotifyHandler
     # 功能描述: 拍timelapse一张完成通知
     #           
     # 入口参数: param - 返回的结果
@@ -3078,8 +3013,7 @@ class control_center:
         osc_state_handle.set_gps_state(param['state'])        
 
         # 2.将GPS状态信息同步给system_server
-        self.send_req(self.get_write_req(config.UI_NOTIFY_GPS_STATE_CHANGE, param))
-
+        self.sendIndMsg2SystemServer(content)
 
     ###############################################################################################
     # 方法名称: stitchProgressNotifyHandler
@@ -3145,7 +3079,7 @@ class control_center:
         # 将更新的信息发给状态机
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.TF_STATE_CHANGE, param['module']))
         # 将更新的信息发给UI(2018年8月7日)
-        self.send_req(self.get_write_req(config.UI_NOTIFY_TF_CHANGED, param))
+        self.sendIndMsg2SystemServer(content)
 
 
     ###############################################################################################
@@ -3238,7 +3172,7 @@ class control_center:
                     ret = self.appReqConnect(req)  # 没有客户端建立连接
             else:
                 if self.get_connect():
-                    if self.check_fp(fp):
+                    if self._connectMode == 'test':     # test模式可以执行/osc/info; /osc/state请求
                         if name == config.CAMERA_RESET:
                             ret = self.camera_reset(req)
                         elif name in self.non_camera_cmd_func:
@@ -3246,14 +3180,23 @@ class control_center:
                         elif name in self.camera_cmd_func:
                             ret = self.excuteCameraFunc(name, req)
                         else:
-                            ret = self.otherReqEntry(req)                            
+                            ret = self.otherReqEntry(req)   
                     else:
-                        Err('error fingerprint fp {} req {}'.format(fp, req))
-                        if fp is None:
-                            fp = 'none'
-                        ret = cmd_exception(error_dic('invalidParameterValue', join_str_list(['error fingerprint ', fp])), req)
+                        if self.check_fp(fp):
+                            if name == config.CAMERA_RESET:
+                                ret = self.camera_reset(req)
+                            elif name in self.non_camera_cmd_func:
+                                ret = self.excuteNonCameraFunc(name, req)    
+                            elif name in self.camera_cmd_func:
+                                ret = self.excuteCameraFunc(name, req)
+                            else:
+                                ret = self.otherReqEntry(req)                            
+                        else:
+                            Err('error fingerprint fp {} req {}'.format(fp, req))
+                            if fp is None:
+                                fp = 'none'
+                            ret = cmd_exception(error_dic('invalidParameterValue', join_str_list(['error fingerprint ', fp])), req)
                 else:
-                    Err('camera not connected req {}'.format(req))
                     ret = cmd_exception(error_dic('disabledCommand', 'camera not connected'), name)
         except Exception as e:
             Err('osc_cmd_exectue exception e {} req {}'.format(e, req))
@@ -3272,12 +3215,14 @@ class control_center:
     def excuteOscPathFunc(self, path, fp):
         try:
             if self.get_connect():
-                if self.check_fp(fp):
+                if self._connectMode == 'test':     # test模式可以执行/osc/info; /osc/state请求
                     ret = self.oscPathFunc[path]()
                 else:
-                    ret = cmd_exception(error_dic('invalidParameterValue', join_str_list(['error fingerprint ', fp])), path)
+                    if self.check_fp(fp):
+                        ret = self.oscPathFunc[path]()
+                    else:
+                        ret = cmd_exception(error_dic('invalidParameterValue', join_str_list(['error fingerprint ', fp])), path)
             else:
-                Err('camera not connected path {}'.format(path))
                 ret = cmd_exception(error_dic('disabledCommand', 'camera not connected'), path)
             
         except Exception as e:
@@ -3419,14 +3364,12 @@ class control_center:
                     # 将请求加入异步请求处理队列中
                     self.add_async_cmd_id(name, ret['sequence'])
             else:
-                cmd_fail(name)
                 if check_dic_key_exist(self.camera_cmd_fail, name):
                     err_code = self.get_err_code(ret)
-                    Err('name {} err_code {}'.format(name,err_code))
+                    Err('name {} err_code {}'.format(name, err_code))
                     self.camera_cmd_fail[name](err_code)
-                    
-            # sendReq2Camerad - 返回的是字符串
-            ret = dict_to_jsonstr(ret)
+            ret = dict_to_jsonstr(ret)      # sendReq2Camerad - 返回的是字符串
+        
         except FIFOSelectException as e:
             Err('FIFOSelectException name {} e {}'.format(req[_name], str(e)))
             ret = cmd_exception(error_dic('FIFOSelectException', str(e)), req)
@@ -3497,6 +3440,10 @@ class control_center:
         self.unixSocketClient.sendAsyncNotify(indDict)
 
 
+    def sendSyncMsg2SystemServer(self, msgDict):
+        return self.unixSocketClient.sendSyncRequest(msgDict)
+
+
     # _IND_UPDATE_TL_CNT = "camera._updateTlCnt"
     # GET_SET_SYS_CONFIG = "camera._getSetSysSetting"
     # NOTIFY_QR_RESULT   = "camera._notifyQrScanResult"
@@ -3550,7 +3497,6 @@ class control_center:
         self.unixSocketClient.sendAsyncNotify(indDict)
 
 
-
     def send_oled_type(self, type, req = None):
         req_dict = OrderedDict({'type': type})
         Info("send_oled_type type is {}".format(type))
@@ -3574,9 +3520,11 @@ class control_center:
                 Info('nothing found')
         self.send_req(self.get_write_req(config.OLED_DISP_TYPE, req_dict))
 
+
     def init_fifo_monitor_camera_active(self):
         self._monitor_cam_active_handle = monitor_camera_active_handle(self)
         self._monitor_cam_active_handle.start()
+
 
     def stop_monitor_camera_active(self):
         if self._monitor_cam_active_handle is not None:
@@ -3587,7 +3535,6 @@ class control_center:
         self._fifo_write_handle = mointor_fifo_write_handle()
         self._fifo_read.start()
         self._fifo_write_handle.start()
-        # Print('init fifo rw')
 
     def stop_fifo_read(self):
         if self._fifo_read is not None:
@@ -3597,7 +3544,6 @@ class control_center:
     def stop_fifo_write(self):
         if self._fifo_write_handle is not None:
             self._fifo_write_handle.stop()
-            # self._fifo_write_handle.join()
 
     def init_fifo(self):
         if file_exist(config.INS_FIFO_TO_SERVER) is False:
@@ -3612,7 +3558,6 @@ class control_center:
     def close_read_reset(self):
         Info('close_read_reset control self._read_fd {}'.format(self._reset_read_fd))
         if self._reset_read_fd != -1:
-            #flush all the buffer in fifo while close
             fifo_wrapper.close_fifo(self._reset_read_fd)
             self._reset_read_fd = -1
         Info('close_read_reset control {} over'.format(self._reset_read_fd))

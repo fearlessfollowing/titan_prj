@@ -20,7 +20,7 @@
  */
 // #define TRAN_USE_UNIX_SOCKET
 
-#define     MAX_RECV_BUF_SIZE       1024
+#define     MAX_RECV_BUF_SIZE       4096
 
 class TranManager: public SocketListener {
 
@@ -31,39 +31,6 @@ public:
 	bool 					start();
 	bool 					stop();
 
-#if 0
-
-private:
-
-    std::mutex 				mLock;
-    int 					mCtrlPipe[2]; // 0 -- read , 1 -- write
-    bool                    mRunning;
-
-    std::thread 			mTranThread;   
-
-    char                    mRecvBuf[MAX_RECV_BUF_SIZE];        /* 接收数据的缓冲区 */
-
-
-#ifdef TRAN_USE_FIFO
-    int                     mSendFd;
-    int                     mRecvFd;
-    int                     createFifo();
-    int                     getSendFd();
-    int                     getRecvFd();
-    void                    closeSendFd();
-    void                    closeRecvFd();
-    int                     mRecvErrCnt;
-
-#else 
-    int                     mFd;
-#endif
-    int                     tranEventLoop(int iFd);
-    void                    writePipe(int p, int val);
-
-    bool                    onDataAvailable(int iFd);
-
-#else 
-
 protected:
     virtual bool            onDataAvailable(SocketClient *cli);
 
@@ -72,11 +39,7 @@ private:
     std::mutex 				mLock;
 
     char                    mRecvBuf[MAX_RECV_BUF_SIZE];        /* 接收数据的缓冲区 */
-
     int                     getTranListenerSocket();
-
-#endif
-
 };
 
 #endif /* _TRAN_MANAGER_H_ */

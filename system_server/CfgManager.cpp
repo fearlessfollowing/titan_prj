@@ -48,19 +48,6 @@
 #define SYS_CTL_FILE_NEW_PATH   "/home/nvidia/insta360/etc/sysctl.conf"
 
 
-#if 0
-static std::mutex gCfgManagerMutex;
-CfgManager* CfgManager::sInstance = NULL;
-
-CfgManager* CfgManager::Instance() 
-{
-    std::unique_lock<std::mutex> _locl(gCfgManagerMutex);
-    if (!sInstance)
-        sInstance = new CfgManager();
-    return sInstance;
-}
-#endif
-
 CfgManager::CfgManager()
 {
     init();
@@ -91,33 +78,33 @@ void CfgManager::genDefaultCfg()
     Json::Value sysSetCfg;
     Json::Value sysWifiCfg;
 
-    modeSelectCfg["mode_select_pic"]    = 0;
-    modeSelectCfg["mode_select_video"]  = 0;
-    modeSelectCfg["mode_select_live"]   = 0;
+    modeSelectCfg[_pic_mode_select]    = 0;
+    modeSelectCfg[_vid_mode_select]  = 0;
+    modeSelectCfg[_live_mode_select]   = 0;
 
-    sysWifiCfg["wifi_cfg_passwd"]       = "Insta360";
-    sysWifiCfg["wifi_cfg_ssid"]         = "88888888";
+    sysWifiCfg[_wifi_cfg_passwd]       = "88888888";
+    sysWifiCfg[_wifi_cfg_ssid]         = "Insta360";
 
-    sysSetCfg["dhcp"]                   = 1;
-    sysSetCfg["flicker"]                = 0;
-    sysSetCfg["hdr"]                    = 0;
-    sysSetCfg["raw"]                    = 0;
-    sysSetCfg["aeb"]                    = 0;        // AEB3
-    sysSetCfg["ph_delay"]               = 1;        // 5S
-    sysSetCfg["speaker"]                = 1;        // Speaker: On
-    sysSetCfg["light_on"]               = 1;        // LED: On
-    sysSetCfg["aud_on"]                 = 1;        // Audio: On
-    sysSetCfg["aud_spatial"]            = 1;        // Spatial Audio: On
-    sysSetCfg["flow_state"]             = 1;        // FlowState: Off
-    sysSetCfg["gyro_on"]                = 1;        // Gyro: On
-    sysSetCfg["fan_on"]                 = 0;        // Fan: On
-    sysSetCfg["set_logo"]               = 0;        // Logo: On
-    sysSetCfg["video_fragment"]         = 0;        // Video Fragment: On
-    sysSetCfg["wifi_on"]                = 0;
+    sysSetCfg[_dhcp]                    = 1;
+    sysSetCfg[_speaker]                 = 0;
+    sysSetCfg[_hdr]                     = 0;
+    sysSetCfg[_raw]                     = 0;
+    sysSetCfg[_aeb]                     = 0;        // AEB3
+    sysSetCfg[_ph_delay]                = 1;        // 5S
+    sysSetCfg[_speaker]                 = 1;        // Speaker: On
+    sysSetCfg[_light_on]                = 1;        // LED: On
+    sysSetCfg[_audio_on]                = 1;        // Audio: On
+    sysSetCfg[_spatial]                 = 1;        // Spatial Audio: On
+    sysSetCfg[_flow_state]              = 1;        // FlowState: Off
+    sysSetCfg[_gyro_on]                 = 1;        // Gyro: On
+    sysSetCfg[_fan_on]                  = 0;        // Fan: On
+    sysSetCfg[_set_logo]                = 0;        // Logo: On
+    sysSetCfg[_video_seg]               = 0;        // Video Fragment: On
+    sysSetCfg[_wifi_on]                 = 0;
 
-    rootCfg["mode_select"]              = modeSelectCfg;
-    rootCfg["sys_setting"]              = sysSetCfg;
-    rootCfg["wifi_cfg"]                 = sysWifiCfg;
+    rootCfg[_mode_select]              = modeSelectCfg;
+    rootCfg[_sys_setting]              = sysSetCfg;
+    rootCfg[_wifi_cfg]                 = sysWifiCfg;
 
     syncCfg2File(DEF_CFG_PARAM_FILE, rootCfg);
 }
@@ -282,24 +269,24 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
 
     LOGDBG(TAG, ">>>>>> setKeyVal, key[%s] -> new val[%d]", key.c_str(), iNewVal);
 
-    idx = key.find("mode_select");
+    idx = key.find(_mode_select);
     if (idx != std::string::npos) {  /* 设置的是mode_select_x配置值 */
         LOGDBG(TAG, "in mode_select, idx not nopos");
-        if (mRootCfg.isMember("mode_select")) {
-            if (mRootCfg["mode_select"].isMember(key)) {
-                mRootCfg["mode_select"][key] = iNewVal;
+        if (mRootCfg.isMember(_mode_select)) {
+            if (mRootCfg[_mode_select].isMember(key)) {
+                mRootCfg[_mode_select][key] = iNewVal;
                 bResult = true;
             }
         }
     } else {
-        idx = key.find("wifi_cfg");
+        idx = key.find(_wifi_cfg);
         if (idx != std::string::npos) {  /* 设置的是wifi相关的参数 */
             LOGDBG(TAG, "Not implement for wifi configure yet!");
             bResult = true;
         } else {    /* 普通的设置项 */
-            if (mRootCfg.isMember("sys_setting")) {
-                if (mRootCfg["sys_setting"].isMember(key)) {
-                    mRootCfg["sys_setting"][key] = iNewVal;
+            if (mRootCfg.isMember(_sys_setting)) {
+                if (mRootCfg[_sys_setting].isMember(key)) {
+                    mRootCfg[_sys_setting][key] = iNewVal;
                     bResult = true;
                 }
             }
@@ -333,26 +320,32 @@ int CfgManager::getKeyVal(std::string key)
     std::string::size_type idx;
     std::unique_lock<std::mutex> _l(mCfgLock);
 
-    idx = key.find("mode_select");
+    idx = key.find(_mode_select);
     if (idx != std::string::npos) {  /* 设置的是mode_select_x配置值 */
-        if (mRootCfg.isMember("mode_select")) {
-            if (mRootCfg["mode_select"].isMember(key)) {
-                iRet = mRootCfg["mode_select"][key].asInt();
+        if (mRootCfg.isMember(_mode_select)) {
+            if (mRootCfg[_mode_select].isMember(key)) {
+                iRet = mRootCfg[_mode_select][key].asInt();
             }
         }
     } else {
-        idx = key.find("wifi_cfg");
+        idx = key.find(_wifi_cfg);
         if (idx != std::string::npos) {  /* 设置的是wifi相关的参数 */
             LOGDBG(TAG, "Not implement for wifi configure yet!");
         } else {    /* 普通的设置项 */
-            if (mRootCfg.isMember("sys_setting")) {
-                if (mRootCfg["sys_setting"].isMember(key)) {
-                    iRet = mRootCfg["sys_setting"][key].asInt();
+            if (mRootCfg.isMember(_sys_setting)) {
+                if (mRootCfg[_sys_setting].isMember(key)) {
+                    iRet = mRootCfg[_sys_setting][key].asInt();
                 }
             }
         }
     }
     return iRet;
+}
+
+
+Json::Value& CfgManager::getSysSetting()
+{
+    return mRootCfg[_sys_setting];
 }
 
 

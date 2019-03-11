@@ -231,7 +231,8 @@ enum {
     UI_MSG_UPDATE_GPS_STATE,
     UI_MSG_SHUT_DOWN,
     UI_MSG_UPDATE_TL_CNT,
-    UI_MSG_SET_SYS_SETTING,    
+    UI_MSG_SET_SYS_SETTING,
+    UI_MSG_SET_CUSTOMER,    
     UI_MSG_COMMON,
     UI_EXIT,                        /* 退出消息循环 */
 };
@@ -1011,7 +1012,7 @@ private:
     void    handleUpdateSysInfo(sp<SYS_INFO> &mSysInfo);
     void    handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo);
     bool    handleCheckBatteryState(bool bUpload = false);
-
+    void    handleSetCustomer(sp<DISP_TYPE>& disp_type);
     void    handleShutdown();
 
 

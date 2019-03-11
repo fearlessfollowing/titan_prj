@@ -587,8 +587,8 @@ void MenuUI::subSysInit()
     nm->start();
 
     /* 注册以太网卡(eth0) */
-	LOGDBG(TAG, "eth0 get ip mode [%s]", (cm->getKeyVal("dhcp") == 1) ? "DHCP" : "STATIC" );
-    sp<EtherNetDev> eth0 = std::make_shared<EtherNetDev>("eth0", cm->getKeyVal("dhcp"));
+	LOGDBG(TAG, "eth0 get ip mode [%s]", (cm->getKeyVal(_dhcp) == 1) ? "DHCP" : "STATIC" );
+    sp<EtherNetDev> eth0 = std::make_shared<EtherNetDev>("eth0", cm->getKeyVal(_dhcp));
 
     sp<ARMessage> registerEth0msg = nm->obtainMessage(NETM_REGISTER_NETDEV);
     if (registerEth0msg) {
@@ -819,7 +819,7 @@ void MenuUI::init_cfg_select()
     strcpy(tmpInfo->ipAddr, WLAN0_DEFAULT_IP);
     tmpInfo->iDevType = DEV_WLAN;
 
-	if (Singleton<CfgManager>::getInstance()->getKeyVal("wifi_on") == 1) {
+	if (Singleton<CfgManager>::getInstance()->getKeyVal(_wifi_on) == 1) {
         iCmd = NETM_STARTUP_NETDEV;
 		disp_wifi(true);
 	} else {
@@ -827,7 +827,7 @@ void MenuUI::init_cfg_select()
         iCmd = NETM_CLOSE_NETDEV;
 	}	
 
-    LOGDBG(TAG, "init_cfg_select: wifi state[%d]", Singleton<CfgManager>::getInstance()->getKeyVal("wifi_on"));
+    LOGDBG(TAG, "init_cfg_select: wifi state[%d]", Singleton<CfgManager>::getInstance()->getKeyVal(_wifi_on));
 
     sp<ARMessage> msg = NetManager::Instance()->obtainMessage(iCmd);
     msg->set<sp<DEV_IP_INFO>>("info", tmpInfo);
@@ -864,7 +864,7 @@ void MenuUI::write_p(int p, int val)
 
 void MenuUI::play_sound(u32 type)
 {
-    if (Singleton<CfgManager>::getInstance()->getKeyVal("speaker") == 1) {
+    if (Singleton<CfgManager>::getInstance()->getKeyVal(_speaker) == 1) {
         if (type >= 0 && type <= sizeof(sound_str) / sizeof(sound_str[0])) {
             char cmd[1024];
             const char* pPlaySound = property_get(PROP_PLAY_SOUND);
@@ -893,7 +893,7 @@ void MenuUI::disp_top_info()
 	/** 显示状态栏之前,进行清除状态栏(避免有些写的字落在该区域) */
     clearArea(0, 0, 128, 16);
 
-    if (Singleton<CfgManager>::getInstance()->getKeyVal("wifi_on")) {
+    if (Singleton<CfgManager>::getInstance()->getKeyVal(_wifi_on)) {
         dispIconByLoc(&sbWifiOpenIconInfo);
     } else {
         dispIconByLoc(&sbWifiCloseIconInfo);
@@ -937,7 +937,7 @@ void MenuUI::disp_msg_box(int type)
 
     if (cur_menu != MENU_DISP_MSG_BOX) {
         if (cur_menu == MENU_SYS_ERR || ((MENU_LOW_BAT == cur_menu) && checkStateEqual(serverState, STATE_IDLE))) {
-            if (Singleton<CfgManager>::getInstance()->getKeyVal("light_on") == 1) {
+            if (Singleton<CfgManager>::getInstance()->getKeyVal(_light_on) == 1) {
                 setLightDirect(front_light);
             } else {
                 setLightDirect(LIGHT_OFF);
@@ -1119,7 +1119,7 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
 
 
         if (!strcmp(pItemName, SET_ITEM_NAME_DHCP)) {   /* DHCP */
-            pSetItem[i]->iCurVal = cm->getKeyVal("dhcp");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_dhcp);
             LOGDBG(TAG, "DHCP Init Val --> [%d]", pSetItem[i]->iCurVal);
 
             /* 需要开启DHCP?? */
@@ -1128,60 +1128,60 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
         #endif
 
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FREQ)) {            /* FREQ -> 需要通知对方 */
-            pSetItem[i]->iCurVal = cm->getKeyVal("flicker");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_flick);
             LOGDBG(TAG, "Flick Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_FLICKER);        
         } else if (!strcmp(pItemName, SET_ITEM_NAME_HDR)) {             /* HDR -> 需要通知对方 */
-            pSetItem[i]->iCurVal = cm->getKeyVal("hdr");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_hdr);
             LOGDBG(TAG, "HDR Init Val --> [%d]", pSetItem[i]->iCurVal);
         } else if (!strcmp(pItemName, SET_ITEM_NAME_RAW)) {             /* RAW raw */
-            pSetItem[i]->iCurVal = cm->getKeyVal("raw");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_raw);
             LOGDBG(TAG, "Raw Init Val --> [%d]", pSetItem[i]->iCurVal);            
         } else if (!strcmp(pItemName, SET_ITEM_NAME_AEB)) {             /* AEB */
-            pSetItem[i]->iCurVal = cm->getKeyVal("aeb");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_aeb);
             LOGDBG(TAG, "AEB Init Val --> [%d]", pSetItem[i]->iCurVal);
 
         } else if (!strcmp(pItemName, SET_ITEM_NAME_PHDEALY)) {         /* PHTODELAY */
-            pSetItem[i]->iCurVal = cm->getKeyVal("ph_delay");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_ph_delay);
             LOGDBG(TAG, "PhotoDelay Init Val --> [%d]", pSetItem[i]->iCurVal);
  
         } else if (!strcmp(pItemName, SET_ITEM_NAME_SPEAKER)) {         /* Speaker */
-            pSetItem[i]->iCurVal = cm->getKeyVal("speaker");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_speaker);
             LOGDBG(TAG, "Speaker Init Val --> [%d]", pSetItem[i]->iCurVal);
             
         } else if (!strcmp(pItemName, SET_ITEM_NAME_LED)) {             /* 开机时根据配置,来决定是否开机后关闭前灯 */     
-            pSetItem[i]->iCurVal = cm->getKeyVal("light_on");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_light_on);
             if (val == 0) {
                 setLightDirect(LIGHT_OFF);
             }
             LOGDBG(TAG, "LedLight Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_AUDIO)) {           /* Audio -> 需要通知对方 */     
-            pSetItem[i]->iCurVal = cm->getKeyVal("aud_on");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_audio_on);
             LOGDBG(TAG, "Audio Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_SPAUDIO)) {         /* Spatital Audio -> 需要通知对方 */          
-            pSetItem[i]->iCurVal = cm->getKeyVal("aud_spatial");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_spatial);
             LOGDBG(TAG, "SpatitalAudio Init Val --> [%d]", pSetItem[i]->iCurVal);
            
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FLOWSTATE)) {       /* FlowState -> 需要通知对方 */        
-            pSetItem[i]->iCurVal = cm->getKeyVal("flow_state");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_flow_state);
             LOGDBG(TAG, "FlowState Init Val --> [%d]", pSetItem[i]->iCurVal);
              
         } else if (!strcmp(pItemName, SET_ITEM_NAME_GYRO_ONOFF)) {      /* Gyro -> 需要通知对方  */         
-            pSetItem[i]->iCurVal = cm->getKeyVal("gyro_on");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_gyro_on);
             LOGDBG(TAG, "Gyro OnOff Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);          
         } else if (!strcmp(pItemName, SET_ITEM_NAME_FAN)) {             /* Fan -> 需要通知对方  */          
-            pSetItem[i]->iCurVal = cm->getKeyVal("fan_on");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_fan_on);
             LOGDBG(TAG, "Fan Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_SET_FAN);           
         } else if (!strcmp(pItemName, SET_ITEM_NAME_BOOTMLOGO)) {       /* Bottom Logo -> 需要通知对方  */      
-            pSetItem[i]->iCurVal = cm->getKeyVal("set_logo");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_set_logo);
             LOGDBG(TAG, "BottomLogo Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_SET_LOGO);
         } else if (!strcmp(pItemName, SET_ITEM_NAME_VIDSEG)) {          /* Video Segment -> 需要通知对方  */        
-            pSetItem[i]->iCurVal = cm->getKeyVal("video_fragment");
+            pSetItem[i]->iCurVal = cm->getKeyVal(_video_seg);
             LOGDBG(TAG, "VideoSeg Init Val --> [%d]", pSetItem[i]->iCurVal); 
             sendRpc(ACTION_SET_OPTION, OPTION_SET_VID_SEG);
         }
@@ -1300,7 +1300,7 @@ void MenuUI::setMenuCfgInit()
 
 
     /* 使用配置值来初始化首次显示的页面 */
-    updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, Singleton<CfgManager>::getInstance()->getKeyVal("ph_delay"));
+    updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, Singleton<CfgManager>::getInstance()->getKeyVal(_ph_delay));
 
     LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total,
@@ -1374,7 +1374,7 @@ void MenuUI::setMenuCfgInit()
 
     /* 使用配置值来初始化首次显示的页面 */
     
-    updateMenuCurPageAndSelect(MENU_SET_AEB, Singleton<CfgManager>::getInstance()->getKeyVal("aeb"));
+    updateMenuCurPageAndSelect(MENU_SET_AEB, Singleton<CfgManager>::getInstance()->getKeyVal(_aeb));
 
 
     LOGDBG(TAG, "Set AEB Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
@@ -1653,8 +1653,8 @@ void MenuUI::cfgPicModeItemCurVal(PicVideoCfg* pPicCfg)
     int iAebVal = 0;
     std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
-    iRawVal = cm->getKeyVal("raw");
-    iAebVal = cm->getKeyVal("aeb");
+    iRawVal = cm->getKeyVal(_raw);
+    iAebVal = cm->getKeyVal(_aeb);
 
     if (pPicCfg) {
         const char* pItemName = pPicCfg->pItemName;
@@ -1729,7 +1729,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
         switch (pParentMenu->iMenuId) {
 
             case MENU_PIC_SET_DEF: {      /* PIC */
-                iIndex = cm->getKeyVal("mode_select_pic");
+                iIndex = cm->getKeyVal(_pic_mode_select);
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
                 LOGDBG(TAG, "--> MENU_PIC_SET_DEF: default index: %d", iIndex);
                 mTakePictureTemplate.clear();
@@ -1782,7 +1782,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
             }
 
             case MENU_VIDEO_SET_DEF: {
-                iIndex = cm->getKeyVal("mode_select_video");
+                iIndex = cm->getKeyVal(_vid_mode_select);
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
                 LOGDBG(TAG, "--> MENU_VIDEO_SET_DEF: default index: %d", iIndex);
                 mTakeVideoTemplate.clear();
@@ -1831,7 +1831,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
 
 
             case MENU_LIVE_SET_DEF: {
-                iIndex = cm->getKeyVal("mode_select_live");
+                iIndex = cm->getKeyVal(_live_mode_select);
                 updateMenuCurPageAndSelect(pParentMenu->iMenuId, iIndex);   /* 根据配置来选中当前菜单默认选中的项 */
                 LOGDBG(TAG, "--> MENU_LIVE_SET_DEF: default index: %d", iIndex);
                 mTakeLiveTemplate.clear();
@@ -2412,8 +2412,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value root;
                     Json::Value param;
 
-                    param["property"] = "flicker";
-                    param["value"] = cm->getKeyVal("flicker");
+                    param["property"] = _flick;
+                    param["value"] = cm->getKeyVal(_flick);
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param;
 
@@ -2442,7 +2442,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
 
                     param["property"] = "fanless";
-                    param["value"] = (cm->getKeyVal("fan_on") == 1) ? 0 : 1;
+                    param["value"] = (cm->getKeyVal(_fan_on) == 1) ? 0 : 1;
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param;
 
@@ -2455,8 +2455,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
                     int iAudioVal = 0;
 
-                    if (cm->getKeyVal("aud_on") == 1) {
-                        if (cm->getKeyVal("aud_spatial") == 1) {
+                    if (cm->getKeyVal(_audio_on) == 1) {
+                        if (cm->getKeyVal(_spatial) == 1) {
                             iAudioVal = 2;
                         } else {
                             iAudioVal = 1;
@@ -2478,7 +2478,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
 
                     param["property"] = "stabilization_cfg";
-                    param["value"] = cm->getKeyVal("gyro_on");
+                    param["value"] = cm->getKeyVal(_gyro_on);
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param; 
 
@@ -2490,7 +2490,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value param;
 
                     param["property"] = "logo";
-                    param["value"] = cm->getKeyVal("set_logo");
+                    param["value"] = cm->getKeyVal(_set_logo);
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param; 
                     return pm->sendSetOptionsReq(root);                       
@@ -2501,8 +2501,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     Json::Value root;
                     Json::Value param;
 
-                    param["property"] = "video_fragment";
-                    param["value"] = cm->getKeyVal("video_fragment");
+                    param["property"] = _video_seg;
+                    param["value"] = cm->getKeyVal(_video_seg);
                     root["name"] = "camera._setOptions";
                     root["parameters"] = param; 
                     return pm->sendSetOptionsReq(root);                        
@@ -2764,7 +2764,7 @@ void MenuUI::handleWifiAction()
     } else {
 #endif
 
-        if (cm->getKeyVal("wifi_on") == 1) {
+        if (cm->getKeyVal(_wifi_on) == 1) {
             LOGERR(TAG, "set KEY_WIFI_ON -> 0");
             iCmd = NETM_CLOSE_NETDEV;
             bShowWifiIcon = false;
@@ -2784,7 +2784,7 @@ void MenuUI::handleWifiAction()
 
         LOGDBG(TAG, "Current wifi state [%s]", property_get("init.svc.hostapd"));
 
-        cm->setKeyVal("wifi_on", iSetVal);
+        cm->setKeyVal(_wifi_on, iSetVal);
         disp_wifi(bShowWifiIcon, 1);
     }	
 
@@ -3229,17 +3229,17 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
     std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     if (!strcmp(pSetItemName, SET_ITEM_NAME_FREQ)) {
-        cm->setKeyVal("flicker", iVal);
+        cm->setKeyVal(_flick, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_FREQ, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_FLICKER);    
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_SPEAKER)) {
-        cm->setKeyVal("speaker", iVal);
+        cm->setKeyVal(_speaker, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_SPEAKER, iVal);
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_BOOTMLOGO)) {    /* Need Notify Camerad */
-        cm->setKeyVal("set_logo", iVal);
+        cm->setKeyVal(_set_logo, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_BOOTMLOGO, iVal);
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_LED)) {    
-        cm->setKeyVal("light_on", iVal);
+        cm->setKeyVal(_light_on, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_LED, iVal);
         if (iVal == 1) {
             setLight();
@@ -3247,27 +3247,27 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
             setLightDirect(LIGHT_OFF);
         }
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_SPAUDIO)) {    /* Need Notify Camerad */
-        cm->setKeyVal("aud_spatial", iVal);
+        cm->setKeyVal(_spatial, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_SPAUDIO, iVal);
-        if (cm->getKeyVal("aud_on") == 1) {
+        if (cm->getKeyVal(_audio_on) == 1) {
             sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
         }           
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_FAN)) {    /* Need Notify Camerad */
-        cm->setKeyVal("fan_on", iVal);
+        cm->setKeyVal(_fan_on, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_FAN, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_SET_FAN);
 
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_AUDIO)) {    /* Need Notify Camerad */
-        cm->setKeyVal("aud_on", iVal);
+        cm->setKeyVal(_audio_on, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_AUDIO, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_VIDSEG)) {    /* Need Notify Camerad */
-        cm->setKeyVal("video_fragment", iVal);
+        cm->setKeyVal(_video_seg, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_VIDSEG, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_SET_VID_SEG);
 
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_GYRO_ONOFF)) {    /* Need Notify Camerad */
-        cm->setKeyVal("gyro_on", iVal);
+        cm->setKeyVal(_gyro_on, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_GYRO_ONOFF, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);            
     } else {
@@ -3280,7 +3280,6 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
 {
     CHECK_NE(mSysSetting, nullptr);
 
-#if 1
     LOGDBG(TAG, "%s %d %d %d %d %d %d %d %d %d", __FUNCTION__,
                                                     mSysSetting->flicker,
                                                     mSysSetting->speaker,
@@ -3329,7 +3328,6 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
         if (mSysSetting->video_fragment != -1)  {
             updateSetItemVal(SET_ITEM_NAME_VIDSEG, mSysSetting->video_fragment);
         }
-        #endif
 
         if (cur_menu == MENU_SYS_SETTING) { /* 如果当前的菜单为设置菜单,重新进入设置菜单(以便更新各项) */
             setCurMenu(MENU_SYS_SETTING);
@@ -3544,7 +3542,7 @@ void MenuUI::updateMenu()
          */
         case MENU_PIC_SET_DEF: {
             LOGDBG(TAG, "Update SET_PIC_DEF val[%d]", item);
-            cm->setKeyVal("mode_select_pic", item);
+            cm->setKeyVal(_pic_mode_select, item);
             updateBottomMode(true);                         /* 高亮显示挡位 */
             updateBottomSpace(true, true);                  /* 更新底部的剩余空间 */
             break;
@@ -3553,14 +3551,14 @@ void MenuUI::updateMenu()
 
         case MENU_VIDEO_SET_DEF: {  
             LOGDBG(TAG, "Update SET_PIC_DEF val[%d]", item);
-            cm->setKeyVal("mode_select_video", item);
+            cm->setKeyVal(_vid_mode_select, item);
             dispBottomInfo(true, true);   
             break;
         }
 			
 
         case MENU_LIVE_SET_DEF: {
-            cm->setKeyVal("mode_select_live", item);
+            cm->setKeyVal(_live_mode_select, item);
             dispReady();
             dispBottomInfo(true, true);
             break;
@@ -3694,7 +3692,7 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                     }    
 
                     if (strcmp(pPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) { /* 非Customer模式根据是否使能RAW来设置origin.mime，Customer模式不用理会该属性 */
-                        if (Singleton<CfgManager>::getInstance()->getKeyVal("raw")) {
+                        if (Singleton<CfgManager>::getInstance()->getKeyVal(_raw)) {
                             (*pTakePicJson)["parameters"]["origin"]["mime"] = "raw+jpeg";
                             gearStr += "|raw";
                         } else {
@@ -4777,7 +4775,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
     
     switch (cur_menu) {
         case MENU_TOP: {      /* 主菜单 */
-            dispIconByType(main_icons[cm->getKeyVal("wifi_on")][getCurMenuCurSelectIndex()]);
+            dispIconByType(main_icons[cm->getKeyVal(_wifi_on)][getCurMenuCurSelectIndex()]);
             break;
         }
 		
@@ -4979,6 +4977,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 
             Singleton<InputManager>::getInstance()->setEnableReport(false);  
             
+            /** TODO: 查询卡容量失败(如: 460)的具体显示 */
             syncQueryTfCard();
     
             /* 统计系统中卡的信息 */
@@ -5400,7 +5399,7 @@ void MenuUI::procSetMenuKeyEvent()
 
         #ifdef ENABLE_NET_MANAGER
             if (switchEtherIpMode(iVal)) {
-                cm->setKeyVal("dhcp", iVal);
+                cm->setKeyVal(_dhcp, iVal);
                 pCurItem->iCurVal = iVal;        
                 dispSetItem(pCurItem, true);
             }
@@ -5408,7 +5407,7 @@ void MenuUI::procSetMenuKeyEvent()
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FREQ)) {
             iVal = ((~iVal) & 0x00000001);
-            cm->setKeyVal("flicker", iVal);
+            cm->setKeyVal(_flick, iVal);
 
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);
@@ -5419,7 +5418,7 @@ void MenuUI::procSetMenuKeyEvent()
              * TODO: 开启HDR效果
              */
             iVal = ((~iVal) & 0x00000001);
-            cm->setKeyVal("hdr", iVal);
+            cm->setKeyVal(_hdr, iVal);
 
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);
@@ -5427,7 +5426,7 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_RAW)) {
 
             iVal = ((~iVal) & 0x00000001);
-            cm->setKeyVal("raw", iVal);
+            cm->setKeyVal(_raw, iVal);
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);         
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_AEB)) {           /* AEB -> 点击确认将进入选择子菜单中 */
@@ -5444,13 +5443,13 @@ void MenuUI::procSetMenuKeyEvent()
         else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_SPEAKER)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            cm->setKeyVal("speaker", iVal);
+            cm->setKeyVal(_speaker, iVal);
             dispSetItem(pCurItem, true);
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_LED)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            cm->setKeyVal("light_on", iVal);
+            cm->setKeyVal(_light_on, iVal);
             if (iVal == 1) {
                 setLight();
             } else {
@@ -5460,7 +5459,7 @@ void MenuUI::procSetMenuKeyEvent()
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_AUDIO)) {
             iVal = ((~iVal) & 0x00000001);
-            cm->setKeyVal("aud_on", iVal);
+            cm->setKeyVal(_audio_on, iVal);
             
             pCurItem->iCurVal = iVal;
             dispSetItem(pCurItem, true);                    
@@ -5469,17 +5468,17 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_SPAUDIO)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            cm->setKeyVal("aud_spatial", iVal);
+            cm->setKeyVal(_spatial, iVal);
 
             dispSetItem(pCurItem, true);    
-            if (cm->getKeyVal("aud_on") == 1) {
+            if (cm->getKeyVal(_audio_on) == 1) {
                 sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
             }                
             
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FLOWSTATE)) { /* TODO */
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            cm->setKeyVal("flow_state", iVal);
+            cm->setKeyVal(_flow_state, iVal);
             dispSetItem(pCurItem, true);    
             //sendRpc(ACTION_SET_OPTION, OPTION_SET_AUD);
 
@@ -5488,7 +5487,7 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FAN)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            cm->setKeyVal("fan_on", iVal);
+            cm->setKeyVal(_fan_on, iVal);
             if (iVal == 0) {
                 disp_msg_box(DISP_ALERT_FAN_OFF);
             } else {
@@ -5502,14 +5501,14 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_BOOTMLOGO)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            cm->setKeyVal("set_logo", iVal);
+            cm->setKeyVal(_set_logo, iVal);
             dispSetItem(pCurItem, true); 
             sendRpc(ACTION_SET_OPTION, OPTION_SET_LOGO);
 
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_VIDSEG)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            cm->setKeyVal("video_fragment", iVal);
+            cm->setKeyVal(_video_seg, iVal);
 
             if (iVal == 0) {
                 disp_msg_box(DISP_VID_SEGMENT);
@@ -5529,7 +5528,7 @@ void MenuUI::procSetMenuKeyEvent()
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_GYRO_ONOFF)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
-            cm->setKeyVal("gyro_on", iVal);
+            cm->setKeyVal(_gyro_on, iVal);
             dispSetItem(pCurItem, true); 
             sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);            
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_STITCH_BOX)) {
@@ -5767,7 +5766,7 @@ void MenuUI::procPowerKeyEvent()
 
             LOGDBG(TAG, "set photo delay index[%d]", iIndex);
             updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_PHDEALY, iIndex);
-            cm->setKeyVal("ph_delay", iIndex);
+            cm->setKeyVal(_ph_delay, iIndex);
             procBackKeyEvent();
 			break;
         }
@@ -5799,7 +5798,7 @@ void MenuUI::procPowerKeyEvent()
             LOGDBG(TAG, "set aeb index[%d]", iIndex);
 
             updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_AEB, iIndex);
-            cm->setKeyVal("aeb", iIndex);            
+            cm->setKeyVal(_aeb, iIndex);            
             procBackKeyEvent();
             break;
         }
@@ -6147,7 +6146,7 @@ void MenuUI::exit_sys_err()
     if (cur_menu == MENU_SYS_ERR || ((MENU_LOW_BAT == cur_menu) && checkStateEqual(serverState, STATE_IDLE))) {
 
         LOGDBG(TAG, "exit_sys_err ( %d 0x%x )", cur_menu, serverState);        
-        if (Singleton<CfgManager>::getInstance()->getKeyVal("light_on") == 1) {
+        if (Singleton<CfgManager>::getInstance()->getKeyVal(_light_on) == 1) {
             setLightDirect(front_light);
         } else {
             setLightDirect(LIGHT_OFF);
@@ -6620,7 +6619,7 @@ void MenuUI::disp_sys_err(int type, int back_menu)
 void MenuUI::set_flick_light()
 {
     
-    if (Singleton<CfgManager>::getInstance()->getKeyVal("light_on") == 1) {
+    if (Singleton<CfgManager>::getInstance()->getKeyVal(_light_on) == 1) {
         switch ((front_light)) {
             case FRONT_RED: { 
                 fli_light = BACK_RED; break;
@@ -7154,7 +7153,7 @@ int MenuUI::oled_disp_type(int type)
 
                 mNeedSendAction = true;
                 int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
-                int iDelay = convIndex2CapDelay(Singleton<CfgManager>::getInstance()->getKeyVal("ph_delay"));
+                int iDelay = convIndex2CapDelay(Singleton<CfgManager>::getInstance()->getKeyVal(_ph_delay));
                 LOGDBG(TAG, "get delay val: %d", iDelay);
 
                 struct stPicVideoCfg* pPicVidCfg = mPicAllItemsList.at(item);
@@ -7340,6 +7339,7 @@ int MenuUI::oled_disp_type(int type)
             dispIconByType(ICON_RESET_SUC_128_48128_48);
             msg_util::sleep_ms(500);
             Singleton<CfgManager>::getInstance()->resetAllCfg();
+
             init_cfg_select();
 
             LOGDBG(TAG, "RESET_ALL_CFG cur_menu is %d", cur_menu);
@@ -7607,7 +7607,7 @@ int MenuUI::oled_disp_type(int type)
                 }     
 
                 default:    /* TODO: 2018年8月3日 */
-                    LOGDBG(TAG, "What's menu used Customer ????");
+                    LOGDBG(TAG, "What's menu used Customer");
                     break;
             }
             break;
@@ -7893,7 +7893,7 @@ void MenuUI::setLight(u8 val)
     LOGDBG(TAG, "setLight 0x%x  front_light 0x%x", val, front_light);
 #endif
 
-    if (Singleton<CfgManager>::getInstance()->getKeyVal("light_on") == 1) {
+    if (Singleton<CfgManager>::getInstance()->getKeyVal(_light_on) == 1) {
         #ifdef LED_HIGH_LEVEL
             setLightDirect(val | front_light);
         #else 
@@ -8021,6 +8021,39 @@ void MenuUI::exitAll()
     mLooper->quit();
 }
 
+void MenuUI::handleSetCustomer(sp<DISP_TYPE>& disp_type)
+{
+    /*
+     * 1.将参数保存到对应的配置文件中
+     * 2.
+     */
+    int iAction = ACTION_PIC;
+    std::string tempPath = TAKE_PIC_TEMPLET_PATH;
+
+    Json::Value& tempArg = disp_type->jsonArg;
+    if (tempArg.isMember("name")) {
+
+        if (!strcmp(tempArg["name"].asCString(), "camera._takePicture")) {
+            iAction = ACTION_PIC;
+            tempPath = TAKE_PIC_TEMPLET_PATH;
+        } else if (!strcmp(tempArg["name"].asCString(), "camera._startRecording")) {
+            if (tempArg.isMember("parameters") && tempArg["parameters"].isMember("timelapse")) {
+                iAction = ACTION_PIC;
+                tempPath = TAKE_PIC_TEMPLET_PATH;                
+            } else {
+                iAction = ACTION_VIDEO;
+                tempPath = TAKE_VID_TEMPLET_PATH;                 
+            }
+        } else if (!strcmp(tempArg["name"].asCString(), "camera._startLive")) {
+            iAction = ACTION_LIVE;
+            tempPath = TAKE_LIVE_TEMPLET_PATH;
+        }
+
+        writeJson2File(iAction, tempPath.c_str(), tempArg);
+        oled_disp_type(disp_type->type);
+    } 
+}
+
 
 void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
 {
@@ -8055,13 +8088,14 @@ void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
     /* 处理来自Web控制器的请求或Qr扫描结果 */
 	if (disp_type->qr_type != -1) {
 		add_qr_res(disp_type->qr_type, disp_type->jsonArg, disp_type->control_act, serverState);
-	} else if (disp_type->tl_count != -1) {         /* 设置Timelapse值 */
+	} 
+
+#if 0
+    else if (disp_type->tl_count != -1) {         /* 设置Timelapse值 */
         // LOGDBG(TAG, "handleDispTypeMsg set timelapse value %d", disp_type->tl_count);
 		set_tl_count(disp_type->tl_count);
-	} else if (disp_type->mSysSetting != nullptr) { /* 系统设置不为空 */
-        LOGDBG(TAG, "update System setting!!!!");
-		updateSysSetting(disp_type->mSysSetting);       /* 更新设置(来自客户端) */
 	} 
+#endif
 
     LOGDBG(TAG, "--> handleDispTypeMsg, disp type(%s)", getDispType(disp_type->type));
 	
@@ -8082,7 +8116,6 @@ void MenuUI::handleDispErrMsg(sp<ERR_TYPE_INFO>& mErrInfo)
 			break;
         }
 
-        /* Fix BUG */
 		case MENU_SPEED_TEST:
         case MENU_SET_TEST_SPEED: {
             LOGDBG(TAG, "Speed test, don't deal err msg!!!");
@@ -8096,7 +8129,6 @@ void MenuUI::handleDispErrMsg(sp<ERR_TYPE_INFO>& mErrInfo)
 			break;
         }
 	}
-
 	oled_disp_err(mErrInfo);
 }
 
@@ -8796,7 +8828,7 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 				}
                 mGyroCalcDelay--;
 			} else {
-				LOGERR(TAG, "update calibration light error state 0x%x", getServerState());
+				// LOGERR(TAG, "update calibration light error state 0x%x", getServerState());
 				setLight();
 			}
 			break;
@@ -8880,6 +8912,28 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 break;
             }
 
+            case UI_MSG_UPDATE_TL_CNT: {    /* 更新Timelapse */
+                LOGINFO(TAG, "get  UI_MSG_UPDATE_TL_CNT");
+                break;
+            }
+
+            case UI_MSG_SET_CUSTOMER: {     /* 设置Customer */
+                LOGINFO(TAG, "get  UI_MSG_SET_CUSTOMER");
+				sp<DISP_TYPE> dispType;
+                if (msg->find<sp<DISP_TYPE>>("set_customer", &dispType)) {
+                    handleSetCustomer(dispType);             
+                }                
+                break;
+            }
+
+            case UI_MSG_SET_SYS_SETTING: {  /* 设置系统设置 */
+				sp<SYS_SETTING> sysSetting;
+                if (msg->find<sp<SYS_SETTING>>("sys_setting", &sysSetting)) {
+                    updateSysSetting(sysSetting);             
+                }            
+                break;
+            }
+            
             case UI_MSG_UPDATE_IP: {	/* 更新IP */
 				sp<DEV_IP_INFO> tmpIpInfo;
                 if (msg->find<sp<DEV_IP_INFO>>("info", &tmpIpInfo)) {
@@ -9108,7 +9162,7 @@ void MenuUI::send_update_light(int menu, int interval, bool bLight, int sound_id
 {
     const char* pPlaySound = property_get(PROP_PLAY_SOUND);
 
-    if (sound_id != -1 && Singleton<CfgManager>::getInstance()->getKeyVal("speaker") == 1) {
+    if (sound_id != -1 && Singleton<CfgManager>::getInstance()->getKeyVal(_speaker) == 1) {
         flick_light();
         play_sound(sound_id);
         
