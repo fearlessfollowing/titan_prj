@@ -2236,8 +2236,6 @@ Json::Value* VolumeManager::getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd
     Json::Value* pResult = nullptr;
     int iRawEnable = 0;
 
-    printJson(jsonCmd);
-
     if (jsonCmd.isMember("name") && jsonCmd.isMember("parameters")) {
         if (!strcmp(jsonCmd["name"].asCString(), "camera._takePicture")) {
             std::string gear = "customize";
@@ -2345,15 +2343,10 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
 
     LOGINFO(TAG, "----++ Local Volume Size[%lu], Remote Volume Size[%ld] ++--------", uLocalVolSize, uRemoteVolSize);
 
-    printJson(jsonCmd);
     
     pEvlJson = getTakePicStorageCfgFromJsonCmd(jsonCmd);
     if (pEvlJson) {
-
-        printJson(jsonCmd);
         Json::Value& jCalcObj = *pEvlJson;
-
-        printJson(jCalcObj);
 
         bRawEnable = jCalcObj["raw_enable"].asInt();
 
@@ -2390,8 +2383,6 @@ int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
         } else {
             uTakepicNum = uNvTakepicNum;
         }
-
-
     } else {
         LOGERR(TAG, "--> calcTakepicLefNum: evaluateOneGrpPicSzByCmd return null,use default size to calc now.");
     }
@@ -2642,7 +2633,6 @@ void VolumeManager::syncTakePicLeftSapce(Json::Value& jsonCmd)
 
     } else {
         LOGERR(TAG, "---> syncTakePicLeftSapce: Invalid TakePicture Json Command:");
-        printJson(jsonCmd);
     }
 }
 
@@ -2680,7 +2670,6 @@ void VolumeManager::syncTakePicLeftSapce(Json::Value* jsonCmd)
 
     } else {
         LOGERR(TAG, "---> syncTakePicLeftSapce: Invalid TakePicture Json Command:");
-        printJson(*jsonCmd);
     }
 
 }

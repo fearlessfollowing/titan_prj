@@ -1,0 +1,12 @@
+Import('com_env')
+import config
+
+src = Glob('*.c')
+
+src += [config.FM1388 + '/fm_wav.c']
+src += [config.FM1388 + '/libfm1388.c']
+src += [config.FM1388 + '/libfmrec.c']
+src += [config.FM1388 + '/libFM1388Parameter.c']
+
+fm1388_adb_tool_obj = com_env.Object(src)
+Return('fm1388_adb_tool_obj')

@@ -586,8 +586,6 @@ private:
     void    start_qr_func();
     void    exit_qr_func();
 
-    void    add_qr_res(int type, Json::Value& actionJson, int control_act);
-
     /*
      * 获取当前菜单的SECLECT_INFO Volume
      */
@@ -729,7 +727,7 @@ private:
 
     void    flick_light();
 
-    void    add_qr_res(int type, Json::Value& actionJson, int control_act, uint64_t serverState);
+    void    add_qr_res(Json::Value& actionJson, int control_act, uint64_t serverState);
     
     void    disp_qr_res(bool high = true);
 
@@ -1014,7 +1012,7 @@ private:
     bool    handleCheckBatteryState(bool bUpload = false);
     void    handleSetCustomer(sp<DISP_TYPE>& disp_type);
     void    handleShutdown();
-
+    void    handleUpdateTlCnt(sp<DISP_TYPE>& disp_type);
 
     /********************************************* 拍照部分 ****************************************************/
     void    setTakePicDelay(int iDelay);

@@ -1189,8 +1189,6 @@ bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonDa
                 handleGpsStateChange(cli, jsonData[_param]);
             } else if (cmd == IND_SET_SN) {
                 handleSetSn(cli, jsonData[_param]);
-            } else if (cmd == IND_QUERY_LEF) {
-                handleQueryLeftInfo(cli, jsonData["param"]);
             } else if (cmd == IND_SPEED_TEST_RESULT) {
                 handleSpeedTestResult(cli, jsonData[_param]);
             } else if (cmd == IND_TF_STATE_CHANGE) {
@@ -1212,7 +1210,9 @@ bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonDa
             } else if (cmd == IND_GET_SYS_SETTING) {    /* 获取系统设置 */
                 handleGetSysSetting(cli, jsonData);
                 bResult = true;
-            }
+            } else if (cmd == IND_QUERY_LEF) {
+                handleQueryLeftInfo(cli, jsonData);
+            } 
         }
     } else {
         LOGERR(TAG, "Node have not name or parameter loss");  
@@ -1286,7 +1286,6 @@ void ProtoManager::handleIndSetCustomer(SocketClient* cli, Json::Value& jsonData
     }  
 
 }
-
 
 
 void ProtoManager::handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNode)
@@ -1382,8 +1381,14 @@ void ProtoManager::handleIndUpdateTlCnt(SocketClient* cli, Json::Value& jsonData
 void ProtoManager::handleIndDispType(SocketClient* cli, Json::Value& jsonData)
 {
     sp<DISP_TYPE> dispType = std::make_shared<DISP_TYPE>();
+    memset(dispType.get(), 0, sizeof(DISP_TYPE));
+
     if (jsonData.isMember("type")) {
         dispType->type = jsonData["type"].asInt();
+    }
+    
+    if (jsonData.isMember("action")) {
+        dispType->control_act = jsonData["action"].asInt();
     }
 
     if (jsonData.isMember("extra")) {
@@ -1527,26 +1532,16 @@ void ProtoManager::handleSpeedTestResult(SocketClient* cli, Json::Value& jsonDat
 
 
 
-void ProtoManager::handleQueryLeftInfo(SocketClient* cli, Json::Value& queryJson)
+void ProtoManager::handleQueryLeftInfo(SocketClient* cli, Json::Value& rootJson)
 {
     u32 uLeft = 0;
-
-    Json::StreamWriterBuilder builder;
-
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-    std::ostringstream osOutput;  
-
-    std::string sendDataStr;
     std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
-    Json::Value rootNode;
+    LOGDBG(TAG, "-------- handleQueryLeftInfo");
+    printJson(rootJson);
 
-    /* 
-     * 1.拍照
-     * 2.录像/直播存片
-     * 录像分为普通录像和timelapse
-     */
+    Json::Value& queryJson = rootJson["param"];
+
     if (queryJson.isMember("name")) {
         if (!strcmp(queryJson["name"].asCString(), "camera._takePicture") ) {
             uLeft = vm->calcTakepicLefNum(queryJson, false);
@@ -1559,13 +1554,21 @@ void ProtoManager::handleQueryLeftInfo(SocketClient* cli, Json::Value& queryJson
         uLeft = 0;
     }
 
-    LOGDBG(TAG, "-------- handleQueryLeftInfo");
+    Json::Value retRoot;
+    std::string sendStr;
 
-    rootNode["left"] = uLeft;    
-	writer->write(rootNode, &osOutput);
-    sendDataStr = osOutput.str();
+    retRoot[_name_] = rootJson[_name_];
+    retRoot[_state] = _done;
+    retRoot["left"] = uLeft;    
+    
 
-    // write_fifo(EVENT_QUERY_LEFT, sendDataStr.c_str());
+    convJsonObj2String(retRoot, sendStr);
+    std::shared_ptr<TransBuffer> buffer = std::make_shared<TransBuffer>();
+    buffer->fillData(sendStr.c_str());
+    int r = TEMP_FAILURE_RETRY(send(cli->getSocket(), buffer->data(), buffer->size(), 0));
+    if (r != buffer->size()) {
+        LOGERR(TAG, "send data failed, what's wront!!");
+    }
 }
 
 

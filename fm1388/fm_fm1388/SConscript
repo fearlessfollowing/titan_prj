@@ -1,0 +1,11 @@
+Import('com_env')
+import config
+
+src = Glob('*.c')
+
+src += [config.FM1388 + '/fm_wav.c']
+src += [config.FM1388 + '/libfm1388.c']
+src += [config.FM1388 + '/libfmrec.c']
+
+fm_fm1388_obj = com_env.Object(src)
+Return('fm_fm1388_obj')

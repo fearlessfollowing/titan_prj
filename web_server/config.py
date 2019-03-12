@@ -208,83 +208,37 @@ PATH_UI_CMD_EXECUTE     = '/ui/commands/execute'
 
 
 
-#配置文件的路径：
-INSTA360_PRO2_CFG_BASE  = "/home/nvidia/insta360/etc"
-SYS_SETTING_PATH = INSTA360_PRO2_CFG_BASE + "user_cfg"
-
-
-
-# 2018年9月28日
-# UI与Web服务器交互的私有协议
+# 2018年9月28P
+# SystemServer与Web服务器交互的私有协议
 #
+_GET_SET_CAM_STATE          = 'camera._getSetCamState'      # 获取/设置Camera Server状态
+_REQ_ENTER_UDISK_MOD        = 'camera._change_udisk_mode'   # 请求Server进入U盘模式
+_UPDAT_TIMELAPSE_LEFT       = 'camera._update_tl_left_count'    # 更新拍timelapse的剩余值
+_REQ_SYNC_INFO              = 'camera._request_sync'        # 请求同步状态
+_REQ_FORMART_TFCARD         = 'camera._formatCameraMoudle'  # 请求格式化TF卡
+_REQ_UPDATE_REC_LIVE_INFO   = 'camera._update_rec_live_info'# 请求更新录像,直播的时间
+_REQ_START_PREVIEW          = 'camera._startPreview'        # 请求启动预览
+_REQ_STOP_PREVIEW           = 'camera._stopPreview'         # 请求停止预览
+_REQ_QUERY_TF_CARD          = 'camera._queryStorage'        # 查询TF卡状态
+_REQ_QUERY_GPS_STATE        = 'camera._queryGpsStatus'      # 查询GPS状态
+_REQ_SET_CUSTOM_PARAM       = 'camera._setCustomerParam'    # 设置Customer
+_REQ_SPEED_TEST             = 'camera._storageSpeedTest'    # 测速请求
+_REQ_TAKE_PIC               = 'camera._takePicture'         # 请求拍照
+_REQ_TAKE_VIDEO             = 'camera._startRecording'      # 请求录像
+_REQ_STOP_VIDEO             = 'camera._stopRecording'       # 停止录像
+_REQ_START_LIVE             = 'camera._startLive'           # 请求启动直播
+_REQ_STOP_LIVE              = 'camera._stopLive'            # 请求停止直播
+_REQ_STITCH_CALC            = 'camera._calibration'         # 请求拼接校准
+_REQ_SAVEPATH_CHANGE        = 'camera._changeStoragePath'   # 存储路径改变
+_REQ_UPDATE_STORAGE_LIST    = 'camera._updateStorageList'   # 更新存储设备列表
+_REQ_UPDATE_BATTERY_IFNO    = 'camera._updateBatteryInfo'   # 更新电池信息
+_REQ_START_NOISE            = 'camera._startCaptureAudio'   # 请求噪声采样
+_REQ_START_GYRO             = 'camera._gyroCalibration'     # 请求陀螺仪校正
+_REQ_POWER_OFF              = 'camera._powerOff'            # 低电请求
+_REQ_SET_OPTIONS            = 'camera._setOptions'          # 设置Options   
+_REQ_AWB_CALC               = 'camera._calibrationAwb'      # AWB校正
+_REQ_UPDATE_SYS_TMP         = 'camera._updateSysTemp'       # 更新系统温度
 
-# 获取/设置Camera Server状态
-# 请求查询Camera的状态
-_GET_SET_CAM_STATE          = 'camera._getSetCamState'
-# 请求Server进入U盘模式
-_REQ_ENTER_UDISK_MOD        = 'camera._change_udisk_mode'
-# 更新拍timelapse的剩余值
-_UPDAT_TIMELAPSE_LEFT       = 'camera._update_tl_left_count'
-# 请求同步状态
-_REQ_SYNC_INFO              = 'camera._request_sync'
-# 请求格式化TF卡
-_REQ_FORMART_TFCARD         = 'camera._formatCameraMoudle'
-# 请求更新录像,直播的时间
-_REQ_UPDATE_REC_LIVE_INFO   = 'camera._update_rec_live_info'
-# 请求启动预览
-_REQ_START_PREVIEW          = 'camera._startPreview'
-# 请求停止预览
-_REQ_STOP_PREVIEW           = 'camera._stopPreview'
-# 查询TF卡状态
-_REQ_QUERY_TF_CARD          = 'camera._queryStorage'
-# 查询GPS状态
-_REQ_QUERY_GPS_STATE        = 'camera._queryGpsStatus'
-# 设置Customer
-_REQ_SET_CUSTOM_PARAM       = 'camera._setCustomerParam'
-# 测速请求
-_REQ_SPEED_TEST             = 'camera._storageSpeedTest'
-#请求拍照
-_REQ_TAKE_PIC               = 'camera._takePicture'
-# 请求录像
-_REQ_TAKE_VIDEO             = 'camera._startRecording'
-#停止录像
-_REQ_STOP_VIDEO             = 'camera._stopRecording'
-
-# 请求启动直播
-_REQ_START_LIVE             = 'camera._startLive'
-
-# 请求停止直播
-_REQ_STOP_LIVE              = 'camera._stopLive'
-
-# 请求拼接校准
-_REQ_STITCH_CALC            = 'camera._calibration'
-
-# 存储路径改变
-_REQ_SAVEPATH_CHANGE        = 'camera._changeStoragePath'
-
-# 更新存储设备列表
-_REQ_UPDATE_STORAGE_LIST    = 'camera._updateStorageList'
-
-# 更新电池信息
-_REQ_UPDATE_BATTERY_IFNO    = 'camera._updateBatteryInfo'
-
-# 请求噪声采样
-_REQ_START_NOISE            = 'camera._startCaptureAudio'
-
-# 请求陀螺仪校正
-_REQ_START_GYRO             = 'camera._gyroCalibration'
-
-# 低电请求
-_REQ_POWER_OFF              = 'camera._powerOff'
-
-# 设置Options   
-_REQ_SET_OPTIONS            = 'camera._setOptions'
-
-# AWB校正
-_REQ_AWB_CALC               = 'camera._calibrationAwb'
-
-# 更新系统温度
-_REQ_UPDATE_SYS_TMP         = 'camera._updateSysTemp'
 
 """camera_state"""
 STATE_IDLE                      = 0x00
@@ -330,6 +284,7 @@ STATE_TF_FORMATING              = 0x80000000
 
 STATE_DELETE_FILE               = 0x100000000
 STATE_AWB_CALC                  = 0x200000000
+STATE_QUERY_LEFT                = 0x400000000
 
 
 # Camera的工作模式：相机/U盘
@@ -425,7 +380,7 @@ elif platform.machine() == 'aarch64':
     STORAGE_ROOT = BROWER_ROOT
     
     LOG_FILE = STORAGE_ROOT + 'h_log'
-    # DB_NAME = STORAGE_ROOT + '360_pro'
+
 
     ADD_STORAGE = '/sdcard/'
     USER_RELOAD = False
@@ -449,6 +404,8 @@ else:
     ADD_STORAGE = '/sdcard/'
     USER_RELOAD = False
     UPLOAD_DIR = '/data/uploads'
+
+
 
 #error des
 UNKONWNCOMMAND = {'unknownCommand':'Invalid command is issued'}
@@ -593,20 +550,21 @@ UDISK_MODE = 153
 EXIT_UDISK_MODE = 154
 EXIT_UDISK_DONE = 155
 
-HTTP_ASYNC=True
+HTTP_ASYNC = True
 
 MODE_3D = '3d_top_left'
-MODE_PANO='pano'
+MODE_PANO = 'pano'
 
 #osc err
-OSC_UNKNOWN='unknownCommand'
-OSC_DISABLE='disabledCommand'
-OSC_CAM_IN_EXC='cameraInExclusiveUse'
-OSC_MISS_P='missingParameter'
-OSC_INVALID_PN='invalidParameterName'
-OSC_INVALID_PV='invalidParameterValue'
+OSC_UNKNOWN = 'unknownCommand'
+OSC_DISABLE = 'disabledCommand'
+OSC_CAM_IN_EXC = 'cameraInExclusiveUse'
+OSC_MISS_P = 'missingParameter'
+OSC_INVALID_PN = 'invalidParameterName'
+OSC_INVALID_PV = 'invalidParameterValue'
 
 _ID_GOT='got'
+
 #add for google osc server 170915
 HTTP_ROOT='http://192.168.43.1:8000'
 

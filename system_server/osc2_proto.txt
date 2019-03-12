@@ -648,3 +648,53 @@ QueryGpsState:
 GetSysSetting:
 {"name": "camera._getSysSetting"}
 {"name": "camera._getSysSetting", "state": "done", "results": {"flicker": 0, "speaker": 1, "light_on": 1, "aud_on": 1, "aud_spatial": 1, "gyro_on": 1, "fan_on": 0, "set_logo": 0, "video_fragment": 0}}
+
+
+QueryLeftInfo:
+{"name":"camera._queryLeftInfo", "param": takepic/takevideo/takelive command}
+
+
+
+拍照: 剩余张数查询
+{
+	"name":"camera._queryLeftInfo",	
+	"param":{"name":"camera._takePicture","parameters":{"delay":0,"origin":{"mime":"jpeg","saveOrigin": true, "width": 5280, "height": 3956, "storage_loc": 0}, "stiching": {"mode": "3d_top_left", "height": 7680, "width": 7680, "mime": "jpeg", "algorithm": "opticalFlow"}}}
+}
+
+# 11K_3D_OF:
+{
+	"name":"camera._queryLeftInfo",	
+	"param":{"name":"camera._takePicture", "parameters":{"delay":0, "origin":{"mime":"jpeg", "saveOrigin": true, "width": 5280, "height": 3956},"stiching": {"mode": "3d_top_left", "height": 10560, "width": 10560, "mime": "jpeg", "algorithm": "opticalFlow"}}}
+}
+
+# 11K_OF
+{
+	"name":"camera._queryLeftInfo",	
+	"param":"name":{"camera._takePicture","parameters":{"delay":0,"origin":{"mime":"jpeg","saveOrigin": true,"width": 5280,"height": 3956},"stiching": {"mode": "pano","height": 5280,"width": 10560,"mime": "jpeg","algorithm": "opticalFlow"}}}
+}
+
+# 11K
+{
+	"name":"camera._queryLeftInfo",	
+	"param":{"name": "camera._takePicture","parameters": {"delay":0,"origin":{"mime":"jpeg", "saveOrigin": true,"width": 5280,"height": 3956}}}
+}
+
+# AEB
+{
+	"name":"camera._queryLeftInfo",	
+	"param":{"name":"camera._takePicture","parameters":{"delay":0,"bracket":{"enable":true,"count":9,"min_ev":-10,"max_ev":10},"origin":{"mime":"jpeg","saveOrigin":true,"width":5280,"height":3956}}}
+}
+
+# Burst
+{
+	"name":"camera._queryLeftInfo",	
+	"param":{"name":"camera._takePicture","parameters":{"delay":0,"burst":{"enable":true,"count":10},"origin":{"mime":"jpeg","saveOrigin":true,"width":5280,"height":3956}}}
+}
+
+# Timelapse
+
+
+录像: 剩余可录的秒数
+
+
+直播存片: 剩余可录的秒数

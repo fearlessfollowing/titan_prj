@@ -63,18 +63,15 @@ POLL_TO = 10000
 #to to reset camerad process
 FIFO_TO = 70
 
-ACTION_REQ_SYNC = 0
 ACTION_PIC = 1
 ACTION_VIDEO = 2
 ACTION_LIVE = 3
-
-ACTION_SET_OPTION = 7
 
 
 ORG_OVER = 'originOver'
 KEY_STABLIZATION = 'stabilization'
 
-ERROR_CODE ='error_code'
+ERROR_CODE = 'error_code'
 
 MAX_FIFO_LEN = 4096
 
@@ -379,12 +376,6 @@ class control_center:
             config._DELETE_TF_FINISH,
             config._LIST_FILES_FINISH,      # 列出文件结束 
         ]
-
-        self.req_action = OrderedDict({
-            config._TAKE_PICTURE:ACTION_PIC,
-            config._START_RECORD:ACTION_VIDEO,
-            config._START_LIVE: ACTION_LIVE,
-        })
 
         self.preview_url = ''
         self.live_url = ''
@@ -1070,11 +1061,6 @@ class control_center:
 
 ################################## 文件删除操作 #######################################
  
-
-    def queryLeftResult(self, res):
-        Info('>>>>> queryLeftResult req {} self.get_cam_state() {}'.format(res, self.get_cam_state()))
-        self.left_val = res['left']
-
     def write_req_reset(self, req, write_fd):
         Print('write_req_reset start req {}'.format(req))
         content = json.dumps(req)
@@ -1275,14 +1261,14 @@ class control_center:
     #   req - 拍照参数
     # 返回值: 
     ###################################################################################
-    def appReqTakePicture(self, req):
+    def appReqTakePicture(self, req, from_oled = False):
         Info('[------- APP Req: appReqTakePicture ------] req: {}'.format(req))  
                               
         if StateMachine.checkAllowTakePic():
             StateMachine.addServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
             self._client_take_pic = True    # 确实是客户端拍照
             if from_oled == False:
-                self.notifyDispType(config.CAPTURE, req)
+                self.notifyDispType(config.CAPTURE, ACTION_PIC, req)
 
             # 自己又单独给Camerad发拍照请求??
             read_info = self.sendReq2Camerad(req)
@@ -1328,7 +1314,7 @@ class control_center:
             if oled:
                 self.notifyDispType(config.START_REC_SUC)
             else:
-                self.notifyDispType(config.START_REC_SUC, req)                
+                self.notifyDispType(config.START_REC_SUC, ACTION_VIDEO, req)                
         else:
             self.notifyDispType(config.START_REC_SUC)
         # 启动录像成功后，返回剩余信息
@@ -1407,7 +1393,7 @@ class control_center:
             if oled:
                 self.notifyDispType(config.START_LIVE_SUC)
             else:
-                self.notifyDispType(config.START_LIVE_SUC, req)                
+                self.notifyDispType(config.START_LIVE_SUC, ACTION_LIVE, req)                
         else:
             self.notifyDispType(config.START_LIVE_SUC)
 
@@ -1836,28 +1822,22 @@ class control_center:
 
 
 
+    ###################################################################################
+    # 方法名称: appReqQueryLefInfo
+    # 功能描述: App请求查询剩余容量
+    # 入口参数: 
+    #   req - 请求参数
+    # 返回值: 
+    ###################################################################################
     def appReqQueryLefInfo(self, req):
         Info('[------- APP Req: appReqQueryLefInfo ------] req: {}'.format(req))                
-
-        queryResult = OrderedDict()
-        queryResult['name'] = req['name']
-
         if StateMachine.checkAllowQueryLeft():
-
-            # 根据请求的参数做处理
-            # 如果是拍照：
-            # 如果是录像：
-            # 如果是直播：
-            self.send_req(self.get_write_req(config.UI_NOTIFY_QUERY_LEFT_INFO, req['param']))
-        
-            time.sleep(0.5)
-
-            # 等待处理结果
-            queryResult['state'] = config.DONE
-            queryResult['left'] = self.left_val
-            return json.dumps(queryResult)
+            StateMachine.addCamState(config.STATE_QUERY_LEFT)
+            read_info = self.sendSyncMsg2SystemServer(req)
+            StateMachine.rmServerState(config.STATE_QUERY_LEFT)
+            return read_info
         else:
-            read_info = cmd_error_state(req[_name], self.get_cam_state())
+            read_info = cmd_error_state(req[_name], StateMachine.getCamState())
             return read_info
 
 
@@ -1865,8 +1845,8 @@ class control_center:
         Info('[------- APP Req: appReqShutdown ------] req: {}'.format(req))            
         self.sendIndMsg2SystemServer(req)           
         result = OrderedDict()
-        result['name'] = req[_name]
-        result['state'] = config.DONE
+        result[_name] = req[_name]
+        result[_state] = config.DONE
         return json.dumps(result)
 
 
@@ -1874,8 +1854,8 @@ class control_center:
         Info('[------- APP Req: appReqSwitchMountMode ------] req: {}'.format(req))            
         self.sendIndMsg2SystemServer(req)        
         result = OrderedDict()
-        result['name'] = req[_name]        
-        result['state'] = config.DONE
+        result[_name] = req[_name]        
+        result[_state] = config.DONE
         return json.dumps(result)
 
 
@@ -3483,42 +3463,21 @@ class control_center:
         self.unixSocketClient.sendAsyncNotify(indSysDict)
 
 
-    def notifyDispType(self, itype, extra = None):
+    def notifyDispType(self, itype, actionType = None, extra = None):
         Info('---> notifyDispType')
         indDict = OrderedDict()
         param = OrderedDict()
         param['type'] = itype
-        
+
+        if actionType != None:
+            param['action'] = actionType
+
         if extra != None:
             param['extra'] = extra
 
         indDict['name'] = config._IND_DISP_TYPE
         indDict['parameters'] = param
         self.unixSocketClient.sendAsyncNotify(indDict)
-
-
-    def send_oled_type(self, type, req = None):
-        req_dict = OrderedDict({'type': type})
-        Info("send_oled_type type is {}".format(type))
-        if req is not None:
-            Info('send_oled_type req {}'.format(req))
-            if check_dic_key_exist(req,'content'):
-                req_dict['content'] = req['content']
-                if check_dic_key_exist(req,'proExtra'):
-                    req_dict['proExtra'] = req['proExtra']
-            elif check_dic_key_exist(req, _name):
-                if check_dic_key_exist(self.req_action, req[_name]):
-                    Info('self.req_action[req[_name]] is {}'.format(self.req_action[req[_name]]))
-                    req_dict['req'] = OrderedDict({'action':self.req_action[req[_name]],'param':req[_param]})
-            elif check_dic_key_exist(req, 'tl_count'):
-                req_dict['tl_count'] = req['tl_count']
-            elif check_dic_key_exist(req, 'sys_setting'):
-                req_dict['sys_setting'] = req['sys_setting']
-            elif check_dic_key_exist(req, 'stitch_progress'):
-                req_dict['stitch_progress'] = req['stitch_progress']
-            else:
-                Info('nothing found')
-        self.send_req(self.get_write_req(config.OLED_DISP_TYPE, req_dict))
 
 
     def init_fifo_monitor_camera_active(self):

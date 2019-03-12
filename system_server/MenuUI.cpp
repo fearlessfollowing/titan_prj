@@ -2184,9 +2184,6 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     LOGDBG(TAG, "-----------> Send Takepic Customer args First");
                     pm->sendSetCustomLensReq(*pTakePicJson);
                 }
-                
-                LOGDBG(TAG, "TakePicture Command: ");
-                printJson(*pTakePicJson);
                 pm->sendTakePicReq(*pTakePicJson);
             } else {
                 LOGERR(TAG, "Invalid index[%d]");
@@ -3396,7 +3393,7 @@ void MenuUI::writeJson2File(int iAction, const char* filePath, Json::Value& json
 }
 
 
-void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint64_t serverState)
+void MenuUI::add_qr_res(Json::Value& actionJson, int control_act, uint64_t serverState)
 {
     switch (control_act) {
 
@@ -3446,54 +3443,7 @@ void MenuUI::add_qr_res(int type, Json::Value& actionJson, int control_act, uint
             mControlLiveJsonCmd["parameters"] = actionJson;      
             break;
         }
-
-        case CONTROL_SET_CUSTOM: {    /* 设置Customer模式的值 */
-            switch (type) {
-                case ACTION_PIC: {       /* 设置拍照模式的Customer */
-
-                    /* 将拍照的Customer的模板参数保存为json文件 */
-                    LOGDBG(TAG, "Save Take Picture Templet");
-                    Json::Value picRoot;
-
-                    /*
-                     * 1.9.6版本的APP保存Timelapse的模板参数保存到camera._startRecording中
-                     * 2018年9月21日
-                     */
-                    picRoot["name"] = "camera._takePicture";
-                    picRoot["parameters"] = actionJson;
-
-                    printJson(picRoot);
-                    writeJson2File(ACTION_PIC, TAKE_PIC_TEMPLET_PATH, picRoot);
-                    break;
-                }
-
-                case ACTION_VIDEO: {     /* 设置录像模式下的Customer */
-
-                    LOGDBG(TAG, "Save Take Video Templet");
-                    Json::Value vidRoot;
-
-                    vidRoot["name"] = "camera._startRecording";
-                    vidRoot["parameters"] = actionJson;
-                    if (actionJson.isMember("timelapse")) { /* 如果是拍timelapse，需要保存到拍照的Customer中 */
-                        writeJson2File(ACTION_PIC, TAKE_PIC_TEMPLET_PATH, vidRoot);
-                    } else {
-                        writeJson2File(ACTION_VIDEO, TAKE_VID_TEMPLET_PATH, vidRoot);
-                    }
-                    break;
-                }
-
-                case ACTION_LIVE: {      /* 直播模式下的Customer */
-                    LOGDBG(TAG, "Save Take Live Templet");
-                    Json::Value liveRoot;
-                    liveRoot["name"] = "camera._startLive";
-                    liveRoot["parameters"] = actionJson;
-                    writeJson2File(ACTION_LIVE, TAKE_LIVE_TEMPLET_PATH, liveRoot);
-                    break;
-                }
-                SWITCH_DEF_ERROR(type);
-            }
-            break;
-        }
+     
         default:
             break;
     }
@@ -8021,6 +7971,12 @@ void MenuUI::exitAll()
     mLooper->quit();
 }
 
+void MenuUI::handleUpdateTlCnt(sp<DISP_TYPE>& disp_type)
+{
+    tl_count = disp_type->tl_count;
+    oled_disp_type(TIMELPASE_COUNT);
+}
+
 void MenuUI::handleSetCustomer(sp<DISP_TYPE>& disp_type)
 {
     /*
@@ -8085,17 +8041,10 @@ void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
         }
 	}
 
-    /* 处理来自Web控制器的请求或Qr扫描结果 */
-	if (disp_type->qr_type != -1) {
-		add_qr_res(disp_type->qr_type, disp_type->jsonArg, disp_type->control_act, serverState);
-	} 
+    if (disp_type->control_act > 0) {
+		add_qr_res(disp_type->jsonArg, disp_type->control_act, serverState);
+    }
 
-#if 0
-    else if (disp_type->tl_count != -1) {         /* 设置Timelapse值 */
-        // LOGDBG(TAG, "handleDispTypeMsg set timelapse value %d", disp_type->tl_count);
-		set_tl_count(disp_type->tl_count);
-	} 
-#endif
 
     LOGDBG(TAG, "--> handleDispTypeMsg, disp type(%s)", getDispType(disp_type->type));
 	
@@ -8914,6 +8863,10 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
 
             case UI_MSG_UPDATE_TL_CNT: {    /* 更新Timelapse */
                 LOGINFO(TAG, "get  UI_MSG_UPDATE_TL_CNT");
+				sp<DISP_TYPE> dispType;
+                if (msg->find<sp<DISP_TYPE>>("tl_count", &dispType)) {
+                    handleUpdateTlCnt(dispType);             
+                }                  
                 break;
             }
 

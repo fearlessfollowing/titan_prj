@@ -38,6 +38,7 @@ UPDATE_CHECK    = SDK_ROOT + 'update_check'
 UPDATE_TOOL     = SDK_ROOT + 'update_tool'
 UPDATE_APP      = SDK_ROOT + 'update_app'
 VOLD_DIR        = SDK_ROOT + 'vold'
+FM1388          = SDK_ROOT + 'fm1388'
 
 
 # INC_PATH
