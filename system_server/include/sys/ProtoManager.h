@@ -1,5 +1,5 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2 Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: ProtoManager.h
 ** 功能描述: 协议管理器(提供大部分与服务器交互的协议接口),整个UI程序当作是一个http client
@@ -11,6 +11,7 @@
 ** 日     期: 2018年9月28日
 ** 修改记录:
 ** V1.0			Skymixos		2018-09-28		创建文件，添加注释
+** V2.0         Skymixos        2019-03-12      将SystemServer与Web_server的传输方式改为Unix Socket
 ******************************************************************************************************/
 #ifndef _PROTO_MANAGER_H_
 #define _PROTO_MANAGER_H_
@@ -32,51 +33,17 @@
 /*********************************************************************************************
  *  宏定义
  *********************************************************************************************/
-#define _name_              "name"
-#define _param              "parameters"
-#define _count              "count"
-#define _tl_left            "tl_left"
-#define _mode               "mode"
-#define _state              "state"
-#define _done               "done"
-#define _method             "method"
-#define _results            "results"
-#define _index              "index"
-#define _error              "error"
-#define _code               "code"
-#define _rec_left_sec       "rec_left_sec"
-#define _live_rec_left_sec  "live_rec_left_sec"
-#define _rec_sec            "rec_sec"
-#define _live_rec_sec       "live_rec_sec"
-#define _path               "path"
-#define _dev_list           "dev_list"
-#define _delay              "delay"
-
-#define _origin             "origin"
-#define _stitch             "stiching"
-#define _audio              "audio"
-#define _mime               "mime"
-#define _width              "width"
-#define _height             "height"
-#define _prefix             "prefix"
-#define _save_origin        "saveOrigin"
-#define _log_mode           "logMode"
-#define _frame_rate         "framerate"
-#define _live_auto_connect  "autoConnect"
-#define _bit_rate           "bitrate"
-#define _duration           "duration"
-#define _sample_fmt         "sampleFormat"
-#define _channel_layout     "channelLayout"
-#define _sample_rate        "samplerate"
-#define _file_type          "fileType"
-
-#define _who_req            "requestSrc"
-
-
 #define REQUEST_BY_UI       "ui"
 
-// 此处必须用function类，typedef再后面函数指针赋值无效
+#define SERVER_UNIX_PATH "/dev/socket/web_server"
+
+#define COM_HDR_LEN     8
+#define MAX_DATA_LEN    4096
+
+
 using ReqCallback = std::function<void (std::string)>;
+using syncReqResultCallback = std::function<bool (Json::Value& resultJson)>;
+
 
 enum {
     ERROR_FORMAT_SUC = 0,
@@ -92,25 +59,6 @@ enum {
     PROTO_MANAGER_REQ_PARSE_REPLY_FAIL = -2,
     PROTO_MANAGER_REQ_CONN_CLOSEED = -3,
 };
-
-enum {
-    MSG_DISP_TYPE  = 0,
-    MSG_QUERY_LEFT_INFO = 34, 
-    MSG_GPS_STATE_CHANGE = 35,
-    MSG_SHUT_DOWN = 36,
-    MSG_SET_SN = 18,
-    MSG_SYNC_INIT = 1,
-    MSG_DISP_TYPE_ERR = 16,
-    MSG_TF_CHANGED = 31,
-    MSG_TF_FORMAT  = 32,
-    MSG_SWITCH_MOUNT_MODE = 37,
-    MSG_TEST_SPEED_RES = 33,
-};
-
-using syncReqResultCallback = std::function<bool (Json::Value& resultJson)>;
-
-#define COM_HDR_LEN     8
-#define MAX_DATA_LEN    4096
 
 struct stTranHdr {
     int     iMagic;
@@ -160,8 +108,6 @@ private:
 };
 
 
-#define SERVER_UNIX_PATH "/dev/socket/web_server"
-
 
 enum {
     PROTO_ERROR_SUC             = 0,
@@ -176,16 +122,14 @@ enum {
 };
 
 
-
-
 /*
- * 传输管理器对象 - 负责提供与服务器交互接口(使用http)
+ * 传输管理器对象 - 负责提供与服务器交互接口(支持http/Unix传输)
  */
 class ProtoManager {
 
 public:
-                                    ProtoManager();
-    virtual                         ~ProtoManager();
+                    ProtoManager();
+                    ~ProtoManager();
 
 
     bool            getServerState(uint64_t* saveState);            /* 获取服务器的状态 */
@@ -238,11 +182,7 @@ public:
     bool            parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData);
 
     void            setNotifyRecv(sp<ARMessage> notify);
-
-
 private:
-
-    static ProtoManager*    sInstance;
 
     static int              mSyncReqErrno;
     std::mutex              mSyncReqLock;
@@ -267,32 +207,20 @@ private:
 
     int             sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback callBack = nullptr);
 
+#ifdef ENABLE_SEND_REQ_USE_HTTP
     bool            getSyncReqExitFlag();
     void            setSyncReqExitFlag(bool bFlag);
-
     int             sendHttpSyncReq(const std::string &url, Json::Value* pJsonRes, 
                                     const char* pExtraHeaders, const char* pPostData);
 
     static void     onSyncHttpEvent(mg_connection *conn, int iEventType, void *pEventData);
-
-
-    void            handleDispType(Json::Value& jsonData);
-
-
-    void            handleErrInfo(Json::Value& jsonData);
-
-
-    void            handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNode);
-
-    void            handleReqFormHttp(sp<DISP_TYPE>& dispType, Json::Value& reqNode);
+#endif
 
     bool            sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack = nullptr);
-
-
     bool            innerSendSyncReqWithoutCallback(Json::Value& root, syncReqResultCallback callBack = nullptr);
     
 
-
+    void            handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNode);
     void            handleSyncInfo(SocketClient* cli, Json::Value& jsonData);
     void            handleSwitchMountMode(SocketClient* cli, Json::Value& paramJson);
     void            handleShutdownMachine(SocketClient* cli);

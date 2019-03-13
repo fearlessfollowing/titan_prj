@@ -97,7 +97,6 @@ LOGERR(TAG,"err menu state (%d 0x%x)",  menu, state);
 LOGDBG(TAG, "menu state (%d 0x%x)", menu, state);
 
 
-static Mutex gStateLock;
 
 /*
  * 消息框的消息类型
@@ -2121,15 +2120,15 @@ int MenuUI::check_live_save(Json::Value* liveJson)
     bool bSaveOrigin = false;
     bool bSaveFile = false;
 
-    if ((*liveJson)["parameters"]["origin"].isMember("saveOrigin")) {
-        if (true == (*liveJson)["parameters"]["origin"]["saveOrigin"].asBool()) {
+    if ((*liveJson)[_param][_origin].isMember("saveOrigin")) {
+        if (true == (*liveJson)[_param][_origin]["saveOrigin"].asBool()) {
             bSaveOrigin = true;
         }
     }
 
-    if ((*liveJson)["parameters"].isMember("stiching")) {
-        if ((*liveJson)["parameters"]["stiching"].isMember("fileSave")) {
-            if (true == (*liveJson)["parameters"]["stiching"]["fileSave"].asBool()) {
+    if ((*liveJson)[_param].isMember(_stitch)) {
+        if ((*liveJson)[_param][_stitch].isMember("fileSave")) {
+            if (true == (*liveJson)[_param][_stitch]["fileSave"].asBool()) {
                 bSaveFile = true;
             }
         }
@@ -2180,7 +2179,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
             if (pTmpPicVidCfg) {                                
                 pTakePicJson = pTmpPicVidCfg->pJsonCmd;  
-                if ((*pTakePicJson)["parameters"].isMember("properties")) {
+                if ((*pTakePicJson)[_param].isMember("properties")) {
                     LOGDBG(TAG, "-----------> Send Takepic Customer args First");
                     pm->sendSetCustomLensReq(*pTakePicJson);
                 }
@@ -2218,7 +2217,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                             
                             LOGDBG(TAG, "----> Take video, but in Timelapse Mode");
 
-                            if (mControlVideoJsonCmd["parameters"].isMember("properties")) {
+                            if (mControlVideoJsonCmd[_param].isMember("properties")) {
                                 pm->sendSetCustomLensReq(mControlVideoJsonCmd);
                             }
 
@@ -2236,7 +2235,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                                 pTakeVidJson = pTmpPicVidCfg->pJsonCmd;
                                 if (pTakeVidJson) {
                                     
-                                    if ((*pTakeVidJson)["parameters"].isMember("properties")) {
+                                    if ((*pTakeVidJson)[_param].isMember("properties")) {
                                         pm->sendSetCustomLensReq(*pTakeVidJson);
                                     }
 
@@ -2315,7 +2314,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                 if (pTakeLiveJson) {
 
                     /* 如果有Custom Param需要设置,先设置它 */
-                    if ((*pTakeLiveJson)["parameters"].isMember("properties")) {
+                    if ((*pTakeLiveJson)[_param].isMember("properties")) {
                         pm->sendSetCustomLensReq(*pTakeLiveJson);
                     }
 
@@ -2411,8 +2410,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
                     param["property"] = _flick;
                     param["value"] = cm->getKeyVal(_flick);
-                    root["name"] = "camera._setOptions";
-                    root["parameters"] = param;
+                    root[_name_] = "camera._setOptions";
+                    root[_param] = param;
 
                     return pm->sendSetOptionsReq(root);
                 }
@@ -2426,8 +2425,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
                     valNode["effect"] = 0;
                     param["property"] = "logMode";
                     param["value"] = valNode;
-                    root["name"] = "camera._setOptions";
-                    root["parameters"] = param;
+                    root[_name_] = "camera._setOptions";
+                    root[_param] = param;
 
                     return pm->sendSetOptionsReq(root);
 
@@ -2440,8 +2439,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
                     param["property"] = "fanless";
                     param["value"] = (cm->getKeyVal(_fan_on) == 1) ? 0 : 1;
-                    root["name"] = "camera._setOptions";
-                    root["parameters"] = param;
+                    root[_name_] = "camera._setOptions";
+                    root[_param] = param;
 
                     return pm->sendSetOptionsReq(root);                    
                 }
@@ -2464,8 +2463,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
                     param["property"] = "panoAudio";
                     param["value"] = iAudioVal;
-                    root["name"] = "camera._setOptions";
-                    root["parameters"] = param;
+                    root[_name_] = "camera._setOptions";
+                    root[_param] = param;
 
                     return pm->sendSetOptionsReq(root); 
                 }
@@ -2476,8 +2475,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
                     param["property"] = "stabilization_cfg";
                     param["value"] = cm->getKeyVal(_gyro_on);
-                    root["name"] = "camera._setOptions";
-                    root["parameters"] = param; 
+                    root[_name_] = "camera._setOptions";
+                    root[_param] = param; 
 
                     return pm->sendSetOptionsReq(root);     
                 }
@@ -2488,8 +2487,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
                     param["property"] = "logo";
                     param["value"] = cm->getKeyVal(_set_logo);
-                    root["name"] = "camera._setOptions";
-                    root["parameters"] = param; 
+                    root[_name_] = "camera._setOptions";
+                    root[_param] = param; 
                     return pm->sendSetOptionsReq(root);                       
                 }
 
@@ -2500,8 +2499,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
                     param["property"] = _video_seg;
                     param["value"] = cm->getKeyVal(_video_seg);
-                    root["name"] = "camera._setOptions";
-                    root["parameters"] = param; 
+                    root[_name_] = "camera._setOptions";
+                    root[_param] = param; 
                     return pm->sendSetOptionsReq(root);                        
                 }
 
@@ -2513,8 +2512,8 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
                     param["property"] = "audio_gain";
                     param["value"] = pstProp->audio_gain;
-                    root["name"] = "camera._setOptions";
-                    root["parameters"] = param; 
+                    root[_name_] = "camera._setOptions";
+                    root[_param] = param; 
                     return pm->sendSetOptionsReq(root);
             }
             #endif
@@ -3400,9 +3399,8 @@ void MenuUI::add_qr_res(Json::Value& actionJson, int control_act, uint64_t serve
         case ACTION_PIC: {          /* 客户端发起的拍照,录像，直播 CAPTURE */
             LOGDBG(TAG, "---> Client Control Takepicture ..");
             mClientTakePicUpdate = true;    /* 检查是否需要进行组装 */
-            mControlPicJsonCmd["name"] = "camera._takePicture";
-            mControlPicJsonCmd["parameters"] = actionJson;
-            setTakePicDelay(mControlPicJsonCmd["parameters"]["delay"].asInt());
+            mControlPicJsonCmd = actionJson;
+            setTakePicDelay(mControlPicJsonCmd[_param]["delay"].asInt());
             break;
         }
 
@@ -3412,17 +3410,16 @@ void MenuUI::add_qr_res(Json::Value& actionJson, int control_act, uint64_t serve
             syncQueryTfCard();  /* 查询一下TF卡容量,避免出现客户端启动拍照，录像，直播，需要存片时，显示0的问题 */
 
             mClientTakeVideoUpdate = true;
-            mControlVideoJsonCmd["name"] = "camera._startRecording";
-            mControlVideoJsonCmd["parameters"] = actionJson;
+            mControlVideoJsonCmd = actionJson;
 
             /* 检查是否发的是拍摄timelapse */
-            if (mControlVideoJsonCmd["parameters"].isMember("timelapse")) {  /* 表示是拍摄Timelapse */
+            if (mControlVideoJsonCmd[_param].isMember(_timelapse)) {  /* 表示是拍摄Timelapse */
                 LOGDBG(TAG, ">>>>>>>>>>>>>>> In timelapse Mode");
-                if (mControlVideoJsonCmd["parameters"]["timelapse"]["enable"].asBool() == true) {
+                if (mControlVideoJsonCmd[_param][_timelapse]["enable"].asBool() == true) {
                     mTakeVideInTimelapseMode = true;
                 }
-            } else if (mControlVideoJsonCmd["parameters"].isMember("mode")) {
-                if (mControlVideoJsonCmd["parameters"]["mode"] == "aging") {
+            } else if (mControlVideoJsonCmd[_param].isMember("mode")) {
+                if (mControlVideoJsonCmd[_param]["mode"] == "aging") {
                     LOGDBG(TAG, "----> Aging mode detect");
                     mAgingMode = true;
                 }
@@ -3439,8 +3436,7 @@ void MenuUI::add_qr_res(Json::Value& actionJson, int control_act, uint64_t serve
             syncQueryTfCard();  /* 查询一下TF卡容量,避免出现客户端启动拍照，录像，直播，需要存片时，显示0的问题 */
 
             mClientTakeLiveUpdate = true;
-            mControlLiveJsonCmd["name"] = "camera._startLive";
-            mControlLiveJsonCmd["parameters"] = actionJson;      
+            mControlLiveJsonCmd = actionJson;
             break;
         }
      
@@ -3632,21 +3628,21 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                     if (pAebSetItem && pAebPicVidCfg) {
                         PIC_ORG* pTmpAeb = pAebSetItem->stOrigArg[pAebSetItem->iCurVal];                    
                         if (strcmp(pPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) {     /* 非Customer模式时，需要更新AEB参数 */
-                            if ((*pTakePicJson)["parameters"].isMember("bracket")) {
+                            if ((*pTakePicJson)[_param].isMember(_bracket)) {
                                 LOGDBG(TAG, "Current AEB info: hdr_count: %d, min_ev: %d, max_ev: %d", pTmpAeb->hdr_count, pTmpAeb->min_ev, pTmpAeb->max_ev);
-                                (*pTakePicJson)["parameters"]["bracket"]["count"]   = pTmpAeb->hdr_count;
-                                (*pTakePicJson)["parameters"]["bracket"]["min_ev"]  = pTmpAeb->min_ev;
-                                (*pTakePicJson)["parameters"]["bracket"]["max_ev"]  = pTmpAeb->max_ev;
+                                (*pTakePicJson)[_param][_bracket]["count"]   = pTmpAeb->hdr_count;
+                                (*pTakePicJson)[_param][_bracket]["min_ev"]  = pTmpAeb->min_ev;
+                                (*pTakePicJson)[_param][_bracket]["max_ev"]  = pTmpAeb->max_ev;
                             }
                         }
                     }    
 
                     if (strcmp(pPicVidCfg->pItemName, TAKE_PIC_MODE_CUSTOMER)) { /* 非Customer模式根据是否使能RAW来设置origin.mime，Customer模式不用理会该属性 */
                         if (Singleton<CfgManager>::getInstance()->getKeyVal(_raw)) {
-                            (*pTakePicJson)["parameters"]["origin"]["mime"] = "raw+jpeg";
+                            (*pTakePicJson)[_param][_origin]["mime"] = "raw+jpeg";
                             gearStr += "|raw";
                         } else {
-                            (*pTakePicJson)["parameters"]["origin"]["mime"] = "jpeg";
+                            (*pTakePicJson)[_param][_origin]["mime"] = "jpeg";
                         }
                     }
 
@@ -3679,8 +3675,8 @@ void MenuUI::calcRemainSpace(bool bUseCached)
                 } else {
                     if (takeVideoIsAgeingMode()) {
                         u32 uRecLeftSec = 60 * 60;  /* 默认为1小时 */
-                        if (mControlVideoJsonCmd.isMember("parameters") && mControlVideoJsonCmd["parameters"].isMember("duration")) {
-                            uRecLeftSec = mControlVideoJsonCmd["parameters"]["duration"].asInt();
+                        if (mControlVideoJsonCmd.isMember(_param) && mControlVideoJsonCmd[_param].isMember("duration")) {
+                            uRecLeftSec = mControlVideoJsonCmd[_param]["duration"].asInt();
                         }
                         vm->setRecLeftSec(uRecLeftSec); 
                         LOGDBG(TAG, "--> Aging duration: [%d]s", uRecLeftSec);
@@ -4335,17 +4331,17 @@ void MenuUI::dispGpsRtsInfo(Json::Value& jsonCmd)
 
     bHaveGpsSignal = checkHaveGpsSignal();
 
-    if (jsonCmd.isMember("name") && jsonCmd.isMember("parameters")) {
-        if (!strcmp(jsonCmd["name"].asCString(), "camera._startLive")) {
-            if (jsonCmd["parameters"].isMember("stiching")) {
-                if (jsonCmd["parameters"]["stiching"].isMember("fileSave")) {
-                    if (true == jsonCmd["parameters"]["stiching"]["fileSave"].asBool()) {
+    if (jsonCmd.isMember(_name_) && jsonCmd.isMember(_param)) {
+        if (!strcmp(jsonCmd[_name_].asCString(), _take_live)) {
+            if (jsonCmd[_param].isMember(_stitch)) {
+                if (jsonCmd[_param][_stitch].isMember("fileSave")) {
+                    if (true == jsonCmd[_param][_stitch]["fileSave"].asBool()) {
                         bHaveRts = true;
                     }
                 } 
             } 
         } else {
-            if (jsonCmd["parameters"].isMember("stiching"))
+            if (jsonCmd[_param].isMember(_stitch))
                 bHaveRts = true;              
         }
     } else {
@@ -4357,14 +4353,6 @@ void MenuUI::dispGpsRtsInfo(Json::Value& jsonCmd)
 }
 
 
-void MenuUI::disp_qr_res(bool high)
-{
-    if (high) {
-        dispIconByType(ICON_VINFO_CUSTOMIZE_LIGHT_0_48_78_1678_16);
-    } else {
-        dispIconByType(ICON_VINFO_CUSTOMIZE_NORMAL_0_48_78_1678_16);
-    }
-}
 
 
 void MenuUI::dispPicVidCfg(PicVideoCfg* pCfg, bool bLight)
@@ -4671,7 +4659,7 @@ void MenuUI::saveListNotifyCb()
         tmpVol = curDevList.at(i);
         tmpNode["dev_type"] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
         tmpNode["path"] = tmpVol->pMountPath;
-        tmpNode["name"] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
+        tmpNode[_name_] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
         jarray.append(tmpNode);
     }
 
@@ -5507,8 +5495,8 @@ bool MenuUI::checkIsTakeTimelpaseInCustomer()
         PicVideoCfg* pTmpCfg = mPicAllItemsList.at(item);   
         picJsonCmd = pTmpCfg->pJsonCmd;
         if (picJsonCmd) {            
-            if ( (*picJsonCmd)["parameters"].isMember("timelapse")) {
-                if ((*picJsonCmd)["parameters"]["timelapse"]["enable"].asBool() == true) {
+            if ( (*picJsonCmd)[_param].isMember(_timelapse)) {
+                if ((*picJsonCmd)[_param][_timelapse]["enable"].asBool() == true) {
                     return true;
                 } else {
                     return false;
@@ -6292,17 +6280,17 @@ bool MenuUI::rmState(uint64_t state)
 }
 
 
-
-
 bool MenuUI::checkServerStateInPreview()
 {
     return checkStateEqual(STATE_PREVIEW);
 }
 
+
 bool MenuUI::checkServerInIdle(uint64_t serverState)
 {
     return (serverState == STATE_IDLE) ? true: false;
 }
+
 
 uint64_t MenuUI::getServerState()
 {
@@ -6317,26 +6305,6 @@ uint64_t MenuUI::getServerState()
     }
     return serverState;    
 }
-
-
-bool MenuUI::check_state_equal(u64 state)
-{
-    AutoMutex _l(gStateLock);
-    return (mCamState == state);
-}
-
-
-bool MenuUI::check_state_in(u64 state)
-{
-    bool bRet = false;
-
-    AutoMutex _l(gStateLock);
-    if ((mCamState & state) == state) {
-        bRet = true;
-    }
-    return bRet;
-}
-
 
 
 bool MenuUI::checkInLive()
@@ -6360,22 +6328,12 @@ bool MenuUI::checkInLive(uint64_t serverState)
     return (checkServerStateIn(serverState, STATE_LIVE) || checkServerStateIn(serverState, STATE_LIVE_CONNECTING));
 }
 
-/*
- * http的web端，只有查询状态的权力
- */
-
-
-void MenuUI::rm_state(u64 state)
-{
-    AutoMutex _l(gStateLock);
-    mCamState &= ~state;
-}
-
 
 void MenuUI::set_tl_count(int count)
 {
     tl_count = count;
 }
+
 
 void MenuUI::disp_tl_count(int count)
 {
@@ -6916,9 +6874,9 @@ int MenuUI::getTakepicCustomerDelay()
     PicVideoCfg* pTmpCfg = mPicAllItemsList.at(size - 1);
     pJsonVal = pTmpCfg->pJsonCmd;
     if (pJsonVal) {
-        if ((*pJsonVal).isMember("parameters")) {
-            if ((*pJsonVal)["parameters"].isMember("delay")) {
-                iDelay = ((*pJsonVal)["parameters"]["delay"]).asInt();
+        if ((*pJsonVal).isMember(_param)) {
+            if ((*pJsonVal)[_param].isMember("delay")) {
+                iDelay = ((*pJsonVal)[_param]["delay"]).asInt();
                 LOGDBG(TAG, "getTakepicCustomerDelay iDelay = %d", iDelay);
                 return iDelay;
             } else {
@@ -6994,6 +6952,7 @@ int MenuUI::oled_disp_type(int type)
             break;
         }
 
+#if 0
 		/*
 		 * 速度测试成功
 		 */
@@ -7004,6 +6963,7 @@ int MenuUI::oled_disp_type(int type)
                 procBackKeyEvent();
             }
             break;
+#endif
 
 		/*
 		 * 速度测试失败
@@ -7398,56 +7358,7 @@ int MenuUI::oled_disp_type(int type)
         }
 
 
-/*********************************	陀螺仪相关状态 END ********************************************/			
-        case SYNC_REC_AND_PREVIEW: {
-            if (!check_state_in(STATE_RECORD)) {
-                //disp video menu before add state_record
-                setCurMenu(MENU_VIDEO_INFO);
-                LOGDBG(TAG," set_update_mid a");
-                set_update_mid();
-            }
-            break;
-        }
-			
-        case SYNC_PIC_CAPTURE_AND_PREVIEW: {
-            if (!check_state_in(STATE_TAKE_CAPTURE_IN_PROCESS)) {
-                LOGDBG(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
-                setCurMenu(MENU_PIC_INFO);
-                send_update_light(MENU_PIC_INFO, INTERVAL_1HZ);
-            }
-            break;
-        }
-			
-        case SYNC_PIC_STITCH_AND_PREVIEW: {
-            if (!check_state_in(STATE_PIC_STITCHING)) {
-                LOGDBG(TAG, " SYNC_PIC_CAPTURE_AND_PREVIEW");
-                setCurMenu(MENU_PIC_INFO);
-                send_update_light(MENU_PIC_INFO, INTERVAL_5HZ);
-            }
-            break;
-        }
-			
-        case SYNC_LIVE_AND_PREVIEW: {
-
-            LOGDBG(TAG, "SYNC_LIVE_AND_PREVIEW for state 0x%x", getServerState());
-
-			// not sync in state_live and state_live_connecting
-            if (!check_state_in(STATE_LIVE)) {
-                //must before add live_state for keeping state live_connecting avoiding recalculate time 170804
-                set_update_mid();
-                setCurMenu(MENU_LIVE_INFO);
-                LOGDBG(TAG," set_update_mid b");
-            }
-            break;
-        }
-			
-        case SYNC_LIVE_CONNECT_AND_PREVIEW: {
-            if (!check_state_in(STATE_LIVE_CONNECTING)) {
-                setCurMenu(MENU_LIVE_INFO);
-            }
-            break;
-        }
-			
+/*********************************	陀螺仪相关状态 END ********************************************/						
         case START_QRING: {
             if (cur_menu != MENU_QR_SCAN) {
                 setCurMenu(MENU_QR_SCAN);
@@ -7987,20 +7898,20 @@ void MenuUI::handleSetCustomer(sp<DISP_TYPE>& disp_type)
     std::string tempPath = TAKE_PIC_TEMPLET_PATH;
 
     Json::Value& tempArg = disp_type->jsonArg;
-    if (tempArg.isMember("name")) {
+    if (tempArg.isMember(_name_)) {
 
-        if (!strcmp(tempArg["name"].asCString(), "camera._takePicture")) {
+        if (!strcmp(tempArg[_name_].asCString(), _take_pic)) {
             iAction = ACTION_PIC;
             tempPath = TAKE_PIC_TEMPLET_PATH;
-        } else if (!strcmp(tempArg["name"].asCString(), "camera._startRecording")) {
-            if (tempArg.isMember("parameters") && tempArg["parameters"].isMember("timelapse")) {
+        } else if (!strcmp(tempArg[_name_].asCString(), _take_video)) {
+            if (tempArg.isMember(_param) && tempArg[_param].isMember(_timelapse)) {
                 iAction = ACTION_PIC;
                 tempPath = TAKE_PIC_TEMPLET_PATH;                
             } else {
                 iAction = ACTION_VIDEO;
                 tempPath = TAKE_VID_TEMPLET_PATH;                 
             }
-        } else if (!strcmp(tempArg["name"].asCString(), "camera._startLive")) {
+        } else if (!strcmp(tempArg[_name_].asCString(), _take_live)) {
             iAction = ACTION_LIVE;
             tempPath = TAKE_LIVE_TEMPLET_PATH;
         }

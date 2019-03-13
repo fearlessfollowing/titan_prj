@@ -427,4 +427,82 @@
 #define PIC_VIDEO_LIVE_ITEM_MAX     10
 
 
+/*
+ * 参数名称
+ */
+#define _take_pic           "camera._takePicture"
+#define _take_video         "camera._startRecording"
+#define _take_live          "camera._startLive"
+
+#define _name_              "name"
+#define _param              "parameters"
+#define _count              "count"
+#define _tl_left            "tl_left"
+#define _mode               "mode"
+#define _state              "state"
+#define _done               "done"
+#define _method             "method"
+#define _results            "results"
+#define _index_             "index"
+#define _error              "error"
+#define _code               "code"
+#define _rec_left_sec       "rec_left_sec"
+#define _live_rec_left_sec  "live_rec_left_sec"
+#define _rec_sec            "rec_sec"
+#define _live_rec_sec       "live_rec_sec"
+#define _path               "path"
+#define _dev_list           "dev_list"
+#define _delay              "delay"
+
+#define _customer           "customize"
+#define _jpeg               "jpeg"
+#define _raw_jpeg           "raw+jpeg"
+#define _burst              "burst"
+#define _timelapse          "timelapse"
+
+#define _raw_st_loc         "raw_storage_loc"
+#define _other_st_loc       "other_storage_loc"
+#define _raw_size           "raw_size"
+#define _raw_enable         "raw_enable"         
+#define _misc_size          "misc_size"
+
+#define _pano               "pano"
+
+#define _bracket            "bracket"
+#define _count              "count"
+#define _aeb3               "aeb3"
+#define _aeb5               "aeb5"
+#define _aeb7               "aeb7"
+#define _aeb9               "aeb9"
+
+#define _11k                "11k"
+#define _11k_of             "11k_of"
+#define _11k_3d_of          "11k_3d_of"
+
+#define _value_              "value"
+#define _origin             "origin"
+#define _stitch             "stiching"
+#define _audio              "audio"
+#define _mime               "mime"
+#define _width              "width"
+#define _height             "height"
+#define _prefix             "prefix"
+#define _save_origin        "saveOrigin"
+#define _log_mode           "logMode"
+#define _frame_rate         "framerate"
+#define _live_auto_connect  "autoConnect"
+#define _bit_rate           "bitrate"
+#define _duration           "duration"
+#define _sample_fmt         "sampleFormat"
+#define _channel_layout     "channelLayout"
+#define _sample_rate        "samplerate"
+#define _file_type          "fileType"
+
+#define _who_req            "requestSrc"
+
+#define _left               "left"
+#define _set                "set"
+#define _get                "get"
+#define _clear              "clear"
+
 #endif /* _PROP_CFG_H_ */

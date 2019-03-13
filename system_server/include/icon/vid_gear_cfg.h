@@ -626,7 +626,7 @@ static PicVideoCfg vid8K_30F_3D_10bit_Cfg = {
 	stNorIcon:			{	/* 未选中时的图标列表 */
 		vid_4K30F_Nor_78x16,
 	},
-    pNote:              "8K|30F|3D|10bit",
+    pNote:              "8K3D|30F|10bit",
     bDispType:          false,
 };
 
@@ -719,9 +719,11 @@ PicVideoCfg* gVidAllModeCfgList[] = {
 	&vid11K_30F_Cfg,
 	&vid10K_30F_3D_Cfg,
 	&vid8K_30F_3D_10bit_Cfg,
+
 #if 0	
 	&vid8K60F10bit_Cfg,
 #endif
+
 	&vid8K_3D_30F_Cfg,
 
 	&vid8K_3D_50F_Cfg,
@@ -734,8 +736,6 @@ PicVideoCfg* gVidAllModeCfgList[] = {
 	&vid4K_30F_RTS_Cfg,
 	&vid_Customer_Cfg
 };
-
-
 
 
 #endif /* _VID_GEAR_H_ */

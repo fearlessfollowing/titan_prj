@@ -1,6 +1,5 @@
-
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2 Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: VolumeManager.h
 ** 功能描述: 存储管理器（管理设备的外部内部设备）,卷管理器设计为单例模式，进程内唯一，外部可以用过调用
@@ -41,18 +40,6 @@ enum {
 #ifndef COM_NAME_MAX_LEN
 #define COM_NAME_MAX_LEN    64
 #endif
-
-
-#ifndef WIFEXITED
-#define WIFEXITED(status)	(((status) & 0xff) == 0)
-#endif /* !defined WIFEXITED */
-
-#ifndef WEXITSTATUS
-#define WEXITSTATUS(status)	(((status) >> 8) & 0xff)
-#endif /* !defined WEXITSTATUS */
-
-#define ARRAY_SIZE(x)	    (sizeof(x) / sizeof(x[0]))
-
 
 
 /*
@@ -204,20 +191,11 @@ using saveListNotifyCallback = std::function<void ()>;
 using notifyHotplugCallback = std::function<void (sp<ARMessage>& msg, int iAction, int iType, std::vector<Volume*>& devList)>;
 
 
-
-/*
- * 底层: 接收Netlink消息模式, 监听设备文件模式
- * - 挂载/卸载/格式化
- * - 列出所有卷
- * - 获取指定名称的卷
- */
 class VolumeManager {
 
 public:
                 VolumeManager();
-    virtual     ~VolumeManager();
-
-
+                ~VolumeManager();
 
     /*
      * 启动/停止卷管理器
@@ -369,10 +347,6 @@ public:
     
     /** 转换秒数为'00:00:00'格式字符串 */
     void        convSec2TimeStr(u64 secs, char* strBuf, int iLen);
-
-    // static VolumeManager *Instance();
-
-
     void        loadPicVidStorageCfgBill();
 
 
@@ -391,8 +365,6 @@ private:
     Volume*                         mCurrentUsedLocalVol;           /* 当前被使用的本地卷 */
     Volume*                         mSavedLocalVol;                 /* 上次保存 */
     bool                            mBsavePathChanged;              /* 本地存储设备路径是否发生改变 */
-
-    // static VolumeManager*           sInstance;
 
     std::vector<Volume*>            mVolumes;                       /* 管理系统中所有的卷 */
     std::vector<Volume*>            mLocalVols;                     /* 管理系统中所有的卷 */
@@ -457,6 +429,8 @@ private:
 
 
 
+    std::mutex                      mTlCntLock;
+    
     /*****************************************************************************************************
      * Vold Netlink事件处理线程
      *****************************************************************************************************/
@@ -480,7 +454,6 @@ private:
     void                    setSavepathChanged(int iAction, Volume* pVol);
 
     bool                    checkMountPath(const char* mountPath);
-    bool                    isMountpointMounted(const char *mp);
 
     bool                    isValidFs(const char* devName, Volume* pVol);
 

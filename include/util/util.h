@@ -5,6 +5,7 @@
 #include <json/json.h>
 #include <json/value.h>
 
+
 #ifdef ENABLE_ABORT
 #define SWITCH_DEF_ERROR(item) \
 default: \
@@ -32,6 +33,18 @@ default: \
     } while (_rc == -1 && errno == EINTR); \
     _rc; })
 #endif
+
+
+#ifndef WIFEXITED
+#define WIFEXITED(status)	(((status) & 0xff) == 0)
+#endif /* !defined WIFEXITED */
+
+#ifndef WEXITSTATUS
+#define WEXITSTATUS(status)	(((status) >> 8) & 0xff)
+#endif /* !defined WEXITSTATUS */
+
+#define ARRAY_SIZE(x)	    (sizeof(x) / sizeof(x[0]))
+
 
 
 enum {

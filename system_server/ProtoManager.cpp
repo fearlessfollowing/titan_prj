@@ -35,7 +35,6 @@
 #include <util/SingleInstance.h>
 #include <sys/ProtoManager.h>
 #include <sys/CfgManager.h>
-
 #include <log/log_wrapper.h>
 
 
@@ -49,8 +48,6 @@
 /*********************************************************************************************
  *  宏定义
  *********************************************************************************************/
-
-
 #define REQ_UPDATE_TIMELAPSE_LEFT   "camera._update_tl_left_count"
 #define REQ_SWITCH_UDISK_MODE       "camera._change_udisk_mode"
 #define REQ_SYNC_INFO               "camera._request_sync"
@@ -91,9 +88,6 @@
 #define REQ_UPDATE_SYS_TEMP         "camera._updateSysTemp"
 
 
-/*
- * {"name": "camera._indSyncState", "parameters": {"state": int, "c_v": string, "k_v": string, "v_v": string}}
- */
 #define IND_SYNC_STATE              "camera._indSyncState"
 
 #define IND_SWITCH_MOUNT_MODE       "camera._change_mount_mode"
@@ -126,15 +120,14 @@ extern void int_to_bytes(char *buf,unsigned int val);
 /*********************************************************************************************
  *  全局变量
  *********************************************************************************************/
+
+#ifdef ENABLE_SEND_REQ_USE_HTTP
 static std::mutex gSyncReqMutex;
 static const std::string gReqUrl = "http://127.0.0.1:20000/ui/commands/execute";
 static const char* gPExtraHeaders = "Content-Type:application/json\r\nReq-Src:ProtoManager\r\n";     // Req-Src:ProtoManager\r\n
-
 int ProtoManager::mSyncReqErrno = 0;
 Json::Value* ProtoManager::mSaveSyncReqRes = NULL;
-
-
-
+#endif
 
 
 /*********************************************************************************************
@@ -153,16 +146,12 @@ ProtoManager::ProtoManager(): mSyncReqExitFlag(false), mAsyncReqExitFlag(false)
         Json::Value root;
 
         ifs.open(PREVIEW_JSON_FILE, std::ios::binary); 
-        
         if (ifs.is_open()) {
             Json::CharReaderBuilder builder;
             builder["collectComments"] = false;
             JSONCPP_STRING errs;
             if (parseFromStream(builder, ifs, &mPreviewJson, &errs)) {
                 LOGDBG(TAG, "parse [%s] success", PREVIEW_JSON_FILE);
-                /*
-                 * Convert Json to string
-                 */
                 Json::StreamWriterBuilder builder;
                 std::ostringstream osInput;
                 mPreviewJson[_who_req] = REQUEST_BY_UI;
@@ -192,7 +181,7 @@ ProtoManager::ProtoManager(): mSyncReqExitFlag(false), mAsyncReqExitFlag(false)
         param["origin"] = origin;
         param["stiching"] = stitcher;
 
-        mPreviewJson["name"] = REQ_START_PREVIEW;
+        mPreviewJson[_name_] = REQ_START_PREVIEW;
         mPreviewJson[_who_req] = REQUEST_BY_UI;
         mPreviewJson[_param] = param;
     }
@@ -205,35 +194,8 @@ ProtoManager::~ProtoManager()
 }
 
 
-/*
- * 发送同步请求(支持头部参数及post的数据))),支持超时时间
- */
-int ProtoManager::sendHttpSyncReq(const std::string &url, 
-                                    Json::Value* pJsonRes, 
-                                    const char* pExtraHeaders, 
-                                    const char* pPostData)
-{
 
-    std::unique_lock<std::mutex> _lock(gSyncReqMutex);
-
-    mg_mgr mgr;
-    mSaveSyncReqRes = pJsonRes;
-
-	mg_mgr_init(&mgr, NULL);
-
-    struct mg_connection* connection = mg_connect_http(&mgr, onSyncHttpEvent, 
-                                                        url.c_str(), pExtraHeaders, pPostData);
-	mg_set_protocol_http_websocket(connection);
-
-    setSyncReqExitFlag(false);
-
-	while (false == getSyncReqExitFlag())
-		mg_mgr_poll(&mgr, 50);
-
-	mg_mgr_free(&mgr);
-
-    return mSyncReqErrno;
-}
+#ifdef ENABLE_SEND_REQ_USE_HTTP
 
 
 void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pEventData)
@@ -287,20 +249,30 @@ void ProtoManager::onSyncHttpEvent(mg_connection *conn, int iEventType, void *pE
 }
 
 
-bool ProtoManager::innerSendSyncReqWithoutCallback(Json::Value& root, syncReqResultCallback callBack)
+/*
+ * 发送同步请求(支持头部参数及post的数据))),支持超时时间
+ */
+int ProtoManager::sendHttpSyncReq(const std::string &url, 
+                                    Json::Value* pJsonRes, 
+                                    const char* pExtraHeaders, 
+                                    const char* pPostData)
 {
-#ifndef USE_UNIX_TRAN               
-    return sendSyncRequest(root, callBack);   
-#else                               
-    if (sendSyncReqUseUnix(root, callBack) == PROTO_ERROR_SUC) {  
-        return true;    
-    } else {    
-        return false;   
-    }   
-#endif    
+
+    std::unique_lock<std::mutex> _lock(gSyncReqMutex);
+
+    mg_mgr mgr;
+    mSaveSyncReqRes = pJsonRes;
+	mg_mgr_init(&mgr, NULL);
+    struct mg_connection* connection = mg_connect_http(&mgr, onSyncHttpEvent, 
+                                                        url.c_str(), pExtraHeaders, pPostData);
+	mg_set_protocol_http_websocket(connection);
+    setSyncReqExitFlag(false);
+	while (false == getSyncReqExitFlag())
+		mg_mgr_poll(&mgr, 50);
+
+	mg_mgr_free(&mgr);
+    return mSyncReqErrno;
 }
-
-
 
 bool ProtoManager::sendSyncRequest(Json::Value& requestJson, syncReqResultCallback callBack)
 {
@@ -337,6 +309,34 @@ bool ProtoManager::sendSyncRequest(Json::Value& requestJson, syncReqResultCallba
     return bRet;    
 }
 
+bool ProtoManager::getSyncReqExitFlag()
+{
+    std::unique_lock<std::mutex> _lock(mSyncReqLock);
+    return mSyncReqExitFlag;
+}
+
+void ProtoManager::setSyncReqExitFlag(bool bFlag)
+{
+    std::unique_lock<std::mutex> _lock(mSyncReqLock);    
+    mSyncReqExitFlag = bFlag;
+}
+
+#endif
+
+
+
+bool ProtoManager::innerSendSyncReqWithoutCallback(Json::Value& root, syncReqResultCallback callBack)
+{
+#ifdef ENABLE_SEND_REQ_USE_HTTP
+    return sendSyncRequest(root, callBack);   
+#else                               
+    if (sendSyncReqUseUnix(root, callBack) == PROTO_ERROR_SUC) {  
+        return true;    
+    } else {    
+        return false;   
+    }   
+#endif    
+}
 
 
 /*************************************************************************
@@ -353,7 +353,7 @@ bool ProtoManager::getServerStateCb(Json::Value& resultJson)
 
     if (resultJson.isMember(_state)) {
         if (resultJson[_state] == _done) {
-            Singleton<ProtoManager>::getInstance()->mServerState = resultJson["value"].asUInt64();
+            Singleton<ProtoManager>::getInstance()->mServerState = resultJson[_value_].asUInt64();
             bRet = true;
         }
     } else {
@@ -378,7 +378,7 @@ bool ProtoManager::getServerState(uint64_t* saveState)
     Json::Value root;
     Json::Value param;
 
-    param[_method] = "get";      /* 获取服务器的状态 */
+    param[_method] = _get;      /* 获取服务器的状态 */
     root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
 
@@ -405,13 +405,12 @@ bool ProtoManager::setServerState(uint64_t saveState)
     Json::Value param;
     std::string sendStr = "";
 
-    param[_method] = "set";      /* 设置服务器的状态 */
+    param[_method] = _set;      /* 设置服务器的状态 */
     param[_state] = saveState;
     root[_name_] = REQ_GET_SET_CAM_STATE;
     root[_param] = param;
 
     LOGDBG(TAG, "Add state: 0x%x", saveState);
-
     return innerSendSyncReqWithoutCallback(root);
 }
 
@@ -429,7 +428,7 @@ bool ProtoManager::rmServerState(uint64_t saveState)
     Json::Value root;
     Json::Value param;
 
-    param[_method] = "clear";      /* 设置服务器的状态 */
+    param[_method] = _clear;      /* 设置服务器的状态 */
     param[_state] = saveState;
 
     root[_name_] = REQ_GET_SET_CAM_STATE;
@@ -604,7 +603,7 @@ bool ProtoManager::sendSetCustomLensReq(Json::Value& customParam)
 {
     Json::Value root;
     root[_name_] = REQ_SET_CUSTOMER_PARAM;
-    root[_param] = customParam["parameters"]["properties"];
+    root[_param] = customParam[_param]["properties"];
     return innerSendSyncReqWithoutCallback(root);
 }
 
@@ -1040,7 +1039,7 @@ int ProtoManager::sendFormatmSDReq(int iIndex)
     Json::Value root;
     Json::Value param;
 
-    param[_index] = iIndex;
+    param[_index_] = iIndex;
     root[_name_] = REQ_FORMAT_TFCARD;
     root[_param] = param;
 
@@ -1149,19 +1148,6 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
 }
 
 
-bool ProtoManager::getSyncReqExitFlag()
-{
-    std::unique_lock<std::mutex> _lock(mSyncReqLock);
-    return mSyncReqExitFlag;
-}
-
-void ProtoManager::setSyncReqExitFlag(bool bFlag)
-{
-    std::unique_lock<std::mutex> _lock(mSyncReqLock);    
-    mSyncReqExitFlag = bFlag;
-}
-
-
 
 
 /*********************************************************************************************
@@ -1180,7 +1166,6 @@ bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonDa
     if (jsonData.isMember(_name_)) {   
         std::string cmd = jsonData[_name_].asCString();
         if (jsonData.isMember(_param)) {
-            Json::Value& param = jsonData[_param];
             if (cmd == IND_SYNC_STATE) {
                 handleSyncInfo(cli, jsonData[_param]);
             } else if (cmd == IND_SWITCH_MOUNT_MODE) {
@@ -1542,12 +1527,16 @@ void ProtoManager::handleQueryLeftInfo(SocketClient* cli, Json::Value& rootJson)
 
     Json::Value& queryJson = rootJson["param"];
 
-    if (queryJson.isMember("name")) {
-        if (!strcmp(queryJson["name"].asCString(), "camera._takePicture") ) {
+    if (queryJson.isMember(_name_)) {
+        if (!strcmp(queryJson[_name_].asCString(), _take_pic) ) {
             uLeft = vm->calcTakepicLefNum(queryJson, false);
-        } else if (!strcmp(queryJson["name"].asCString(), "camera._startRecording")) {
-            uLeft = vm->calcTakeRecLefSec(queryJson);
-        } else if (!strcmp(queryJson["name"].asCString(), "camera._startLive")) {
+        } else if (!strcmp(queryJson[_name_].asCString(), _take_video)) {
+            if (queryJson[_param].isMember(_timelapse)) {
+                uLeft = vm->calcTakepicLefNum(queryJson, false);
+            } else {
+                uLeft = vm->calcTakeRecLefSec(queryJson);
+            }
+        } else if (!strcmp(queryJson[_name_].asCString(), _take_live)) {
             uLeft = vm->calcTakeLiveRecLefSec(queryJson);
         }
     } else {
@@ -1559,7 +1548,7 @@ void ProtoManager::handleQueryLeftInfo(SocketClient* cli, Json::Value& rootJson)
 
     retRoot[_name_] = rootJson[_name_];
     retRoot[_state] = _done;
-    retRoot["left"] = uLeft;    
+    retRoot[_left] = uLeft;    
     
 
     convJsonObj2String(retRoot, sendStr);

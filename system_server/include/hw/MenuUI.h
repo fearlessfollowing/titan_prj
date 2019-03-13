@@ -613,9 +613,6 @@ private:
 
     void    dispFormatSd();
 
-    bool    check_state_equal(u64 state);
-    bool    check_state_in(u64 state);
-
 
     void    update_menu_disp(const int *icon_light,const int *icon_normal = nullptr);
     void    set_back_menu(int item,int menu);
@@ -627,7 +624,6 @@ private:
 
     void    disp_msg_box(int type);
     bool    checkServerAllowTakePic();
-
 
     int     oled_reset_disp(int type);
 
@@ -699,15 +695,11 @@ private:
 
     uint64_t getServerState();
 
-
-
     bool    syncQueryTfCard();
 
-    void    add_state(u64 state);
 
     void    disp_tl_count(int count);
     void    set_tl_count(int count);
-    void    rm_state(u64 state);
 
     void    update_sys_info();
     void    restore_all();
@@ -729,11 +721,8 @@ private:
 
     void    add_qr_res(Json::Value& actionJson, int control_act, uint64_t serverState);
     
-    void    disp_qr_res(bool high = true);
-
     void    reset_last_info();
     bool    is_bat_low();
-    bool    is_bat_charge();
 
     void    func_low_bat();
 
@@ -749,11 +738,8 @@ private:
     int     check_live_save(Json::Value* liveJson);
 
     bool    sendRpc(int option, int cmd = -1, Json::Value* pNodeArg = NULL);
-
     bool    checkisLiveRecord();
-
     bool    checkIsTakeTimelpaseInCustomer();
-
 
 
 /******************************************************************************************************

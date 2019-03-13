@@ -692,6 +692,12 @@ QueryLeftInfo:
 }
 
 # Timelapse
+{
+	"name":"camera._queryLeftInfo",	
+	"param":{"name" : "camera._startRecording","parameters" :{"fileOverride" : false,"origin" :{"hdr" : false,"height" : 3956,"logMode" : 0,"mime" : "jpeg","saveOrigin" : true,"width" : 5280},"properties" :{"audio_gain" : 64,"len_param" :{"aaa_mode" : 1,"brightness" : 0,"contrast" : 64,"ev_bias" : 0,"hue" : 0,"iso_cap" : 0,"iso_value" : 0,"saturation" : 64,"sharpness" : 0,"shutter_value" : 0,"stabilization" : 1,"wb" : 0}},"stabilization" : false,"storageSpeedTest" : false,"timelapse" :{"enable" : true,"interval" : 2000}}}
+}
+
+
 
 
 录像: 剩余可录的秒数

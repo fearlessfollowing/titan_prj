@@ -32,15 +32,18 @@ static unsigned int rec_channel_num = 0;
 static int dev_fd = -1;
 static int dev_fd_cnt = 0;
 
-char* get_cfg_location(void) {
+char* get_cfg_location(void) 
+{
 	return get_cfg_path();
 }
 
-char* get_sdcard_path(void) {
+char* get_sdcard_path(void) 
+{
 	return get_sdcard_root();
 }
 
-bool get_output_log(void) {
+bool get_output_log(void) 
+{
 	return is_output_log();
 }
 
@@ -50,13 +53,13 @@ int lib_open_device(void)
 {
 	load_user_setting();
 	
-	if(dev_fd != -1) {
+	if (dev_fd != -1) {
 		dev_fd_cnt++;
 		return dev_fd;
 	}
 	
 	dev_fd = open(DEVICE_NAME, O_RDWR);  
-	if(dev_fd == -1) {  
+	if (dev_fd == -1) {  
 		printf("Failed to open device %s.\n", DEVICE_NAME);
 		return -EFAILOPEN;
 	}
@@ -68,14 +71,13 @@ int lib_open_device(void)
 //close the device handle
 bool lib_close_device(void)
 {
-	if(dev_fd != -1) {
+	if (dev_fd != -1) {
 		dev_fd_cnt--;
 		if(dev_fd_cnt == 0) {
 			close(dev_fd);
 			dev_fd = -1;
 		}
-	}
-	else{
+	} else {
 		return false;
 	}
 	
@@ -87,7 +89,7 @@ int get_mode(void)
 {
 	dev_cmd_mode_gs local_dev_cmd;
 	
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -105,7 +107,7 @@ int set_mode(int dsp_mode)
 {
 	dev_cmd_mode_gs local_dev_cmd;
 
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -123,7 +125,7 @@ int get_reg_value(int reg_addr)
 {
 	dev_cmd_reg_rw local_dev_cmd;
 
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -141,7 +143,7 @@ int set_reg_value(int reg_addr, int value)
 {
 	dev_cmd_reg_rw local_dev_cmd;
 
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -161,7 +163,7 @@ int get_dsp_mem_value(unsigned int mem_addr)
 {
 	dev_cmd_short local_dev_cmd;
 	
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -180,7 +182,7 @@ int set_dsp_mem_value(unsigned int mem_addr, int value)
 {
 	dev_cmd_short local_dev_cmd;
 	
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -200,7 +202,7 @@ int get_dsp_mem_value_spi(unsigned int mem_addr)
 {
 	dev_cmd_short local_dev_cmd;
 	
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -215,10 +217,11 @@ int get_dsp_mem_value_spi(unsigned int mem_addr)
 }
 
 //set value to memory address via spi
-int set_dsp_mem_value_spi(unsigned int mem_addr, int value) {
+int set_dsp_mem_value_spi(unsigned int mem_addr, int value) 
+{
 	dev_cmd_short local_dev_cmd;
 
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -233,33 +236,33 @@ int set_dsp_mem_value_spi(unsigned int mem_addr, int value) {
 	return ESUCCESS;    
 }
 
-int convert_channel_index(unsigned int ch_num, unsigned char* ch_idx, unsigned short* final_ch_num, unsigned char* final_ch_idx) {
+int convert_channel_index(unsigned int ch_num, unsigned char* ch_idx, unsigned short* final_ch_num, unsigned char* final_ch_idx) 
+{
 	int i;
 	
-	if(final_ch_idx == NULL) return -EPARAMINVAL;
-	if(final_ch_num == NULL) return -EPARAMINVAL;
+	if (final_ch_idx == NULL) return -EPARAMINVAL;
+	if (final_ch_num == NULL) return -EPARAMINVAL;
 	
-	if((ch_num > 0) && (ch_num <= DSP_SPI_REC_CH_NUM)) {
+	if ((ch_num > 0) && (ch_num <= DSP_SPI_REC_CH_NUM)) {
 		*final_ch_num	= ch_num;
 		
-		if(ch_idx) {
+		if (ch_idx) {
 			memcpy(final_ch_idx, ch_idx, sizeof(char) * DSP_SPI_REC_CH_NUM);
 			for(i = 0; i < DSP_SPI_REC_CH_NUM; i++) {
 				if(final_ch_idx[i] == '0') final_ch_idx[i] = 0;
 			}
-		}
-		else {
+		} else {
 			*final_ch_num	= DSP_SPI_REC_CH_NUM;
 			memset(final_ch_idx, '1', sizeof(char) * DSP_SPI_REC_CH_NUM);
 		}
-	}
-	else {
+	} else {
 		*final_ch_num	= DSP_SPI_REC_CH_NUM;
 		memset(final_ch_idx, '1', sizeof(char) * DSP_SPI_REC_CH_NUM);
 	}
 
 	return ESUCCESS;
 }
+
 //start to record
 //ch_idx is channel array, '1' means record the related channel, ' ' means omit this channel
 int start_debug_record(unsigned int ch_num, unsigned char* ch_idx, char* filepath)
@@ -269,12 +272,12 @@ int start_debug_record(unsigned int ch_num, unsigned char* ch_idx, char* filepat
 	char data_file_path[MAX_PATH_LEN] = { 0 };
 	int i;
 	
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
 	
-	if(filepath == NULL) {
+	if (filepath == NULL) {
 		output_debug_log(false, "[libfm1388-%s] got empty file path.\n", __func__);
 		return -EPARAMINVAL;
 	}
@@ -307,7 +310,7 @@ int start_debug_record(unsigned int ch_num, unsigned char* ch_idx, char* filepat
 */	
 
 	frame_size = get_dsp_mem_value_spi(DSP_SPI_FRAMESIZE_ADDR) & 0x0000FFFF;
-	if((frame_size <= 0) || (frame_size > 0x1000)) { //suppose frame size should not be too large
+	if ((frame_size <= 0) || (frame_size > 0x1000)) { //suppose frame size should not be too large
 		printf("framesize is not correct. frame_size=%d\n", frame_size);
 		output_debug_log(false, "[libfm1388-%s] framesize is not correct. frame_size=%d\n", __func__, frame_size);
 		return -EDATAINVAL;
@@ -316,7 +319,7 @@ int start_debug_record(unsigned int ch_num, unsigned char* ch_idx, char* filepat
 	channel_num = ch_num;
 	
 	ret_val = write(dev_fd, &local_dev_cmd, sizeof(dev_cmd_start_rec));
-	if(ret_val < 0) {
+	if (ret_val < 0) {
 		printf("error occurs when start recording. error code=%d\n", ret_val);
 		output_debug_log(false, "[libfm1388-%s] error occurs when start recording. error code=%d\n", __func__, ret_val);
 		return ret_val;
@@ -333,7 +336,8 @@ int start_debug_record(unsigned int ch_num, unsigned char* ch_idx, char* filepat
 int stop_debug_record(char* wav_file_name, unsigned int sample_rate, 
 						unsigned int bits_per_sample) {
 */
-int stop_debug_record(const char* wav_file_name, const unsigned char* channels, dev_cmd_record_result *rec_result) {
+int stop_debug_record(const char* wav_file_name, const unsigned char* channels, dev_cmd_record_result *rec_result) 
+{
 	dev_cmd_short local_dev_cmd;
 	int ret_val 		= ESUCCESS;
 	int cur_sample_rate = -1;
@@ -342,22 +346,22 @@ int stop_debug_record(const char* wav_file_name, const unsigned char* channels, 
 	dev_cmd_record_result* temp_cmd = NULL;
 	unsigned int build_date = 0;
 	
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(true, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
 	
-	if(wav_file_name == NULL) {
+	if (wav_file_name == NULL) {
 		output_debug_log(true, "[libfm1388-%s] wav_file_name is null.\n", __func__);
 		return -EPARAMINVAL;
 	}
 	
-	if(channels == NULL) {
+	if (channels == NULL) {
 		output_debug_log(true, "[libfm1388-%s] channels is null.\n", __func__);
 		return -EPARAMINVAL;
 	}
 	
-	if(rec_result == NULL) {
+	if (rec_result == NULL) {
 		output_debug_log(true, "[libfm1388-%s] rec_result is null.\n", __func__);
 		return -EPARAMINVAL;
 	}
@@ -366,7 +370,7 @@ int stop_debug_record(const char* wav_file_name, const unsigned char* channels, 
 	
 	local_dev_cmd.cmd_name = FM_SMVD_DSP_FETCH_VDATA_STOP;
 	ret_val = write(dev_fd, &local_dev_cmd, sizeof(dev_cmd_short));
-	if(ret_val <= 0) {
+	if (ret_val <= 0) {
 		printf("Error occurs when stop recording data.\n");
 		output_debug_log(false, "[libfm1388-%s] Error occurs when stop recording data.\n", __func__);
 		return ret_val;
@@ -374,14 +378,14 @@ int stop_debug_record(const char* wav_file_name, const unsigned char* channels, 
 	
 	//get sample rate from DSP and hardcode bits_per_sample as 16
 	cur_sample_rate = get_dsp_mem_value(DSP_SAMPLE_RATE_ADDR);
-	if(cur_sample_rate < 0) {
+	if (cur_sample_rate < 0) {
 		printf("got invalid sample rate data:%x\n", cur_sample_rate);
 		output_debug_log(false, "[libfm1388-%s] got invalid sample rate data:%x\n\n", __func__, cur_sample_rate);
 		return -EDATAINVAL;
 	}
 	
 	cur_sample_rate = get_dsp_sample_rate(cur_sample_rate);
-	if(cur_sample_rate < 0) { 
+	if (cur_sample_rate < 0) { 
 		printf("sample_rate value is not valid:%d.\n", cur_sample_rate);
 		output_debug_log(false, "[libfm1388-%s] sample_rate value is not valid:%d.\n", __func__, cur_sample_rate);
 		return -EDATAINVAL;
@@ -402,7 +406,7 @@ int stop_debug_record(const char* wav_file_name, const unsigned char* channels, 
 	ret_val = convert_data(data_file_path, wav_file_full_path, cur_sample_rate, 16, 
 						channel_num, channels, frame_size, build_date >= 0x20180426);
 
-	if(ret_val) {
+	if (ret_val) {
 		printf("Error occurs when save recording data. error code=%d\n", ret_val);
 		output_debug_log(false, "[libfm1388-%s] Error occurs when save recording data. error code=%d\n", __func__, ret_val);
 		return ret_val;
@@ -411,14 +415,14 @@ int stop_debug_record(const char* wav_file_name, const unsigned char* channels, 
 	temp_cmd = (dev_cmd_record_result*)&local_dev_cmd;
 	output_debug_log(false, "[libfm1388-%s] loss frame number:%d among total frame:%d.\n", 
 				__func__, temp_cmd->error_frame_number, temp_cmd->total_frame_number);
-	if(temp_cmd->error_frame_number != 0) {
+	if (temp_cmd->error_frame_number != 0) {
 		output_debug_log(false, "[libfm1388-%s] first loss occurs at the %dth frame.\n", 
 						__func__, temp_cmd->first_error_frame_counter);
 		output_debug_log(false, "[libfm1388-%s] last loss occurs at the %dth frame.\n", 
 						__func__, temp_cmd->last_error_frame_counter);
 	}
 	
-	if(rec_result != NULL) {
+	if (rec_result != NULL) {
 		rec_result->first_error_frame_counter = temp_cmd->first_error_frame_counter;
 		rec_result->last_error_frame_counter = temp_cmd->last_error_frame_counter;
 		rec_result->error_frame_number = temp_cmd->error_frame_number;
@@ -429,15 +433,16 @@ int stop_debug_record(const char* wav_file_name, const unsigned char* channels, 
 }
 
 //just for ADB Tool
-int stop_debug_record_by_ADBTool(const char* wav_file_name, const unsigned char* channels, int channel_number, dev_cmd_record_result *rec_result) {	
+int stop_debug_record_by_ADBTool(const char* wav_file_name, const unsigned char* channels, int channel_number, dev_cmd_record_result *rec_result) 
+{	
 	frame_size = get_dsp_mem_value_spi(DSP_SPI_FRAMESIZE_ADDR) & 0x0000FFFF;
-	if((frame_size <= 0) || (frame_size > 0x1000)) { //suppose frame size should not be too large
+	if ((frame_size <= 0) || (frame_size > 0x1000)) { //suppose frame size should not be too large
 		printf("framesize is not correct. frame_size=%d\n", frame_size);
 		output_debug_log(true, "[libfm1388-%s] framesize is not correct. frame_size=%d\n", __func__, frame_size);
 		return -EDATAINVAL;
 	}
 	
-	if(rec_result == NULL) {
+	if (rec_result == NULL) {
 		output_debug_log(true, "[libfm1388-%s] rec_result is null.\n", __func__);
 		return -EPARAMINVAL;
 	}
@@ -448,11 +453,12 @@ int stop_debug_record_by_ADBTool(const char* wav_file_name, const unsigned char*
 	return stop_debug_record(wav_file_name, channels, rec_result);
 }
 
-int stop_debug_record_force(void) {
+int stop_debug_record_force(void) 
+{
 	dev_cmd_short local_dev_cmd;
 	int ret_val 		= ESUCCESS;
 	
-	if(dev_fd == -1) {
+	if (dev_fd == -1) {
 		output_debug_log(false, "[libfm1388-%s] device handle is -1, please make sure you have opened device correcly.\n", __func__);
 		return -ENOTOPEN;
 	}
@@ -469,7 +475,8 @@ int stop_debug_record_force(void) {
 }
 
 /************************ function and interface for SPI Playback *****************************/
-int get_channel_number(char* file_path) {
+int get_channel_number(char* file_path) 
+{
 	FILE* 		wav_fp = NULL;
 	char 		play_file_full_path[MAX_PATH_LEN + 1] 	= {0};
 	wav_header	header;
@@ -500,7 +507,8 @@ int get_channel_number(char* file_path) {
 	return header.num_channels;
 }
 
-bool check_channel_mapping(int channel_num, char* channel_mapping) {
+bool check_channel_mapping(int channel_num, char* channel_mapping) 
+{
 	int i, j = 0;
 	int len = 0;
 	unsigned int build_date = 0;
@@ -550,7 +558,8 @@ bool check_channel_mapping(int channel_num, char* channel_mapping) {
 	return true;
 }
 
-int trans_mapping_str(char* channel_mapping, char* trans_mapping_str) {
+int trans_mapping_str(char* channel_mapping, char* trans_mapping_str) 
+{
 	int i, j, len;
 	unsigned int build_date = 0;
 
@@ -599,7 +608,8 @@ int trans_mapping_str(char* channel_mapping, char* trans_mapping_str) {
 	return ESUCCESS;
 }
 
-int copy_playback_result(dev_cmd_short* local_dev_cmd, dev_cmd_playback_result *playback_result) {
+int copy_playback_result(dev_cmd_short* local_dev_cmd, dev_cmd_playback_result *playback_result) 
+{
 	dev_cmd_playback_result* temp_result;
 	
 	temp_result = (dev_cmd_playback_result*)local_dev_cmd;
@@ -728,12 +738,14 @@ printf("channel mapping string is translated to: %s\n", trans_ch_mapping);
 	return ESUCCESS;
 }
 
-int start_spi_playback_by_ADBTool(char* channel_mapping, char* filepath, unsigned char cPlayMode, unsigned char cPlayOutput) {
+int start_spi_playback_by_ADBTool(char* channel_mapping, char* filepath, unsigned char cPlayMode, unsigned char cPlayOutput) 
+{
 	output_debug_log(false, "[libfm1388-%s] Will start SPI Playback from ADB Tool.\n", __func__);
 	return start_spi_playback(channel_mapping, filepath);
 }
 
-int stop_spi_playback(dev_cmd_playback_result *playback_result) {
+int stop_spi_playback(dev_cmd_playback_result *playback_result) 
+{
 	dev_cmd_short local_dev_cmd;
 	int ret_val = ESUCCESS;
 	

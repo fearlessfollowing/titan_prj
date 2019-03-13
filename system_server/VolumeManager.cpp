@@ -123,9 +123,8 @@ static Mutex gRecLeftMutex;
 static Mutex gLiveRecLeftMutex;
 static Mutex gRecMutex;
 static Mutex gLiveRecMutex;
-static Mutex gTimelapseLock;
 
-// static std::mutex gTimelapseLock;
+
 
 static Mutex gRemoteVolLock;
 
@@ -318,7 +317,7 @@ static Volume gSysVols[] = {
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
     },          
 
-    #ifdef HW_FLATFROM_TITAN
+#ifdef HW_FLATFROM_TITAN
     
     {   /* mSD7 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
@@ -361,7 +360,7 @@ static Volume gSysVols[] = {
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
     }, 
-    #endif
+#endif
 
 };
 
@@ -544,124 +543,145 @@ void VolumeManager::loadPicVidStorageCfgBill()
         }
 
         if (!bLoadTakePicCfg) {  /* 生成默认的配置参数 */
-            mTakePicStorageCfg["name"] = "takePictureEvl";
-            
-            mTakePicStorageCfg["11k_3d_of"]["raw_storage_loc"]      = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["11k_3d_of"]["other_storage_loc"]    = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["11k_3d_of"]["raw_size"]             = 40;       /* dng以40M算 */
-            mTakePicStorageCfg["11k_3d_of"]["misc_size"]            = 65;       /* 60 - 65MB */         
-            mTakePicStorageCfg["11k_3d_of"]["raw_enable"]           = 0;              
-            mTakePicStorageCfg["11k_3d_of"]["name"]                 = "11k_3d_of";
 
-            mTakePicStorageCfg["11k_of"]["raw_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["11k_of"]["other_storage_loc"]       = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["11k_of"]["raw_size"]                = 40;
-            mTakePicStorageCfg["11k_of"]["misc_size"]               = 48;   /* 45 - 50MB */  
-            mTakePicStorageCfg["11k_of"]["raw_enable"]              = 0;              
-            mTakePicStorageCfg["11k_of"]["name"]                    = "11k_of";
+            mTakePicStorageCfg[_name_] = "takePictureEvl";
 
+            mTakePicStorageCfg[_11k_3d_of][_raw_st_loc]         = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_11k_3d_of][_other_st_loc]       = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_11k_3d_of][_raw_size]           = 40 * SYS_TF_COUNT_NUM;       /* dng以40M算 */
+            mTakePicStorageCfg[_11k_3d_of][_misc_size]          = 65;                           /* 60 - 65MB */         
+            mTakePicStorageCfg[_11k_3d_of][_raw_enable]         = 0;              
+            mTakePicStorageCfg[_11k_3d_of][_name_]              = _11k_3d_of;
 
-            mTakePicStorageCfg["11k"]["raw_storage_loc"]            = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["11k"]["other_storage_loc"]          = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["11k"]["raw_size"]                   = 40;
-            mTakePicStorageCfg["11k"]["misc_size"]                  = 28;   /* 25 - 30MB */ 
-            mTakePicStorageCfg["11k"]["raw_enable"]                 = 0;              
-            mTakePicStorageCfg["11k"]["name"]                       = "11k";
+            mTakePicStorageCfg[_11k_of][_raw_st_loc]            = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_11k_of][_other_st_loc]          = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_11k_of][_raw_size]              = 40 * SYS_TF_COUNT_NUM;
+            mTakePicStorageCfg[_11k_of][_misc_size]             = 48;                           /* 45 - 50MB */  
+            mTakePicStorageCfg[_11k_of][_raw_enable]            = 0;              
+            mTakePicStorageCfg[_11k_of][_name_]                 = _11k_of;
 
 
-            mTakePicStorageCfg["aeb3"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
-            mTakePicStorageCfg["aeb3"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["aeb3"]["raw_size"]                  = 40 * 3;
-            mTakePicStorageCfg["aeb3"]["misc_size"]                 = 95;   /* 95 - 100MB */  
-            mTakePicStorageCfg["aeb3"]["raw_enable"]                = 0;              
-            mTakePicStorageCfg["aeb3"]["name"]                      = "aeb3";
+            mTakePicStorageCfg[_11k][_raw_st_loc]               = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_11k][_other_st_loc]             = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_11k][_raw_size]                 = 40 * SYS_TF_COUNT_NUM;
+            mTakePicStorageCfg[_11k][_misc_size]                = 28;   /* 25 - 30MB */ 
+            mTakePicStorageCfg[_11k][_raw_enable]               = 0;              
+            mTakePicStorageCfg[_11k][_name_]                    = _11k;
 
 
-            mTakePicStorageCfg["aeb5"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
-            mTakePicStorageCfg["aeb5"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["aeb5"]["raw_size"]                  = 40 * 5;
-            mTakePicStorageCfg["aeb5"]["misc_size"]                 = 150;    
-            mTakePicStorageCfg["aeb5"]["raw_enable"]                = 0;              
-            mTakePicStorageCfg["aeb5"]["name"]                      = "aeb5";
+            mTakePicStorageCfg[_aeb3][_raw_st_loc]              = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg[_aeb3][_other_st_loc]            = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_aeb3][_raw_size]                = 40 * 3;
+            mTakePicStorageCfg[_aeb3][_misc_size]               = 95;           /* 95 - 100MB */  
+            mTakePicStorageCfg[_aeb3][_raw_enable]              = 0;              
+            mTakePicStorageCfg[_aeb3][_name_]                   = _aeb3;
 
 
-            mTakePicStorageCfg["aeb7"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
-            mTakePicStorageCfg["aeb7"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["aeb7"]["raw_size"]                  = 40 * 7;
-            mTakePicStorageCfg["aeb7"]["misc_size"]                 = 200;  /* 190 - 200MB */  
-            mTakePicStorageCfg["aeb7"]["raw_enable"]                = 0;              
-            mTakePicStorageCfg["aeb7"]["name"]                      = "aeb7";
+            mTakePicStorageCfg[_aeb5][_raw_st_loc]              = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg[_aeb5][_other_st_loc]            = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_aeb5][_raw_size]                = 40 * 5;
+            mTakePicStorageCfg[_aeb5][_misc_size]               = 150;    
+            mTakePicStorageCfg[_aeb5][_raw_enable]              = 0;              
+            mTakePicStorageCfg[_aeb5][_name_]                   = _aeb5;
 
 
-            mTakePicStorageCfg["aeb9"]["raw_storage_loc"]           = PIC_RAW_STORAGE_LOC_MODULE;
-            mTakePicStorageCfg["aeb9"]["other_storage_loc"]         = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["aeb9"]["raw_size"]                  = 40 * 9;
-            mTakePicStorageCfg["aeb9"]["misc_size"]                 = 260;  /* 260 - 280MB */ 
-            mTakePicStorageCfg["aeb9"]["raw_enable"]                = 0; 
-            mTakePicStorageCfg["aeb9"]["name"]                      = "aeb9";
+            mTakePicStorageCfg[_aeb7][_raw_st_loc]              = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg[_aeb7][_other_st_loc]            = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_aeb7][_raw_size]                = 40 * 7;
+            mTakePicStorageCfg[_aeb7][_misc_size]               = 200;  /* 190 - 200MB */  
+            mTakePicStorageCfg[_aeb7][_raw_enable]              = 0;              
+            mTakePicStorageCfg[_aeb7][_name_]                   = _aeb7;
 
 
-            mTakePicStorageCfg["burst"]["raw_storage_loc"]          = PIC_RAW_STORAGE_LOC_MODULE;
-            mTakePicStorageCfg["burst"]["other_storage_loc"]        = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["burst"]["raw_size"]                 = 40 * 10;
-            mTakePicStorageCfg["burst"]["misc_size"]                = 260;   /* 256 - 300MB */
-            mTakePicStorageCfg["burst"]["raw_enable"]               = 0; 
-            mTakePicStorageCfg["burst"]["name"]                     = "burst";
+            mTakePicStorageCfg[_aeb9][_raw_st_loc]              = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg[_aeb9][_other_st_loc]            = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_aeb9][_raw_size]                = 40 * 9;
+            mTakePicStorageCfg[_aeb9][_misc_size]               = 260;  /* 260 - 280MB */ 
+            mTakePicStorageCfg[_aeb9][_raw_enable]              = 0; 
+            mTakePicStorageCfg[_aeb9][_name_]                   = _aeb9;
 
 
-            mTakePicStorageCfg["timelapse"]["raw_storage_loc"]      = PIC_RAW_STORAGE_LOC_MODULE;
-            mTakePicStorageCfg["timelapse"]["other_storage_loc"]    = PIC_RAW_STORAGE_LOC_NV;
-            mTakePicStorageCfg["timelapse"]["raw_size"]             = 40;
-            mTakePicStorageCfg["timelapse"]["misc_size"]            = 20; 
-            mTakePicStorageCfg["timelapse"]["raw_enable"]           = 0; 
-            mTakePicStorageCfg["timelapse"]["name"]                 = "timelapse";
+            mTakePicStorageCfg[_burst][_raw_st_loc]             = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg[_burst][_other_st_loc]           = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_burst][_raw_size]               = 40 * 10;
+            mTakePicStorageCfg[_burst][_misc_size]              = 260;   /* 256 - 300MB */
+            mTakePicStorageCfg[_burst][_raw_enable]             = 0; 
+            mTakePicStorageCfg[_burst][_name_]                  = _burst;
+
+
+            mTakePicStorageCfg[_timelapse][_raw_st_loc]         = PIC_RAW_STORAGE_LOC_MODULE;
+            mTakePicStorageCfg[_timelapse][_other_st_loc]       = PIC_RAW_STORAGE_LOC_NV;
+            mTakePicStorageCfg[_timelapse][_raw_size]           = 40;
+            mTakePicStorageCfg[_timelapse][_misc_size]          = 20; 
+            mTakePicStorageCfg[_timelapse][_raw_enable]         = 0; 
+            mTakePicStorageCfg[_timelapse][_name_]              = _timelapse;
         }
     }
 }
 
 
-void VolumeManager::checkAllUdiskIdle()
-{
-    Volume* tmpVol = NULL;
 
-    for (u32 i = 0; i < mModuleVols.size(); i++) {
-        tmpVol = mModuleVols.at(i);
-        if (tmpVol && tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
-            LOGDBG(TAG, " Current Volume(%s) is Mouted State, force unmount now....", tmpVol->pMountPath);
-            if (doUnmount(tmpVol->pMountPath, true)) {
-                LOGERR(TAG, " Force Unmount Volume Failed!!!");
-            }
-            tmpVol->iVolState = VOLUME_STATE_IDLE;
-        }
-    }
-}
+/**************************************************************************************************************************
+ *                                      >>> Timelapse Count Related <<<
+ **************************************************************************************************************************/
 
 
+/***********************************************************************************
+** 方法名称: getTakeTimelapseCnt
+** 方法功能: 获取可拍timelapse的张数
+** 入口参数: 无
+** 返回值:   当前存储系统可拍timelapse的张数
+** 调 用: 
+*************************************************************************************/
 u32 VolumeManager::getTakeTimelapseCnt()
 {
-    AutoMutex _l(gTimelapseLock);
+    std::unique_lock<std::mutex> _lock(mTlCntLock);
     return mTaketimelapseCnt;
 }
 
+
+/***********************************************************************************
+** 方法名称: clearTakeTimelapseCnt
+** 方法功能: 清除可拍timelapse张数
+** 入口参数: 无
+** 返回值:   无
+** 调 用: 
+*************************************************************************************/
 void VolumeManager::clearTakeTimelapseCnt()
 {
-    AutoMutex _l(gTimelapseLock);
+    std::unique_lock<std::mutex> _lock(mTlCntLock);
     mTaketimelapseCnt = 0;
 }
 
+
+/***********************************************************************************
+** 方法名称: calcTakeTimelapseCnt
+** 方法功能: 计算指定的timelape拍摄命令可拍timelapse的装数
+** 入口参数: 无
+** 返回值:   无
+** 调 用: 
+*************************************************************************************/
 void VolumeManager::calcTakeTimelapseCnt(Json::Value& jsonCmd)
 {   
     {
-        AutoMutex _l(gTimelapseLock);
+        std::unique_lock<std::mutex> _lock(mTlCntLock);
         mTaketimelapseCnt = calcTakepicLefNum(jsonCmd, false);
     }
-    LOGDBG(TAG, " ++++++++++++++++++>>> calcTakeTimelapseCnt [%d]", mTaketimelapseCnt);
+    LOGDBG(TAG, "+>>> calcTakeTimelapseCnt [%d]", mTaketimelapseCnt);
 }
 
 
+
+/***********************************************************************************
+** 方法名称: decTakeTimelapseCnt
+** 方法功能: 将可拍timelapse的张数减1
+** 入口参数: 无
+** 返回值:   无
+** 调 用: 
+*************************************************************************************/
 void VolumeManager::decTakeTimelapseCnt()
 {
-    AutoMutex _l(gTimelapseLock);
+    std::unique_lock<std::mutex> _lock(mTlCntLock);
     if (mTaketimelapseCnt > 0) {
         mTaketimelapseCnt--;
     }
@@ -669,30 +689,242 @@ void VolumeManager::decTakeTimelapseCnt()
 
 
 
-bool VolumeManager::isMountpointMounted(const char *mp)
+
+/*************************************************************************
+** 方法名称: getTakePicStorageCfgFromJsonCmd
+** 方法功能: 评估一组拍照需占用的存储空间大小(根据指定的拍照命令)
+** 入口参数: 
+**      jsonCmd - 拍照命令
+** 返回值:   一组照片大致的占用空间(单位为MB)
+** 调 用: 
+*************************************************************************/
+Json::Value* VolumeManager::getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd)
 {
-    char device[256];
-    char mount_path[256];
-    char rest[256];
-    FILE *fp;
-    char line[1024];
+    Json::Value* pResult = nullptr;
+    int iRawEnable = 0;
 
-    if (!(fp = fopen("/proc/mounts", "r"))) {
-        LOGERR(TAG, "Error opening /proc/mounts (%s)", strerror(errno));
-        return false;
-    }
+    printJson(jsonCmd);
 
-    while (fgets(line, sizeof(line), fp)) {
-        line[strlen(line)-1] = '\0';
-        sscanf(line, "%255s %255s %255s\n", device, mount_path, rest);
-        if (!strcmp(mount_path, mp)) {
-            fclose(fp);
-            return true;
+    if (jsonCmd.isMember(_name_) && jsonCmd.isMember(_param)) {
+        if (!strcmp(jsonCmd[_name_].asCString(), _take_pic)) {  /* 拍照命令 */
+            std::string gear = _customer;
+
+            if (jsonCmd[_param].isMember(_origin)) {    /* 检查是否使能RAW */
+                if (jsonCmd[_param][_origin].isMember(_mime)) {
+                    if (!strcmp(jsonCmd[_param][_origin][_mime].asCString(), _raw_jpeg)) {
+                        iRawEnable = 1;
+                    }
+                }
+            }
+
+            if (jsonCmd[_param].isMember(_burst)) {        /* Burst模式 - 只关注是否有Raw */
+                gear = _burst;
+            } else if (jsonCmd[_param].isMember(_bracket)) { /* Bracket - 关注count和是否有raw */
+                gear = _aeb3;
+                if (jsonCmd[_param][_bracket].isMember(_count)) {
+                    int iAebNum = jsonCmd[_param][_bracket][_count].asInt();
+                    switch (iAebNum) {
+                        case 3: gear = _aeb3; break;
+                        case 5: gear = _aeb5; break;
+                        case 7: gear = _aeb7; break;
+                        case 9: gear = _aeb9; break;
+                    }
+                }
+            } else {    /* 11K_3D_OF, 11K_3D, 11K */
+                if (jsonCmd[_param].isMember(_stitch)) {    /* 根据是否拼接分为两类 */
+                    if (jsonCmd[_param][_stitch].isMember(_mode)) {
+                        if (!strcmp(jsonCmd[_param][_stitch][_mode].asCString(), _pano)) {
+                            gear = _11k_of;
+                        } else {
+                            gear = _11k_3d_of;
+                        }
+                    } else {
+                        LOGERR(TAG, "takePitcure have node stitching, but 'mode' is not exist");
+                    }
+                } else {
+                    gear = _11k;
+                }
+            }
+
+            LOGINFO(TAG, "--> getTakePicStorageCfgFromJsonCmd: gear[%s], raw enbale = %d", gear.c_str(), iRawEnable);
+            if (mTakePicStorageCfg.isMember(gear)) {
+                mTakePicStorageCfg[gear.c_str()][_raw_enable] = iRawEnable;
+                pResult = &(mTakePicStorageCfg[gear.c_str()]);
+            } else {
+                LOGERR(TAG, "--> This gear[%s] not support in mTakePicStorageCfg, maybe need update it");
+            }
+
+        } else if (!strcmp(jsonCmd[_name_].asCString(), _take_video)) {
+            if (jsonCmd[_param].isMember(_timelapse)) {
+                if (jsonCmd[_param].isMember(_origin)) {
+                    if (jsonCmd[_param][_origin].isMember(_mime)) {
+                        if (!strcmp(jsonCmd[_param][_origin][_mime].asCString(), _raw_jpeg)) {
+                            iRawEnable = 1;
+                        }
+                    }
+                }
+                mTakePicStorageCfg[_timelapse][_raw_enable] = iRawEnable;
+                pResult = &(mTakePicStorageCfg[_timelapse]);
+                LOGINFO(TAG, "--> getTakePicStorageCfgFromJsonCmd: gear[%s], raw enbale = %d", _timelapse, iRawEnable);
+
+            } else {
+                LOGERR(TAG, "getTakePicStorageCfgFromJsonCmd: can not calc TakeVideo command")
+            }
+        } else {
+            LOGERR(TAG, "---> evaluateOneGrpPicSzByCmd: Unkown command: %s", jsonCmd[_name_].asCString());        
         }
+    } else {
+        LOGERR(TAG, "---> evaluateOneGrpPicSzByCmd: Unbelievable arguments recv.");        
     }
-    fclose(fp);
-    return false;
+    return pResult;
 }
+
+
+
+
+/*
+ * 没有使能Raw, 直接以SD卡的剩余值为准
+ * 有使能Raw, 并且Raw存储在SD卡，以SD卡剩余值为准
+ * 有使能Raw, Raw存储在TF卡，计算剩余的最小值，以二者的最小值为准
+ */
+
+int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
+{
+    u32 iUnitSize = 25;         /* 默认为20MB */
+
+    u64 uLocalVolSize = 0;
+    u64 uRemoteVolSize = 0;
+    u32 uTfCanTakeNum = 0;
+    u32 uTakepicNum = 0;   
+    u32 uNvTakepicNum = 0;    
+    Json::Value* pEvlJson = nullptr;
+    int bRawEnable = 0;
+    int iRawStorageLoc = PIC_RAW_STORAGE_LOC_NV;
+
+
+    if (checkLocalVolumeExist()) {
+        uLocalVolSize = getLocalVolLeftSize(bUseCached);
+    } 
+    
+    uRemoteVolSize = calcRemoteRemainSpace(false);
+    LOGINFO(TAG, "----++ Local Volume Size[%lu], Remote Volume Size[%ld] ++--------", uLocalVolSize, uRemoteVolSize);
+
+    pEvlJson = getTakePicStorageCfgFromJsonCmd(jsonCmd);    /* 根据拍照命令找到对应的存储配置项 */
+    if (pEvlJson) {
+        Json::Value& jCalcObj = *pEvlJson;
+
+        bRawEnable = jCalcObj[_raw_enable].asInt();
+
+        /* Raw存储在模组的挡位 */
+        if (jCalcObj.isMember(_raw_st_loc) && jCalcObj[_raw_st_loc].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
+            if (bRawEnable) {   /* 使能了Raw */
+                iRawStorageLoc = PIC_RAW_STORAGE_LOC_MODULE;
+                uTfCanTakeNum = uRemoteVolSize / jCalcObj[_raw_size].asInt();
+                LOGDBG(TAG, "--> Raw Switch is Enable(Storage in Module), Raw size in Module:[%d]", jCalcObj[_raw_size].asInt());
+            }
+
+            uNvTakepicNum = uLocalVolSize / jCalcObj[_misc_size].asInt();
+            LOGDBG(TAG, "--> Local Group size(Storage in NV), size is:[%d]", jCalcObj[_misc_size].asInt());
+
+        } else {    /* Raw存储在第九张卡上 */
+            if (bRawEnable) {
+                iUnitSize = (jCalcObj[_misc_size].asInt() + jCalcObj[_raw_size].asInt());
+                LOGDBG(TAG, "--> Raw Switch is Enable(Storage in NV), One Group picture size:[%d]", iUnitSize);
+            } else {
+                iUnitSize = jCalcObj[_misc_size].asInt();
+                LOGDBG(TAG, "--> Raw Switch is Disable, One Group picture size:[%d]", iUnitSize);
+            }
+            uNvTakepicNum = uLocalVolSize / iUnitSize;
+        }
+
+        if (bRawEnable) {
+            if (iRawStorageLoc == PIC_RAW_STORAGE_LOC_NV) {
+                uTakepicNum = uNvTakepicNum;
+            } else {
+                uTakepicNum = (uTfCanTakeNum > uNvTakepicNum) ? uNvTakepicNum : uTfCanTakeNum;
+            }
+        } else {
+            uTakepicNum = uNvTakepicNum;
+        }
+        LOGDBG(TAG, "-------->>> uTakePicturCnt[%d] <<<-------", uTakepicNum);
+
+    } else {
+        LOGERR(TAG, "--> calcTakepicLefNum: evaluateOneGrpPicSzByCmd return null,use default size to calc now.");
+    }
+
+    return uTakepicNum;
+}
+
+
+
+void VolumeManager::syncTakePicLeftSapce(Json::Value& jsonCmd)
+{
+    Json::Value* pJsonCmd = getTakePicStorageCfgFromJsonCmd(jsonCmd);
+    if (pJsonCmd) {
+        Json::Value& jCalcObj = *pJsonCmd;
+        
+        /* 更新模组的剩余容量,并同时更新NV剩余容量 */
+        if (jCalcObj.isMember(_raw_st_loc) && jCalcObj[_raw_st_loc].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
+            if (jCalcObj[_raw_enable].asInt()) {
+                int iRawSize = jCalcObj[_raw_size].asInt();    /* 一组Raw的大小: AEB3,5,7,9, busrt有多组 */
+                updateModuleVolumeSpace(-iRawSize);            
+            }
+        } else if ((jCalcObj.isMember(_raw_st_loc) && jCalcObj[_raw_st_loc].asInt() == PIC_RAW_STORAGE_LOC_NV)) {
+            if (jCalcObj[_raw_enable].asInt()) {
+                if (mCurrentUsedLocalVol) {
+                    mCurrentUsedLocalVol->uAvail -= jCalcObj[_raw_size].asInt();
+                    LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
+                }
+            }
+        }
+
+        if (mCurrentUsedLocalVol) {
+            mCurrentUsedLocalVol->uAvail -= jCalcObj[_misc_size].asInt();
+            LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
+        }
+
+    } else {
+        LOGERR(TAG, "---> syncTakePicLeftSapce: Invalid TakePicture Json Command:");
+    }
+}
+
+
+
+void VolumeManager::syncTakePicLeftSapce(Json::Value* jsonCmd)
+{
+    /*
+     * 如果拍照命令中含raw,并且Raw存储在模组中,需要更新各个模组的剩余容量
+     * 否则,只需要更新本地存储的剩余容量
+     */
+    Json::Value* pJsonCmd = getTakePicStorageCfgFromJsonCmd(*jsonCmd);
+    if (pJsonCmd) {
+        Json::Value& jCalcObj = *pJsonCmd;
+        
+        /* 更新模组的剩余容量,并同时更新NV剩余容量 */
+        if (jCalcObj.isMember(_raw_st_loc) && jCalcObj[_raw_st_loc].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
+            if (jCalcObj[_raw_enable].asInt()) {
+                int iRawSize = jCalcObj[_raw_size].asInt();
+                updateModuleVolumeSpace(-iRawSize);            
+            }
+        } else if ((jCalcObj.isMember(_raw_st_loc) && jCalcObj[_raw_st_loc].asInt() == PIC_RAW_STORAGE_LOC_NV)) {
+            if (jCalcObj[_raw_enable].asInt()) {
+                if (mCurrentUsedLocalVol) {
+                    mCurrentUsedLocalVol->uAvail -= jCalcObj[_raw_size].asInt();
+                    LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
+                }
+            }
+        }
+
+        if (mCurrentUsedLocalVol) {
+            mCurrentUsedLocalVol->uAvail -= jCalcObj[_misc_size].asInt();
+            LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
+        }
+
+    } else {
+        LOGERR(TAG, "---> syncTakePicLeftSapce: Invalid TakePicture Json Command:");
+    }
+}
+
 
 
 /*
@@ -843,37 +1075,11 @@ void VolumeManager::unmountCurLocalVol()
 }
 
 
-/*************************************************************************
-** 方法名称: unmountAll
-** 方法功能: 卸载所有处于挂载状态的设备(包括本地设备和模组)
-** 入口参数: 
-** 返回值:  成功进入返回true;否则返回false
-** 调 用: 长按3秒,关机时调用
-** 
-*************************************************************************/
-void VolumeManager::unmountAll()
-{
-
-    if (mCurrentUsedLocalVol) {
-        std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();  
-        if (pEvt) {
-            pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
-            pEvt->setAction(NETLINK_ACTION_REMOVE);
-            pEvt->setSubsys(VOLUME_SUBSYS_USB);
-            pEvt->setBusAddr(mCurrentUsedLocalVol->pBusAddr);
-            pEvt->setDevNodeName(mCurrentUsedLocalVol->cDevNode);            
-            handleBlockEvent(pEvt);
-        } else {
-            LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");
-        }
-    }    
-
-    if (getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) {
-        exitUdiskMode();
-    }
-}
 
 
+/**************************************************************************************************************************
+ *                                      >>> Worker Thread Related <<<
+ **************************************************************************************************************************/
 
 void VolumeManager::startWorkThread()
 {
@@ -1132,7 +1338,7 @@ bool VolumeManager::start()
             } else {
                 coldboot("/sys/block");
                 bResult = true;
-                startWorkThread();
+                startWorkThread();  /* 启动工作线程 */
             }
         }          
     } else {
@@ -1146,7 +1352,7 @@ bool VolumeManager::stop()
 {
     bool bResult = false;
 
-    stopWorkThread();
+    stopWorkThread();   /* 停止工作线程 */
     
     if (mListenerMode == VOLUME_MANAGER_LISTENER_MODE_NETLINK) {
         NetlinkManager* nm = NULL;
@@ -1206,165 +1412,7 @@ VolumeManager::~VolumeManager()
     mModuleVols.clear();
 }
 
-Volume* VolumeManager::isSupportedDev(const char* busAddr)
-{
-    u32 i = 0;
-    Volume* tmpVol = NULL;
-    for (i = 0; i < mVolumes.size(); i++) {
-        tmpVol = mVolumes.at(i);
-        if (tmpVol) {
-            if (strstr(tmpVol->pBusAddr, busAddr)) {   /* 只要含有字串，认为支持 */
-                LOGDBG(TAG, " Volume Addr: %s, Current dev Addr: %s", tmpVol->pBusAddr, busAddr);
-                break;
-            }
-        }
-    }
-    return tmpVol;
-}
 
-
-bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int iLen)
-{
-    bool bResult = true;
-
-    std::string cmd;
-    cmd = "blkid";
-    cmd += " -c /dev/null ";
-    cmd += devicePath;
-
-    FILE* fp = popen(cmd.c_str(), "r");
-    if (!fp) {
-        LOGERR(TAG, "Failed to run %s: %s", cmd.c_str(), strerror(errno));
-        bResult = false;
-        goto done;
-    }
-
-    char line[1024];
-     
-    if (fgets(line, sizeof(line), fp) != NULL) {
-        LOGDBG(TAG, "blkid identified as %s", line);
-
-        char* pType = strstr(line, "TYPE=");
-        char* ptType = strstr(line, "PTTYPE=");
-        if (pType) {
-
-            if (ptType) {
-                LOGDBG(TAG, "ptType - pType = %d", ptType - pType);
-
-                if (abs(ptType - pType) == 2) {
-                    bResult = false;
-                }
-            }
-
-            pType += strlen("TYPE=") + 1;
-            for (int i = 0; i < iLen; i++) {
-                if (pType[i] != '"') {
-                     volFsType[i] = pType[i];                   
-                } else {
-                    break;  /* 遇到第一个空格作为截至符 */
-                }
-            }
-        }
-        LOGDBG(TAG, "Parse File system type: %s", volFsType);
-    } else {
-        LOGWARN(TAG, "blkid failed to identify %s", devicePath);
-        bResult = false;
-    }
-    pclose(fp);
-done:
-    return bResult;
-}
-
-
-
-/*************************************************************************
-** 方法名称: checkMountPath
-** 方法功能: 清除挂载点
-** 入口参数: 
-**      mountPath - 挂载点路径
-** 返回值: 所有TF卡存在返回true;否则返回false
-** 调 用: 
-** 在清除挂载点前，需要判断该挂载点已经被挂载，如果已经被挂载先对其卸载
-** 如果被卸载成功或未被挂载,检查该挂载点是否干净,如果不干净,对其进行清除操作
-*************************************************************************/
-bool VolumeManager::checkMountPath(const char* mountPath)
-{
-    char cmd[128] = {0};
-
-    LOGDBG(TAG, " >>>>> checkMountPath [%s]", mountPath);    
-
-    if (access(mountPath, F_OK) != 0) {     /* 挂载点不存在,创建挂载点 */
-        mkdir(mountPath, 0777);
-    } else {
-        if (isMountpointMounted(mountPath)) {
-            LOGDBG(TAG, " Mount point -> %s has mounted!");
-            return false;
-        } else {
-            LOGDBG(TAG, " Mount point[%s] not Mounted, clear mount point first!", mountPath);
-            sprintf(cmd, "rm -rf %s/*", mountPath);
-            system(cmd);
-        }
-    }
-    return true;
-}
-
-
-bool VolumeManager::isValidFs(const char* devName, Volume* pVol)
-{
-    char cDevNodePath[128] = {0};
-    bool bResult = false;
-
-    memset(pVol->cDevNode, 0, sizeof(pVol->cDevNode));
-    memset(pVol->cVolFsType, 0, sizeof(pVol->cVolFsType));
-
-
-    /* 1.检查是否存在/dev/devName该设备文件
-     * blkid -c /dev/null /dev/devName - 获取其文件系统类型TYPE="xxxx"
-     */
-
-    sprintf(cDevNodePath, "/dev/%s", devName);
-    LOGDBG(TAG, " dev node path: %s", cDevNodePath);
-
-    if (access(cDevNodePath, F_OK) == 0) {
-        LOGDBG(TAG, "dev node path exist %s", cDevNodePath);
-
-        if (extractMetadata(cDevNodePath, pVol->cVolFsType, sizeof(pVol->cVolFsType))) {
-            strcpy(pVol->cDevNode, cDevNodePath);
-            bResult = true;
-        }
-    } else {
-        LOGERR(TAG, "dev node[%s] not exist, what's wrong", cDevNodePath);
-    }
-    return bResult;
-}
-
-
-
-/*************************************************************************
-** 方法名称: handleBlockEvent
-** 方法功能: 处理来自底层的卷块设备事件
-** 入口参数: 
-**      evt - NetlinkEvent对象
-** 返回值: 无
-** 调 用: 
-** 处理来自底层的事件: 1.Netlink; 2.inotify(/dev)
-*************************************************************************/
-int VolumeManager::handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt)
-{
-    if (getWorkerState()) {
-        LOGDBG(TAG, "=====> handleBlockEvent[Kernel -> Vold](action: %s, bus: %s)", getActionStr(pEvt->getAction()), pEvt->getBusAddr());
-        
-        if (mEnteringUdisk) {   /** U盘工作模式 */
-            LOGDBG(TAG, ">> Vold work on Udisk Mode, Cache Event to mCacheVec.");
-            std::unique_lock<std::mutex> _lock(mCacheEvtLock);
-            mCacheVec.push_back(pEvt);
-        } else {                /** 普通工作模式 */
-            LOGDBG(TAG, ">> Vold work on Normal Mode, Pass Event directly.");
-            postEvent(pEvt);
-        }
-    }
-    return 0;  
-}
 
 
 /*************************************************************************
@@ -1457,66 +1505,9 @@ bool VolumeManager::judgeIsTfCardByName(const char* name)
 
 
 
-bool VolumeManager::changeMountMethod(const char* mode)
-{
-    /* 根据模式来修改所有已经挂上的卡 */
-    LOGDBG(TAG, "changeMountMethod ---> %s", mode);
-    Volume* tmpVol = NULL;
-
-    int status;
-    const char *args[5];
-    args[0] = "/bin/mount";
-    args[1] = "-o";
-    
-    if (!strcmp(mode, "ro")) {
-        args[2] = "remount,ro";
-    } else {
-        args[2] = "remount,rw";
-    }
-
-    for (u32 i = 0; i < mVolumes.size(); i++) {
-
-        tmpVol = mVolumes.at(i);
-        if (tmpVol && isMountpointMounted(tmpVol->pMountPath)) {
-            args[3] = tmpVol->cDevNode;
-            args[4] = tmpVol->pMountPath;
-            forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
-            LOGDBG(TAG, "Remount Device mount way");    
-        } else {
-            LOGDBG(TAG, "Volume [%s] not mounted???", tmpVol->pMountPath);
-        }
-    }
-    return true;
-}
 
 
 
-/*************************************************************************
-** 方法名称: setVolCurPrio
-** 方法功能: 重新设置指定卷的优先级
-** 入口参数: 
-**      pVol - 卷对象
-**      pEvt - Netlink事件对象
-** 返回值: 无 
-** 调 用: 
-** 根据卷的传递的地址来改变卷的优先级
-*************************************************************************/
-void VolumeManager::setVolCurPrio(Volume* pVol, std::shared_ptr<NetlinkEvent> pEvt)
-{
-    /* 根据卷的地址重置卷的优先级 */
-    if (!strncmp(pEvt->getBusAddr(), "2-2", strlen("2-2"))) {
-        pVol->iPrio = VOLUME_PRIO_SD;
-    } else if (!strncmp(pEvt->getBusAddr(), "2-1", strlen("2-1"))) {
-        pVol->iPrio = VOLUME_PRIO_UDISK;
-    } else if (!strncmp(pEvt->getBusAddr(), "1-2.1", strlen("1-2.1"))) {
-        pVol->iPrio = VOLUME_PRIO_LOW;
-    } else if (!strncmp(pEvt->getBusAddr(), "2-3", strlen("2-3"))) {
-        pVol->iPrio = VOLUME_PRIO_UDISK;
-    } else {
-        pVol->iPrio = VOLUME_PRIO_LOW;
-    }
-
-}
 
 void VolumeManager::syncLocalDisk()
 {
@@ -1951,6 +1942,558 @@ int VolumeManager::handleRemoteVolHotplug(std::vector<std::shared_ptr<Volume>>& 
 }
 
 
+
+
+
+u32 VolumeManager::calcTakeRecLefSec(Json::Value& jsonCmd, bool bFactoryMode)
+{
+    u32 uLocalRecSec = ~0L;
+    u32 uRemoteRecSec = ~0L;
+
+    float iOriginBitRate = 0;
+    float iStitchBitRate = 0;
+
+    float iSubBitRate = (5 * 1024 * 8 * 1.0f);          /* 字码流有8路 */
+    float iPrevieBitRate = 3 * 1024 * 1.0f;             /* 预览流1路 */
+
+    float iNativeTotoalBitRate = 0.0f;
+
+    bool bSaveOrigin = false;
+    bool bHaveStitch = false;
+
+    if (jsonCmd[_param][_origin].isMember("saveOrigin") &&
+        jsonCmd[_param][_origin]["saveOrigin"].asBool() == true) {
+        bSaveOrigin = true;
+    }
+
+    if ( jsonCmd[_param].isMember("stiching") &&
+        jsonCmd[_param]["stiching"].isMember("fileSave") &&
+        (jsonCmd[_param]["stiching"]["fileSave"].asBool() == true) ) {
+        bHaveStitch = true;
+    }
+
+    if (bFactoryMode == true) {
+        return 10000;
+    } else {
+
+        /* 计算出小卡能录制的秒数 */
+        if (bSaveOrigin) {  /* 小卡 */
+            int iTmpOriginBitRate = jsonCmd[_param][_origin]["bitrate"].asInt();
+            iOriginBitRate = iTmpOriginBitRate / (1024 * 8 * 1.0f);
+
+            uRemoteRecSec = (u32) (calcRemoteRemainSpace(false) / iOriginBitRate);
+
+            LOGDBG(TAG, " ---------------- Origin bitrate(%f MB/s), Video Left sec %lu", iOriginBitRate, uRemoteRecSec);
+        }
+
+        /* 计算出大卡能录制的秒数 */
+        if (bHaveStitch) {
+            iStitchBitRate = jsonCmd[_param]["stiching"]["bitrate"].asInt();
+            iNativeTotoalBitRate += iStitchBitRate;
+        }
+
+        iNativeTotoalBitRate += iSubBitRate;
+        iNativeTotoalBitRate += iPrevieBitRate;
+        iNativeTotoalBitRate = iNativeTotoalBitRate / (1024 * 8 * 1.0f);
+
+        uLocalRecSec = (u32) (getLocalVolLeftSize(false) / iNativeTotoalBitRate);
+
+        LOGDBG(TAG, " --------------- Logcal bitrate = %f MB/s, Left sec: %lu", iNativeTotoalBitRate, uLocalRecSec);
+        return (uRemoteRecSec > uLocalRecSec) ? uLocalRecSec : uRemoteRecSec;
+    }
+}
+
+
+
+u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
+{
+    u32 uLocalRecSec = ~0L;
+    u32 uRemoteRecSec = ~0L;
+
+    float iOriginBitRate = 0.0f;
+    float iStitchBitRate = 0.0f;
+
+    /* 1.只存原片
+     * 2.只存拼接
+     * 3.存原片 + 拼接
+     */
+
+    /* 只存原片 */
+    if ( (jsonCmd[_param][_origin]["saveOrigin"].asBool() == true) &&
+        (jsonCmd[_param]["stiching"]["fileSave"].asBool() == false) ) {
+
+        int iTmpStichBitRate = jsonCmd[_param][_origin]["bitrate"].asInt();
+        iOriginBitRate = iTmpStichBitRate / (1024 * 8 * 1.0f);
+
+        uRemoteRecSec = (u32) (calcRemoteRemainSpace(false) / iOriginBitRate);
+
+        LOGDBG(TAG, " >>>>>>>>>>>>>> Remote Origin bitrate[%f]MB/s Left sec %lu", iOriginBitRate, uRemoteRecSec);
+        
+        return uRemoteRecSec;
+    }
+
+    /* 只存拼接 */
+    if ( (jsonCmd[_param][_origin]["saveOrigin"].asBool() == false) &&
+        (jsonCmd[_param]["stiching"]["fileSave"].asBool() == true) ) {
+        
+        int iTmpStichBitRate = jsonCmd[_param]["stiching"]["bitrate"].asInt();
+        iStitchBitRate = iTmpStichBitRate / (1024 * 8 * 1.0f);
+        uLocalRecSec = (u32)(getLocalVolLeftSize(false) / iStitchBitRate);
+
+        LOGDBG(TAG, " Local Stitch bitrate[%f]MB/s Left sec %lu", iStitchBitRate, uLocalRecSec);
+        return uLocalRecSec;
+    }
+
+
+    /* 原片+拼接 */
+    if ( (jsonCmd[_param][_origin]["saveOrigin"].asBool() == true) &&
+        (jsonCmd[_param]["stiching"]["fileSave"].asBool() == true) ) {
+        
+        int iTmpStichBitRate = jsonCmd[_param][_origin]["bitrate"].asInt();
+        iOriginBitRate = iTmpStichBitRate / (1024 * 8 * 1.0f);
+        uRemoteRecSec = (u32)(calcRemoteRemainSpace(false) / iOriginBitRate);
+
+        int iTmpOriginBitRate = jsonCmd[_param]["stiching"]["bitrate"].asInt();
+        iStitchBitRate = iTmpOriginBitRate / (1024 * 8 * 1.0f);
+        uLocalRecSec = (u32)(getLocalVolLeftSize(false) / iStitchBitRate);
+
+        LOGDBG(TAG, " Local bitrate [%f]Mb/s, Remote bitrate[%f]Mb/s", iStitchBitRate, iOriginBitRate);
+        LOGDBG(TAG, " --------------- Local Live Left sec %lu, Remote Live Left sec %lu", uLocalRecSec, uRemoteRecSec);
+
+        return (uRemoteRecSec > uLocalRecSec) ? uLocalRecSec : uRemoteRecSec;
+    }
+
+    return 0;
+}
+
+
+
+
+
+
+
+
+/*************************************************************************
+** 方法名称: updateModuleVolumeSpace
+** 方法功能: 更新各模组的容量
+** 入口参数: 
+**      iAddDecSize - 为正数时为增加容量; 为负数时为减少容量
+** 返回值: 无
+** 调 用: 
+** 
+*************************************************************************/
+void VolumeManager::updateModuleVolumeSpace(int iAddDecSize)
+{
+    LOGDBG(TAG, "-----------------> updateModuleVolumeSpace");
+    std::unique_lock<std::mutex> _lock(mRemoteDevLock);     
+    for (auto item: mModuleVols) {
+        LOGDBG(TAG, "-->Module Name[%s]", item->cVolName);
+        LOGDBG(TAG, "-->Module Total[%lu]", item->uTotal);
+        LOGDBG(TAG, "-->Module Avail[%lu]", item->uAvail);
+
+        if (iAddDecSize >= 0) 
+            item->uAvail += iAddDecSize;
+        else {
+            if (item->uAvail >= abs(iAddDecSize)) {
+                item->uAvail += iAddDecSize;
+            } else {
+                item->uAvail = 0;
+            }
+        }
+    }
+}
+
+/*
+ * 更新指定卷的存储容量信息
+ */
+void VolumeManager::updateVolumeSpace(Volume* pVol) 
+{
+    struct statfs diskInfo;
+    
+    std::unique_lock<std::mutex> _lock(pVol->mVolLock);        
+
+    /* 卡槽使能并且卷已经被挂载 */
+    if ((pVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE) && (pVol->iVolState == VOLUME_STATE_MOUNTED)) {
+        
+        if (!statfs(pVol->pMountPath, &diskInfo)) {
+            
+            u32 uBlockSize = diskInfo.f_bsize / 1024;
+
+#ifdef ENABLE_DEBUG_VOLUME
+            LOGDBG(TAG, " stat fs path: %s", pVol->pMountPath);
+
+            LOGDBG(TAG, " statfs block size: %d KB", uBlockSize);
+            LOGDBG(TAG, " statfs total block: %d ", diskInfo.f_blocks);
+            LOGDBG(TAG, " statfs free block: %d ", diskInfo.f_bfree);
+
+            LOGDBG(TAG, " statfs Tatol size = %u MB", (diskInfo.f_blocks * uBlockSize) / 1024);
+            LOGDBG(TAG, " state Avail size = %u MB", (diskInfo.f_bfree * uBlockSize) / 1024);
+#endif 
+
+            pVol->uTotal = (uBlockSize * diskInfo.f_blocks) / 1024;
+            
+            /* 预留1GB的空间 */
+            if (((diskInfo.f_bfree * uBlockSize) >> 10) > lefSpaceThreshold) {
+                pVol->uAvail = ((diskInfo.f_bfree * uBlockSize) / 1024) - lefSpaceThreshold;
+            } else {
+                pVol->uAvail = 0;
+            }
+            
+            LOGINFO(TAG, " Local Volume Tatol size = %d MB, Left size: %d MB", pVol->uTotal,  pVol->uAvail);
+        } else {
+            LOGDBG(TAG, " statfs failed ...");
+        }
+    } else {
+        LOGDBG(TAG, " Current Local Vol May Locked or Not Mounted!");
+    }
+}
+
+
+
+
+
+void VolumeManager::updateRemoteTfsInfo(std::vector<sp<Volume>>& mList)
+{
+    {        
+        AutoMutex _l(gRemoteVolLock);
+
+        LOGDBG(TAG, " ---> updateRemoteTfsInfo");
+        sp<Volume> tmpVolume = NULL;
+        Volume* localVolume = NULL;
+
+        for (u32 i = 0; i < mList.size(); i++) {
+            tmpVolume = mList.at(i);
+
+            for (u32 j = 0; j < mModuleVols.size(); j++) {
+                localVolume = mModuleVols.at(j);
+                if (tmpVolume && localVolume && (tmpVolume->iIndex == localVolume->iIndex)) {
+                    memset(localVolume->cVolName, 0, sizeof(localVolume->cVolName));
+                    
+                    strcpy(localVolume->cVolName, tmpVolume->cVolName);
+                    localVolume->uTotal = tmpVolume->uTotal;
+                    localVolume->uAvail = tmpVolume->uAvail;
+                    localVolume->iSpeedTest = tmpVolume->iSpeedTest;
+                    localVolume->iVolState = tmpVolume->iVolState;
+                }
+            }
+        }
+    }
+}
+
+
+std::vector<Volume*>& VolumeManager::getRemoteVols()
+{
+    std::vector<Volume*>& remoteVols = mModuleVols;
+    return remoteVols;
+}
+
+
+std::vector<Volume*>& VolumeManager::getLocalVols()
+{
+    std::vector<Volume*>& localVols = mLocalVols;
+    return localVols;
+}
+
+
+
+
+
+/**************************************************************************************************************************
+ *                                      >>> Mount/Unmount/Format <<<
+ **************************************************************************************************************************/
+
+
+/*************************************************************************
+** 方法名称: changeMountMethod
+** 方法功能: 改变卷的挂载方式(对所有已经挂载状态的卷进行操作)
+** 入口参数: 
+**      mode - 挂载方式(rw, ro)
+** 返回值: true
+** 调 用: 
+*************************************************************************/
+bool VolumeManager::changeMountMethod(const char* mode)
+{
+    /* 根据模式来修改所有已经挂上的卡 */
+    LOGDBG(TAG, "changeMountMethod ---> %s", mode);
+    Volume* tmpVol = NULL;
+
+    int status;
+    const char *args[5];
+    args[0] = "/bin/mount";
+    args[1] = "-o";
+    
+    if (!strcmp(mode, "ro")) {
+        args[2] = "remount,ro";
+    } else {
+        args[2] = "remount,rw";
+    }
+
+    for (u32 i = 0; i < mVolumes.size(); i++) {
+
+        tmpVol = mVolumes.at(i);
+        if (tmpVol && isMountpointMounted(tmpVol->pMountPath)) {
+            args[3] = tmpVol->cDevNode;
+            args[4] = tmpVol->pMountPath;
+            forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
+            LOGDBG(TAG, "Remount Device mount way");    
+        } else {
+            LOGDBG(TAG, "Volume [%s] not mounted, do nothing", tmpVol->pMountPath);
+        }
+    }
+    return true;
+}
+
+
+
+/*************************************************************************
+** 方法名称: setVolCurPrio
+** 方法功能: 重新设置指定卷的优先级
+** 入口参数: 
+**      pVol - 卷对象
+**      pEvt - Netlink事件对象
+** 返回值: 无 
+** 调 用: 
+** 根据卷的传递的地址来改变卷的优先级
+*************************************************************************/
+void VolumeManager::setVolCurPrio(Volume* pVol, std::shared_ptr<NetlinkEvent> pEvt)
+{
+    /* 根据卷的地址重置卷的优先级 */
+    if (!strncmp(pEvt->getBusAddr(), "2-2", strlen("2-2"))) {
+        pVol->iPrio = VOLUME_PRIO_SD;
+    } else if (!strncmp(pEvt->getBusAddr(), "2-1", strlen("2-1"))) {
+        pVol->iPrio = VOLUME_PRIO_UDISK;
+    } else if (!strncmp(pEvt->getBusAddr(), "1-2.1", strlen("1-2.1"))) {
+        pVol->iPrio = VOLUME_PRIO_LOW;
+    } else if (!strncmp(pEvt->getBusAddr(), "2-3", strlen("2-3"))) {
+        pVol->iPrio = VOLUME_PRIO_UDISK;
+    } else {
+        pVol->iPrio = VOLUME_PRIO_LOW;
+    }
+
+}
+
+
+Volume* VolumeManager::isSupportedDev(const char* busAddr)
+{
+    u32 i = 0;
+    Volume* tmpVol = NULL;
+    for (i = 0; i < mVolumes.size(); i++) {
+        tmpVol = mVolumes.at(i);
+        if (tmpVol) {
+            if (strstr(tmpVol->pBusAddr, busAddr)) {   /* 只要含有字串，认为支持 */
+                LOGDBG(TAG, " Volume Addr: %s, Current dev Addr: %s", tmpVol->pBusAddr, busAddr);
+                break;
+            }
+        }
+    }
+    return tmpVol;
+}
+
+
+bool VolumeManager::extractMetadata(const char* devicePath, char* volFsType, int iLen)
+{
+    bool bResult = true;
+
+    std::string cmd;
+    cmd = "blkid";
+    cmd += " -c /dev/null ";
+    cmd += devicePath;
+
+    FILE* fp = popen(cmd.c_str(), "r");
+    if (!fp) {
+        LOGERR(TAG, "Failed to run %s: %s", cmd.c_str(), strerror(errno));
+        bResult = false;
+        goto done;
+    }
+
+    char line[1024];
+     
+    if (fgets(line, sizeof(line), fp) != NULL) {
+        LOGDBG(TAG, "blkid identified as %s", line);
+
+        char* pType = strstr(line, "TYPE=");
+        char* ptType = strstr(line, "PTTYPE=");
+        if (pType) {
+
+            if (ptType) {
+                LOGDBG(TAG, "ptType - pType = %d", ptType - pType);
+
+                if (abs(ptType - pType) == 2) {
+                    bResult = false;
+                }
+            }
+
+            pType += strlen("TYPE=") + 1;
+            for (int i = 0; i < iLen; i++) {
+                if (pType[i] != '"') {
+                     volFsType[i] = pType[i];                   
+                } else {
+                    break;  /* 遇到第一个空格作为截至符 */
+                }
+            }
+        }
+        LOGDBG(TAG, "Parse File system type: %s", volFsType);
+    } else {
+        LOGWARN(TAG, "blkid failed to identify %s", devicePath);
+        bResult = false;
+    }
+    pclose(fp);
+done:
+    return bResult;
+}
+
+
+
+/*************************************************************************
+** 方法名称: checkMountPath
+** 方法功能: 清除挂载点
+** 入口参数: 
+**      mountPath - 挂载点路径
+** 返回值: 所有TF卡存在返回true;否则返回false
+** 调 用: 
+** 在清除挂载点前，需要判断该挂载点已经被挂载，如果已经被挂载先对其卸载
+** 如果被卸载成功或未被挂载,检查该挂载点是否干净,如果不干净,对其进行清除操作
+*************************************************************************/
+bool VolumeManager::checkMountPath(const char* mountPath)
+{
+    char cmd[128] = {0};
+
+    LOGDBG(TAG, " >>>>> checkMountPath [%s]", mountPath);    
+
+    if (access(mountPath, F_OK) != 0) {     /* 挂载点不存在,创建挂载点 */
+        mkdir(mountPath, 0777);
+    } else {
+        if (isMountpointMounted(mountPath)) {
+            LOGDBG(TAG, " Mount point -> %s has mounted!");
+            return false;
+        } else {
+            LOGDBG(TAG, " Mount point[%s] not Mounted, clear mount point first!", mountPath);
+            sprintf(cmd, "rm -rf %s/*", mountPath);
+            system(cmd);
+        }
+    }
+    return true;
+}
+
+
+bool VolumeManager::isValidFs(const char* devName, Volume* pVol)
+{
+    char cDevNodePath[128] = {0};
+    bool bResult = false;
+
+    memset(pVol->cDevNode, 0, sizeof(pVol->cDevNode));
+    memset(pVol->cVolFsType, 0, sizeof(pVol->cVolFsType));
+
+
+    /* 1.检查是否存在/dev/devName该设备文件
+     * blkid -c /dev/null /dev/devName - 获取其文件系统类型TYPE="xxxx"
+     */
+
+    sprintf(cDevNodePath, "/dev/%s", devName);
+    LOGDBG(TAG, " dev node path: %s", cDevNodePath);
+
+    if (access(cDevNodePath, F_OK) == 0) {
+        LOGDBG(TAG, "dev node path exist %s", cDevNodePath);
+
+        if (extractMetadata(cDevNodePath, pVol->cVolFsType, sizeof(pVol->cVolFsType))) {
+            strcpy(pVol->cDevNode, cDevNodePath);
+            bResult = true;
+        }
+    } else {
+        LOGERR(TAG, "dev node[%s] not exist, what's wrong", cDevNodePath);
+    }
+    return bResult;
+}
+
+
+
+/*************************************************************************
+** 方法名称: handleBlockEvent
+** 方法功能: 处理来自底层的卷块设备事件
+** 入口参数: 
+**      evt - NetlinkEvent对象
+** 返回值: 无
+** 调 用: 
+** 处理来自底层的事件: 1.Netlink; 2.inotify(/dev)
+*************************************************************************/
+int VolumeManager::handleBlockEvent(std::shared_ptr<NetlinkEvent> pEvt)
+{
+    if (getWorkerState()) {
+        LOGDBG(TAG, "=====> handleBlockEvent[Kernel -> Vold](action: %s, bus: %s)", getActionStr(pEvt->getAction()), pEvt->getBusAddr());
+        
+        if (mEnteringUdisk) {   /** U盘工作模式 */
+            LOGDBG(TAG, ">> Vold work on Udisk Mode, Cache Event to mCacheVec.");
+            std::unique_lock<std::mutex> _lock(mCacheEvtLock);
+            mCacheVec.push_back(pEvt);
+        } else {                /** 普通工作模式 */
+            LOGDBG(TAG, ">> Vold work on Normal Mode, Pass Event directly.");
+            postEvent(pEvt);
+        }
+    }
+    return 0;  
+}
+
+
+int VolumeManager::checkFs(Volume* pVol) 
+{
+    int rc = 0;
+    int status;
+        
+    LOGDBG(TAG, " >>> checkFs: Type[%s], Mount Point[%s]", pVol->cVolFsType, pVol->pMountPath);
+
+    if (!strcmp(pVol->cVolFsType, "exfat")) {
+        const char *args[3];
+        args[0] = "/usr/local/bin/exfatfsck";
+        args[1] = "-p";
+        args[2] = pVol->cDevNode;
+
+        LOGDBG(TAG, " Check Fs cmd: %s %s %s", args[0], args[1], args[2]);
+        rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
+
+    } else if (!strcmp(pVol->cVolFsType, "ext4") || !strcmp(pVol->cVolFsType, "ext3") || !strcmp(pVol->cVolFsType, "ext2")) {
+        
+        const char *args[4];
+        args[0] = "/sbin/e2fsck";
+        args[1] = "-p";
+        args[2] = "-f";
+        args[3] = pVol->cDevNode;
+        LOGDBG(TAG, " Check Fs cmd: %s %s %s", args[0], args[1], args[2], args[3]);        
+        rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
+    }
+
+
+    if (rc != 0) {
+        LOGERR(TAG, "Filesystem check failed due to logwrap error");
+        errno = EIO;
+        return -1;
+    }
+
+    if (!WIFEXITED(status)) {
+        LOGERR(TAG, " Filesystem check did not exit properly");
+        return -1;
+    }
+
+    status = WEXITSTATUS(status);
+
+    switch(status) {
+    case 0:
+        LOGDBG(TAG, "-------> Filesystem check completed OK");
+        return 0;
+
+    case 2:
+        LOGDBG(TAG, "----> Filesystem check failed (not a FAT filesystem)");
+        errno = ENODATA;
+        return -1;
+
+    default:
+        LOGDBG(TAG, "----> Filesystem check failed (unknown exit code %d)", status);
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+
 void VolumeManager::repairVolume(Volume* pVol)
 {
     char cmd[512] = {0};
@@ -2100,297 +2643,6 @@ int VolumeManager::mountVolume(Volume* pVol)
 }
 
 
-u32 VolumeManager::calcTakeRecLefSec(Json::Value& jsonCmd, bool bFactoryMode)
-{
-    u32 uLocalRecSec = ~0L;
-    u32 uRemoteRecSec = ~0L;
-
-    float iOriginBitRate = 0;
-    float iStitchBitRate = 0;
-
-    float iSubBitRate = (5 * 1024 * 8 * 1.0f);          /* 字码流有8路 */
-    float iPrevieBitRate = 3 * 1024 * 1.0f;             /* 预览流1路 */
-
-    float iNativeTotoalBitRate = 0.0f;
-
-    bool bSaveOrigin = false;
-    bool bHaveStitch = false;
-
-    if (jsonCmd["parameters"]["origin"].isMember("saveOrigin") &&
-        jsonCmd["parameters"]["origin"]["saveOrigin"].asBool() == true) {
-        bSaveOrigin = true;
-    }
-
-    if ( jsonCmd["parameters"].isMember("stiching") &&
-        jsonCmd["parameters"]["stiching"].isMember("fileSave") &&
-        (jsonCmd["parameters"]["stiching"]["fileSave"].asBool() == true) ) {
-        bHaveStitch = true;
-    }
-
-    if (bFactoryMode == true) {
-        return 10000;
-    } else {
-
-        /* 计算出小卡能录制的秒数 */
-        if (bSaveOrigin) {  /* 小卡 */
-            int iTmpOriginBitRate = jsonCmd["parameters"]["origin"]["bitrate"].asInt();
-            iOriginBitRate = iTmpOriginBitRate / (1024 * 8 * 1.0f);
-
-            uRemoteRecSec = (u32) (calcRemoteRemainSpace(false) / iOriginBitRate);
-
-            LOGDBG(TAG, " ---------------- Origin bitrate(%f MB/s), Video Left sec %lu", iOriginBitRate, uRemoteRecSec);
-        }
-
-        /* 计算出大卡能录制的秒数 */
-        if (bHaveStitch) {
-            iStitchBitRate = jsonCmd["parameters"]["stiching"]["bitrate"].asInt();
-            iNativeTotoalBitRate += iStitchBitRate;
-        }
-
-        iNativeTotoalBitRate += iSubBitRate;
-        iNativeTotoalBitRate += iPrevieBitRate;
-        iNativeTotoalBitRate = iNativeTotoalBitRate / (1024 * 8 * 1.0f);
-
-        uLocalRecSec = (u32) (getLocalVolLeftSize(false) / iNativeTotoalBitRate);
-
-        LOGDBG(TAG, " --------------- Logcal bitrate = %f MB/s, Left sec: %lu", iNativeTotoalBitRate, uLocalRecSec);
-        return (uRemoteRecSec > uLocalRecSec) ? uLocalRecSec : uRemoteRecSec;
-    }
-}
-
-
-
-u32 VolumeManager::calcTakeLiveRecLefSec(Json::Value& jsonCmd)
-{
-    u32 uLocalRecSec = ~0L;
-    u32 uRemoteRecSec = ~0L;
-
-    float iOriginBitRate = 0.0f;
-    float iStitchBitRate = 0.0f;
-
-    /* 1.只存原片
-     * 2.只存拼接
-     * 3.存原片 + 拼接
-     */
-
-    /* 只存原片 */
-    if ( (jsonCmd["parameters"]["origin"]["saveOrigin"].asBool() == true) &&
-        (jsonCmd["parameters"]["stiching"]["fileSave"].asBool() == false) ) {
-
-        int iTmpStichBitRate = jsonCmd["parameters"]["origin"]["bitrate"].asInt();
-        iOriginBitRate = iTmpStichBitRate / (1024 * 8 * 1.0f);
-
-        uRemoteRecSec = (u32) (calcRemoteRemainSpace(false) / iOriginBitRate);
-
-        LOGDBG(TAG, " >>>>>>>>>>>>>> Remote Origin bitrate[%f]MB/s Left sec %lu", iOriginBitRate, uRemoteRecSec);
-        
-        return uRemoteRecSec;
-    }
-
-    /* 只存拼接 */
-    if ( (jsonCmd["parameters"]["origin"]["saveOrigin"].asBool() == false) &&
-        (jsonCmd["parameters"]["stiching"]["fileSave"].asBool() == true) ) {
-        
-        int iTmpStichBitRate = jsonCmd["parameters"]["stiching"]["bitrate"].asInt();
-        iStitchBitRate = iTmpStichBitRate / (1024 * 8 * 1.0f);
-        uLocalRecSec = (u32)(getLocalVolLeftSize(false) / iStitchBitRate);
-
-        LOGDBG(TAG, " Local Stitch bitrate[%f]MB/s Left sec %lu", iStitchBitRate, uLocalRecSec);
-        return uLocalRecSec;
-    }
-
-
-    /* 原片+拼接 */
-    if ( (jsonCmd["parameters"]["origin"]["saveOrigin"].asBool() == true) &&
-        (jsonCmd["parameters"]["stiching"]["fileSave"].asBool() == true) ) {
-        
-        int iTmpStichBitRate = jsonCmd["parameters"]["origin"]["bitrate"].asInt();
-        iOriginBitRate = iTmpStichBitRate / (1024 * 8 * 1.0f);
-        uRemoteRecSec = (u32)(calcRemoteRemainSpace(false) / iOriginBitRate);
-
-        int iTmpOriginBitRate = jsonCmd["parameters"]["stiching"]["bitrate"].asInt();
-        iStitchBitRate = iTmpOriginBitRate / (1024 * 8 * 1.0f);
-        uLocalRecSec = (u32)(getLocalVolLeftSize(false) / iStitchBitRate);
-
-        LOGDBG(TAG, " Local bitrate [%f]Mb/s, Remote bitrate[%f]Mb/s", iStitchBitRate, iOriginBitRate);
-        LOGDBG(TAG, " --------------- Local Live Left sec %lu, Remote Live Left sec %lu", uLocalRecSec, uRemoteRecSec);
-
-        return (uRemoteRecSec > uLocalRecSec) ? uLocalRecSec : uRemoteRecSec;
-    }
-
-    return 0;
-}
-
-
-
-/*************************************************************************
-** 方法名称: getTakePicStorageCfgFromJsonCmd
-** 方法功能: 评估一组拍照需占用的存储空间大小(根据指定的拍照命令)
-** 入口参数: 
-**      jsonCmd - 拍照命令
-** 返回值:   一组照片大致的占用空间(单位为MB)
-** 调 用: 
-*************************************************************************/
-Json::Value* VolumeManager::getTakePicStorageCfgFromJsonCmd(Json::Value& jsonCmd)
-{
-    Json::Value* pResult = nullptr;
-    int iRawEnable = 0;
-
-    if (jsonCmd.isMember("name") && jsonCmd.isMember("parameters")) {
-        if (!strcmp(jsonCmd["name"].asCString(), "camera._takePicture")) {
-            std::string gear = "customize";
-
-            if (jsonCmd["parameters"].isMember("origin")) {
-                if (jsonCmd["parameters"]["origin"].isMember("mime")) {
-                    if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "raw+jpeg")) {
-                        iRawEnable = 1;
-                    }
-                }
-            }
-
-            if (jsonCmd["parameters"].isMember("burst")) {  /* Burst模式 - 只关注是否有Raw */
-                gear = "burst";
-            } else if (jsonCmd["parameters"].isMember("bracket")) { /* Bracket - 关注count和是否有raw */
-                gear = "aeb3";
-                if (jsonCmd["parameters"]["bracket"].isMember("count")) {
-                    int iAebNum = jsonCmd["parameters"]["bracket"]["count"].asInt();
-                    switch (iAebNum) {
-                        case 3: gear = "aeb3"; break;
-                        case 5: gear = "aeb5"; break;
-                        case 7: gear = "aeb7"; break;
-                        case 9: gear = "aeb9"; break;
-                    }
-                }
-            } else {    /* 11K_3D_OF, 11K_3D, 11K */
-                if (jsonCmd["parameters"].isMember("stiching")) { 
-                    if (jsonCmd["parameters"]["stiching"].isMember("mode")) {
-                        if (!strcmp(jsonCmd["parameters"]["stiching"]["mode"].asCString(), "pano")) {
-                            gear = "11k_of";
-                        } else {
-                            gear = "11k_3d_of";
-                        }
-                    } else {
-                        LOGERR(TAG, "takePitcure have node stitching, but 'mode' is not exist");
-                    }
-                } else {
-                    gear = "11k";
-                }
-            }
-            LOGINFO(TAG, "--> getTakePicStorageCfgFromJsonCmd: gear[%s], raw enbale = %d", gear.c_str(), iRawEnable);
-            if (mTakePicStorageCfg.isMember(gear)) {
-                mTakePicStorageCfg[gear.c_str()]["raw_enable"] = iRawEnable;
-                pResult = &(mTakePicStorageCfg[gear.c_str()]);
-            } else {
-                LOGERR(TAG, "--> This gear[%s] not support in mTakePicStorageCfg, maybe need update it");
-            }
-
-        } else if (!strcmp(jsonCmd["name"].asCString(), "camera._startRecording")) {
-
-            if (jsonCmd["parameters"].isMember("timelapse")) {
-                if (jsonCmd["parameters"].isMember("origin")) {
-                    if (jsonCmd["parameters"]["origin"].isMember("mime")) {
-                        if (!strcmp(jsonCmd["parameters"]["origin"]["mime"].asCString(), "raw+jpeg")) {
-                            iRawEnable = 1;
-                        }
-                    }
-                }
-
-                if (mTakePicStorageCfg.isMember("timelapse")) {
-                    mTakePicStorageCfg["timelapse"]["raw_enable"] = iRawEnable;
-                    pResult = &(mTakePicStorageCfg["timelapse"]);
-                } else {
-                    LOGERR(TAG, "--> This gear[%s] not support in mTakePicStorageCfg, maybe need update it");
-                }
-            }
-        } else {
-            LOGERR(TAG, "---> evaluateOneGrpPicSzByCmd: Unkown command: %s", jsonCmd["name"].asCString());        
-        }
-    } else {
-        LOGERR(TAG, "---> evaluateOneGrpPicSzByCmd: Unbelievable arguments recv.");        
-    }
-    return pResult;
-}
-
-
-
-
-/*
- * 没有使能Raw, 直接以SD卡的剩余值为准
- * 有使能Raw, 并且Raw存储在SD卡，以SD卡剩余值为准
- * 有使能Raw, Raw存储在TF卡，计算剩余的最小值，以二者的最小值为准
- */
-
-int VolumeManager::calcTakepicLefNum(Json::Value& jsonCmd, bool bUseCached)
-{
-    u32 iUnitSize = 25;         /* 默认为20MB */
-
-    u64 uLocalVolSize = 0;
-    u64 uRemoteVolSize = 0;
-    u32 uTfCanTakeNum = 0;
-    u32 uTakepicNum = 0;   
-    u32 uNvTakepicNum = 0;    
-    Json::Value* pEvlJson = nullptr;
-    int bRawEnable = 0;
-    int iRawStorageLoc = PIC_RAW_STORAGE_LOC_NV;
-
-
-    if (checkLocalVolumeExist()) {
-        uLocalVolSize = getLocalVolLeftSize(bUseCached);
-    } 
-    
-    uRemoteVolSize = calcRemoteRemainSpace(false);
-
-
-    LOGINFO(TAG, "----++ Local Volume Size[%lu], Remote Volume Size[%ld] ++--------", uLocalVolSize, uRemoteVolSize);
-
-    
-    pEvlJson = getTakePicStorageCfgFromJsonCmd(jsonCmd);
-    if (pEvlJson) {
-        Json::Value& jCalcObj = *pEvlJson;
-
-        bRawEnable = jCalcObj["raw_enable"].asInt();
-
-        /* 配置中指明RAW存储在模组上 */
-        if (jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
-            if (bRawEnable) {
-                iRawStorageLoc = PIC_RAW_STORAGE_LOC_MODULE;
-                uTfCanTakeNum = uRemoteVolSize / jCalcObj["raw_size"].asInt();
-                LOGDBG(TAG, "--> Raw Switch is Enable(Storage in Module), One Group picture size in Module:[%d]", jCalcObj["raw_size"].asInt());
-            }
-
-            uNvTakepicNum = uLocalVolSize / jCalcObj["misc_size"].asInt();
-            LOGDBG(TAG, "--> Local Group size(Storage in NV), size is:[%d]", jCalcObj["misc_size"].asInt());
-
-        } else {    /* RAW存储在第九张卡上 */
-            if (bRawEnable) {
-                iUnitSize = (jCalcObj["misc_size"].asInt() + jCalcObj["raw_size"].asInt() * SYS_TF_COUNT_NUM);
-                LOGDBG(TAG, "--> Raw Switch is Enable(Storage in NV), One Group picture size:[%d]", iUnitSize);
-            } else {
-                iUnitSize = jCalcObj["misc_size"].asInt();
-                LOGDBG(TAG, "--> Raw Switch is Disable, One Group picture size:[%d]", iUnitSize);
-            }
-            uNvTakepicNum = uLocalVolSize / iUnitSize;
-        }
-
-        LOGDBG(TAG, "-------->>> uTfCanTakeNum[%d], uNvTakepicNum[%d] <<<-------", uTfCanTakeNum, uNvTakepicNum);
-
-        if (bRawEnable) {
-            if (iRawStorageLoc == PIC_RAW_STORAGE_LOC_NV) {
-                uTakepicNum = uNvTakepicNum;
-            } else {
-                uTakepicNum = (uTfCanTakeNum > uNvTakepicNum) ? uNvTakepicNum : uTfCanTakeNum;
-            }
-        } else {
-            uTakepicNum = uNvTakepicNum;
-        }
-    } else {
-        LOGERR(TAG, "--> calcTakepicLefNum: evaluateOneGrpPicSzByCmd return null,use default size to calc now.");
-    }
-
-    return uTakepicNum;
-}
-
-
 int VolumeManager::doUnmount(const char *path, bool force)
 {
     int retries = 10;
@@ -2420,6 +2672,7 @@ int VolumeManager::doUnmount(const char *path, bool force)
     LOGERR(TAG, "Giving up on unmount %s (%s)", path, strerror(errno));
     return -1;
 }
+
 
 
 /*
@@ -2469,265 +2722,8 @@ out_mounted:
 }
 
 
-int VolumeManager::checkFs(Volume* pVol) 
-{
-    int rc = 0;
-    int status;
-        
-    LOGDBG(TAG, " >>> checkFs: Type[%s], Mount Point[%s]", pVol->cVolFsType, pVol->pMountPath);
-
-    if (!strcmp(pVol->cVolFsType, "exfat")) {
-        const char *args[3];
-        args[0] = "/usr/local/bin/exfatfsck";
-        args[1] = "-p";
-        args[2] = pVol->cDevNode;
-
-        LOGDBG(TAG, " Check Fs cmd: %s %s %s", args[0], args[1], args[2]);
-        rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
-
-    } else if (!strcmp(pVol->cVolFsType, "ext4") || !strcmp(pVol->cVolFsType, "ext3") || !strcmp(pVol->cVolFsType, "ext2")) {
-        
-        const char *args[4];
-        args[0] = "/sbin/e2fsck";
-        args[1] = "-p";
-        args[2] = "-f";
-        args[3] = pVol->cDevNode;
-        LOGDBG(TAG, " Check Fs cmd: %s %s %s", args[0], args[1], args[2], args[3]);        
-        rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
-    }
-
-
-    if (rc != 0) {
-        LOGERR(TAG, "Filesystem check failed due to logwrap error");
-        errno = EIO;
-        return -1;
-    }
-
-    if (!WIFEXITED(status)) {
-        LOGERR(TAG, " Filesystem check did not exit properly");
-        return -1;
-    }
-
-    status = WEXITSTATUS(status);
-
-    switch(status) {
-    case 0:
-        LOGDBG(TAG, "-------> Filesystem check completed OK");
-        return 0;
-
-    case 2:
-        LOGDBG(TAG, "----> Filesystem check failed (not a FAT filesystem)");
-        errno = ENODATA;
-        return -1;
-
-    default:
-        LOGDBG(TAG, "----> Filesystem check failed (unknown exit code %d)", status);
-        errno = EIO;
-        return -1;
-    }
-    return 0;
-}
-
-
-/*************************************************************************
-** 方法名称: updateModuleVolumeSpace
-** 方法功能: 更新各模组的容量
-** 入口参数: 
-**      iAddDecSize - 为正数时为增加容量; 为负数时为减少容量
-** 返回值: 无
-** 调 用: 
-** 
-*************************************************************************/
-void VolumeManager::updateModuleVolumeSpace(int iAddDecSize)
-{
-    LOGDBG(TAG, "-----------------> updateModuleVolumeSpace");
-    std::unique_lock<std::mutex> _lock(mRemoteDevLock);     
-    for (auto item: mModuleVols) {
-        LOGDBG(TAG, "-->Module Name[%s]", item->cVolName);
-        LOGDBG(TAG, "-->Module Total[%lu]", item->uTotal);
-        LOGDBG(TAG, "-->Module Avail[%lu]", item->uAvail);
-
-        if (iAddDecSize >= 0) 
-            item->uAvail += iAddDecSize;
-        else {
-            if (item->uAvail >= abs(iAddDecSize)) {
-                item->uAvail += iAddDecSize;
-            } else {
-                item->uAvail = 0;
-            }
-        }
-    }
-}
-
-/*
- * 更新指定卷的存储容量信息
- */
-void VolumeManager::updateVolumeSpace(Volume* pVol) 
-{
-    struct statfs diskInfo;
-    
-    std::unique_lock<std::mutex> _lock(pVol->mVolLock);        
-
-    /* 卡槽使能并且卷已经被挂载 */
-    if ((pVol->iVolSlotSwitch == VOLUME_SLOT_SWITCH_ENABLE) && (pVol->iVolState == VOLUME_STATE_MOUNTED)) {
-        
-        if (!statfs(pVol->pMountPath, &diskInfo)) {
-            
-            u32 uBlockSize = diskInfo.f_bsize / 1024;
-
-#ifdef ENABLE_DEBUG_VOLUME
-            LOGDBG(TAG, " stat fs path: %s", pVol->pMountPath);
-
-            LOGDBG(TAG, " statfs block size: %d KB", uBlockSize);
-            LOGDBG(TAG, " statfs total block: %d ", diskInfo.f_blocks);
-            LOGDBG(TAG, " statfs free block: %d ", diskInfo.f_bfree);
-
-            LOGDBG(TAG, " statfs Tatol size = %u MB", (diskInfo.f_blocks * uBlockSize) / 1024);
-            LOGDBG(TAG, " state Avail size = %u MB", (diskInfo.f_bfree * uBlockSize) / 1024);
-#endif 
-
-            pVol->uTotal = (uBlockSize * diskInfo.f_blocks) / 1024;
-            
-            /* 预留1GB的空间 */
-            if (((diskInfo.f_bfree * uBlockSize) >> 10) > lefSpaceThreshold) {
-                pVol->uAvail = ((diskInfo.f_bfree * uBlockSize) / 1024) - lefSpaceThreshold;
-            } else {
-                pVol->uAvail = 0;
-            }
-            
-            LOGINFO(TAG, " Local Volume Tatol size = %d MB, Left size: %d MB", pVol->uTotal,  pVol->uAvail);
-        } else {
-            LOGDBG(TAG, " statfs failed ...");
-        }
-    } else {
-        LOGDBG(TAG, " Current Local Vol May Locked or Not Mounted!");
-    }
-}
-
-
-void VolumeManager::syncTakePicLeftSapce(Json::Value& jsonCmd)
-{
-    Json::Value* pJsonCmd = getTakePicStorageCfgFromJsonCmd(jsonCmd);
-    if (pJsonCmd) {
-        Json::Value& jCalcObj = *pJsonCmd;
-        
-        /* 更新模组的剩余容量,并同时更新NV剩余容量 */
-        if (jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
-            if (jCalcObj["raw_enable"].asInt()) {
-                int iRawSize = jCalcObj["raw_size"].asInt();    /* 一组Raw的大小: AEB3,5,7,9, busrt有多组 */
-                updateModuleVolumeSpace(-iRawSize);            
-            }
-        } else if ((jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_NV)) {
-            if (jCalcObj["raw_enable"].asInt()) {
-                if (mCurrentUsedLocalVol) {
-                    mCurrentUsedLocalVol->uAvail -= jCalcObj["raw_size"].asInt() * SYS_TF_COUNT_NUM;
-                    LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
-                }
-            }
-        }
-
-        if (mCurrentUsedLocalVol) {
-            mCurrentUsedLocalVol->uAvail -= jCalcObj["misc_size"].asInt();
-            LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
-        }
-
-    } else {
-        LOGERR(TAG, "---> syncTakePicLeftSapce: Invalid TakePicture Json Command:");
-    }
-}
-
-
-
-void VolumeManager::syncTakePicLeftSapce(Json::Value* jsonCmd)
-{
-    /*
-     * 如果拍照命令中含raw,并且Raw存储在模组中,需要更新各个模组的剩余容量
-     * 否则,只需要更新本地存储的剩余容量
-     */
-    Json::Value* pJsonCmd = getTakePicStorageCfgFromJsonCmd(*jsonCmd);
-    if (pJsonCmd) {
-        Json::Value& jCalcObj = *pJsonCmd;
-        
-        /* 更新模组的剩余容量,并同时更新NV剩余容量 */
-        if (jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_MODULE) {
-            if (jCalcObj["raw_enable"].asInt()) {
-                int iRawSize = jCalcObj["raw_size"].asInt();
-                updateModuleVolumeSpace(-iRawSize);            
-            }
-        } else if ((jCalcObj.isMember("raw_storage_loc") && jCalcObj["raw_storage_loc"].asInt() == PIC_RAW_STORAGE_LOC_NV)) {
-            if (jCalcObj["raw_enable"].asInt()) {
-                if (mCurrentUsedLocalVol) {
-                    mCurrentUsedLocalVol->uAvail -= jCalcObj["raw_size"].asInt() * SYS_TF_COUNT_NUM;
-                    LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
-                }
-            }
-        }
-
-        if (mCurrentUsedLocalVol) {
-            mCurrentUsedLocalVol->uAvail -= jCalcObj["misc_size"].asInt();
-            LOGDBG(TAG, "--> Local Volume Avail: [%lu]", mCurrentUsedLocalVol->uAvail);
-        }
-
-    } else {
-        LOGERR(TAG, "---> syncTakePicLeftSapce: Invalid TakePicture Json Command:");
-    }
-
-}
-
 #if 0
 int VolumeManager::formatFs2Ext4(const char *fsPath, unsigned int numSectors, const char *mountpoint) 
-{
-    int fd;
-    const char *args[7];
-    int rc;
-    int status;
-
-    args[0] = MKEXT4FS_PATH;
-    args[1] = "-J";
-    args[2] = "-a";
-    args[3] = mountpoint;
-
-    if (numSectors) {
-        char tmp[32];
-        snprintf(tmp, sizeof(tmp), "%u", numSectors * 512);
-        const char *size = tmp;
-        args[4] = "-l";
-        args[5] = size;
-        args[6] = fsPath;
-        rc = android_fork_execvp(ARRAY_SIZE(args), (char **)args, &status, false, true);
-    } else {
-        args[4] = fsPath;
-        rc = android_fork_execvp(5, (char **)args, &status, false, true);
-    }
-	
-    rc = android_fork_execvp(ARRAY_SIZE(args), (char **)args, &status, false, true);
-    if (rc != 0) {
-        SLOGE("Filesystem (ext4) format failed due to logwrap error");
-        errno = EIO;
-        return -1;
-    }
-
-    if (!WIFEXITED(status)) {
-        SLOGE("Filesystem (ext4) format did not exit properly");
-        errno = EIO;
-        return -1;
-    }
-
-    status = WEXITSTATUS(status);
-
-    if (status == 0) {
-        SLOGI("Filesystem (ext4) formatted OK");
-        return 0;
-    } else {
-        SLOGE("Format (ext4) failed (unknown exit code %d)", status);
-        errno = EIO;
-        return -1;
-    }
-    return 0;
-}
-
-
-int VolumeManager::formatFs2Exfat(const char *fsPath, unsigned int numSectors, const char *mountpoint) 
 {
     int fd;
     const char *args[7];
@@ -2875,49 +2871,6 @@ err_umount_volume:
 }
 
 
-void VolumeManager::updateRemoteTfsInfo(std::vector<sp<Volume>>& mList)
-{
-    {        
-        AutoMutex _l(gRemoteVolLock);
-
-        LOGDBG(TAG, " ---> updateRemoteTfsInfo");
-        sp<Volume> tmpVolume = NULL;
-        Volume* localVolume = NULL;
-
-        for (u32 i = 0; i < mList.size(); i++) {
-            tmpVolume = mList.at(i);
-
-            for (u32 j = 0; j < mModuleVols.size(); j++) {
-                localVolume = mModuleVols.at(j);
-                if (tmpVolume && localVolume && (tmpVolume->iIndex == localVolume->iIndex)) {
-                    memset(localVolume->cVolName, 0, sizeof(localVolume->cVolName));
-                    
-                    strcpy(localVolume->cVolName, tmpVolume->cVolName);
-                    localVolume->uTotal = tmpVolume->uTotal;
-                    localVolume->uAvail = tmpVolume->uAvail;
-                    localVolume->iSpeedTest = tmpVolume->iSpeedTest;
-                    localVolume->iVolState = tmpVolume->iVolState;
-                }
-            }
-        }
-    }
-}
-
-
-std::vector<Volume*>& VolumeManager::getRemoteVols()
-{
-    std::vector<Volume*>& remoteVols = mModuleVols;
-    return remoteVols;
-}
-
-
-std::vector<Volume*>& VolumeManager::getLocalVols()
-{
-    std::vector<Volume*>& localVols = mLocalVols;
-    return localVols;
-}
-
-
 bool VolumeManager::formatVolume2Exfat(Volume* pVol)
 {
     /* 1.检查设备文件是否存在 */
@@ -2956,19 +2909,49 @@ bool VolumeManager::formatVolume2Exfat(Volume* pVol)
    return false;
 }
 
+
+
 bool VolumeManager::formatVolume2Ext4(Volume* pVol)
 {
     return true;
 }
 
 
-
-
-
-
 /**************************************************************************************************************************
  *                                      >>> Udisk Mode Related <<<
  **************************************************************************************************************************/
+
+/*************************************************************************
+** 方法名称: unmountAll
+** 方法功能: 卸载所有处于挂载状态的设备(包括本地设备和模组)
+** 入口参数: 
+** 返回值:  成功进入返回true;否则返回false
+** 调 用: 长按3秒,关机时调用
+** 
+*************************************************************************/
+void VolumeManager::unmountAll()
+{
+
+    if (mCurrentUsedLocalVol) {
+        std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();  
+        if (pEvt) {
+            pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);
+            pEvt->setAction(NETLINK_ACTION_REMOVE);
+            pEvt->setSubsys(VOLUME_SUBSYS_USB);
+            pEvt->setBusAddr(mCurrentUsedLocalVol->pBusAddr);
+            pEvt->setDevNodeName(mCurrentUsedLocalVol->cDevNode);            
+            handleBlockEvent(pEvt);
+        } else {
+            LOGERR(TAG, "--> Alloc NetlinkEvent Obj Failed");
+        }
+    }    
+
+    if (getVolumeManagerWorkMode() == VOLUME_MANAGER_WORKMODE_UDISK) {
+        exitUdiskMode();
+    }
+}
+
+
 /*
  * 确保所有的U-Disk都挂载上了
  */
@@ -3237,6 +3220,23 @@ int VolumeManager::getCurHandleRemoveUdiskVolCnt()
 }
 
 
+void VolumeManager::checkAllUdiskIdle()
+{
+    Volume* tmpVol = NULL;
+
+    for (u32 i = 0; i < mModuleVols.size(); i++) {
+        tmpVol = mModuleVols.at(i);
+        if (tmpVol && tmpVol->iVolState == VOLUME_STATE_MOUNTED) {
+            LOGDBG(TAG, " Current Volume(%s) is Mouted State, force unmount now....", tmpVol->pMountPath);
+            if (doUnmount(tmpVol->pMountPath, true)) {
+                LOGERR(TAG, " Force Unmount Volume Failed!!!");
+            }
+            tmpVol->iVolState = VOLUME_STATE_IDLE;
+        }
+    }
+}
+
+
 /*************************************************************************
 ** 方法名称: enterUdiskMode
 ** 方法功能: 进入U盘模式
@@ -3409,6 +3409,8 @@ void VolumeManager::exitUdiskMode()
     msg_util::sleep_ms(8*1000);     /* 等待模组卸载卡 */
     setVolumeManagerWorkMode(VOLUME_MANAGER_WORKMODE_NORMAL);
 }
+
+
 
 
 /**************************************************************************************************************************
