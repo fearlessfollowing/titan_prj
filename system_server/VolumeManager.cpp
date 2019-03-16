@@ -1,5 +1,5 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2 Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: VolumeManager.cpp
 ** 功能描述: 存储管理器（管理设备的外部内部设备）
@@ -29,6 +29,8 @@
 **                                              fixup Vold线程启动前，缓存了复位USB2SD芯片得到的热插拔事件
 ** V3.7         Skymixos        2019年3月7日    修改Raw存储在模组中的一组Raw size(如aeb3 Raw size = 40*3)
 **                                              修改底部USB接口对应的USB地址(2.0, 3.0)
+** V3.8         Skymixos        2019年3月16日   底部USB接口的挂载路径为/mnt/udisk1，顶部USB接口的挂载路径为
+**                                              /mnt/udisk2 
 ******************************************************************************************************/
 
 #include <stdio.h>
@@ -128,7 +130,6 @@ static Mutex gLiveRecMutex;
 
 static Mutex gRemoteVolLock;
 
-
 static Volume gSysVols[] = {
     {   /* SD卡 - 3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
@@ -142,8 +143,7 @@ static Volume gSysVols[] = {
         .iIndex         = 0,
         .iPrio          = VOLUME_PRIO_SD,
         .iVolState      = VOLUME_STATE_INIT,
-        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,      /* 机身后面的SD卡: 默认为使能状态 */
-        
+        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,      /* 机身后面的SD卡: 默认为使能状态 */        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
@@ -152,7 +152,7 @@ static Volume gSysVols[] = {
     /* 底部USB接口: 2.0, 3.0 */
     {   /* Udisk1 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
-        .pBusAddr       = "usb2-1.2,usb1-2.2",           /* 接3.0设备时的总线地址 */
+        .pBusAddr       = "usb2-1.3,usb1-2.3",           /* 接3.0设备时的总线地址 */
         .pMountPath     = "/mnt/udisk1",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
@@ -162,27 +162,24 @@ static Volume gSysVols[] = {
         .iIndex         = 0,
         .iPrio          = VOLUME_PRIO_LOW,
         .iVolState      = VOLUME_STATE_INIT,
-        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,      /* 机身底部的USB接口: 默认为使能状态 */        
-        
+        .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,      /* 机身底部的USB接口: 默认为使能状态 */                
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
     },
 
-    /* 顶部USB接口: 3.0, 2.0 */
+    /* 顶部USB接口: 3.0, 2.0 - 目前顶部没有USB3.0接口,只有2.0接口 - 2019年3月16日 */
     {   /* Udisk2 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
-        .pBusAddr       = "usb1-2.3",           /* 3.0 */
+        .pBusAddr       = "usb1-2.2",          
         .pMountPath     = "/mnt/udisk2",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_NV,
         .iIndex         = 0,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,      /* 机身顶部的USB接口: 默认为禁止状态 */         
         
@@ -199,14 +196,11 @@ static Volume gSysVols[] = {
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_MODULE,
         .iIndex         = 1,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF1: 默认为使能状态 */         
-        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
@@ -220,14 +214,11 @@ static Volume gSysVols[] = {
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_MODULE,
         .iIndex         = 2,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF2: 默认为使能状态 */          
-        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
@@ -241,14 +232,11 @@ static Volume gSysVols[] = {
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_MODULE,
         .iIndex         = 3,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF3: 默认为使能状态 */           
-        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
@@ -262,14 +250,11 @@ static Volume gSysVols[] = {
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_MODULE,
         .iIndex         = 4,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF4: 默认为使能状态 */           
-        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
@@ -283,14 +268,11 @@ static Volume gSysVols[] = {
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_MODULE,
         .iIndex         = 5,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF5: 默认为使能状态 */           
-        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
@@ -304,14 +286,11 @@ static Volume gSysVols[] = {
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_MODULE,
         .iIndex         = 6,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF6: 默认为使能状态 */           
-        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
@@ -327,14 +306,11 @@ static Volume gSysVols[] = {
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_MODULE,
         .iIndex         = 7,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF7: 默认为使能状态 */           
-        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,
@@ -348,14 +324,11 @@ static Volume gSysVols[] = {
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
         .cVolFsType     = {0},
-
         .iType          = VOLUME_TYPE_MODULE,
         .iIndex         = 8,
         .iPrio          = VOLUME_PRIO_LOW,
-
         .iVolState      = VOLUME_STATE_INIT,
         .iVolSlotSwitch = VOLUME_SLOT_SWITCH_ENABLE,          /* TF8: 默认为使能状态 */           
-        
         .uTotal         = 0,
         .uAvail         = 0,
         .iSpeedTest     = VOLUME_SPEED_TEST_FAIL,

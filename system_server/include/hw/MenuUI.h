@@ -663,8 +663,6 @@ private:
     void    play_sound(u32 type);
     void    send_update_light(int menu, int interval,bool bLight = false,int sound_id = -1);
     
-    void    write_p(int p, int val);
-
 
 /***************************************** 状态管理(10.08) ***************************************************/
     bool    checkStateEqual(uint64_t state);
@@ -797,6 +795,8 @@ private:
     void    dispConnecting();
     void    dispSaving();
     void    dispReady(bool bDispReady = true);
+    void    dispInNeedCard();    
+    bool    isCurMenuHasReadyArea();    /* 检查当前菜单是否有"Ready"区域 */
     void    dispLiveReady();
     void    clearReady();
     void    dispShooting();

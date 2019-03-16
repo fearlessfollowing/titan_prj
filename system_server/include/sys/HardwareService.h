@@ -19,6 +19,9 @@ public:
      */
     BatterInfo      getSysBatteryInfo();
     bool            isSysLowBattery();
+    
+    bool            isNeedBatteryProtect();
+
 
     static          void tunningFanSpeed(int iLevel);
     static          int  getCurFanSpeedLevel();

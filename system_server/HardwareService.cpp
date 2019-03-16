@@ -250,11 +250,24 @@ bool HardwareService::isSysLowBattery()
     {
         std::unique_lock<std::mutex> _lock(mBatteryLock);
         if (mBatteryInterface->isBatteryExist() &&  
-                !mBatInfo->bIsCharge &&  mBatInfo->uBatLevelPer <= BAT_LOW_VAL) {
+                !mBatInfo->bIsCharge &&  mBatInfo->uBatLevelPer <= BAT_LOW_STOP_VIDEO) {
             ret = true;
         }
     }
     return ret;
+}
+
+bool HardwareService::isNeedBatteryProtect()
+{
+    bool ret = false;
+    {
+        std::unique_lock<std::mutex> _lock(mBatteryLock);
+        if (mBatteryInterface->isBatteryExist() &&  
+                !mBatInfo->bIsCharge &&  mBatInfo->uBatLevelPer <= BAT_LOW_SHUTDOWN) {
+            ret = true;
+        }
+    }
+    return ret;    
 }
 
 

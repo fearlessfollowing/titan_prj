@@ -81,17 +81,12 @@
 #undef      TAG
 #define     TAG     "MenuUI"
 
-#define ENABLE_LIGHT
-
-#define ENABLE_SOUND
-
-#define SN_LEN              (14)
-#define BAT_LOW_VAL         (5)
-#define OPEN_BAT_LOW
+#define SN_LEN  (14)
 
 
 #define ERR_MENU_STATE(menu,state) \
 LOGERR(TAG,"err menu state (%d 0x%x)",  menu, state);
+
 
 #define INFO_MENU_STATE(menu,state) \
 LOGDBG(TAG, "menu state (%d 0x%x)", menu, state);
@@ -451,12 +446,12 @@ void MenuUI::init()
     mVerInfo = std::make_shared<VER_INFO>();
     CHECK_NE(mVerInfo, nullptr);
 
-    #ifdef ENABLE_WIFI_STA
+#ifdef ENABLE_WIFI_STA
     mWifiConfig = std::make_shared<WIFI_CONFIG>();
     CHECK_NE(mWifiConfig, nullptr);	
 
     memset(mWifiConfig.get(), 0, sizeof(WIFI_CONFIG));
-    #endif
+#endif
 
     LOGDBG(TAG, "Create System NetManager Object...");
 
@@ -847,18 +842,6 @@ void MenuUI::exit_qr_func()
 {
     sendRpc(ACTION_QR);
 }
-
-void MenuUI::write_p(int p, int val)
-{
-    char c = (char)val;
-    int  rc;
-    rc = write(p, &c, 1);
-    if (rc != 1) {
-        LOGDBG("Error writing to control pipe (%s) val %d", strerror(errno), val);
-        return;
-    }
-}
-
 
 
 void MenuUI::play_sound(u32 type)
@@ -1510,36 +1493,26 @@ void MenuUI::setCurMenu(int menu, int back_menu)
 *************************************************************************/
 void MenuUI::commUpKeyProc()
 {
-
     bool bUpdatePage = false;
-
-    #ifdef DEBUG_INPUT_KEY	
-	LOGDBG(TAG, "addr 0x%p", &(mMenuInfos[cur_menu].mSelectInfo));
-    #endif
-
     SELECT_INFO * mSelect = getCurMenuSelectInfo();
     CHECK_NE(mSelect, nullptr);
 
-    #ifdef DEBUG_INPUT_KEY		
-	LOGDBG(TAG, "mSelect 0x%p", mSelect);
-    #endif
-
     mSelect->last_select = mSelect->select;
 
-    #ifdef DEBUG_INPUT_KEY	
+#ifdef DEBUG_INPUT_KEY	
     LOGDBG(TAG, "cur_menu %d commUpKeyProc select %d mSelect->last_select %d "
                   "mSelect->page_num %d mSelect->cur_page %d "
                   "mSelect->page_max %d mSelect->total %d", cur_menu,
           mSelect->select, mSelect->last_select, mSelect->page_num,
           mSelect->cur_page, mSelect->page_max, mSelect->total);
-    #endif
+#endif
 
     mSelect->select--;
 
-    #ifdef DEBUG_INPUT_KEY	
+#ifdef DEBUG_INPUT_KEY	
     LOGDBG(TAG, "select %d total %d mSelect->page_num %d",
           mSelect->select, mSelect->total, mSelect->page_num);
-    #endif
+#endif
 
     if (mSelect->select < 0) {
         if (mSelect->page_num > 1) {    /* 需要上翻一页 */
@@ -1555,13 +1528,13 @@ void MenuUI::commUpKeyProc()
         }
     }
 
-    #ifdef DEBUG_INPUT_KEY	
+#ifdef DEBUG_INPUT_KEY	
     LOGDBG(TAG," commUpKeyProc select %d mSelect->last_select %d "
                   "mSelect->page_num %d mSelect->cur_page %d "
                   "mSelect->page_max %d mSelect->total %d over",
           mSelect->select, mSelect->last_select, mSelect->page_num,
           mSelect->cur_page, mSelect->page_max, mSelect->total);
-    #endif
+#endif
 
     if (bUpdatePage) {  /* 更新菜单页 */
         if (cur_menu == MENU_SHOW_SPACE) {
@@ -1596,13 +1569,13 @@ void MenuUI::commDownKeyProc()
     SELECT_INFO * mSelect = getCurMenuSelectInfo();
     CHECK_NE(mSelect, nullptr);
 
-    #ifdef DEBUG_INPUT_KEY	
+#ifdef DEBUG_INPUT_KEY	
 	LOGDBG(TAG," commDownKeyProc select %d mSelect->last_select %d "
                   "mSelect->page_num %d mSelect->cur_page %d "
                   "mSelect->page_max %d mSelect->total %d",
           mSelect->select, mSelect->last_select, mSelect->page_num,
           mSelect->cur_page, mSelect->page_max, mSelect->total);
-    #endif
+#endif
 
     mSelect->last_select = mSelect->select;
     mSelect->select++;
@@ -1620,13 +1593,13 @@ void MenuUI::commDownKeyProc()
         }
     }
 
-    #ifdef DEBUG_INPUT_KEY	
+#ifdef DEBUG_INPUT_KEY	
     LOGDBG(TAG," commDownKeyProc select %d mSelect->last_select %d "
                   "mSelect->page_num %d mSelect->cur_page %d "
                   "mSelect->page_max %d mSelect->total %d over bUpdatePage %d",
           mSelect->select,mSelect->last_select,mSelect->page_num,
           mSelect->cur_page,mSelect->page_max,mSelect->total, bUpdatePage);
-    #endif
+#endif
 
     if (bUpdatePage) {
         if (cur_menu == MENU_SHOW_SPACE) {
@@ -2022,7 +1995,7 @@ void MenuUI::update_sys_info()
             break;
         
         case 1:
-            dispStr((const u8 *)mVerInfo->r_v_str, 25,16,false,103);
+            dispStr((const u8 *)mVerInfo->r_v_str, 25, 16, false, 103);
             break;
         
         SWITCH_DEF_ERROR(mSelect->last_select)
@@ -2045,8 +2018,7 @@ void MenuUI::update_sys_info()
 void MenuUI::dispSysInfo()
 {
     int col = 2;
-    char buf[32];
-
+    char buf[32] = {0};
     read_sn();
 
     clearArea(0, 16);  /* 清除状态栏之外的操作区域 */
@@ -2059,6 +2031,9 @@ void MenuUI::dispSysInfo()
 	
     dispStr((const u8 *)buf, col, 16);
     dispStr((const u8 *)mVerInfo->r_v_str, col, 32);
+    if (property_get(PROP_SYS_ROM_VER)) {
+        dispStr((const u8 *)property_get(PROP_SYS_ROM_VER), col, 48);        
+    }
 }
 
 
@@ -2540,36 +2515,32 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 void MenuUI::read_ver_info()
 {
     char file_name[64];
+    bool bGetVer = false;
 
-	/* 读取系统的版本文件:  */
+    getRomVer(ROM_VER_PATH);
+
+	/* 获取系统版本号 */
     if (access(VER_FULL_PATH, F_OK) == 0)  {
         snprintf(file_name, sizeof(file_name), "%s", VER_FULL_PATH);
-    } else {
-        memset(file_name, 0, sizeof(file_name));
-    }
-
-    if (strlen(file_name) > 0)  {
         int fd = open(file_name, O_RDONLY);
-        CHECK_NE(fd, -1);
-
-        char buf[1024];
-        if (read_line(fd, (void *) buf, sizeof(buf)) > 0) {
-            snprintf(mVerInfo->r_ver, sizeof(mVerInfo->r_ver), "%s", buf);
-        } else {
-            snprintf(mVerInfo->r_ver,sizeof(mVerInfo->r_ver), "%s", "999");
+        if (fd > 0) {
+            char buf[1024];
+            if (read_line(fd, (void *) buf, sizeof(buf)) > 0) {
+                snprintf(mVerInfo->r_ver, sizeof(mVerInfo->r_ver), "%s", buf);
+                bGetVer = true;
+            }
+            close(fd);        
         }
-        close(fd);
-    } else {
-        LOGDBG(TAG, "r not f");
+    } 
+
+    if (!bGetVer) {
         snprintf(mVerInfo->r_ver, sizeof(mVerInfo->r_ver), "%s", "000");
     }
 	
-    snprintf(mVerInfo->r_v_str, sizeof(mVerInfo->r_v_str), "V: %s", mVerInfo->r_ver);
-	
+    snprintf(mVerInfo->r_v_str, sizeof(mVerInfo->r_v_str), "V: %s", mVerInfo->r_ver);	
     snprintf(mVerInfo->p_ver, sizeof(mVerInfo->p_ver), "%s", "V1.1.0");
-
-	/* 内核使用的版本 */
     snprintf(mVerInfo->k_ver, sizeof(mVerInfo->k_ver), "%s", "4.4.38");
+
     LOGDBG(TAG, "r:%s p:%s k:%s\n", mVerInfo->r_ver, mVerInfo->p_ver, mVerInfo->k_ver);
 }
 
@@ -2621,13 +2592,13 @@ bool MenuUI::read_sys_info(int type, const char *name)
                         pStr = pStr + strlen(astSysRead[type].header);
                         switch (type) {
                             case SYS_KEY_SN: {
-                                snprintf(mReadSys->sn, sizeof(mReadSys->sn), "%s",pStr);
+                                snprintf(mReadSys->sn, sizeof(mReadSys->sn), "%s", pStr);
                                 ret = true;
                                 break;
                             }
 
                             case SYS_KEY_UUID: {
-                                snprintf(mReadSys->uuid, sizeof(mReadSys->uuid), "%s",pStr);
+                                snprintf(mReadSys->uuid, sizeof(mReadSys->uuid), "%s", pStr);
                                 ret = true;
                                 break;
                             }
@@ -7635,16 +7606,6 @@ void MenuUI::dispSetItem(struct stSetItem* pItem, bool iSelected)
         tmpIconInfo.w = pItem->stPos.iWidth;
         tmpIconInfo.h = pItem->stPos.iHeight;
 
-        #if 0
-        
-        if (iSelected) {
-            tmpIconInfo.dat = pItem->stLightIcon[pItem->iCurVal];
-        } else {
-            tmpIconInfo.dat = pItem->stNorIcon[pItem->iCurVal];
-        }
-        mOLEDModule->disp_icon(&tmpIconInfo);
-        #else 
-
         if (true == pItem->bMode) {
             if (iSelected) {
                 tmpIconInfo.dat = pItem->stLightIcon[pItem->iCurVal];
@@ -7656,8 +7617,6 @@ void MenuUI::dispSetItem(struct stSetItem* pItem, bool iSelected)
             const char* pDisp = (pItem->pNote).c_str();            
             dispStr((const u8 *)pDisp, pItem->stPos.xPos, pItem->stPos.yPos, iSelected, pItem->stPos.iWidth);
         }
-
-        #endif
     }
 }
 
@@ -8616,6 +8575,11 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
         }
     }
 
+    if (hs->isNeedBatteryProtect()) {
+        LOGINFO(TAG, "Battery is too low, need shutdown machine as soon as possible");
+        handleShutdown();
+    }
+
     send_delay_msg(UI_READ_BAT, iNextPollTime);  /* 给UI线程发送读取电池电量的延时消息 */
     return true;
 }
@@ -9085,6 +9049,7 @@ void MenuUI::dispAgingStr()
 
 void MenuUI::dispWaiting()
 {
+    clearArea(20, 16, 83, 32);
     dispIconByType(ICON_CAMERA_WAITING_2016_76X32);
 }
 
@@ -9210,6 +9175,21 @@ bool MenuUI::checkisLiveRecord()
 
 
 
+
+bool MenuUI::isCurMenuHasReadyArea()
+{
+    if (cur_menu == MENU_PIC_INFO 
+        || cur_menu == MENU_PIC_SET_DEF
+        || cur_menu == MENU_VIDEO_INFO
+        || cur_menu == MENU_VIDEO_SET_DEF
+        || cur_menu == MENU_LIVE_INFO
+        || cur_menu == MENU_LIVE_SET_DEF) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 /* 大卡 + 8小卡 --> 显示 Ready
  * 只有大卡,无(缺)小卡 --> 显示: Need TF Card
  * 只有小卡无大卡 --> 显示 NO SD CARD
@@ -9217,87 +9197,126 @@ bool MenuUI::checkisLiveRecord()
  */
 void MenuUI::dispReady(bool bDispReady)
 {
-    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
-
-    if (cur_menu == MENU_PIC_INFO || cur_menu == MENU_VIDEO_INFO 
-        || cur_menu == MENU_LIVE_INFO) {
+    if (isCurMenuHasReadyArea()) {
+        std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
         clearArea(20, 16, 83, 32);
-    }
-    switch (cur_menu) {
-        case MENU_PIC_INFO:
-        case MENU_VIDEO_INFO: {
-            /* 调用存储管理器来判断显示图标 */
-            if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* 大卡,小卡都在 */
-                LOGDBG(TAG, "^++^ All Card is Exist ....");        
-                dispIconByType(ICON_CAMERA_READY_20_16_76_32);
-            } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
-                LOGDBG(TAG, "Warnning Need TF Card ....");
-                dispInNeedTfCard();
-            } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
-                LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
 
-                #if 0
-                dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
-                #else 
-                dispNeedSD0();
-                #endif
-            }            
-            break;
-        }
-
-        case MENU_LIVE_INFO:
-        case MENU_LIVE_SET_DEF: {
-
-            int iRet = 0;
-            int item = getMenuSelectIndex(MENU_LIVE_SET_DEF);
-
-            PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(item);
-
-            LOGDBG(TAG, "dispReady: select item [%s]", pTmpCfg->pItemName);    
-            
-            iRet = check_live_save(pTmpCfg->pJsonCmd);
-            switch (iRet) {
-                case LIVE_SAVE_NONE: {
+        switch (cur_menu) {
+            case MENU_LIVE_INFO:
+            case MENU_LIVE_SET_DEF: {
+                int item = getMenuSelectIndex(MENU_LIVE_SET_DEF);
+                PicVideoCfg* pTmpCfg = mLiveAllItemsList.at(item);
+                if (check_live_save(pTmpCfg->pJsonCmd) == LIVE_SAVE_NONE) {
                     dispIconByType(ICON_CAMERA_READY_20_16_76_32);
-                    break;
-                }
-
-                default: {
-                    /* 调用存储管理器来判断显示图标 */
-                    if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* 大卡,小卡都在 */
-
-                        #ifdef ENABLE_DEBUG_MODE
-                        LOGDBG(TAG, "^++^ All Card is Exist ....");        
-                        #endif
-
-                        dispIconByType(ICON_CAMERA_READY_20_16_76_32);
-                    } else if (vm->checkLocalVolumeExist() && (vm->checkAllTfCardExist() == false)) {   /* 大卡在,缺小卡 */
-
-                        #ifdef ENABLE_DEBUG_MODE
-                        LOGDBG(TAG, "Warnning Need TF Card ....");
-                        #endif
-
-                        dispInNeedTfCard();
-
-                    } else {    /* 小卡在,大卡不在 或者大卡小卡都不在: 直接显示NO SD CARD */
-
-                        #ifdef ENABLE_DEBUG_MODE
-                        LOGDBG(TAG, "Warnning SD Card or TF Card Lost!!!");
-                        #endif
-
-                        #if 0
-                        dispIconByType(ICON_VIDEO_NOSDCARD_76_32_20_1676_32);
-                        #else 
-                        dispNeedSD0();
-                        #endif
+                } else {
+                    if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* SD[0-8]都存在 */
+                        dispIconByType(ICON_CAMERA_READY_20_16_76_32);                                
+                    }  else {
+                        dispInNeedCard();
                     }
-                    break;
                 }
-            }             
-            break;
+                break;
+            }
+
+            case MENU_PIC_INFO:
+            case MENU_VIDEO_INFO: {
+                if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {    /* SD[0-8]都存在 */
+                    dispIconByType(ICON_CAMERA_READY_20_16_76_32);                                
+                }  else {
+                    dispInNeedCard();
+                }
+                break;
+            }
         }
     }
 }
+
+
+void MenuUI::dispInNeedCard()
+{
+    std::vector<int> cards;
+    cards.clear();
+    char cIndex[128] = {0};
+    int iStartPos = 20;
+    int iLineOneStartPos = 34;
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
+
+    if (vm->checkLocalVolumeExist() == false) {
+        cards.push_back(0);
+    }
+    vm->getIneedTfCard(cards);
+    
+    switch (cards.size()) {
+        case 9: {
+            iLineOneStartPos = 34;
+            iStartPos = 49;
+            sprintf(cIndex, "%s", "(0-8)");                
+            dispStr((const u8*)"No SD card", iLineOneStartPos, 16);        
+            dispStr((const u8*)cIndex, iStartPos, 32);              
+            break;
+        }
+
+        case 8: {
+            char cTip[128] = {0};
+            sprintf(cTip, "No SD(%d,%d,%d", cards.at(0), cards.at(1), cards.at(2));
+            for (u32 i = 3; i < cards.size(); i++) {
+                cIndex[(i-2)*2 - 2] = cards.at(i) + '0';
+                if (i == cards.size() - 1)
+                    cIndex[(i-2)*2 - 1] = ')';                    
+                else 
+                    cIndex[(i-2)*2 - 1] = ',';                    
+            }
+
+            dispStr((const u8*)cTip, 29, 16);        
+            dispStr((const u8*)cIndex, 28, 32);                
+            break;
+        }
+
+        case 7: {
+            char cTip[128] = {0};
+            sprintf(cTip, "No SD(%d,%d,", cards.at(0), cards.at(1));
+            for (u32 i = 2; i < cards.size(); i++) {
+                cIndex[(i-1)*2 - 2] = cards.at(i) + '0';
+                if (i == cards.size() - 1)
+                    cIndex[(i-1) * 2 - 1] = ')';                    
+                else 
+                    cIndex[(i-1) * 2 - 1] = ',';                    
+            }
+
+            dispStr((const u8*)cTip, 32, 16);        
+            dispStr((const u8*)cIndex, 34, 32);                
+            break;
+        }
+
+
+
+        default: {
+            iLineOneStartPos = 47;
+            cIndex[0] = '(';
+            u32 i;
+            for (i = 0; i < cards.size(); i++) {
+                cIndex[i*2 + 1] = cards.at(i) + '0';
+                cIndex[i*2 + 2] = ',';
+            }
+            cIndex[(i-1)*2 + 2] = ')';
+
+            LOGDBG(TAG, "Lost SD List: %s", cIndex);     
+
+            switch (cards.size()) {
+                case 6: iStartPos = 23; break;
+                case 5: iStartPos = 29; break;
+                case 4: iStartPos = 35; break;
+                case 3: iStartPos = 41; break;
+                case 2: iStartPos = 47; break;
+                case 1: iStartPos = 53; break;
+            }
+            dispStr((const u8*)"No SD", iLineOneStartPos, 16);        
+            dispStr((const u8*)cIndex, iStartPos, 32);
+            break;
+        }        
+    }
+}
+
 
 
 void MenuUI::dispNeedSD0()
@@ -9391,13 +9410,11 @@ void MenuUI::dispProcessing()
 
 void MenuUI::clearArea(u8 x, u8 y, u8 w, u8 h)
 {
-    // LOGDBG(TAG, "-----> clear Area[%d, %d, %d, %d]", x, y, w, h);
     mOLEDModule->clear_area(x, y, w, h);
 }
 
 void MenuUI::clearArea(u8 x, u8 y)
 {
-    // LOGDBG(TAG, "-----> clear Area[%d, %d]", x, y);
     mOLEDModule->clear_area(x, y);
 }
 

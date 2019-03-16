@@ -27,5 +27,6 @@ static void registerSig(__sighandler_t func)
     signal(SIGQUIT, func);
     signal(SIGINT, func);
     signal(SIGKILL, func);
+    signal(SIGPIPE, func);    
 }
 #endif //_SIG_UTIL_H_

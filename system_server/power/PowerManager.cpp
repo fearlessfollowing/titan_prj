@@ -426,11 +426,14 @@ int main(int argc, char* argv[])
 {
 	int iRet = -1;
 
+
 	if (argc < 2) {
 		fprintf(stderr, "Usage: power_manager <power_on/power_off>\n");
 		return -1;
 	}
     
+    fprintf(stdout, "\n\n>>> PowerManager V1.0, CompileInfo[%s - %s] <<<\n",  __DATE__, __TIME__);
+
 	iRet = __system_properties_init();		/* 属性区域初始化 */
 	if (iRet) {
 		fprintf(stderr, "update_check service exit: __system_properties_init() faile, ret = %d\n", iRet);
@@ -438,6 +441,7 @@ int main(int argc, char* argv[])
 	}
 
 	LogWrapper::init("/home/nvidia/insta360/log", "pwr_manager", false);
+
 
 	cfgParamInit(&gPwrCtl);
 	if (!strcmp(argv[1], POWR_ON)) {

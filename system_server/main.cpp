@@ -29,6 +29,8 @@
 #include <string.h>
 #include <thread>
 #include <vector>
+#include <sys/sysinfo.h>
+#include <sys/resource.h>
 
 #include <prop_cfg.h>
 #include <hw/MenuUI.h>
@@ -42,10 +44,9 @@
 
 
 #undef  TAG
-#define TAG         "uiService"
+#define TAG         "system_server"
 
-#define TITAN_VER    "V0.0.23"
-
+#define TITAN_VER    "V0.0.24"
 
 
 static int mCtrlPipe[2];    // 0 -- read , 1 -- write
@@ -113,14 +114,19 @@ int main(int argc ,char *argv[])
 
     pipe(mCtrlPipe);
     registerSig(signalHandler);
-    // signal(SIGPIPE, pipe_signal_handler);
 
     system("ulimit -c unlimited");
     system("echo /home/nvidia/core.%e > /proc/sys/kernel/core_pattern");
 
+    struct rlimit limite;
+    limite.rlim_cur = limite.rlim_max = RLIM_INFINITY;
+    if (0 != setrlimit(RLIMIT_CORE, &limite)) {
+    	fprintf(stderr, "setrlimit fail:%d %s", strerror(errno));
+    }
+
     iRet = __system_properties_init();	/* 属性区域初始化 */
     if (iRet) {
-        fprintf(stderr, "ui_service service exit: __system_properties_init() faile, ret = %d\n", iRet);
+        fprintf(stderr, "system_server exit: __system_properties_init() faile, ret = %d\n", iRet);
         return -1;
     }
 
@@ -140,7 +146,6 @@ int main(int argc ,char *argv[])
         ptrMenu->stopUI();
     }
 
-    LOGDBG(TAG, "------- system_server Exit now --------------");
+    LOGDBG(TAG, "------- system_server Exit now -------");
     return 0;
-    
 }

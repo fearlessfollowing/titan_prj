@@ -22,6 +22,29 @@
 #define TAG "util_test"
 
 
+void getRomVer(std::string path)
+{
+    Json::Value romRoot;
+    if (loadJsonFromFile(path, &romRoot)) {
+        if (romRoot.isMember("vendor")) {
+            property_set(PROP_SYS_VENDOR, romRoot["vendor"].asCString());
+        }
+
+        if (romRoot.isMember("product")) {
+            property_set(PROP_SYS_PRODUCT, romRoot["product"].asCString());
+        }
+
+        if (romRoot.isMember("rom_version")) {
+            std::stringstream ss;
+            ss << "R_V:" << romRoot["rom_version"].asCString();
+            property_set(PROP_SYS_ROM_VER, ss.str().c_str());
+        }
+    } else {
+        LOGERR(TAG, "load RomVer[%s] failed", path.c_str());
+    }
+}
+
+
 int read_line(int fd, void *vptr, int maxlen)
 {
     int n, rc;

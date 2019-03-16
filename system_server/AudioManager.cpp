@@ -432,11 +432,11 @@ void AudioManager::init()
     /* 选择播放设备 */
     defaultPlayDev = DEFAULT_PALY_DEVICE;
 
-    initSpeaker();
+    // initSpeaker();
 
-    msg_util::sleep_ms(500);
+    // msg_util::sleep_ms(500);
     
-    initRecorder();
+    // initRecorder();
 
     if (!pPropAudio || !strcmp(pPropAudio, "false")) {
         property_set(PROP_USE_AUDIO, "true");
@@ -444,7 +444,7 @@ void AudioManager::init()
 
     /* 预加载wav文件(mmap) */
 #ifdef ENABLE_CACHE_AUDIO_FILE
-
+\
     const char* pAudioResPath = NULL;
     std::string audioPath = "/home/nvidia/insta360/wav";
     DIR *dir;

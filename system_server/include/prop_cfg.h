@@ -32,6 +32,11 @@
 /******************************************************************************************************
  *                          ---- 系统属性 -----
  ******************************************************************************************************/
+#define PROP_SYS_VENDOR                 "sys.vendor"
+#define PROP_SYS_PRODUCT                "sys.product"
+#define PROP_SYS_ROM_VER                "sys.rom_ver"
+
+
 #define PROP_SYS_AP_SSID			    "sys.wifi_ssid"
 #define PROP_SYS_AP_PESUDO_SN		    "sys.wifi_pesu_sn"
 #define PROP_SYS_AP_PASSWD			    "sys.wifi_passwd"
@@ -213,6 +218,7 @@
 #define VER_FULL_PATH 			        "/home/nvidia/insta360/etc/.sys_ver"
 #define VER_FULL_TMP_PATH		        "/home/nvidia/insta360/etc/.sys_tmp_ver"
 #define VER_BUILD_PATH 			        "/home/nvidia/insta360/etc/pro_build_version"
+#define ROM_VER_PATH                    "/home/nvidia/insta360/etc/.rom_ver.json"
 
 /*
  * 配置参数路径
@@ -226,7 +232,7 @@
 #define DNSMASQ_CONF_PATH               "/etc/dnsmasq.conf"
 
 
-#define EVL_TAKE_PIC_BILL   "/home/nvidia/insta360/etc/evlTakepicSz.json"
+#define EVL_TAKE_PIC_BILL               "/home/nvidia/insta360/etc/evlTakepicSz.json"
 
 
 /*
@@ -266,6 +272,12 @@
  * 风扇级别控制路径
  */
 #define FAN_SPEED_LEVEL_PATH            "/sys/kernel/debug/tegra_fan/cur_pwm"
+
+
+/*
+ * 内核日志的存储路径
+ */
+#define KERN_LOG_PATH                   "/home/nvidia/insta360/log/kern_log"
 
 
 /*
@@ -421,7 +433,18 @@
 
 
 #define INVALID_TMP_VAL         1000.0f
-#define BAT_LOW_VAL             (5)
+
+
+/*
+ * 停止录像的电量阀值
+ */
+#define BAT_LOW_STOP_VIDEO      (5)
+
+
+/*
+ * 自动关机的电量阀值
+ */
+#define BAT_LOW_SHUTDOWN        (1)
 
 
 #define PIC_VIDEO_LIVE_ITEM_MAX     10

@@ -95,8 +95,8 @@ system_server_env.Program('./out/system_server', system_server_obj)
 
 
 ############################ kern_log ##################################
-#kern_log_obj = SConscript('./kern_log/SConscript')
-#com_env.Program('./out/kern_log', kern_log_obj)
+kern_log_obj = SConscript('./kern_log/SConscript')
+com_env.Program('./out/kern_log', kern_log_obj)
 
 
 ############################ factory_test ##################################

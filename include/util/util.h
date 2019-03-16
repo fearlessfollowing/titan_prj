@@ -66,8 +66,7 @@ int read_line(int fd, void *vptr, int maxlen);
 int exec_sh(const char *str);
 bool check_path_exist(const char *path);
 
-bool check_dev_speed_good(const char *path);
-int ins_rm_file(const char *name);
+void getRomVer(std::string path);
 
 int create_socket(const char *name, int type, mode_t perm);
 
