@@ -1348,3 +1348,16 @@ echo 0065 0c00 > /sys/bus/i2c/devices/1-001c/codec_reg
 echo 0066 0300 > /sys/bus/i2c/devices/1-001c/codec_reg
 echo 006a 003d > /sys/bus/i2c/devices/1-001c/codec_reg
 echo 006c 3600 > /sys/bus/i2c/devices/1-001c/codec_reg
+
+
+日期：2019年03月18日
+------------------------------------------------------------------------------------------------
+现象: 保存录像的过程中卡死(卡死在saving界面)
+
+原因: 解码或编码线程没有退出(可能是阻塞在等待解码线程退出)
+2019-03-18 23:21:55:655781 INFO  [core/audio_reader.cpp:89] hw:1,0 read task exit
+2019-03-18 23:21:55:676306 INFO  [core/audio_reader.cpp:89] hw:1,1 read task exit
+[libfdk_aac @ 0x7f640a9390] 2 frames left in the queue on closing
+[libfdk_aac @ 0x7f0c14b330] 2 frames left in the queue on closing
+2019-03-18 23:21:55:706885 INFO  [core/audio_mgr.cpp:23] audio manager close
+2019-03-18 23:21:55:707495 INFO  [core/video_composer.cpp:32] video_composer 1

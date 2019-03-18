@@ -2824,7 +2824,11 @@ void MenuUI::procBackKeyEvent()
         case MENU_LOW_BAT:
         case MENU_LIVE_REC_TIME:
         case MENU_SET_PHOTO_DEALY:
-        case MENU_SET_FAN_RATE: {
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+        case MENU_SET_FAN_RATE:
+#endif          
+        {
             set_cur_menu_from_exit();
             break;
         }

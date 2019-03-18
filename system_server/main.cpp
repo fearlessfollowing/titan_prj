@@ -121,7 +121,7 @@ int main(int argc ,char *argv[])
     struct rlimit limite;
     limite.rlim_cur = limite.rlim_max = RLIM_INFINITY;
     if (0 != setrlimit(RLIMIT_CORE, &limite)) {
-    	fprintf(stderr, "setrlimit fail:%d %s", strerror(errno));
+    	fprintf(stderr, "setrlimit fail: %s", strerror(errno));
     }
 
     iRet = __system_properties_init();	/* 属性区域初始化 */

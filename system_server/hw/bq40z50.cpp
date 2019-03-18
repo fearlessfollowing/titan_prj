@@ -138,9 +138,14 @@ bool BatteryManager::isBatteryCharging()
          * 0 = Battery is in CHARGE mode.
          */
         if (batStaus & (1 << 6)) {
+            #ifdef DEBUG_BQ40Z50             
             LOGDBG(TAG, "bq40z50 in discharge or relax mode.");
+            #endif
         } else {
+            #ifdef DEBUG_BQ40Z50             
             LOGDBG(TAG, "bq40z50 in charging mode.");
+            #endif
+            
             bCharge = true;
         }
     }
@@ -210,9 +215,7 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             pBatInfo->uBatLevelPer = INVALID_BATTERY_TEMP;
             return GET_BATINFO_ERR_REMAIN_CAP;
         } else {
-#ifdef DEBUG_BQ40Z50            
             LOGDBG(TAG, "---> Battery Remain Capacity: %d%%", uRemainPer);
-#endif 
             pBatInfo->uBatLevelPer = uRemainPer;
         }
     }

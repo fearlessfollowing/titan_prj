@@ -1973,7 +1973,7 @@ class control_center:
         return read_info
 
 
-    def appReqDeleteFile(self, req):
+    def cameraDeleteFile(self, req):
 
         Info('----> cameraDeleteFile req {} cam state: {}'.format(req, StateMachine.getCamStateFormatHex()))
         if StateMachine.checkAllowDelete():

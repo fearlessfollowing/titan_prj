@@ -36,7 +36,7 @@ void getRomVer(std::string path)
 
         if (romRoot.isMember("rom_version")) {
             std::stringstream ss;
-            ss << "R_V:" << romRoot["rom_version"].asCString();
+            ss << "R: " << romRoot["rom_version"].asCString();
             property_set(PROP_SYS_ROM_VER, ss.str().c_str());
         }
     } else {

@@ -264,6 +264,7 @@ bool HardwareService::isNeedBatteryProtect()
         std::unique_lock<std::mutex> _lock(mBatteryLock);
         if (mBatteryInterface->isBatteryExist() &&  
                 !mBatInfo->bIsCharge &&  mBatInfo->uBatLevelPer <= BAT_LOW_SHUTDOWN) {
+            LOGINFO(TAG, "battery current level: %d", mBatInfo->uBatLevelPer);
             ret = true;
         }
     }
