@@ -1565,18 +1565,16 @@ fixup:
 
 （罗品京）
 1.fixup AEB9 + RTS 崩溃BUG
-2.修改部分录像档位的陀螺仪延时值
+2.修改部分录像档位的陀螺仪延时值(11K_30F, 11K_3D_30F, 8K_3D_30F_10bit, 8K_3D_30F, 8K_3D_50F, 8K_60F, 5.2K_120F)
 3.fixup deleteFile失败BUG
-4.fixup 内外置音频设备切换BUG
-
-
+4.fixup 内外置音频设备切换无声音问题
+5.支持camera._startShell来执行版本降级解锁
 
 （建聪）
-1.更改 sd卡的shmoo参数
-2.优化 卡速问题
-3.优化 blc校正
-4.更新 normal&log iq
-5.解决 部分bug
+1.解决 独立曝光时，调手动awb，只有master 生效
+2.优化 测卡速功能
+3.更新 normal和log iq
+4.解决 aeb时， slave模组曝光信息概率性不对的问题
 
 测试风险点:
 

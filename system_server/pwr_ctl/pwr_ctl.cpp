@@ -32,7 +32,7 @@
 #include <string.h>
 #include <prop_cfg.h>
 
-#include <hw/oled_light.h>
+#include <hw/ins_led.h>
 
 #include <log/log_wrapper.h>
 
@@ -49,7 +49,7 @@ using namespace std;
 #define TAG "inputWatch"
 
 
-static std::shared_ptr<oled_light> pLed = nullptr;
+static std::shared_ptr<ins_led> pLed = nullptr;
 extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit);
 
 
@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
 
     LogWrapper::init("/home/nvidia/insta360/log", "pwr_ctl", false);
 
-    pLed = std::make_shared<oled_light>();
+    pLed = std::make_shared<ins_led>();
 
     AudioManager::Instance();
 

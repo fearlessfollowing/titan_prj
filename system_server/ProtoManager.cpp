@@ -105,6 +105,8 @@
 #define IND_GET_SYS_SETTING         "camera._getSysSetting"
 #define IND_SET_SYS_SETTING         "camera._setSysSetting"
 
+#define IND_START_SHELL             "camera._startShell"
+
 /** 使用Unix套接字传输给web_server发请求 */
 #define USE_UNIX_TRAN
 
@@ -1188,6 +1190,8 @@ bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonDa
                 handleIndTypeError(cli, jsonData[_param]);
             } else if (cmd == IND_SET_SYS_SETTING) {
                 handleIndSetSysSetting(cli, jsonData[_param]);
+            } else if (cmd == IND_START_SHELL) {
+                handleIndShellCommand(cli, jsonData);
             }
         } else {
             if (cmd == IND_SHUTDOWN) {  /* shutdown不带参数 */
@@ -1205,6 +1209,68 @@ bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonDa
     }                       
     return bResult;      
 }
+
+
+
+void ProtoManager::handleIndShellCommand(SocketClient* cli, Json::Value& reqNode)
+{
+    LOGINFO(TAG, "----> handleIndShellCommand");    
+    printJson(reqNode);
+
+    Json::Value retRoot;
+    Json::Value errNode;
+    std::string sendStr;
+    bool bErrState = true;
+    retRoot[_name_] = reqNode[_name_];
+    
+    if (reqNode.isMember(_param) && reqNode[_param].isMember(_cmd)) {
+        std::string execStr = reqNode[_param][_cmd].asCString();
+        LOGINFO(TAG, "Exec Command: %s", execStr.c_str());
+        int iStatus = system(execStr.c_str());
+        if (iStatus == -1) {
+            LOGERR(TAG, "system %s error", execStr.c_str());   
+            errNode[_code]  = -1;
+            errNode[_desc] = "Exec Command Failed";                     
+        } else {
+            #if 0
+            if (WIFEXITED(iStatus)) {
+                if (0 == WEXITSTATUS(iStatus)) {
+                    retRoot[_state] = _done; 
+                    bErrState = false;                                       
+                } else {
+                    errNode[_code]  = WEXITSTATUS(iStatus);
+                    errNode[_desc] = "Inner error";
+                }
+            } else {
+                errNode[_code]  = WEXITSTATUS(iStatus);
+                errNode[_desc] = "Inner error";  
+            }
+            #else 
+            retRoot[_state] = _done; 
+            bErrState = false;                                       
+            #endif 
+        }
+    } else {
+        errNode[_code]  = -1;
+        errNode[_desc] = "Invalid parameters";
+    }
+
+    if (bErrState) {
+        retRoot[_state] = _error;    
+        retRoot[_error] = errNode;
+    }
+
+    convJsonObj2String(retRoot, sendStr);
+
+    std::shared_ptr<TransBuffer> buffer = std::make_shared<TransBuffer>();
+    buffer->fillData(sendStr.c_str());
+
+    int r = TEMP_FAILURE_RETRY(send(cli->getSocket(), buffer->data(), buffer->size(), 0));
+    if (r != buffer->size()) {
+        LOGERR(TAG, "send data failed, what's wront!!");
+    }
+}
+
 
 
 void ProtoManager::handleGetSysSetting(SocketClient* cli, Json::Value& reqNode)

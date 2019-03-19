@@ -528,4 +528,7 @@
 #define _get                "get"
 #define _clear              "clear"
 
+#define _desc               "desc"
+#define _cmd                "cmd"
+
 #endif /* _PROP_CFG_H_ */

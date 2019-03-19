@@ -60,7 +60,6 @@ MOUNT_ROOT = '/mnt'
 # 连接超时的值 - 10s
 POLL_TO = 10000
 
-#to to reset camerad process
 FIFO_TO = 70
 
 ACTION_PIC = 1
@@ -354,11 +353,9 @@ class control_center:
             config._GPS_NOTIFY:             self.gpsStateChangeNotifyHandler,           # GPS状态变化通知
             config._STITCH_NOTIFY:          self.stitchProgressNotifyHandler,           # Stitch进度通知  - OK
             config._SND_NOTIFY:             self.sndDevChangeNotifyHandler,             # 音频设备变化通知 - OK   
-
             config._BLC_FINISH:             self.blcFinishNotifyHandler,
             config._BPC_FINISH:             self.bpcFinishNotifyHandler,
             config._TF_NOTIFY:              self.tfStateChangedNotify,                  # TF状态变化通知 - OK
-
             config._MAGMETER_FINISH:        self.CalibrateMageterNotify,
             config._DELETE_TF_FINISH:       self.cameraDeleteFileNotify
         })
@@ -928,55 +925,6 @@ class control_center:
                     osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.ADD_RES_ID, id))
                     return
 
-    # {"flicker": 1, "speaker": 1, "led_on": 1, "fan_on": 1, "aud_on": 1, "aud_spatial": 1, "set_logo": 1, "gyro_on": 1,"video_fragment",1,
-    #  "reset_all": 0}
-    def set_sys_option(self, param):
-        Info("param is {}".format(param))
-        
-        if check_dic_key_exist(param, 'reset_all'):         # 复位所有的参数
-            self.reset_user_cfg()
-            self.notifyDispType(config.RESET_ALL_CFG)
-        else:   # 设置部分的项
-            # if check_dic_key_exist(param, 'flicker'):
-            #     p = OrderedDict({'property': 'flicker', 'value': param['flicker']})
-            #     self.sendSetOption(p)
-
-            # if check_dic_key_exist(param, 'fan_on'):
-            #     p = OrderedDict({'property': 'fanless'})
-            #     if param['fan_on'] == 1:
-            #         p['value'] = 0
-            #     else:
-            #         p['value'] = 1
-            #     self.sendSetOption(p)
-
-            # if check_dic_key_exist(param, 'aud_on'):
-            #     p = OrderedDict({'property': 'panoAudio'})
-            #     if param['aud_on'] == 0:
-            #         p['value'] = 0
-            #     else:
-            #         if check_dic_key_exist(param,'aud_spatial'):
-            #             if param['aud_spatial'] == 1:
-            #                 p['value'] = 2
-            #             else:
-            #                 p['value'] = 1
-            #         else:
-            #             Info('no aud_spatial')
-            #             p['value'] = 1
-            #     self.sendSetOption(p)
-
-            # if check_dic_key_exist(param, 'gyro_on'):
-            #     p = OrderedDict({'property': 'stabilization_cfg', 'value': param['gyro_on']})
-            #     self.sendSetOption(p)
-
-            # if check_dic_key_exist(param, 'set_logo'):
-            #     p = OrderedDict({'property': 'logo', 'value': param['set_logo']})
-            #     self.sendSetOption(p)
-
-            # if check_dic_key_exist(param, 'video_fragment'):
-            #     p = OrderedDict({'property': 'video_fragment', 'value': param['video_fragment']})
-            #     self.sendSetOption(p)
-
-            self.getSetSysSetting('set', param)
 
     def checkLiveSave(self, req):
         res = False
@@ -2004,7 +1952,6 @@ class control_center:
         return read_info
 
 
-
     def appReqGetImage(self, req):
         uri = req[_param]['fileUri']
         Print('get uri {}'.format(uri))
@@ -2035,9 +1982,17 @@ class control_center:
         return cmd_done(req[_name])
 
 
+
+    #############################################################################################################
+    # 方法名称: appReqStartShell
+    # 功能描述: 客户端请求执行指定的Shell命令
+    # 入口参数: req - 请求参数{"name": "camera._startShell", "parameters": {"cmd":"rm /home/nvidia/insta360/etc/.sys_ver"}}
+    # 返回值: {"name": "camera._startShell", "parameters": {"state":"done/error", "error": "reason"}}
+    #############################################################################################################
     def appReqStartShell(self, req):
         Info('[------- APP Req: appReqStartShell ------] req: {}'.format(req))
-        return cmd_done(req[_name])
+        return self.sendSyncMsg2SystemServer(req)
+
 
 
     def appReqQueryGpsState(self, req):

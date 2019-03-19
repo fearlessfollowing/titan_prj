@@ -20,6 +20,7 @@
 ** sys.cpu_temp                 CPU温度
 ** sys.gpu_temp                 GPU温度
 ** V3.1         Skymixos        2019-01-21      将更新电池信息和温度信息合并
+** V3.2         Skymixos        2019-03-19      启动硬件服务时,立即读取电池状态
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -204,6 +205,7 @@ void HardwareService::updateBatteryInfo()
                 property_set(PROP_BAT_EXIST, "true");
                 sprintf(cBatTemp, "%f", mBatInfo->dBatTemp);
                 property_set(PROP_BAT_TEMP, cBatTemp);
+                LOGINFO(TAG, "---> battery level: %d", mBatInfo->uBatLevelPer);
                 break;
             }
             
@@ -287,10 +289,11 @@ int HardwareService::serviceLooper()
             to.tv_sec = 0;
             to.tv_usec = 0;
             bIsFirstLoop = false;
+            updateBatteryInfo();
             LOGDBG(TAG, "----> First loop for hardware service.");
         } else {
-            to.tv_sec = 3;
-            to.tv_usec = 0;
+            to.tv_sec   = 2;
+            to.tv_usec  = 0;
         }
 
         pPollTime = property_get(PROP_POLL_SYS_PERIOD);
@@ -305,10 +308,9 @@ int HardwareService::serviceLooper()
         if ((rc = select(max + 1, &read_fds, NULL, NULL, &to)) < 0) {	
             LOGDBG(TAG, "----> select error occured here ...");
             continue;
-        } else if (!rc) {   /* timeout */
+        } else if (!rc) {   
 
-            /* 获取并更新电池信息: 并同步给UI 
-             */
+            /* 获取并更新电池信息: 并同步给UI */
             updateBatteryInfo();
 
             /* 读取并上报温度信息： CPU/GPU, BATTERY, MODULE */

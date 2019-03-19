@@ -6,10 +6,10 @@
 
 class ins_i2c;
 
-class oled_light {
+class ins_led {
 public:
-    explicit    oled_light();
-                ~oled_light();
+    explicit    ins_led();
+                ~ins_led();
 
     void        set_light_val(u8 val);
 	int         factory_test(int icnt = 3);

@@ -44,7 +44,7 @@
 #include <hw/battery_interface.h>
 
 
-#include <hw/oled_light.h>
+#include <hw/ins_led.h>
 #include <hw/lan.h>
 
 #include <hw/MenuUI.h>
@@ -434,8 +434,8 @@ void MenuUI::init()
 
     LOGDBG(TAG, "Create System Light Manager Object...");
 
-    mOLEDLight = std::make_shared<oled_light>();
-    CHECK_NE(mOLEDLight, nullptr);
+    mLedLight = std::make_shared<ins_led>();
+    CHECK_NE(mLedLight, nullptr);
 
 
     LOGDBG(TAG, "Create System Info Object...");
@@ -6568,7 +6568,7 @@ void MenuUI::setLight()
 
 void MenuUI::setAllLightOnOffForce(int iOnOff)
 {
-    mOLEDLight->setAllLight(iOnOff);
+    mLedLight->setAllLight(iOnOff);
 }
 
 
@@ -7706,7 +7706,7 @@ void MenuUI::setLightDirect(u8 val)
 
     if (mLastLightVal != val) {
         mLastLightVal = val;
-        mOLEDLight->set_light_val(val);
+        mLedLight->set_light_val(val);
     }
 }
 
@@ -8581,7 +8581,7 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
 
     if (hs->isNeedBatteryProtect()) {
         LOGINFO(TAG, "Battery is too low, need shutdown machine as soon as possible");
-        handleShutdown();
+        // handleShutdown();
     }
 
     send_delay_msg(UI_READ_BAT, iNextPollTime);  /* 给UI线程发送读取电池电量的延时消息 */

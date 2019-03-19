@@ -9,7 +9,7 @@ import config
 src = Glob('*.cpp')
 src += [config.SYSTEM_SERVER + '/hw/ins_gpio.cpp']
 src += [config.SYSTEM_SERVER + '/hw/ins_i2c.cpp']
-src += [config.SYSTEM_SERVER + '/hw/oled_light.cpp']
+src += [config.SYSTEM_SERVER + '/hw/ins_led.cpp']
 src += [config.SYSTEM_SERVER + '/hw/oled_module.cpp']
 #src += [config.SYSTEM_SERVER + '/hw/battery_interface.cpp']
 

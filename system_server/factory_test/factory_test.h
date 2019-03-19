@@ -6,7 +6,7 @@
 #include <common/sp.h>
 #include <util/ARHandler.h>
 #include <util/ARMessage.h>
-#include <hw/oled_light.h>
+#include <hw/ins_led.h>
 #include <common/include_common.h>
 #include <hw/oled_module.h>
 #include <sys/ins_types.h>
@@ -37,7 +37,7 @@ private:
 
 	int awbCorrectTest();
 
-	sp<oled_light> mOLEDLight;
+	sp<ins_led> mOLEDLight;
     sp<oled_module> mOLEDModule;
 	
 

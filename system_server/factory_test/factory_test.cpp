@@ -33,7 +33,7 @@ void FactoryTest::init()
     mOLEDModule = sp<oled_module>(new oled_module());
     CHECK_NE(mOLEDModule, nullptr);
 	
-    mOLEDLight = sp<oled_light>(new oled_light());
+    mOLEDLight = sp<ins_led>(new ins_led());
     CHECK_NE(mOLEDLight, nullptr);
 }
 
@@ -103,11 +103,6 @@ void FactoryTest::set_light(u8 val)
 void FactoryTest::deinit()
 {
     LOGDBG(TAG, "deinit\n");
-	
-//	set_light_direct(0xc0);
-
-	//sendExit();
-
 }
 
 

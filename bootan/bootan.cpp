@@ -26,7 +26,7 @@
 #include <hw/oled_module.h>
 
 #ifdef BOOTA_USE_LIGHT
-#include <hw/oled_light.h>
+#include <hw/ins_led.h>
 #endif
 
 
@@ -120,7 +120,7 @@ public:
 private:
 
 #ifdef BOOTA_USE_LIGHT
-	sp<oled_light> mOLEDLight;
+	sp<ins_led> mLedLight;
 #endif
 
 	sp<oled_module> mOLEDModule;
@@ -132,8 +132,8 @@ BootAnimation::BootAnimation()
 {
 
 #ifdef BOOTA_USE_LIGHT
-	mOLEDLight = (sp<oled_light>) (new oled_light());
-    CHECK_NE(mOLEDLight, nullptr);
+	mLedLight = (sp<ins_led>) (new ins_led());
+    CHECK_NE(mLedLight, nullptr);
 #endif
 	
 	mOLEDModule = (sp<oled_module>) (new oled_module());
@@ -144,7 +144,7 @@ BootAnimation::BootAnimation()
 BootAnimation::~BootAnimation()
 {
 #ifdef BOOTA_USE_LIGHT
-	mOLEDLight = nullptr;
+	mLedLight = nullptr;
 #endif
 
 	mOLEDModule = nullptr;

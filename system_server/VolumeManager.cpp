@@ -2533,6 +2533,8 @@ int VolumeManager::mountVolume(Volume* pVol)
     #else
 
     int status;
+    const char* pMountFlag = NULL;
+    pMountFlag = property_get(PROP_RO_MOUNT_TF);
 
 #if 0
     const char* pMountFlag = NULL;
@@ -2592,7 +2594,6 @@ int VolumeManager::mountVolume(Volume* pVol)
             LOGERR(TAG, "Unable to create .LOST.DIR (%s)", strerror(errno));
         }
 
-#if 0
         /* 对于TF卡，挂载成功后，根据标志再次挂载成只读的 */
         if ((pMountFlag && !strcmp(pMountFlag, "true")) && volumeIsTfCard(pVol)) {
             const char *args[5];
@@ -2604,7 +2605,6 @@ int VolumeManager::mountVolume(Volume* pVol)
             forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
             LOGDBG(TAG, " Step 2 Mount device to Read Only device");
         }
-#endif        
         return 0;
     } else {
         LOGERR(TAG, ">>> Mount Volume failed (unknown exit code %d)", status);

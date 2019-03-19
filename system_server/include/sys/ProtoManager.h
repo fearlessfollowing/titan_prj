@@ -238,6 +238,9 @@ private:
     void            handleIndTypeError(SocketClient* cli, Json::Value& jsonData);
     void            handleGetSysSetting(SocketClient* cli, Json::Value& reqNode);
 
+    void            handleIndShellCommand(SocketClient* cli, Json::Value& reqNode);
+
+
     /* 解析查询小卡的结果 */
     static bool     parseQueryTfcardResult(Json::Value& jsonData);
 

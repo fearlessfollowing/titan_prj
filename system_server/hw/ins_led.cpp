@@ -1,7 +1,7 @@
 /*****************************************************************************************************
 **					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
-** 文件名称: oled_light.cpp
+** 文件名称: ins_led.cpp
 ** 功能描述: 前后LED灯管理
 **
 **
@@ -14,7 +14,7 @@
 ** V2.0			Skymixos		2018-06-05		添加注释
 ******************************************************************************************************/
 
-#include <hw/oled_light.h>
+#include <hw/ins_led.h>
 #include <hw/ins_i2c.h>
 #include <util/msg_util.h>
 
@@ -26,38 +26,36 @@
 #define LED_I2C_OUTPUT_REG  0x03
 #define LED_I2C_CFG_REG     0x07
 
-
-oled_light::oled_light()
+ins_led::ins_led()
 {
     init();
 }
 
-oled_light::~oled_light()
+ins_led::~ins_led()
 {
     deinit();
 }
 
-void oled_light::init()
+void ins_led::init()
 {
     mI2CLight = sp<ins_i2c>(new ins_i2c(0, 0x77, true));
-
-	/* 开机的启动脚本中负责将 0x6, 0x7设置为0(所有引脚设置为输出) */
     mI2CLight->i2c_write_byte(0x06, 0x00);
     mI2CLight->i2c_write_byte(0x07, 0x00);
 }
 
 
-void oled_light::set_light_val(u8 val)
+void ins_led::set_light_val(u8 val)
 {
     u8 orig_val = 0;
 
     val &= 0x3f;    /* 设置灯的值不能改变模组的供电状态 */
 
     if (mI2CLight->i2c_read(LED_I2C_OUTPUT_REG, &orig_val) == 0) {
-    #ifdef DEBUG_LED
+
+#ifdef DEBUG_LED
         LOGDBG(TAG, "+++++++>>> read orig val [0x%x]", orig_val);
         LOGDBG(TAG, "set_light_val --> val[0x%x]", val);
-    #endif
+#endif
 
         orig_val &= 0xc0;	/* led just low 6bit */
         orig_val |= val;
@@ -65,9 +63,10 @@ void oled_light::set_light_val(u8 val)
         if (mI2CLight->i2c_write_byte(LED_I2C_OUTPUT_REG, orig_val) != 0) {
             LOGERR(TAG, " oled write val 0x%x fail", val);
         } else {
-        #ifdef DEBUG_LED
+ 
+ #ifdef DEBUG_LED
             LOGDBG(TAG, "set_light_val, new val [0x%x]", orig_val);
-        #endif
+ #endif
         }
 
     } else {
@@ -76,13 +75,13 @@ void oled_light::set_light_val(u8 val)
 }
 
 
-void oled_light::close_all()
+void ins_led::close_all()
 {
     mI2CLight->i2c_write_byte(LED_I2C_OUTPUT_REG, 0xc0);
 }
 
 
-void oled_light::setAllLight(int iOnOff)
+void ins_led::setAllLight(int iOnOff)
 {
     u8 orig_val = 0;
     if (mI2CLight->i2c_read(LED_I2C_OUTPUT_REG, &orig_val) == 0) {
@@ -99,7 +98,7 @@ void oled_light::setAllLight(int iOnOff)
 }
 
 
-int oled_light::factory_test(int icnt)
+int ins_led::factory_test(int icnt)
 {
 	
 	/* 所有的灯:  白,红,绿,蓝  循环三次,间隔1s 
@@ -137,7 +136,7 @@ int oled_light::factory_test(int icnt)
 	return iRet;
 }
 
-void oled_light::deinit()
+void ins_led::deinit()
 {
 
 }

@@ -11,7 +11,7 @@
 #include <hw/oled_module.h>
 #include <sys/VolumeManager.h>
 #include <sys/Menu.h>
-
+#include <hw/ins_led.h>
 
 
 typedef enum _type_ {
@@ -248,7 +248,6 @@ class ARHandler;
 class ARMessage;
 class pro_cfg;
 class oled_module;
-class oled_light;
 
 enum {
     OPTION_FLICKER,
@@ -412,81 +411,6 @@ enum {
     SND_ONE_T,
     SND_MAX_NUM,
 };
-
-
-#if 0
-
-/*
- * 高电平有效
- */
-#ifdef LED_HIGH_LEVEL
-
-/* Slave Addr: 0x77 Reg Addr: 0x03
- * bit[7] - USB_POWER_EN2
- * bit[6] - USB_POWER_EN1
- * bit[5] - LED_BACK_B
- * bit[4] - LED_BACK_G
- * bit[3] - LED_BACK_R
- * bit[2] - LED_FRONT_B
- * bit[1] - LED_FRONT_G
- * bit[0] - LED_FRONT_R
- */
-enum {
-    LIGHT_OFF 		= 0xff,		/* 关闭所有的灯 bit[7:6] = Camera module */
-    FRONT_RED 		= 0xfe,		/* 前灯亮红色,后灯全灭 */
-    FRONT_GREEN 	= 0xfd,		/* 前灯亮绿色,后灯全灭 */
-    FRONT_YELLOW 	= 0xfc,		/* 前灯亮黄色(G+R), 后灯全灭 */
-    FRONT_DARK_BLUE = 0xfb,		/* 前灯亮蓝色, 后灯全灭 */
-    FRONT_PURPLE 	= 0xc5,
-    FRONT_BLUE 		= 0xfb,
-    FRONT_WHITE 	= 0xf8,		/* 前灯亮白色(R+G+B),后灯全灭 */
-
-    BACK_RED 		= 0xf7,		/* 后灯亮红色 */
-    BACK_GREEN 		= 0xef,		/* 后灯亮绿色 */
-    BACK_YELLOW 	= 0xe7,		/* 后灯亮黄色 */
-    BACK_DARK_BLUE 	= 0xe0,
-    BACK_PURPLE 	= 0xe8,
-    BACK_BLUE 		= 0xdf,
-    BACK_WHITE		= 0xc7,		/* 后灯亮白色 */
-
-    LIGHT_ALL 		= 0x00,		/* 所有的灯亮白色 */
-};
-#else
-
-/*
- * 低电平有效
- */
-
-/* Slave Addr: 0x77 Reg Addr: 0x03
- * bit[7] - VDD_FAN_DISABLE
- * bit[6] - 5V0_HDMI_EN
- * bit[5] - LED_BACK_B
- * bit[4] - LED_BACK_G
- * bit[3] - LED_BACK_R
- * bit[2] - LED_FRONT_B
- * bit[1] - LED_FRONT_G
- * bit[0] - LED_FRONT_R
- */
-enum {
-    LIGHT_OFF 		= 0xff,		    /* 关闭所有的灯 */
-    FRONT_RED 		= 0xfe,		    /* 前灯亮红色,后灯全灭: 0xfe */
-    FRONT_GREEN 	= 0xfd,		    /* 前灯亮绿色,后灯全灭 */
-    FRONT_YELLOW 	= 0xfc,         /* 前灯亮黄色(G+R), 后灯全灭 */
-    FRONT_BLUE 		= 0xfb,         /* 前灯蓝色(B),后灯全灭 */
-    FRONT_WHITE 	= 0xf8,         /* 前灯亮白色(R+G+B),后灯全灭 */
-
-    BACK_RED 		= 0xf7,		    /* 后灯亮红色 */
-    BACK_GREEN 		= 0xef,		    /* 后灯亮绿色 */
-    BACK_YELLOW 	= 0xe7,         /* 后灯亮黄色 */
-    BACK_BLUE 		= 0xdf,
-    BACK_WHITE		= 0xe3,         /* 后灯亮白色 */
-
-    LIGHT_ALL 		= 0xc0,         /* 所有的灯亮白色 */
-};
-
-#endif
-
-#endif
 
 
 /* Slave Addr: 0x77 Reg Addr: 0x03
@@ -1078,7 +1002,8 @@ private:
     /*
      * 录像/直播的可存储的剩余时长
      */
-    sp<oled_light>              mOLEDLight;
+    std::shared_ptr<ins_led>    mLedLight;
+
     u8                          fli_light = 0;
     u8                          front_light;
 
