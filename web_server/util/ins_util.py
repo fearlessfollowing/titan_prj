@@ -48,8 +48,6 @@ def cmd_error_state(name, state):
     if state == config.STATE_IDLE:
         err += 'idle '
     else:
-        if state &config.STATE_COMPOSE_IN_PROCESS == config.STATE_COMPOSE_IN_PROCESS:
-            err += 'compose '
         if state &config.STATE_TAKE_CAPTURE_IN_PROCESS == config.STATE_TAKE_CAPTURE_IN_PROCESS:
             err += 'pic_capture_in_process '
         if state & config.STATE_PIC_STITCHING == config.STATE_PIC_STITCHING:
@@ -139,15 +137,6 @@ def cmd_exception(e,name = None):
             OrderedDict({_state: 'exception', config.ERROR: error_dict}) if name is None else OrderedDict(
                 {_name: name, _state: 'exception', config.ERROR: error_dict}))
 
-# def cmd_in_process(name,id,completion = 0):
-#     return OrderedDict({_name: name, _state: 'inProgress', 'progress': OrderedDict({'completion':completion})})
-
-
-# def cmd_mismatch(name, c0,c1):
-#     return json.dumps({_name:name,_state:'mismatch: req {0} respone (1}'.format(c0, c1)})
-
-# def cmd_in_process(name,c):
-#     return json.dumps{_name:name, _state: '{0} in_process'.format('compose' if c == config.STATE_COMPOSE_IN_PROCESS else 'take picture')}
 
 #6bytes
 def get_progress_id():

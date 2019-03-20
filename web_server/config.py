@@ -244,7 +244,7 @@ _REQ_UPDATE_SYS_TMP         = 'camera._updateSysTemp'       # 更新系统温度
 STATE_IDLE                      = 0x00
 STATE_RECORD                    = 0x01
 STATE_TAKE_CAPTURE_IN_PROCESS   = 0x02
-STATE_COMPOSE_IN_PROCESS        = 0x04
+STATE_COUNT_DOWN                = 0x04
 STATE_PREVIEW                   = 0x08
 
 STATE_LIVE                      = 0x10

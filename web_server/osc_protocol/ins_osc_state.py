@@ -10,31 +10,31 @@ from util.time_util import *
 from threading import Semaphore
 from threading import Thread 
 
-EXTERNAL_DEV = '_external_dev'
-EXTERNAL_ENTRIES ='entries'
-SD1 = 'sd1'
-SD2 = 'sd2'
-USB = 'usb'
-BATTERY = '_battery'
-ID_RES = '_idRes'
-TL_INFO = '_tl_info'
-LEFT_INFO = '_left_info'
-REC_LEFT_INFO = '_rec_left_sec'
-LIVE_REC_LEFT_INFO = '_live_rec_left_sec'
-REC_INFO = '_rec_sec'
-LIVE_REC_INFO = '_live_rec_sec'
-TL_REC_INFO = '_tl_left'
+EXTERNAL_DEV        = '_external_dev'
+EXTERNAL_ENTRIES    ='entries'
+SD1                 = 'sd1'
+SD2                 = 'sd2'
+USB                 = 'usb'
+BATTERY             = '_battery'
+ID_RES              = '_idRes'
+TL_INFO             = '_tl_info'
+LEFT_INFO           = '_left_info'
+REC_LEFT_INFO       = '_rec_left_sec'
+LIVE_REC_LEFT_INFO  = '_live_rec_left_sec'
+REC_INFO            = '_rec_sec'
+LIVE_REC_INFO       = '_live_rec_sec'
+TL_REC_INFO         = '_tl_left'
 
 INTERVAL = 10000
 
-STORAGE_POS = 1
-CAM_STATE = '_cam_state'
-GPS_STATE = '_gps_state'
-SND_STATE = '_snd_state'
-SYS_TEMP  = '_sys_temp'
+STORAGE_POS     = 1
+CAM_STATE       = '_cam_state'
+GPS_STATE       = '_gps_state'
+SND_STATE       = '_snd_state'
+SYS_TEMP        = '_sys_temp'
+
 
 sem_vfs = Semaphore()
-
 
 class DiskCheckThread(Thread):
     def __init__(self, name, parent):
@@ -162,9 +162,9 @@ class osc_state(threading.Thread):
         return vfs
 
 
-    # get_tf_storage_info
+    # getTfStorageInfo
     # 获取TF卡信息
-    def get_tf_storage_info(self, path, dev_type, dev_name, index, total, free, speed_test):
+    def getTfStorageInfo(self, path, dev_type, dev_name, index, total, free, speed_test):
         
         info = OrderedDict() 
 
@@ -359,8 +359,9 @@ class osc_state(threading.Thread):
             new_dev_info.append(self.get_local_storage_info(internal_dev_info['path'], dev_type = internal_dev_info['type'], dev_name = internal_dev_info['name']))
 
         # 查询外部卡（小卡）path, dev_type, dev_name, index, total, free
-        for extern_dev_info in self._tf_info:
-            new_dev_info.append(self.get_tf_storage_info('null', 'external', 'tfcard', extern_dev_info['index'], extern_dev_info['storage_total'], extern_dev_info['storage_left'], extern_dev_info['pro_suc']))
+        for extern_dev_info in self._tf_info:  
+            tf_name = 'SD' + str(extern_dev_info['index'])     
+            new_dev_info.append(self.getTfStorageInfo('null', 'external', tf_name, extern_dev_info['index'], extern_dev_info['storage_total'], extern_dev_info['storage_left'], extern_dev_info['pro_suc']))
 
         # 更新整个存储部分信息(大卡 + 小卡)
         self.poll_info[EXTERNAL_DEV][EXTERNAL_ENTRIES] = new_dev_info
@@ -500,9 +501,7 @@ class osc_state(threading.Thread):
     # 设置_snd_state
     def set_snd_state(self, param):
         try:
-            # 将字符串转换为json对象, 2018年7月26日（修复BUG）
             self.poll_info[SND_STATE] = param
-            #self.poll_info[SND_STATE] = json.loads(param)
         except Exception as e:
             Err('set_snd_state exception {}'.format(e))
 

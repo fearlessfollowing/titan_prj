@@ -43,8 +43,6 @@
 
 #include <hw/battery_interface.h>
 
-
-#include <hw/ins_led.h>
 #include <hw/lan.h>
 
 #include <hw/MenuUI.h>
@@ -4632,9 +4630,9 @@ void MenuUI::saveListNotifyCb()
     for (u32 i = 0; i < curDevList.size(); i++) {
 	    Json::Value	tmpNode;        
         tmpVol = curDevList.at(i);
-        tmpNode["dev_type"] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
-        tmpNode["path"] = tmpVol->pMountPath;
-        tmpNode[_name_] = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
+        tmpNode["dev_type"]     = (tmpVol->iVolSubsys == VOLUME_SUBSYS_SD) ? "sd": "usb";
+        tmpNode["path"]         = tmpVol->pMountPath;
+        tmpNode[_name_]         = tmpVol->pVolName;
         jarray.append(tmpNode);
     }
 
@@ -4720,7 +4718,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
                     dispReady();
                 } else if (checkStateEqual(serverState, STATE_START_PREVIEWING) || checkStateEqual(serverState, STATE_STOP_PREVIEWING)) {
                     dispWaiting();				    /* 正在启动,显示"..." */
-                } else if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS)) {	/* 正在拍照 */
+                } else if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS) || checkServerStateIn(serverState, STATE_COUNT_DOWN)) {	/* 正在拍照 */
                     if (mTakePicDelay == 0) {       /* 倒计时为0,显示"shooting" */
                         dispShooting();
                     } else {                        /* 清除就绪图标,等待下一次更新消息 */
@@ -7032,9 +7030,13 @@ int MenuUI::oled_disp_type(int type)
                 mNeedSendAction = false;
             } else {
 
+                #if 0
                 if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS) == false) {
                     addState(STATE_TAKE_CAPTURE_IN_PROCESS);
                 }
+                #else
+                addState(STATE_COUNT_DOWN);
+                #endif
 
                 mNeedSendAction = true;
                 int item = getMenuSelectIndex(MENU_PIC_SET_DEF);
@@ -7057,7 +7059,7 @@ int MenuUI::oled_disp_type(int type)
             setCurMenu(MENU_PIC_INFO);
 
             /* 第一次发送更新消息, 根据cap_delay的值来决定播放哪个声音 */
-            send_update_light(MENU_PIC_INFO, STATE_TAKE_CAPTURE_IN_PROCESS, INTERVAL_1HZ);
+            send_update_light(MENU_PIC_INFO, INTERVAL_1HZ);
             break;
         }
 
@@ -8609,7 +8611,7 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 	switch (menu) {
 		case MENU_PIC_INFO: {
 
-			if (checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS)) {
+			if (checkServerStateIn(serverState, STATE_COUNT_DOWN) || checkServerStateIn(serverState, STATE_TAKE_CAPTURE_IN_PROCESS)) {
 	
 				if (mTakePicDelay == 0) {
                     if (mNeedSendAction) {  /* 暂时用于处理客户端发送拍照请求时，UI不发送拍照请求给camerad */

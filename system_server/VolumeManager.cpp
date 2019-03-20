@@ -135,6 +135,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-1.1,usb1-2.1",      /* USB3.0设备,或者USB2.0设备 */
         .pMountPath     = "/mnt/SD0",
+        .pVolName       = "SD0",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},                      /* 动态生成 */
         .cDevNode       = {0},
@@ -154,6 +155,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_USB,
         .pBusAddr       = "usb2-1.3,usb1-2.3",           /* 接3.0设备时的总线地址 */
         .pMountPath     = "/mnt/udisk1",
+        .pVolName       = "udisk1",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},  
@@ -173,6 +175,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_USB,
         .pBusAddr       = "usb1-2.2",          
         .pMountPath     = "/mnt/udisk2",
+        .pVolName       = "udisk2",
         .iPwrCtlGpio    = 0,
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -192,6 +195,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.4",                         
         .pMountPath     = "/mnt/SD1",
+        .pVolName       = "SD1",        
         .iPwrCtlGpio    = 243,
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -210,6 +214,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.1",
         .pMountPath     = "/mnt/SD2",
+        .pVolName       = "SD2",        
         .iPwrCtlGpio    = 244,        
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -228,6 +233,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.2",
         .pMountPath     = "/mnt/SD3",
+        .pVolName       = "SD3",        
         .iPwrCtlGpio    = 245,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -246,6 +252,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.3",
         .pMountPath     = "/mnt/SD4",
+        .pVolName       = "SD4",        
         .iPwrCtlGpio    = 246,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -264,6 +271,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-2.4",
         .pMountPath     = "/mnt/SD5",
+        .pVolName       = "SD5",        
         .iPwrCtlGpio    = 247,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -282,6 +290,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.1",
         .pMountPath     = "/mnt/SD6",
+        .pVolName       = "SD6",        
         .iPwrCtlGpio    = 240,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -302,6 +311,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.2",
         .pMountPath     = "/mnt/SD7",
+        .pVolName       = "SD7",        
         .iPwrCtlGpio    = 241,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -320,6 +330,7 @@ static Volume gSysVols[] = {
         .iVolSubsys     = VOLUME_SUBSYS_SD,
         .pBusAddr       = "usb2-3.3",
         .pMountPath     = "/mnt/SD8",
+        .pVolName       = "SD8",        
         .iPwrCtlGpio    = 242,         
         .cVolName       = {0},             /* 动态生成 */
         .cDevNode       = {0},
@@ -2494,8 +2505,10 @@ void VolumeManager::repairVolume(Volume* pVol)
 int VolumeManager::mountVolume(Volume* pVol)
 {
     int iRet = 0;
-
+    const char* pMountFlag = NULL;
+    pMountFlag = property_get(PROP_RO_MOUNT_TF);
     std::unique_lock<std::mutex> _lock(pVol->mVolLock);   
+    
     #if 1
     /* 如果使能了Check,在挂载之前对卷进行check操作 */
     iRet = checkFs(pVol);
@@ -2530,11 +2543,10 @@ int VolumeManager::mountVolume(Volume* pVol)
         msg_util::sleep_ms(200);
     }
 
-    #else
+#else
 
     int status;
-    const char* pMountFlag = NULL;
-    pMountFlag = property_get(PROP_RO_MOUNT_TF);
+
 
 #if 0
     const char* pMountFlag = NULL;

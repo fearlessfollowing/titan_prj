@@ -719,7 +719,7 @@ class control_center:
     def check_need_sync(self, st, mine):
         if st != mine:
             if mine != config.STATE_IDLE:
-                spec_state = [config.STATE_START_QR, config.STATE_UDISK, config.STATE_SPEED_TEST, config.STATE_START_GYRO, config.STATE_NOISE_SAMPLE, config.STATE_CALIBRATING]
+                spec_state = [config.STATE_START_QR, config.STATE_UDISK, config.STATE_SPEED_TEST, config.STATE_START_GYRO, config.STATE_NOISE_SAMPLE, config.STATE_CALIBRATING, config.STATE_COUNT_DOWN]
                 for i in spec_state:
                     if mine & i == i:
                         ret = False
@@ -730,7 +730,7 @@ class control_center:
                 ret = True
         else:
             ret = False
-        Info('st {} mine {} check_need_sync {}'.format(hex(st),hex(mine),ret))
+        Info('st {} mine {} check_need_sync {}'.format(hex(st), hex(mine), ret))
         return ret
 
 
@@ -879,12 +879,13 @@ class control_center:
                 m_v = 'moduleVersion'
                 st = self.convert_state(res['state'])
                 Info('sync_init_info_to_p res {}  cam_state {} st {}'.format(res,self.get_cam_state(),hex(st)))
+
                 if self.checkLiveRecord(res):
                     st = (st | config.STATE_RECORD)
                     Info('2sync_init_info_to_p res {}  cam_state {} st {}'.format(res, self.get_cam_state(), hex(st)))
 
                 # U盘模式下不需要状态同步
-                if self.check_need_sync(st,self.get_cam_state()):
+                if self.check_need_sync(st, StateMachine.getCamState()): 
                     self.set_cam_state(st)  # 如果需要同步，会在此处修改camera的状态
                     req = OrderedDict()
                     req['state'] = st
@@ -1039,7 +1040,7 @@ class control_center:
         self.stopPollTimer()      # 停止定时器(确保在连接过程中，定时器处于停止状态)
         try:
             self.generate_fp()            
-            ret = OrderedDict({_name:req[_name], _state:config.DONE, config.RESULTS:{config.FINGERPRINT:self.finger_print}})
+            ret = OrderedDict({_name:req[_name], _state: config.DONE, config.RESULTS: {config.FINGERPRINT: self.finger_print}})
             url_list = OrderedDict()
 
             self.set_last_info(None)
@@ -1128,6 +1129,8 @@ class control_center:
             self.random_data = 0
             self._connectMode = 'Normal'
             if StateMachine.getCamState() == config.STATE_PREVIEW:
+                Info('Maybe Camerad preview just starting, stop immeditaly maybe panic')
+                time.sleep(3)   # 避免camerad刚启动预览的时候接收到停止预览从而导致卡死
                 self.excuteCameraFunc(config._STOP_PREVIEW, self.get_req(config._STOP_PREVIEW))
         except Exception as e:
             Err('appReqDisconnect exception {}'.format(str(e)))
@@ -1350,6 +1353,7 @@ class control_center:
             if check_dic_key_exist(res, config.LIVE_URL):
                 self.set_live_url(res[config.LIVE_URL])
 
+
     def startLiveFail(self, err = -1):
         self._client_take_live = False
         StateMachine.rmServerState(config.STATE_START_LIVING)
@@ -1372,9 +1376,11 @@ class control_center:
             read_info =  cmd_error_state(req[_name], StateMachine.getCamState())
         return read_info
 
+
     def stopLiveDone(self, req = None):
         Info('------> stopLiveDone')
         StateMachine.addCamState(config.STATE_STOP_LIVING)
+
         if StateMachine.checkStateIn(config.STATE_LIVE):
             StateMachine.rmServerState(config.STATE_LIVE)
 
@@ -1383,6 +1389,7 @@ class control_center:
 
         if StateMachine.checkStateIn(config.STATE_RECORD):
             StateMachine.rmServerState(config.STATE_RECORD)
+
 
     def stopLiveFail(self, err = -1):
         Info('---> stopLiveFail {}'.format(err))
@@ -2292,8 +2299,8 @@ class control_center:
         # 在屏幕拍照，倒计时阶段会设置服务器的状态为config.STATE_TAKE_CAPTURE_IN_PROCESS
         # 所以如果确实是由屏幕发起的拍照，此处需要先去掉config.STATE_TAKE_CAPTURE_IN_PROCESS状态
         if self._client_take_pic == False:
-            if StateMachine.checkStateIn(config.STATE_TAKE_CAPTURE_IN_PROCESS):
-                StateMachine.rmServerState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
+            if StateMachine.checkStateIn(config.STATE_COUNT_DOWN):
+                StateMachine.rmServerState(config.STATE_COUNT_DOWN)
         try:
             if StateMachine.checkAllowTakePic():
                 StateMachine.addCamState(config.STATE_TAKE_CAPTURE_IN_PROCESS)
@@ -2827,12 +2834,14 @@ class control_center:
         self.test_path = None
 
 
+
     #############################################################################################
     # 方法名称: liveFinishNotifyHnadler
     # 功能描述: 直播结束通知(不存片)
     #           
     # 入口参数: param - 返回的结果
-    # 返回值:
+    # 返回值: (camerad在停止直播的过程中有一个停止并启动预览的动作,再返回这个通知之前预览没有完全启动完成)
+    # 这时候去停止预览会导致camerad卡死
     #############################################################################################
     def liveFinishNotifyHnadler(self, content):
         Info('[-------Notify Message -------] liveFinishNotifyHnadler {}'.format(content))
@@ -2841,8 +2850,10 @@ class control_center:
             StateMachine.rmServerState(config.STATE_LIVE) 
         if StateMachine.checkStateIn(config.STATE_LIVE_CONNECTING):        
             StateMachine.rmServerState(config.STATE_LIVE_CONNECTING) 
+            
         if StateMachine.checkStateIn(config.STATE_STOP_LIVING):        
             StateMachine.rmServerState(config.STATE_STOP_LIVING) 
+        
         if StateMachine.checkStateIn(config.STATE_RECORD):        
             StateMachine.rmServerState(config.STATE_RECORD) 
 

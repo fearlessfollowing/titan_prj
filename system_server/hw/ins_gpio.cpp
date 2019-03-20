@@ -85,7 +85,10 @@ int gpio_direction_output(unsigned int gpio, int value)
     char pathname[255];
     const char *val;
     snprintf(pathname, sizeof(pathname), GPIO_DIRECTION, gpio);
-    val = value ? "high" : "low";
+    gpio_write_value(pathname, "out", strlen("out") + 1);
+
+    snprintf(pathname, sizeof(pathname), GPIO_VALUE, gpio);
+    val = value ? "1" : "0";
     return gpio_write_value(pathname, val, strlen(val) + 1);
 }
 

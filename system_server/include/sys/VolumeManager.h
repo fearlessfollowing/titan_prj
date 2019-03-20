@@ -128,6 +128,7 @@ typedef struct stVol {
     int             iVolSubsys;                         /* 卷的子系统： USB/SD */
     const char*     pBusAddr;                           /* 总线地址: USB - "1-2.3" */
     const char*     pMountPath;                         /* 挂载点：挂载点与总线地址是一一对应的 */
+    const char*     pVolName;                           /* 卷名 */
 
     int             iPwrCtlGpio;
     char            cVolName[COM_NAME_MAX_LEN];         /* 卷的名称 */

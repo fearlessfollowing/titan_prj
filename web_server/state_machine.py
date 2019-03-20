@@ -24,7 +24,7 @@ from osc_protocol.ins_osc_state import osc_state_handle
 class StateMachine:
     # @classmethod
     # def check_in_process(self):
-    #     if self._cam_state & config.STATE_TAKE_CAPTURE_IN_PROCESS == config.STATE_TAKE_CAPTURE_IN_PROCESS or config.STATE_COMPOSE_IN_PROCESS == self._cam_state:
+    #     if self._cam_state & config.STATE_TAKE_CAPTURE_IN_PROCESS == config.STATE_TAKE_CAPTURE_IN_PROCESS:
     #         return True
     #     else:
     #         return False

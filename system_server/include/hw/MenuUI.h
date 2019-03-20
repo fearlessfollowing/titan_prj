@@ -162,7 +162,7 @@ enum {
 
     STATE_RECORD                    = 0x01ULL,			/* 录像状态 */
     STATE_TAKE_CAPTURE_IN_PROCESS   = 0x02ULL,			/* 拍照正在处理状态 */
-    STATE_COMPOSE_IN_PROCESS        = 0x04ULL,
+    STATE_COUNT_DOWN                = 0x04ULL,
     STATE_PREVIEW                   = 0x08ULL,          /* 预览状态 */
 
     STATE_LIVE                      = 0x10ULL,          /* 直播状态 */
@@ -175,33 +175,33 @@ enum {
 	STATE_QUERY_STORAGE             = 0x400ULL,		    /* 查询容量状态 */
 	STATE_UDISK                     = 0x800ULL,         /* U盘状态 */
 
-    STATE_CALIBRATING               = 0x1000ULL,       /* 正在校验状态 */
+    STATE_CALIBRATING               = 0x1000ULL,        /* 正在校验状态 */
     STATE_START_PREVIEWING          = 0x2000ULL,		/* 正在启动预览状态 */
     STATE_STOP_PREVIEWING           = 0x4000ULL,		/* 正在停止预览状态 */
     STATE_START_QR                  = 0x8000ULL,		/* 启动QR */
 
-    STATE_RESTORE_ALL               = 0x10000ULL,      /* 参数复位状态 */
-    STATE_STOP_QRING                = 0x20000ULL,      /* 正在停止QR状态 */
-    STATE_START_QRING               = 0x40000ULL,      /* 正在启动QR状态 */
-    STATE_LIVE_CONNECTING           = 0x80000ULL,      /* 直播连接状态 */
+    STATE_RESTORE_ALL               = 0x10000ULL,       /* 参数复位状态 */
+    STATE_STOP_QRING                = 0x20000ULL,       /* 正在停止QR状态 */
+    STATE_START_QRING               = 0x40000ULL,       /* 正在启动QR状态 */
+    STATE_LIVE_CONNECTING           = 0x80000ULL,       /* 直播连接状态 */
 
-    STATE_LOW_BAT                   = 0x100000ULL,     /* 低电量状态 */
-    STATE_POWER_OFF                 = 0x200000ULL,     /* 关机状态 */
-    STATE_SPEED_TEST                = 0x400000ULL,     /* 测速状态 */
-    STATE_START_GYRO                = 0x800000ULL,     /* 启动陀螺仪状态 */
+    STATE_LOW_BAT                   = 0x100000ULL,      /* 低电量状态 */
+    STATE_POWER_OFF                 = 0x200000ULL,      /* 关机状态 */
+    STATE_SPEED_TEST                = 0x400000ULL,      /* 测速状态 */
+    STATE_START_GYRO                = 0x800000ULL,      /* 启动陀螺仪状态 */
 
-    STATE_NOISE_SAMPLE              = 0x1000000ULL,    /* 噪声采样状态 */
-    STATE_FORMATING                 = 0x2000000ULL,    /* 格式化状态 */
-    STATE_FORMAT_OVER               = 0x4000000ULL,    /* 格式化完成状态 */
-    STATE_EXCEPTION                 = 0x8000000ULL,    /* 异常状态 */
+    STATE_NOISE_SAMPLE              = 0x1000000ULL,     /* 噪声采样状态 */
+    STATE_FORMATING                 = 0x2000000ULL,     /* 格式化状态 */
+    STATE_FORMAT_OVER               = 0x4000000ULL,     /* 格式化完成状态 */
+    STATE_EXCEPTION                 = 0x8000000ULL,     /* 异常状态 */
 
 
-    STATE_BLC_CALIBRATE             = 0x10000000ULL,   /* BLC校正状态 */
-	STATE_BPC_CALIBRATE             = 0x20000000ULL,   /* BPC校正状态 */
-    STATE_MAGMETER_CALIBRATE        = 0x40000000ULL,   /* 磁力计校正状态 */
+    STATE_BLC_CALIBRATE             = 0x10000000ULL,    /* BLC校正状态 */
+	STATE_BPC_CALIBRATE             = 0x20000000ULL,    /* BPC校正状态 */
+    STATE_MAGMETER_CALIBRATE        = 0x40000000ULL,    /* 磁力计校正状态 */
     STATE_TF_FORMATING              = 0x80000000ULL,
 
-    STATE_DELETE_FILE               = 0x100000000ULL,  /* 删除文件状态 */
+    STATE_DELETE_FILE               = 0x100000000ULL,   /* 删除文件状态 */
 };
 
 /*
