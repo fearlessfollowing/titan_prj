@@ -162,6 +162,9 @@ COM_FLAGS += ' -DBATTERY_USE_BQ40Z50 '
 # 调试Netlink消息
 # COM_FLAGS += ' -DENABLE_DEBUG_NETLINK_MSG '
 
+# 升级进行电池电量检查
+COM_FLAGS += ' -DUPGRADE_CHECK_BATTERY '
+
 COM_FLAGS += ' -fexceptions -Wall -Wunused-variable -g '
 
 

@@ -52,13 +52,12 @@
 #include <string>
 #include <prop_cfg.h>
 
+#include <hw/battery_interface.h>
 #include <util/icon_ascii.h>
 #include <system_properties.h>
 
-
 #include <log/log_wrapper.h>
 
-using namespace std;
 
 #undef  TAG
 #define TAG 	"update_app"
@@ -66,7 +65,6 @@ using namespace std;
 #define UAPP_VER 				"V3.0"
 #define PRO_UPDATE_ZIP			"titan_update.zip"
 #define UPDATE_DEST_BASE_DIR 	"/mnt/update/"
-#define ARRAY_SIZE(x)   		(sizeof(x) / sizeof(*(x)))
 
 /* 
  * 清单文件的相对路径
@@ -784,7 +782,7 @@ static int getPro2UpdatePackage(FILE* fp, u32 offset)
 	}
 
 	int iPro2updateZipLen = bytes_to_int(gstHeader.len);
-	string pro2UpdatePath = UPDATE_DEST_BASE_DIR;
+	std::string pro2UpdatePath = UPDATE_DEST_BASE_DIR;
 	pro2UpdatePath += PRO_UPDATE_ZIP;
 	const char* pPro2UpdatePackagePath = pro2UpdatePath.c_str();
 
@@ -818,7 +816,7 @@ static int pro2Updatecheck(const char* pUpdateFileDir)
 	int iPro2UpdateOffset = 0;
 
 	const char* pUpdateFilePathName = NULL;
-	string updateImgFilePath = pUpdateFileDir;
+	std::string updateImgFilePath = pUpdateFileDir;
 	updateImgFilePath += "/";
 	updateImgFilePath += UPDATE_IMAGE_FILE;
 
@@ -929,20 +927,16 @@ static int executeUserScript(const char* cmdPath)
 
 
 #ifdef UPGRADE_CHECK_BATTERY
-bool is_bat_enough()
+static bool isBatteryEnough()
 {
     bool ret = false;
-    sp<battery_interface> mBat = sp<battery_interface>(new battery_interface());
-    if (mBat == nullptr) {
-        LOGERR(TAG,"bat creat error\n");
-    } else {
-        if (mBat->is_enough() == 0) {
+    std::shared_ptr<BatteryManager> bat = std::make_shared<BatteryManager>();
+    if (bat) {
+        if (bat->isUpgradeSatisfy()) {
             ret = true;
         }
-    }
-	
-    if (!ret) {
-        LOGERR(TAG,"is_bat_enough false\n");
+    } else {
+        LOGERR(TAG, "make battery manager failed!");
     }
     return ret;
 }
@@ -963,7 +957,7 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 {
     int iRet = -1;
 	std::vector<sp<UPDATE_SECTION>> mSections;
-	string updateRootPath = UPDATE_DEST_BASE_DIR;
+	std::string updateRootPath = UPDATE_DEST_BASE_DIR;
 
 	LOGDBG(TAG, "start_update_app: init_oled_module ...\n");
 
@@ -972,7 +966,7 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
     disp_update_icon(ICON_UPGRADE_SCHEDULE00128_64);	/* 显示正在更新 */
 
 #ifdef UPGRADE_CHECK_BATTERY
-    if (is_bat_enough()) {	/* 电量充足 */
+    if (isBatteryEnough()) {	/* 电量充足 */
 #endif		
 		if (bMode) {	/* 兼容0.2.18及以前的update_check */
 
@@ -1247,7 +1241,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	LogWrapper::init("/home/nvidia/insta360/log", "ua_log", true);
+	LogWrapper::init(DEFAULT_LOG_FILE_PATH_BASE, "ua_log", true);
 
 	property_set(PROP_SYS_UA_VER, UAPP_VER);
 

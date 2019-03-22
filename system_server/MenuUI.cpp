@@ -49,7 +49,6 @@
 #include <sys/Menu.h>
 #include <hw/InputManager.h>
 #include <util/icon_ascii.h>
-#include <trans/fifo.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -131,7 +130,7 @@ typedef struct _sys_read_ {
     const char *key;
     const char *header;
     const char *file_name;
-}SYS_READ;
+} SYS_READ;
 
 static const SYS_READ astSysRead[] = {
     { "sn", "sn=", "/home/nvidia/insta360/etc/sn"},
@@ -8349,101 +8348,235 @@ void MenuUI::handleTfStateChanged(std::vector<std::shared_ptr<Volume>>& mTfChang
     if (iAction != VOLUME_ACTION_UNSUPPORT) {
 
         /* 有TF卡插入并且录像,直播模式下需要重新查询小卡状态 */
-        if ((iAction == VOLUME_ACTION_ADD) && (cur_menu == MENU_VIDEO_INFO || cur_menu == MENU_LIVE_INFO || cur_menu == MENU_VIDEO_SET_DEF || cur_menu == MENU_LIVE_SET_DEF )) { /* 有卡插入 */
+        if ((iAction == VOLUME_ACTION_ADD) && (cur_menu == MENU_VIDEO_INFO 
+                                                || cur_menu == MENU_LIVE_INFO 
+                                                || cur_menu == MENU_VIDEO_SET_DEF 
+                                                || cur_menu == MENU_LIVE_SET_DEF )) { /* 有卡插入 */
             syncQueryTfCard();
         }
 
-        /* 显示消息框:  STATE_IDLE
-         * 消息框被清除后会显示进入消息框的菜单(重新进入菜单时，如果时MENU_PIC_INFO, MENU_VIDEO_INFO, MENU_LIVE_INFO 需要重新更新底部空间)
-         */
-        disp_dev_msg_box(iAction , VOLUME_SUBSYS_SD, false);
+        if ( (cur_menu != MENU_SET_TEST_SPEED) && (cur_menu != MENU_SPEED_TEST) &&  (cur_menu != MENU_FORMAT_INDICATION)) {
+            /* 显示消息框:  STATE_IDLE
+             * 消息框被清除后会显示进入消息框的菜单(重新进入菜单时，如果时MENU_PIC_INFO, MENU_VIDEO_INFO, MENU_LIVE_INFO 需要重新更新底部空间)
+             */
+            disp_dev_msg_box(iAction , VOLUME_SUBSYS_SD, false);
+        }
     }
 }
 
 
-void MenuUI::handleSppedTest(std::vector<sp<Volume>>& mSpeedTestList)
+void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
 {
-    sp<Volume> tmpLocalVol = NULL;
-    sp<Volume> tmpResultVol = NULL;
-    std::vector<sp<Volume>> testFailedList;
-    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
-    testFailedList.clear();
-    int iLocalTestFlag = 0;
+    LOGINFO(TAG, "status = %d, current menu %s", results->iCode, getMenuName(cur_menu));
 
-    LOGDBG(TAG, "Speed Test Handler");
-    {
-        for (u32 i = 0; i < mSpeedTestList.size(); i++) {
-            tmpResultVol = mSpeedTestList.at(i);
-
-            if (tmpResultVol->iType == VOLUME_TYPE_NV) {
-                vm->updateLocalVolSpeedTestResult(tmpResultVol->iSpeedTest);
-                iLocalTestFlag = tmpResultVol->iSpeedTest; 
-                continue;
-            }
-
-            vm->updateRemoteVolSpeedTestResult(tmpResultVol.get());
-            if (tmpResultVol->iSpeedTest == 0) {
-                testFailedList.push_back(tmpResultVol);
-            }
-        }
-    }
-
-    /*
-     * 清除菜单的测速状态
-     * 如果所有卡测试通过 - 显示All Card Test OK
-     * 如果有小卡测速失败 - 显示测速未通过的小卡
-     */
     clearArea();
-    sp<Volume> tmpVol;
-    char cMsg[128] = {0};
-    char cTmp[32] = {0};
-    u32 i = 0;
-    u8 xStarPos = 0;
 
-    sprintf(cMsg, "%s", "SD ");
-
-    for (i = 0; i < testFailedList.size(); i++) {
-        memset(cTmp, 0, sizeof(cTmp));
-        tmpVol = testFailedList.at(i);
-        if (i != testFailedList.size() - 1) {
-            sprintf(cTmp, "%d,", tmpVol->iIndex);
-        } else {
-            sprintf(cTmp, "%d", tmpVol->iIndex);
-        }
-        strcat(cMsg, cTmp);
-    }
-        
-    LOGDBG(TAG, "cMsg Content: %s", cMsg);
-    switch (i) {
-        case 1: xStarPos = 46;  break;
-        case 2: xStarPos = 40;  break;
-        case 3: xStarPos = 34;  break;
-        case 4: xStarPos = 28;  break;
-        case 5: xStarPos = 22;  break;
-        case 6: xStarPos = 16;  break;
-        default: break;
-    }
-
-    if (iLocalTestFlag == 0) {  /* 大卡不通过 */
-        LOGDBG(TAG, "Local SD speed test failed");
-        if (testFailedList.size() == 0) {   /* 大卡速度不够，小卡速度通过 */
-            dispStr((const u8*)"SD/USB write", 28, 16, false, 128);
-            dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
-        } else {    /* 大卡,部分小卡测速不通过 */
-            dispStr((const u8*)cMsg, xStarPos, 8, false, 128);
-            dispStr((const u8*)"SD/USB write", 28, 24, false, 128);
-            dispStr((const u8*)"speed are insufficient.", 6, 40, false, 128);
-        }
-    } else {    /* 大卡通过 */
-        LOGDBG(TAG, "Local SD speed test Success");
-        if (testFailedList.size() == 0) {   /* 所有卡速OK */
+    if (results->iCode != PROTO_SPEED_TEST_SUC) {   /* 失败, 比如460之类的错误 */
+        std::stringstream errStr;
+        errStr << "error code: " << results->iCode;
+        dispStr((const u8*)"speed test failed", 20, 16, false, 128);
+        dispStr((const u8*)errStr.str().c_str(), 19, 32, false, 128);
+    } else {
+        std::vector<Volume*>& failedVec = results->storageList;
+        if (failedVec.size() <= 0) {
             dispStr((const u8*)"All storage", 32, 8, false, 128);
             dispStr((const u8*)"devices write", 28, 24, false, 128);
-            dispStr((const u8*)"speed are sufficient...", 6, 40, false, 128);                
-        } else {    /* 显示卡速不足的小卡 */
-            dispStr((const u8*)cMsg, xStarPos, 16, false, 128);
-            dispStr((const u8*)"speed are insufficient.", 8, 32, false, 128);
+            dispStr((const u8*)"speed are sufficient...", 6, 40, false, 128);  
+        } else {
+            Volume* head = failedVec.at(0);
+            int iFailedSz = failedVec.size();
+            int iStartPos = 0;
+            switch (iFailedSz) {
+                case 1: {
+                    std::stringstream errStr;
+                    errStr << head->pVolName << " write";
+
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        iStartPos = 39;
+                    } else {
+                        iStartPos = 33;
+                    }                
+                    dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                    dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    break;
+                }
+
+                case 2: {
+                    std::stringstream errStr;
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        errStr << "SD(" << failedVec.at(1)->iIndex << "," << failedVec.at(1)->iIndex << ") write";
+                        iStartPos = 42;
+                    } else {
+                        errStr << head->pVolName << "," << failedVec.at(1)->pVolName << " write";
+                        iStartPos = 20;
+                    }                
+                    dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                    dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    break;
+                }
+
+                case 3: {
+                    std::stringstream errStr;
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        errStr << "SD(" << failedVec.at(0)->iIndex << "," << failedVec.at(1)->iIndex << "," << failedVec.at(2)->iIndex << ") write";
+                        iStartPos = 21;
+                    } else {
+                        errStr << head->pVolName << "," << "SD(" << failedVec.at(1)->iIndex << "," << failedVec.at(2)->iIndex << ") write";
+                        iStartPos = 8;
+                    }                
+                    dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                    dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    break;
+                }
+
+                case 4: {
+                    std::stringstream errStr;
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        errStr << "SD(" << failedVec.at(0)->iIndex << "," 
+                                        << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << ","
+                                        << failedVec.at(3)->iIndex << ") write";
+                        iStartPos = 15;
+                    } else {
+                        errStr << head->pVolName << "," << "SD(" << 
+                                                    failedVec.at(1)->iIndex << "," 
+                                                    << failedVec.at(2)->iIndex << ","
+                                                    << failedVec.at(3)->iIndex << ") write";
+                        iStartPos = 2;
+                    }                
+                    dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                    dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    break;
+                }
+
+
+                case 5: {
+                    std::stringstream errStr;
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        errStr << "SD(" << failedVec.at(0)->iIndex << "," 
+                                        << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << ","
+                                        << failedVec.at(3)->iIndex << ","
+                                        << failedVec.at(4)->iIndex << ") write";
+                        iStartPos = 9;
+                    } else {
+                        std::stringstream line1;
+                        line1 << head->pVolName;
+                        errStr << "SD(" << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << ","
+                                        << failedVec.at(3)->iIndex << ","
+                                        << failedVec.at(4)->iIndex << ","
+                                        ") write";
+                            
+                        iStartPos = 15;
+                        dispStr((const u8*)line1.str().c_str(), 48, 0, false, 128);
+                    }                
+                    dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                    dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    break;
+                }
+
+                case 6: {
+                    std::stringstream errStr;
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        errStr << "SD(" << failedVec.at(0)->iIndex << "," 
+                                        << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << ","
+                                        << failedVec.at(3)->iIndex << ","
+                                        << failedVec.at(4)->iIndex << ","
+                                        << failedVec.at(5)->iIndex << ","
+                                        ") write";
+                        iStartPos = 3;
+                    } else {
+                        std::stringstream line1;
+                        line1 << head->pVolName;
+                        errStr << "SD(" << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << ","
+                                        << failedVec.at(3)->iIndex << ","
+                                        << failedVec.at(4)->iIndex << ","
+                                        << failedVec.at(5)->iIndex << ","                                    
+                                        ") write";
+                            
+                        iStartPos = 9;
+                        dispStr((const u8*)line1.str().c_str(), 48, 0, false, 128);
+                    }                
+                    dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                    dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    break;
+                }
+
+                case 7: {
+                    std::stringstream errStr;
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        errStr << "SD(" << failedVec.at(0)->iIndex << "," 
+                                        << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << ","
+                                        << failedVec.at(3)->iIndex << ","
+                                        << failedVec.at(4)->iIndex << ","
+                                        << failedVec.at(5)->iIndex << ","
+                                        << failedVec.at(6)->iIndex << ","                                    
+                                        ")write";
+                        iStartPos = 0;
+                    } else {
+                        std::stringstream line1;
+                        line1 << head->pVolName;
+                        errStr << "SD(" << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << ","
+                                        << failedVec.at(3)->iIndex << ","
+                                        << failedVec.at(4)->iIndex << ","
+                                        << failedVec.at(5)->iIndex << ","   
+                                        << failedVec.at(6)->iIndex << ","                                                                        
+                                        ") write";
+                            
+                        iStartPos = 3;
+                        dispStr((const u8*)line1.str().c_str(), 48, 0, false, 128);
+                    }                
+                    dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                    dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    break;
+                }
+
+                case 8: {
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        std::stringstream errStr;
+                        errStr << "SD(" << failedVec.at(0)->iIndex << "," 
+                                        << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << ","
+                                        << failedVec.at(3)->iIndex << ","
+                                        << failedVec.at(4)->iIndex << ","
+                                        << failedVec.at(5)->iIndex << ","
+                                        << failedVec.at(6)->iIndex << ","                                    
+                                        << failedVec.at(7)->iIndex << ")";
+
+                        dispStr((const u8*)errStr.str().c_str(), 6, 0, false, 128);
+                        dispStr((const u8*)"write speed are", 23, 16, false, 128);
+                        dispStr((const u8*)"insufficient...", 28, 32, false, 128);
+                    } else {
+                        std::stringstream errStr;
+                        errStr << head->pVolName << ",SD(1-8)";
+                        dispStr((const u8*)errStr.str().c_str(), 8, 16, false, 128);
+                        dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    }                
+                    break;
+                }
+
+                case 9: {
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                        dispStr((const u8*)"SD(0-8) write", 27, 16, false, 128);
+                        dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    } else {
+                        std::stringstream errStr;
+                        errStr << head->pVolName << ",SD(1-8)";
+                        dispStr((const u8*)errStr.str().c_str(), 8, 16, false, 128);
+                        dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                    }
+                    break;
+                }
+            }
+
         }
+
+
     }
 
     mSpeedTestUpdateFlag = true;            /* 测速结果已更新，只有在返回测速菜单后才失效 */
@@ -8583,7 +8716,7 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
 
     if (hs->isNeedBatteryProtect()) {
         LOGINFO(TAG, "Battery is too low, need shutdown machine as soon as possible");
-        // handleShutdown();
+        handleShutdown();
     }
 
     send_delay_msg(UI_READ_BAT, iNextPollTime);  /* 给UI线程发送读取电池电量的延时消息 */
@@ -8875,9 +9008,9 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             }
 
             case UI_MSG_SPEEDTEST_RESULT: {
-                std::vector<sp<Volume>> mSpeedTestList;
-                if (msg->find<std::vector<sp<Volume>>>("speed_test", &mSpeedTestList)) {
-                    handleSppedTest(mSpeedTestList); 
+                std::shared_ptr<SpeedResult> results;
+                if (msg->find<std::shared_ptr<SpeedResult>>("speed_test", &results)) {
+                    handleSppedTest(results); 
                 }
                 break;
             }

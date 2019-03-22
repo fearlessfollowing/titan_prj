@@ -11,7 +11,7 @@ src += [config.SYSTEM_SERVER + '/hw/ins_gpio.cpp']
 src += [config.SYSTEM_SERVER + '/hw/ins_i2c.cpp']
 src += [config.SYSTEM_SERVER + '/hw/ins_led.cpp']
 src += [config.SYSTEM_SERVER + '/hw/oled_module.cpp']
-#src += [config.SYSTEM_SERVER + '/hw/battery_interface.cpp']
+src += [config.SYSTEM_SERVER + '/hw/bq40z50.cpp']
 
 src += [config.UTIL + '/md5.cpp']
 src += [config.UTIL + '/update_oled.cpp']

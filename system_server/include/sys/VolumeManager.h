@@ -280,6 +280,10 @@ public:
 
     std::vector<Volume*>& getSysStorageDevList();
 
+    Volume*     getCurrentUsedLocalVol();
+    Volume*     getRemoteVolByIndex(int idx);
+    void        updateRemoteVolSpeedTestResult(int idx, int iSpeedFlag);    
+    
     /*
      * U盘模式
      */

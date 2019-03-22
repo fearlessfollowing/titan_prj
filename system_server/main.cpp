@@ -36,7 +36,6 @@
 #include <hw/MenuUI.h>
 #include <prop_cfg.h>
 #include <log/log_wrapper.h>
-#include <trans/fifo.h>
 
 #include <util/util.h>
 

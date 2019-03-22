@@ -82,7 +82,6 @@
 #include <sys/CacheService.h>
 #endif
 
-#include <trans/fifo.h>
 #include <sstream>
 
 
@@ -1354,6 +1353,32 @@ bool VolumeManager::stop()
         LOGDBG(TAG, " VolumeManager Not Support Listener Mode[%d]", mListenerMode);
     }
     return bResult;
+}
+
+
+Volume* VolumeManager::getCurrentUsedLocalVol()
+{
+    return mCurrentUsedLocalVol;
+}
+
+
+Volume* VolumeManager::getRemoteVolByIndex(int idx)
+{
+    for (auto& it: mModuleVols) {
+        if (it->iIndex == idx) {
+            return it;
+        }
+    }   
+    return NULL;
+}
+
+void VolumeManager::updateRemoteVolSpeedTestResult(int idx, int iSpeedFlag)
+{
+    for (auto& it: mModuleVols) {
+        if (it->iIndex == idx) {
+            it->iSpeedTest = iSpeedFlag;
+        }
+    }       
 }
 
 

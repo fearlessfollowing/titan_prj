@@ -1531,52 +1531,75 @@ void ProtoManager::handleTfcardFormatResult(SocketClient* cli, Json::Value& json
     }
 }
 
+#define _local "local"
+#define _module "module"
+#define _result "result"
 
-
-void ProtoManager::handleSpeedTestResult(SocketClient* cli, Json::Value& jsonData) 
+void ProtoManager::handleSpeedTestResult(SocketClient* cli, Json::Value& paramData) 
 {
-    LOGDBG(TAG, "Return Speed Test Result");
+    LOGDBG(TAG, "handle speed test result");
 
-    std::vector<sp<Volume>> storageList;
-    sp<Volume> tmpVol = NULL;
-    storageList.clear();
+    printJson(paramData);
 
-    if (jsonData.isMember("local")) {
-        tmpVol = std::make_shared<Volume>();
-        tmpVol->iType = VOLUME_TYPE_NV;
-        tmpVol->iSpeedTest = jsonData["local"].asInt();
-        LOGDBG(TAG, "Local Device Test Speed Result: %d", tmpVol->iSpeedTest);
-        storageList.push_back(tmpVol);
-    }
+    int iErrorCode = PROTO_SPEED_TEST_SUC;
+    std::shared_ptr<SpeedResult> results = std::make_shared<SpeedResult>();
+    results->storageList.clear();
+    
+    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
 
-    if (jsonData.isMember("module")) {
-        if (jsonData["module"].isArray()) {
-            for (u32 i = 0; i < jsonData["module"].size(); i++) {
-                tmpVol = (sp<Volume>)(new Volume());
+    if (paramData.isMember(_state)) {
+        if (!strcmp(paramData[_state].asCString(), _done)) {
+            LOGINFO(TAG, "---> state is done")
+            Json::Value& jsonData = paramData[_results];
 
-                tmpVol->iType       = VOLUME_TYPE_MODULE;
-                tmpVol->iIndex      = jsonData["module"][i]["index"].asInt();
-                tmpVol->iSpeedTest  = jsonData["module"][i]["result"].asInt();
+            if (jsonData.isMember(_local)) {
+                int iSpeedTest = (jsonData[_local].asBool() == true) ? 1: 0;
+                vm->updateLocalVolSpeedTestResult(iSpeedTest);
+                if (!iSpeedTest && vm->getCurrentUsedLocalVol()) {
+                    results->storageList.push_back(vm->getCurrentUsedLocalVol());
+                }
+                LOGDBG(TAG, "Local Device Test Speed Result: %d", iSpeedTest);
+            }
 
-                /* 类型为"SD"
-                * 外部TF卡的命名规则
-                * 名称: "tf-1","tf-2","tf-3"....
-                */
-                snprintf(tmpVol->cVolName, sizeof(tmpVol->cVolName), "SD%d", tmpVol->iIndex);
-                LOGDBG(TAG, "SD card node[%s] info index[%d], speed[%d]",
-                                tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
+            if (jsonData.isMember(_module)) {  
+                if (jsonData[_module].isArray()) {
+                    for (u32 i = 0; i < jsonData[_module].size(); i++) {
+                        int iSpeedTest = (jsonData[_module][i][_result].asBool() == true) ? 1: 0;
+                        int idx = jsonData[_module][i][_index_].asInt();
+                        Volume* tmpVol = vm->getRemoteVolByIndex(idx);
+                        vm->updateRemoteVolSpeedTestResult(idx, iSpeedTest);
+                        if (!iSpeedTest && tmpVol) {
+                            results->storageList.push_back(tmpVol);
+                        }
 
-                storageList.push_back(tmpVol);
+                        if (tmpVol) {
+                            LOGDBG(TAG, "Name[%s] Index[%d], Speed[%d]", tmpVol->cVolName,  tmpVol->iIndex, tmpVol->iSpeedTest);
+                        }
+                    }
+                } else {
+                    LOGERR(TAG, "node module not array!!");
+                    iErrorCode = PROTO_SPEED_TEST_ERR_INNER;        
+                }
             }
         } else {
-            LOGERR(TAG, "node module not array!!");
+            if (paramData.isMember(_error)) {
+                LOGINFO(TAG, "handleSpeedTestResult error code: %d", paramData[_error][_code].asInt());
+                iErrorCode = paramData[_error][_code].asInt();
+            } else {
+                LOGERR(TAG, "parameters lost 'error'");
+                iErrorCode = PROTO_SPEED_TEST_ERR_INNER;        
+            }
         }
+    } else {
+        LOGERR(TAG, "parameters lost 'state'");
+        iErrorCode = PROTO_SPEED_TEST_ERR_INNER;        
     }
 
+    results->iCode = iErrorCode;
     if (mNotify) {
         sp<ARMessage> msg = mNotify->dup();
         msg->setWhat(UI_MSG_SPEEDTEST_RESULT);
-        msg->set<std::vector<sp<Volume>>>("speed_test", storageList);
+        msg->set<std::shared_ptr<SpeedResult>>("speed_test", results);
         msg->post();   
     }
 }

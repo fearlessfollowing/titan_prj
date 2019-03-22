@@ -43,6 +43,10 @@ public:
     /* 电池是否处于充电状态 */
     bool isBatteryCharging();
 
+    /* 电池是否满足升级条件 */
+    bool isUpgradeSatisfy();
+
+    
     /* 获取电池信息 */
     int getCurBatteryInfo(BatterInfo* pBatInfo);
 

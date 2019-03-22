@@ -467,7 +467,7 @@ struct stSetItem;
 struct stPicVideoCfg;
 struct stStorageItem;
 struct stIconPos;
-
+struct stSpeedTestResult;
 class InputManager;
 
 class MenuUI: public ARHandler {
@@ -763,7 +763,7 @@ private:
     /*
      * 测速
      */
-    void    handleSppedTest(std::vector<sp<Volume>>& mSpeedTestList);
+    void    handleSppedTest(std::shared_ptr<struct stSpeedTestResult>& results);
     /*
      * 是否满足测速条件
      * 是返回true; 否返回false

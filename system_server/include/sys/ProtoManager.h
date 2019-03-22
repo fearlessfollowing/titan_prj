@@ -60,6 +60,18 @@ enum {
     PROTO_MANAGER_REQ_CONN_CLOSEED = -3,
 };
 
+enum {
+    PROTO_SPEED_TEST_SUC = 0,
+    PROTO_SPEED_TEST_ERR_INNER = -555,
+};
+
+typedef struct stSpeedTestResult {
+    int iCode;
+    std::vector<Volume*> storageList;    
+} SpeedResult;
+
+
+
 struct stTranHdr {
     int     iMagic;
     int     iLen;

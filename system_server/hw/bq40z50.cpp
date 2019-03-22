@@ -123,6 +123,33 @@ bool BatteryManager::isBatteryExist()
     return bExist;
 }
 
+bool BatteryManager::isUpgradeSatisfy()
+{
+    bool bResult = false;
+    if (isBatteryExist()) {
+        BatterInfo batInfo[3];
+        int iSucTimes = 0;
+        int iTotalPowerLevel = 0;
+        do {
+            if (getCurBatteryInfo(&batInfo[iSucTimes]) == GET_BATINFO_OK) {
+                iTotalPowerLevel += batInfo[iSucTimes].uBatLevelPer;
+                iSucTimes++;
+            }
+        } while (iSucTimes > 3);
+
+        if (iTotalPowerLevel >= 30*3) {
+            bResult = true;
+        } else {
+            LOGWARN(TAG, "battery averge level: %f", iTotalPowerLevel / 3.0f);
+        }
+
+    } else {
+        LOGWARN(TAG, "battery not exist");
+    }
+    return bResult;
+}
+
+
 
 bool BatteryManager::isBatteryCharging()
 {
