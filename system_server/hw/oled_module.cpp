@@ -859,7 +859,7 @@ void oled_module::display_onoff(u8 sw)
 
 void oled_module::clear_area_h(const u8 x,const u8 y,const u8 h)
 {
-    clear_area(x, y, (COL_MAX - x),h);
+    clear_area(x, y, (COL_MAX - x), h);
 }
 
 void oled_module::clear_area(const u8 x, const u8 y)
@@ -869,7 +869,7 @@ void oled_module::clear_area(const u8 x, const u8 y)
 
 
 //both y%PAGE_H and h%PAGE_H should be 0
-void oled_module::clear_area(const u8 x,const u8 y,const u8 w,const u8 h)
+void oled_module::clear_area(const u8 x, const u8 y, const u8 w, const u8 h)
 {
     clear_area_page(x, y/PAGE_H, w, h/PAGE_H);
 }
@@ -880,15 +880,7 @@ void oled_module::clear_area_page(const u8 col, const u8 page, const u8 col_w, c
     u8 dat = 0x00;
 
     for (u8 i = 0; i < page_num; i++) {
-
-        #if 1
         SSD_Set_RAM_Address(page + i, col);
-        #else 
-        ssd1306_write_cmd(0xb0 + page_num);
-        ssd1306_write_cmd(0x10);
-        ssd1306_write_cmd(0x02);
-        #endif
-
         for (u8 j = 0; j < col_w; j++) {
             ssd1306_write_dat(dat);
         }

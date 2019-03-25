@@ -63,10 +63,6 @@ void ins_i2c::i2c_open(unsigned int i2c_adapter, unsigned int addr)
     } else {
         i2c_addr = addr;
     }
-
-	if (i2c_fd != -1) {
-        LOGDBG(TAG, "2i2c open %s suc addr 0x%x i2c_fd %d\n", filename, addr, i2c_fd);
-    }
 }
 
 int ins_i2c::i2c_write_byte(const u8 reg, const u8 dat)

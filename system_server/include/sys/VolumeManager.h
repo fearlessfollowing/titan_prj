@@ -144,8 +144,6 @@ typedef struct stVol {
     u64             uTotal;			                    /* 总容量:  (单位为MB) */
     u64             uAvail;			                    /* 剩余容量:(单位为MB) */
 	int 	        iSpeedTest;		                    /* 1: 已经测速通过; 0: 没有进行测速或测速未通过 */
-
-
     std::mutex      mVolLock;                           /* 访问卷的锁 */
 } Volume;
 
@@ -283,7 +281,7 @@ public:
     Volume*     getCurrentUsedLocalVol();
     Volume*     getRemoteVolByIndex(int idx);
     void        updateRemoteVolSpeedTestResult(int idx, int iSpeedFlag);    
-    
+
     /*
      * U盘模式
      */

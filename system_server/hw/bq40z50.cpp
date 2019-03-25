@@ -91,14 +91,10 @@ BatteryManager::BatteryManager()
     if (pSlaveAddr) {
         mSlaveAddr = atoi(pSlaveAddr);
     }
-
-    LOGDBG(TAG, "bq40z50 use i2c bus num[%d], addr[0x%x]", mBusNumber, mSlaveAddr);
     mI2c = std::make_shared<ins_i2c>(mBusNumber, mSlaveAddr);
-
     if (mI2c->i2c_read(BQ40Z50_CMD_BAT_MODE, (u8*)&uBatMode, 2)) {
         LOGERR(TAG, "--> Read bq40z50 work mode failed.");
     } else {
-        LOGERR(TAG, "--> Read bq40z50 work mode suc. mode[0x%x]", uBatMode);
         mBatMode = uBatMode;
     }
 }
@@ -123,6 +119,11 @@ bool BatteryManager::isBatteryExist()
     return bExist;
 }
 
+#if 0
+0x2 0x37 0x76 0x7 0xe1 0x11 0xf8 0x9a 0x26 0x43 0x81 0x76 0x23 0x9b 0xae 0x29 write md5_str is 02377607e111f89a26438176239bae29 strlen 32
+
+#endif
+
 bool BatteryManager::isUpgradeSatisfy()
 {
     bool bResult = false;
@@ -133,18 +134,20 @@ bool BatteryManager::isUpgradeSatisfy()
         do {
             if (getCurBatteryInfo(&batInfo[iSucTimes]) == GET_BATINFO_OK) {
                 iTotalPowerLevel += batInfo[iSucTimes].uBatLevelPer;
+                LOGINFO(TAG, "read battery suc cnt: %d", iSucTimes);
                 iSucTimes++;
             }
-        } while (iSucTimes > 3);
+            msg_util::sleep_ms(1000);
+        } while (iSucTimes < 3);
 
         if (iTotalPowerLevel >= 30*3) {
             bResult = true;
-        } else {
-            LOGWARN(TAG, "battery averge level: %f", iTotalPowerLevel / 3.0f);
         }
 
+        LOGINFO(TAG, "battery average level: %f", iTotalPowerLevel / 3.0f);
+
     } else {
-        LOGWARN(TAG, "battery not exist");
+        LOGWARN(TAG, "isUpgradeSatisfy: battery not exist!");
     }
     return bResult;
 }
@@ -184,8 +187,6 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
 {
     int16 kTemp = 0;
     u16 batStaus;    
-    double batTemp = 0.0f;
-    bool bCharge = false;
     u16 uRemainPer = 1000;
     u16 uBatMode = 0;
 
@@ -198,7 +199,6 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
         pBatInfo->bIsExist = false;
         return GET_BATINFO_ERR_NO_EXIST;            /* 电池不存在 */
     } else {
-        LOGERR(TAG, "--> Read bq40z50 work mode suc. mode[0x%x]", uBatMode);
         mBatMode = uBatMode;
 
         pBatInfo->bIsExist = true;
@@ -228,7 +228,7 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             * 0 = Battery is in CHARGE mode.
             */
             if (batStaus & (1 << 6)) {
-                LOGDBG(TAG, "bq40z50 in discharge or relax mode.");
+                LOGDBG(TAG, "bq40z50 in discharge mode.");
                 pBatInfo->bIsCharge = false;
             } else {
                 LOGDBG(TAG, "bq40z50 in charging mode.");

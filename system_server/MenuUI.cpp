@@ -998,10 +998,6 @@ void MenuUI::disp_msg_box(int type)
 
             // dispStr((const u8*)"(1,2,3,4,5,6,7,8)", 23, 32, false, 128);
 
-            dispStr((const u8*)"Error 417. Camera", 15, 0, false, 128);
-            dispStr((const u8*)"temperature high.Please", 2, 16, false, 128);
-            dispStr((const u8*)"turn on the fan or take", 2, 32, false, 128);
-            dispStr((const u8*)"a break before continue", 2, 48, false, 128); 
 
             #endif
             break;
@@ -1017,9 +1013,11 @@ void MenuUI::disp_msg_box(int type)
             #else
             clearArea();
 
-            dispStr((const u8*)"Reading storage devices", 0, 16, false, 128);
-            dispStr((const u8*)"ServerIP:192.168.1.188", 0, 32, false, 128);
-            dispStr((const u8*)"192.168.1.188", 12, 48, false, 128);
+            // dispStr((const u8*)"udisk1", 48, 0, false, 128);
+            dispStr((const u8*)"udisk1, SD1 write", 20, 16, false, 128);
+            dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+            // dispStr((const u8*)"insufficient...", 28, 48, false, 128);
+
             #endif
             break;
         }
@@ -8355,6 +8353,9 @@ void MenuUI::handleTfStateChanged(std::vector<std::shared_ptr<Volume>>& mTfChang
             syncQueryTfCard();
         }
 
+        /* 
+         * 在测试过程中拔掉大卡,不会在屏幕上显示卡拔出的消息框
+         */
         if ( (cur_menu != MENU_SET_TEST_SPEED) && (cur_menu != MENU_SPEED_TEST) &&  (cur_menu != MENU_FORMAT_INDICATION)) {
             /* 显示消息框:  STATE_IDLE
              * 消息框被清除后会显示进入消息框的菜单(重新进入菜单时，如果时MENU_PIC_INFO, MENU_VIDEO_INFO, MENU_LIVE_INFO 需要重新更新底部空间)
@@ -8385,12 +8386,13 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
         } else {
             Volume* head = failedVec.at(0);
             int iFailedSz = failedVec.size();
+            std::stringstream line1;            
             int iStartPos = 0;
+
             switch (iFailedSz) {
                 case 1: {
                     std::stringstream errStr;
                     errStr << head->pVolName << " write";
-
                     if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
                         iStartPos = 39;
                     } else {
@@ -8401,11 +8403,11 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                     break;
                 }
 
-                case 2: {
+                case 2: {   /* OK */
                     std::stringstream errStr;
                     if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
-                        errStr << "SD(" << failedVec.at(1)->iIndex << "," << failedVec.at(1)->iIndex << ") write";
-                        iStartPos = 42;
+                        errStr << "SD(" << failedVec.at(0)->iIndex << "," << failedVec.at(1)->iIndex << ") write";
+                        iStartPos = 27;
                     } else {
                         errStr << head->pVolName << "," << failedVec.at(1)->pVolName << " write";
                         iStartPos = 20;
@@ -8415,7 +8417,7 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                     break;
                 }
 
-                case 3: {
+                case 3: {   /* OK */
                     std::stringstream errStr;
                     if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
                         errStr << "SD(" << failedVec.at(0)->iIndex << "," << failedVec.at(1)->iIndex << "," << failedVec.at(2)->iIndex << ") write";
@@ -8429,7 +8431,7 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                     break;
                 }
 
-                case 4: {
+                case 4: {   /* OK */
                     std::stringstream errStr;
                     if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
                         errStr << "SD(" << failedVec.at(0)->iIndex << "," 
@@ -8450,7 +8452,7 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                 }
 
 
-                case 5: {
+                case 5: {   /* OK */
                     std::stringstream errStr;
                     if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
                         errStr << "SD(" << failedVec.at(0)->iIndex << "," 
@@ -8460,13 +8462,11 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                                         << failedVec.at(4)->iIndex << ") write";
                         iStartPos = 9;
                     } else {
-                        std::stringstream line1;
                         line1 << head->pVolName;
                         errStr << "SD(" << failedVec.at(1)->iIndex << "," 
                                         << failedVec.at(2)->iIndex << ","
                                         << failedVec.at(3)->iIndex << ","
-                                        << failedVec.at(4)->iIndex << ","
-                                        ") write";
+                                        << failedVec.at(4)->iIndex << ") write";
                             
                         iStartPos = 15;
                         dispStr((const u8*)line1.str().c_str(), 48, 0, false, 128);
@@ -8476,7 +8476,7 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                     break;
                 }
 
-                case 6: {
+                case 6: {   /* OK */
                     std::stringstream errStr;
                     if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
                         errStr << "SD(" << failedVec.at(0)->iIndex << "," 
@@ -8484,18 +8484,15 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                                         << failedVec.at(2)->iIndex << ","
                                         << failedVec.at(3)->iIndex << ","
                                         << failedVec.at(4)->iIndex << ","
-                                        << failedVec.at(5)->iIndex << ","
-                                        ") write";
+                                        << failedVec.at(5)->iIndex << ") write";
                         iStartPos = 3;
                     } else {
-                        std::stringstream line1;
                         line1 << head->pVolName;
                         errStr << "SD(" << failedVec.at(1)->iIndex << "," 
                                         << failedVec.at(2)->iIndex << ","
                                         << failedVec.at(3)->iIndex << ","
                                         << failedVec.at(4)->iIndex << ","
-                                        << failedVec.at(5)->iIndex << ","                                    
-                                        ") write";
+                                        << failedVec.at(5)->iIndex << ") write";
                             
                         iStartPos = 9;
                         dispStr((const u8*)line1.str().c_str(), 48, 0, false, 128);
@@ -8505,7 +8502,7 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                     break;
                 }
 
-                case 7: {
+                case 7: {   /* OK */
                     std::stringstream errStr;
                     if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
                         errStr << "SD(" << failedVec.at(0)->iIndex << "," 
@@ -8514,9 +8511,11 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                                         << failedVec.at(3)->iIndex << ","
                                         << failedVec.at(4)->iIndex << ","
                                         << failedVec.at(5)->iIndex << ","
-                                        << failedVec.at(6)->iIndex << ","                                    
-                                        ")write";
-                        iStartPos = 0;
+                                        << failedVec.at(6)->iIndex << ")";
+                        iStartPos = 12;
+                        dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                        dispStr((const u8*)"write speed are", 23, 32, false, 128);
+                        dispStr((const u8*)"insufficient...", 28, 48, false, 128);
                     } else {
                         std::stringstream line1;
                         line1 << head->pVolName;
@@ -8525,19 +8524,18 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                                         << failedVec.at(3)->iIndex << ","
                                         << failedVec.at(4)->iIndex << ","
                                         << failedVec.at(5)->iIndex << ","   
-                                        << failedVec.at(6)->iIndex << ","                                                                        
-                                        ") write";
+                                        << failedVec.at(6)->iIndex << ") write";
                             
                         iStartPos = 3;
                         dispStr((const u8*)line1.str().c_str(), 48, 0, false, 128);
+                        dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                        dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
                     }                
-                    dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
-                    dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
                     break;
                 }
 
-                case 8: {
-                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                case 8: {   /* OK */
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) { /* OK */
                         std::stringstream errStr;
                         errStr << "SD(" << failedVec.at(0)->iIndex << "," 
                                         << failedVec.at(1)->iIndex << "," 
@@ -8553,20 +8551,32 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                         dispStr((const u8*)"insufficient...", 28, 32, false, 128);
                     } else {
                         std::stringstream errStr;
-                        errStr << head->pVolName << ",SD(1-8)";
-                        dispStr((const u8*)errStr.str().c_str(), 8, 16, false, 128);
-                        dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
+                        line1 << head->pVolName;
+                        errStr << "SD(" << failedVec.at(1)->iIndex << "," 
+                                        << failedVec.at(2)->iIndex << "," 
+                                        << failedVec.at(3)->iIndex << ","
+                                        << failedVec.at(4)->iIndex << ","
+                                        << failedVec.at(5)->iIndex << ","
+                                        << failedVec.at(6)->iIndex << ","
+                                        << failedVec.at(7)->iIndex << ")";
+                        iStartPos = 12;
+
+                        dispStr((const u8*)line1.str().c_str(), 48, 0, false, 128);
+                        dispStr((const u8*)errStr.str().c_str(), iStartPos, 16, false, 128);
+                        dispStr((const u8*)"write speed are", 23, 32, false, 128);
+                        dispStr((const u8*)"insufficient...", 28, 48, false, 128);
+
                     }                
                     break;
                 }
 
-                case 9: {
-                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) {
+                case 9: {   /* OK */
+                    if (head->iVolSubsys == VOLUME_SUBSYS_SD) { 
                         dispStr((const u8*)"SD(0-8) write", 27, 16, false, 128);
                         dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
-                    } else {
+                    } else {    
                         std::stringstream errStr;
-                        errStr << head->pVolName << ",SD(1-8)";
+                        errStr << head->pVolName << ",SD(1-8) write";
                         dispStr((const u8*)errStr.str().c_str(), 8, 16, false, 128);
                         dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
                     }
