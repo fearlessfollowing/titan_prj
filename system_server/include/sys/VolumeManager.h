@@ -361,6 +361,7 @@ public:
     void        setNotifyHotplugCb(notifyHotplugCallback cb) { mStorageHotplugCallback =  cb;}
 
     static u32  lefSpaceThreshold;
+    static u32  moduleLeftSpaceThreshold;
 
 private:
 

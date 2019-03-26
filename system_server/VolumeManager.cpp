@@ -118,7 +118,9 @@ extern int forkExecvpExt(int argc, char* argv[], int *status, bool bIgnorIntQuit
  *  全局变量
  *********************************************************************************************/
 
-u32 VolumeManager::lefSpaceThreshold = 1024U;
+u32 VolumeManager::lefSpaceThreshold = 1024U;           /* SD0剩余空间阀值: 1GB */
+u32 VolumeManager::moduleLeftSpaceThreshold = 500;      /* 单个模组剩余空间阀值: 500MB */
+
 
 static Mutex gRecLeftMutex;
 static Mutex gLiveRecLeftMutex;
@@ -1764,7 +1766,9 @@ bool VolumeManager::checkAllTfCardExist()
 
             /* Card Capacity > 0 And Card State OK */
             if (tmpVolume && tmpVolume->uTotal > 0 && 
-                    (tmpVolume->iVolState == VOL_MODULE_STATE_OK || tmpVolume->iVolState == VOL_MODULE_STATE_FULL) ) {     
+                    (tmpVolume->iVolState == VOL_MODULE_STATE_OK 
+                    || tmpVolume->iVolState == VOL_MODULE_STATE_FULL
+                    || tmpVolume->iVolState == VOL_MODULE_STATE_WP) ) {      /* 增加卡写保护 */
                 iExitNum++;
             }
         }
@@ -1933,11 +1937,9 @@ int VolumeManager::handleRemoteVolHotplug(std::vector<std::shared_ptr<Volume>>& 
                         tmpSourceVolume->iSpeedTest = tmpChangedVolume->iSpeedTest;
                         tmpSourceVolume->iVolState  = tmpChangedVolume->iVolState;
                         if (tmpSourceVolume->uTotal > 0) {
-                            LOGDBG(TAG, "TF Card Add action");
                             iAction = VOLUME_ACTION_ADD;
                         } else {
                             iAction = VOLUME_ACTION_REMOVE;
-                            LOGDBG(TAG, "TF Card Remove action");
                         }                        
                         break;
                     }

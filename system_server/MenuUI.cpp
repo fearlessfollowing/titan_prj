@@ -4174,7 +4174,7 @@ void MenuUI::startFormatDevice()
  */
 void MenuUI::dispStorageItem(struct stStorageItem* pStorageItem, bool bSelected)
 {
-    const int iRemainSpace = 400;       /* 剩余空间加400M */
+    const int iRemainSpace = VolumeManager::moduleLeftSpaceThreshold;       
 
     /* 根据设置项当前的值来选择显示的图标及位置 
      * total, avail 单位统一为MB
@@ -4215,7 +4215,6 @@ void MenuUI::dispStorageItem(struct stStorageItem* pStorageItem, bool bSelected)
     /* 名称: Used/Total - 为了节省绘制空间，单位统一用G */
     dispStr((const u8 *)cItems, pStorageItem->stPos.xPos, pStorageItem->stPos.yPos, bSelected, pStorageItem->stPos.iWidth);
 }
-
 
 
 
