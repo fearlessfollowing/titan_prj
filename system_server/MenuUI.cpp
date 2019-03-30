@@ -6436,13 +6436,15 @@ void MenuUI::disp_err_code(int code, int back_menu)
 	
     reset_last_info();
 
-    //force cur menu sys_err
+    if (!mShutingDown) {
 
-    #ifdef LED_HIGH_LEVEL
-        setLightDirect(BACK_RED | FRONT_RED);
-    #else 
-        setLightDirect(BACK_RED & FRONT_RED);
-    #endif 
+        #ifdef LED_HIGH_LEVEL
+            setLightDirect(BACK_RED | FRONT_RED);
+        #else 
+            setLightDirect(BACK_RED & FRONT_RED);
+        #endif 
+    }
+
 
     cur_menu = MENU_SYS_ERR;
     bDispTop = false;
@@ -7688,13 +7690,7 @@ void MenuUI::func_low_bat()
     Singleton<ProtoManager>::getInstance()->sendLowPowerReq();    
 }
 
-/* @ func
- *      setLightDirect - 直接设置系统的灯光颜色值
- * @param
- *      val - 系统的灯光颜色值
- * @return 
- *      无
- */
+
 void MenuUI::setLightDirect(u8 val)
 {
 
@@ -7707,6 +7703,13 @@ void MenuUI::setLightDirect(u8 val)
         mLedLight->set_light_val(val);
     }
 }
+
+
+void MenuUI::powerOffAll()
+{
+    mLedLight->power_off_all();
+}
+
 
 
 void MenuUI::setLight(u8 val)
@@ -8046,6 +8049,7 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
         } else if (checkServerStateIn(serverState, STATE_RECORD) && checkisLiveRecord()) {    /* 直播存片 */
             sendRpc(ACTION_LIVE);
         } else {
+
             /* 卸载大卡,关机 */
             tipUnmountBeforeShutdown();
             vm->unmountAll();       /* 卸载所有的挂载卷 */
@@ -8056,9 +8060,15 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
         /* shutdown 关机 */
         if (bNeedShutdown == true) {
             LOGDBG(TAG, ">>>>>>>>>>>>>>>>>>> Shutdown now <<<<<<<<<<<<<<<<<");
-            
-            /* 关掉OLED显示，避免屏幕上显示东西 */
+
+            mShutingDown = true;
+            /* 关掉OLED显示，避免屏幕上显示东西 - 关闭风扇及LED的显示 */
+            powerOffAll();
+
             mOLEDModule->display_onoff(0);
+            property_set("ctl.stop", "web_server");        /* 关闭camerad - 避免camerad卡死不能正常退出(2019年3月29日) */
+            property_set("ctl.stop", "camerad");        /* 关闭camerad - 避免camerad卡死不能正常退出(2019年3月29日) */
+            msg_util::sleep_ms(50);            
             system("poweroff");  // shutdown -h now
         }
     }

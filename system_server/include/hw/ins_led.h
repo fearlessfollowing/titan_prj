@@ -17,6 +17,8 @@ public:
     void        setAllLight(int iOnOff);
 
     void        close_all();
+    
+    void        power_off_all();
 
 private:
     void        init();

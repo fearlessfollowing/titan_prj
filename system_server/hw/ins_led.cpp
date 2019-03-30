@@ -62,8 +62,8 @@ void ins_led::set_light_val(u8 val)
         LOGDBG(TAG, "read orig val [0x%x]", orig_val);
         LOGDBG(TAG, "set_light_val -> val[0x%x]", val);
 
-        // orig_val |= 0xc0;   /* 确保最高两位一直为高电平(风扇常开) */
-        orig_val &= 0xc0;	/* led just low 6bit */
+        // orig_val |= (0x3 << 6);   /* 确保最高两位一直为高电平(风扇常开) */
+        orig_val &= 0xc0;	    /* led just low 6bit */
         orig_val |= val;
 
         if (mI2CLight->i2c_write_byte(LED_I2C_OUTPUT_REG, orig_val) != 0) {
@@ -80,6 +80,11 @@ void ins_led::set_light_val(u8 val)
 void ins_led::close_all()
 {
     mI2CLight->i2c_write_byte(LED_I2C_OUTPUT_REG, 0xc0);
+}
+
+void ins_led::power_off_all()
+{
+    mI2CLight->i2c_write_byte(LED_I2C_OUTPUT_REG, 0x00);
 }
 
 

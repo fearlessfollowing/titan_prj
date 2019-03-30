@@ -1,6 +1,6 @@
 /************************************************************************
-** 项	 目: PRO2
-** 文件名称: pro_update.cpp
+** 项	 目: Pro2/Titan
+** 文件名称: update_app.cpp
 ** 功能描述: 执行升级操作
 ** 创建日期: 2017-03-24
 ** 文件版本: V1.1
@@ -13,26 +13,6 @@
 ** V3.0			skymixos	2018年9月8日		 支持新旧版本的update_check
 *************************************************************************/
 
-/*
- * 升级的项包括
- * 1.可执行程序 (路径: /home/nvidia/insta360/bin)
- * 2.库			(路径: /home/nvidia/insta360/lib)
- * 3.配置文件		(路径: /home/nvidia/insta360/etc)
- * 4.模组固件		(路径: /home/nvidia/insta360/firware)
- * /home/nvidia/insta360/back
- * 更新过程:
- * - 解压SD卡中的固件(Insta360_Pro_Update.bin),创建(update目录,在该目录下创建update_app.zip, pro_update.zip) 
- * 	SD mount-point
- *	 |--- update
- *			|--- update_app
- *			| 		|-- update_app (存放升级程序)	
- *			|--- pro_update (存放升级包)
- *			|		|--- bin
- *					|--- lib
- *					|--- etc
- *					|--- firmware
- *
- */
 
 #include <common/include_common.h>
 #include <common/sp.h>
@@ -55,12 +35,11 @@
 #include <hw/battery_interface.h>
 #include <util/icon_ascii.h>
 #include <system_properties.h>
-
 #include <log/log_wrapper.h>
 
 
 #undef  TAG
-#define TAG 	"update_app"
+#define TAG 	                "update_app"
 
 #define UAPP_VER 				"V3.0"
 #define PRO_UPDATE_ZIP			"titan_update.zip"
@@ -82,6 +61,7 @@
 #define MODUEL_UPDATE_PROG 		"upgrade"
 #define ERR_UPDATE_SUCCESS 		0
 #define SENSOR_FIRM_CNT 		2
+#define INSTALL_USER_CMD	    "/usr/local/bin/extra_action.sh"
 
 
 enum {
@@ -871,14 +851,12 @@ static int pro2Updatecheck(const char* pUpdateFileDir)
 }
 
 
-#define INSTALL_USER_CMD	"/usr/local/bin/user_update.sh"
-
 
 static void installVm()
 {
 	if (access("/swap/sfile", F_OK) != 0) {
 		mkdir("/swap", 0766);
-		system("dd if=/dev/zero of=/swap/sfile bs=1024 count=8000000");
+		system("dd if=/dev/zero of=/swap/sfile bs=1024 count=4000000");
 	}
 	
 	system("mkswap /swap/sfile");
@@ -926,7 +904,6 @@ static int executeUserScript(const char* cmdPath)
 }
 
 
-#ifdef UPGRADE_CHECK_BATTERY
 static bool isBatteryEnough()
 {
     bool ret = false;
@@ -940,8 +917,6 @@ static bool isBatteryEnough()
     }
     return ret;
 }
-#endif
-
 
 
 /*************************************************************************
@@ -958,6 +933,7 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
     int iRet = -1;
 	std::vector<sp<UPDATE_SECTION>> mSections;
 	std::string updateRootPath = UPDATE_DEST_BASE_DIR;
+    const char* pSkipBatCheck = property_get(PROP_SKIP_BAT_CHECK);
 
 	LOGDBG(TAG, "start_update_app: init_oled_module ...\n");
 
@@ -965,9 +941,9 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 	
     disp_update_icon(ICON_UPGRADE_SCHEDULE00128_64);	/* 显示正在更新 */
 
-#ifdef UPGRADE_CHECK_BATTERY
-    if (isBatteryEnough()) {	/* 电量充足 */
-#endif		
+#if 0
+    if (isBatteryEnough() || (pSkipBatCheck != NULL && !strcmp(pSkipBatCheck, "true")) ) {	/* 电量充足 */
+#endif
 		if (bMode) {	/* 兼容0.2.18及以前的update_check */
 
 			if (pro2Updatecheck(pUpdatePackagePath)) {		/* 提取解压升级包成功 */
@@ -983,23 +959,21 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 			updateRootPath += PRO2_UPDATE_DIR;
 			iRet = update_sections(updateRootPath.c_str(), mSections);
 
-		#if 1
 			/** 检查是否安装了samba,如果没有安装，执行以下脚本安装samba服务 */
 			if (access(INSTALL_USER_CMD, F_OK) == 0) {
 				LOGDBG(TAG, "Running User-Definded Script now ...........");
 				chmod(INSTALL_USER_CMD, 0766);
 				executeUserScript(INSTALL_USER_CMD);
 			}
-		#endif 
 			installVm();
 		}
 
-#ifdef UPGRADE_CHECK_BATTERY
+#if 0
     } else  {	/* 电池电量低 */
         LOGERR(TAG, "battery low, can't update...");
         iRet = ERR_UPAPP_BATTERY_LOW;
     }
-#endif 
+#endif
 
 err_get_pro2_update:
     return iRet;

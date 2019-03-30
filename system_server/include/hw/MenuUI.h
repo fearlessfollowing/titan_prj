@@ -797,6 +797,8 @@ private:
     void    setLight(u8 val);
     void    setLight();
     void    setAllLightOnOffForce(int iOnOff);
+    void    powerOffAll();
+
     /************************************** 灯光管理 END *************************************************/
 
 
@@ -995,6 +997,7 @@ private:
     Json::Value                 mControlLiveJsonCmd;         /* 客户端请求的拍照JsonCmd */
     bool                        mClientTakeLiveUpdate;
 	
+    bool                        mShutingDown = false;
 
     sp<oled_module>             mOLEDModule;
     sp<SYNC_INIT_INFO>          mSyncInitInfo;

@@ -36,11 +36,11 @@
 
 
 #undef  TAG 
-#define TAG 	"PowerManager"
+#define TAG "PowerManager"
 
 
-#define POWR_ON			"power_on"
-#define POWER_OFF		"power_off"
+#define POWR_ON     "power_on"
+#define POWER_OFF   "power_off"
 
 enum {
 	CMD_POWER_ON,
@@ -121,7 +121,7 @@ static PwrCtl gPwrCtl = {
 	.iModuleNum 			= 8,
 	.iModulePwrOnLevel 		= 1,				/* 模组上电的电平级别: 1:高电平有效; 0:低电平有效 */
 	.iModulePwrInterval 	= 50,				/* 模组间上电间隔 */
-	.iModulePwrOnWaitTime	= 5000,			/* 默认等待5s */
+	.iModulePwrOnWaitTime	= 5000,			    /* 默认等待5s */
 	.cPwrOnSeq 				= {3,5,2,6,1,7,8,4}
 };
 
@@ -203,9 +203,10 @@ static void powerModule(PwrCtl* pPwrCtl, int iOnOff)
 			system("nvpmodel -m 0");
 			system("jetson_clocks.sh");
 
+        #if 0
 			pFirstPwrOn = property_get(PROP_PWR_FIRST);
 			if (pFirstPwrOn == NULL || strcmp(pFirstPwrOn, "false") == 0) {
-				property_set(PROP_PWR_FIRST, "true");	/* 只在开机第一次后会复位HUB,后面的操作都是在power_off后复位HUB */
+				property_set(PROP_PWR_FIRST, "true");       /* 只在开机第一次后会复位HUB,后面的操作都是在power_off后复位HUB */
 				int i = 0;
 				do {
 					if (pPwrCtl->iResetHubNum == 2) {
@@ -221,6 +222,7 @@ static void powerModule(PwrCtl* pPwrCtl, int iOnOff)
 				} while (i < 3);			
 
 			}
+        #endif
 
 			for (int i = 0; i < pPwrCtl->iModuleNum; i++) {
 				modulePwrCtl(pPwrCtl, i, true, 1);		/* 高电平有效,上电操作 */

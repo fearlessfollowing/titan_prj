@@ -1613,3 +1613,37 @@ fixup:
 
 
 固件类型：测试组测试
+
+
+
+版本号：V0.1.9
+固件地址：禅道
+开发自测通过：是
+
+修改点：
+
+
+（罗品京）
+1.升级进行电量检查(跳过升级时电量检查的方法:在/home/nvidia/insta360/etc/default.prop中加入sys.skip_bat_check=true)
+2.解决机器使用过程中的风扇关闭问题
+3.解决关机后，屏幕熄灭，风扇仍在转的问题
+
+
+（建聪）
+1.更新 ucode， 解决240fps上下抖动的问题
+2.增加 新旧陀螺仪兼容，自动识别的功能
+3.限制 5fps和240fps的码率
+4.增加 切换iq后，重新加载blc校正数据
+5.优化 Insta360 3A算法
+6.更新 normal & log iq
+
+
+测试风险点:
+
+遗留问题：
+
+
+固件类型：测试组测试
+
+/lib/systemd/system/alsa-restore.service
+ExecStartPre=/bin/sleep 5
