@@ -85,7 +85,7 @@ public:
         TransBuffer(int iLen) {
             mBuffer = new char[iLen + 1];
             if (mBuffer) {
-                memset(mBuffer, '\0', iLen);
+                memset(mBuffer, 0, iLen + 1);
                 mBufferLen = iLen;
             }
         }
@@ -212,7 +212,7 @@ private:
     std::string             mPreviewArg;        /* 预览参数: 优先读取配置文件中的预览参数;如果没有将使用默认的预览参数 */
     Json::Value             mPreviewJson;
     
-    uint16_t                mServerState;
+    uint64_t                mServerState;
     int                     mGpsState;
     int                     mFormatTfResult;
 

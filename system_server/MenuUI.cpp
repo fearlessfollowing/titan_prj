@@ -3822,7 +3822,8 @@ void MenuUI::dispBottomLeftSpace()
                      */
                     if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {   /* 正常的录像,必须要所有的卡存在方可 */
                         
-                        if (checkServerStateIn(serverState, STATE_LIVE) || checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) {
+                        /* 直播存片并且处于重连状态下更新屏幕中间的直播时间,只显示底部的剩余时间 */
+                        if (checkServerStateIn(serverState, STATE_LIVE)) {
                             char disp[32];
                             vm->convSec2TimeStr(vm->getLiveRecSec(), disp, sizeof(disp));
                             dispStr((const u8 *)disp, 37, 24);
@@ -5047,7 +5048,8 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
          *   2.服务器在测速状态
          */
         case MENU_SET_TEST_SPEED: {
-            
+        
+        #if 1
             if (isSatisfySpeedTestCond() == COND_ALL_CARD_EXIST) {
                 if (mSpeedTestUpdateFlag == false) {    /* 未发起测速的情况 */
                     /* 来自UI的：提示是否确认测速 */
@@ -5058,7 +5060,16 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             } else {
                 LOGDBG(TAG, "Lost some card, return now.");
                 procBackKeyEvent();
-            }           
+            }
+        #else 
+            if (mSpeedTestUpdateFlag == false) {    /* 未发起测速的情况 */
+                /* 来自UI的：提示是否确认测速 */
+                dispTipStorageDevSpeedTest();
+            } else {
+                procBackKeyEvent();                 /* 测速完成，由于拔卡或插卡导致冲进进入MENU_SPEE_TEST的情况 */
+            } 
+
+        #endif                       
             break;
         }
 
@@ -5833,11 +5844,11 @@ void MenuUI::procPowerKeyEvent()
             if (pTmpSetItem) {
                 if (!strcmp(pTmpSetItem->pItemName, SET_ITEM_NAME_STORAGESPACE)) {
                     setCurMenu(MENU_SHOW_SPACE);    /* 为了节省查询TF容量的时间过长,可在进入MENU_SHOW_SPACE时打开模组的电 - 2018年8月9日 */
-                } else if (!strcmp(pTmpSetItem->pItemName, SET_ITEM_NAME_TESTSPEED)) {                    
+                } else if (!strcmp(pTmpSetItem->pItemName, SET_ITEM_NAME_TESTSPEED)) {  
+
                     LOGDBG(TAG, "Enter Test Write Speed");
-                    /*
-                     * 检查是否满足测试条件：所有的卡都存在，否则提示卡不足
-                     */
+
+                #if 1
                     int iCond = isSatisfySpeedTestCond();
                     if (iCond == COND_ALL_CARD_EXIST) {
                         if (!checkServerStateIn(serverState, STATE_SPEED_TEST)) {
@@ -5859,6 +5870,16 @@ void MenuUI::procPowerKeyEvent()
                         LOGDBG(TAG, "Maybe TF Card Lost or Query First, Please check ");
                         disp_msg_box(DISP_NEED_QUERY_TFCARD);
                     }
+                #else 
+                    if (!checkServerStateIn(serverState, STATE_SPEED_TEST)) {
+                        mSpeedTestUpdateFlag = false;
+                        property_set(PROP_SPEED_TEST_COMP_FLAG, "false");
+                        setCurMenu(MENU_SET_TEST_SPEED);
+                    } else {
+                        LOGERR(TAG, "Current is Test Speed state ...");
+                    }
+
+                #endif                    
                 }
             }
 			break;
@@ -7119,6 +7140,9 @@ int MenuUI::oled_disp_type(int type)
          * 2.断开后再次连上
          */
         case START_LIVE_SUC: {  /* 启动直播成功，可能是重连成功 */
+
+            mLiveState = LIVE_STATE_START;
+
             LOGERR(TAG, "---> START_LIVE_SUC, Current Server State 0x%x", serverState);
             vm->incOrClearLiveRecSec(true);     /* 重置已经录像的时间为0 */
             #if 0
@@ -7136,6 +7160,7 @@ int MenuUI::oled_disp_type(int type)
          * 重新启动直播成功
          */
         case RESTART_LIVE_SUC: {    /* 不需要更新已经直播的时间 */
+            mLiveState = LIVE_STATE_START;
             set_update_mid(INTERVAL_0HZ);
             if (cur_menu != MENU_LIVE_INFO) {
                 setCurMenu(MENU_LIVE_INFO);
@@ -7146,7 +7171,10 @@ int MenuUI::oled_disp_type(int type)
         /* 启动重连: 
          * 如果在直播录像状态，需要更新录像的剩余时间 
          */
-        case START_LIVE_CONNECTING: {                
+        case START_LIVE_CONNECTING: {      
+            mLiveState = LIVE_STATE_RECONNECTING;
+
+            #if 0          
             /* 检查是否为直播录像状态 
              * 如果直播并且存片,即便连接断开也更新时间
              */
@@ -7159,6 +7187,16 @@ int MenuUI::oled_disp_type(int type)
                     LOGERR(TAG, "Server in STATE_LIVE_CONNECTING state, but current menu[%s]", getMenuName(cur_menu));
                 }
             }
+            #else 
+
+            if (cur_menu == MENU_LIVE_INFO) {
+                dispConnecting();
+            } else {
+                LOGERR(TAG, "Server in STATE_LIVE_CONNECTING state, but current menu[%s]", getMenuName(cur_menu));
+            }
+
+            #endif
+
             LOGDBG(TAG, "Server state[0x%x], disp type: START_LIVE_CONNECTING", serverState);
             break;
         }
@@ -8620,7 +8658,10 @@ void MenuUI::handleUpdateMid()
     std::shared_ptr<ProtoManager> pm  = Singleton<ProtoManager>::getInstance();
     uint64_t serverState = getServerState();
 
-    if (checkServerStateIn(serverState, STATE_RECORD) && !checkServerStateIn(serverState, STATE_LIVE) && !checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) {         /* 录像状态 */
+    /* 只是录像模式 */
+    if (checkServerStateIn(serverState, STATE_RECORD) 
+        && !checkServerStateIn(serverState, STATE_LIVE) 
+        && !checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) {         /* 录像状态 */
 
         send_update_mid_msg(INTERVAL_1HZ);      /* 1s后发送更新灯消息 */
 
@@ -8648,6 +8689,7 @@ void MenuUI::handleUpdateMid()
         send_update_mid_msg(INTERVAL_1HZ);      /* 1s后发送更新灯消息 */
         flick_light();                          /* 闪烁灯 */
     } else if (checkServerStateIn(serverState, STATE_LIVE)) {            /* 直播状态 */
+        
         send_update_mid_msg(INTERVAL_1HZ);
 
         if (!checkServerStateIn(serverState, STATE_STOP_LIVING)) {       /* 非停止直播状态 */
@@ -8672,8 +8714,9 @@ void MenuUI::handleUpdateMid()
 
         flick_light();
 
-    } else if (checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) { /* 直播连接状态: 只闪灯 */
-
+    } else if (checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) { 
+        /* 直播连接状态: 只闪灯 */
+        
         LOGDBG(TAG, "cancel send msg　in state STATE_LIVE_CONNECTING");
         if (checkisLiveRecord()) {
             send_update_mid_msg(INTERVAL_1HZ);

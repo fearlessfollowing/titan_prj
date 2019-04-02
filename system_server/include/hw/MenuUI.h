@@ -453,6 +453,14 @@ enum {
     GPS_STATE_MAX,
 };
 
+enum {
+    LIVE_STATE_START        = 0x30,
+    LIVE_STATE_RECONNECTING,
+    LIVE_STATE_STOP,
+    LIVE_STATE_MAX
+};
+
+
 struct _icon_info_;
 
 struct _select_info_;
@@ -1099,6 +1107,8 @@ private:
     Json::Value                 mTakepictureCustomer;
     Json::Value                 mTakeVideoCustomer;
     Json::Value                 mTakeLiveCustomer;
+
+    int                         mLiveState = LIVE_STATE_MAX;                                 /* 直播的状态: 正在直播状态; 直播重连状态 */
 
 	/*
 	 * 菜单管理相关 MENU_INFO stPicVideoCfg

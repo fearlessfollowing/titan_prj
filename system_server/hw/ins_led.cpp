@@ -23,12 +23,7 @@
 #undef  TAG
 #define TAG     "HwOled"
 
-#if 0
-03-26 10:48:43.854 D/HwOled  ( 2956): [system_server/hw/ins_led.cpp:65] set_light_val, new val [0xc0]
-03-26 10:48:44.047 D/HwOled  ( 2956): [system_server/hw/ins_led.cpp:65] set_light_val, new val [0xc7]
-03-26 11:18:10.879 D/HwOled  ( 2956): [system_server/hw/ins_led.cpp:65] set_light_val, new val [0x9]
-03-26 11:18:21.061 D/HwOled  ( 2956): [system_server/hw/ins_led.cpp:65] set_light_val, new val [0x7]
-#endif
+
 
 #define LED_I2C_OUTPUT_REG  0x03
 #define LED_I2C_CFG_REG     0x07
@@ -59,8 +54,8 @@ void ins_led::set_light_val(u8 val)
 
     if (mI2CLight->i2c_read(LED_I2C_OUTPUT_REG, &orig_val) == 0) {
 
-        LOGDBG(TAG, "read orig val [0x%x]", orig_val);
-        LOGDBG(TAG, "set_light_val -> val[0x%x]", val);
+        // LOGDBG(TAG, "read orig val [0x%x]", orig_val);
+        // LOGDBG(TAG, "set_light_val -> val[0x%x]", val);
 
         // orig_val |= (0x3 << 6);   /* 确保最高两位一直为高电平(风扇常开) */
         orig_val &= 0xc0;	    /* led just low 6bit */
@@ -69,7 +64,7 @@ void ins_led::set_light_val(u8 val)
         if (mI2CLight->i2c_write_byte(LED_I2C_OUTPUT_REG, orig_val) != 0) {
             LOGERR(TAG, "led write val 0x%x fail", val);
         } else { 
-            LOGDBG(TAG, "set_light_val, new val [0x%x]", orig_val);
+            // LOGDBG(TAG, "set_light_val, new val [0x%x]", orig_val);
         }
     } else {
         LOGERR(TAG, "set_light_val [0x%x] failed ...", val);

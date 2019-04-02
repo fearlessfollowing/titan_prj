@@ -131,6 +131,9 @@ class MyUnixServerHandler(socketserver.BaseRequestHandler):
                     else:
                         result = genTransError(PARAM_INVALID)
 
+                    # if (reqDict['name'] == config._GET_SET_CAM_STATE):
+                    #     Info('Rsponse: {}'.format(result))
+
                     self.request.sendall(genSendDataFromStr(result))
 
 

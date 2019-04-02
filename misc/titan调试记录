@@ -1361,3 +1361,36 @@ echo 006c 3600 > /sys/bus/i2c/devices/1-001c/codec_reg
 [libfdk_aac @ 0x7f0c14b330] 2 frames left in the queue on closing
 2019-03-18 23:21:55:706885 INFO  [core/audio_mgr.cpp:23] audio manager close
 2019-03-18 23:21:55:707495 INFO  [core/video_composer.cpp:32] video_composer 1
+
+
+
+日期：2019年4月2日
+------------------------------------------------------------------------------------------------
+直播的UI显示问题:
+1.直播不存片
+1.1屏幕发起的直播：
+    UI上显示已经直播的时间，当网络断连时，显示"reconnecting",网络恢复时，继续在之前的时间点显示
+
+
+
+启动预览:
+{
+    "name": "camera._startPreview", 
+    "parameters": {
+        "audio": {"bitrate": 128, "channelLayout": "stereo", "mime": "aac", "sampleFormat": "s16", "samplerate": 48000}, 
+        "origin": {"bitrate": 20000, "framerate": 30, "height": 1440, "mime": "h264", "width": 1920}, 
+        "stiching": {"bitrate": 5000, "framerate": 30, "height": 960, "map": "flat", "mime": "h264", "mode": "pano", "width": 1920}}, 
+        "requestSrc": "ui"
+    }
+}
+
+4K_30F直播:
+{
+    "name": "camera._startLive", 
+    "parameters": {
+        "audio": {"bitrate": 128, "channelLayout": "stereo", "mime": "aac", "sampleFormat": "s16", "samplerate": 48000}, 
+        "autoConnect": {"count": -1, "enable": true, "interval": 1000}, 
+        "origin": {"bitrate": 20480, "framerate": 30, "height": 1440, "mime": "h264", "saveOrigin": false, "storage_loc": 0, "width": 2560}, 
+        "stiching": {"bitrate": 20480, "fileSave": false, "framerate": 30, "height": 1920, "liveOnHdmi": false, "mime": "h264", "mode": "pano", "width": 3840}
+    }
+}

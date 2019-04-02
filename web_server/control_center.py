@@ -2783,16 +2783,19 @@ class control_center:
         net_state = param['state']
         if StateMachine.checkInLive():  
             if net_state == 'connecting':
-                StateMachine.rmServerState(config.STATE_LIVE)
+                Info('------------ Live connectting -----------------')
                 StateMachine.addCamState(config.STATE_LIVE_CONNECTING)
+                StateMachine.rmServerState(config.STATE_LIVE)
                 self.notifyDispType(config.START_LIVE_CONNECTING)
         
         # 系统正处于直播连接状态 -> 转为重新连接上的状态
         elif StateMachine.checkInLiveConnecting():
             if net_state == 'connected':
-                StateMachine.rmServerState(config.STATE_LIVE_CONNECTING)
+                Info('------------ Live connected -----------------')
                 StateMachine.addCamState(config.STATE_LIVE)
+                StateMachine.rmServerState(config.STATE_LIVE_CONNECTING)
                 self.notifyDispType(config.RESTART_LIVE_SUC)
+
 
 
     #############################################################################################

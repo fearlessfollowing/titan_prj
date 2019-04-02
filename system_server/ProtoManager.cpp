@@ -356,6 +356,7 @@ bool ProtoManager::getServerStateCb(Json::Value& resultJson)
     if (resultJson.isMember(_state)) {
         if (resultJson[_state] == _done) {
             Singleton<ProtoManager>::getInstance()->mServerState = resultJson[_value_].asUInt64();
+
             bRet = true;
         }
     } else {
@@ -385,6 +386,7 @@ bool ProtoManager::getServerState(uint64_t* saveState)
     root[_param] = param;
 
     if (innerSendSyncReqWithoutCallback(root, getServerStateCb)) {
+        // LOGINFO("server state: 0x%lx", mServerState);
         *saveState = mServerState;
         bRet = true;        
     }
@@ -1065,8 +1067,6 @@ int ProtoManager::sendSyncReqUseUnix(Json::Value& req, syncReqResultCallback cal
     std::string sendStr = "";
 
     convJsonObj2String(req, sendStr);
-
-    // LOGINFO(TAG, "send string: %s", sendStr.c_str());
 
     /* 1.Creat and connect Unix Server */
     iSocket = socket(AF_LOCAL, SOCK_STREAM, 0);
