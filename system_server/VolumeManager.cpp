@@ -2945,6 +2945,7 @@ void VolumeManager::unmountAll()
 {
 
     if (mCurrentUsedLocalVol) {
+        syncLocalDisk();        /* 先将卷的内容同步会磁盘，避免数据丢失 */
         std::shared_ptr<NetlinkEvent> pEvt = std::make_shared<NetlinkEvent>();  
         if (pEvt) {
             pEvt->setEventSrc(NETLINK_EVENT_SRC_APP);

@@ -3823,7 +3823,7 @@ void MenuUI::dispBottomLeftSpace()
                     if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {   /* 正常的录像,必须要所有的卡存在方可 */
                         
                         /* 直播存片并且处于重连状态下更新屏幕中间的直播时间,只显示底部的剩余时间 */
-                        if (checkServerStateIn(serverState, STATE_LIVE)) {
+                        if (checkServerStateIn(serverState, STATE_LIVE) || checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) {
                             char disp[32];
                             vm->convSec2TimeStr(vm->getLiveRecSec(), disp, sizeof(disp));
                             dispStr((const u8 *)disp, 37, 24);
