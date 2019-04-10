@@ -72,6 +72,33 @@ void ins_led::set_light_val(u8 val)
 }
 
 
+void ins_led::set_light_val(u8 val, bool bOwner)
+{
+    u8 orig_val = 0;
+
+    val &= 0x3f;    /* bit[7:6] 为风扇开关和tegra_hdmi开关, bit[5:0]为LED灯控制开关  */
+
+    if (mI2CLight->i2c_read(LED_I2C_OUTPUT_REG, &orig_val) == 0) {
+
+        // LOGDBG(TAG, "read orig val [0x%x]", orig_val);
+        // LOGDBG(TAG, "set_light_val -> val[0x%x]", val);
+
+        if (bOwner)
+            orig_val |= (0x3 << 6);   /* 确保最高两位一直为高电平(风扇常开) */
+        
+        orig_val &= 0xc0;	    /* led just low 6bit */
+        orig_val |= val;
+
+        if (mI2CLight->i2c_write_byte(LED_I2C_OUTPUT_REG, orig_val) != 0) {
+            LOGERR(TAG, "led write val 0x%x fail", val);
+        } else { 
+            // LOGDBG(TAG, "set_light_val, new val [0x%x]", orig_val);
+        }
+    } else {
+        LOGERR(TAG, "set_light_val [0x%x] failed ...", val);
+    }
+}
+
 void ins_led::close_all()
 {
     mI2CLight->i2c_write_byte(LED_I2C_OUTPUT_REG, 0xc0);

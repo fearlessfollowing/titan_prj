@@ -43,6 +43,7 @@
 
 #include <prop_cfg.h>
 #include <system_properties.h>
+#include <hw/ins_gpio.h>
 
 #include <log/log_wrapper.h>
 
@@ -52,6 +53,8 @@
 #undef      TAG
 #define     TAG "HwService"
 
+
+bool HardwareService::sFanGpioExport = false;
 
 void HardwareService::writePipe(int p, int val)
 {
@@ -375,6 +378,30 @@ void HardwareService::tunningFanSpeed(int iLevel)
 
     sprintf(cmd, "echo %d > /sys/kernel/debug/tegra_fan/target_pwm", iCurSpeed);
     system(cmd);
+}
+
+
+
+int HardwareService::switchFan(bool bOnOff)
+{
+    int iRet = -1;
+    int i = 0;
+    if (HardwareService::sFanGpioExport == false) {
+        if (gpio_request(255)) {
+            LOGERR(TAG, "request gpio [%d] failed", 255);
+            return iRet;
+        } else {
+            HardwareService::sFanGpioExport = true;
+        }
+    }
+
+    do {
+        iRet = gpio_direction_output(255, (bOnOff == true) ? 1 : 0);
+    } while (i++ < 3 && iRet);
+
+    LOGINFO(TAG, "switch fan result: %d", iRet);
+    
+    return iRet;
 }
 
 

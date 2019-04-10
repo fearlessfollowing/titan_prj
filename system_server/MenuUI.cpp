@@ -1,5 +1,5 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
+**              Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project  
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: MenuUI.cpp
 ** 功能描述: UI核心
@@ -845,18 +845,14 @@ void MenuUI::play_sound(u32 type)
 {
     if (Singleton<CfgManager>::getInstance()->getKeyVal(_speaker) == 1) {
         if (type >= 0 && type <= sizeof(sound_str) / sizeof(sound_str[0])) {
-            char cmd[1024];
-            const char* pPlaySound = property_get(PROP_PLAY_SOUND);
-            
-            if (pPlaySound && !strcmp(pPlaySound, "true")) {
-                /* Note:
-                * aplay 带 -D hw:1,0 参数时播出的音声会有两声
-                * 去掉-D hw:1,0 参数，插上HDMI时没有声音播放
-                */
-                snprintf(cmd, sizeof(cmd), "aplay -D hw:1,0 %s", sound_str[type]);
-                system(cmd);
-            }
-            
+            std::stringstream ss;
+            /* Note:
+             * aplay 带 -D hw:1,0 参数时播出的音声会有两声
+             * 去掉-D hw:1,0 参数，插上HDMI时没有声音播放
+             */
+            ss << "aplay  -D hw:1,0 " << sound_str[type];            
+            // LOGINFO("cmd: %s", ss.str().c_str());
+            system(ss.str().c_str());       
 		} else {
             LOGERR(TAG, "sound type %d exceed", type);
 		}
@@ -1057,6 +1053,8 @@ void MenuUI::updateMenuCurPageAndSelect(int menu, int iSelect)
 }
 
 
+
+
 /*************************************************************************
 ** 方法名称: setSysMenuInit
 ** 方法功能: 设置子菜单下的设置子项初始化
@@ -1104,25 +1102,25 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
             switchEtherIpMode(pSetItem[i]->iCurVal);
         #endif
 
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_FREQ)) {            /* FREQ -> 需要通知对方 */
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_FREQ)) {            
             pSetItem[i]->iCurVal = cm->getKeyVal(_flick);
             LOGDBG(TAG, "Flick Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_FLICKER);        
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_HDR)) {             /* HDR -> 需要通知对方 */
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_HDR)) {             
             pSetItem[i]->iCurVal = cm->getKeyVal(_hdr);
             LOGDBG(TAG, "HDR Init Val --> [%d]", pSetItem[i]->iCurVal);
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_RAW)) {             /* RAW raw */
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_RAW)) {             
             pSetItem[i]->iCurVal = cm->getKeyVal(_raw);
             LOGDBG(TAG, "Raw Init Val --> [%d]", pSetItem[i]->iCurVal);            
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_AEB)) {             /* AEB */
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_AEB)) {             
             pSetItem[i]->iCurVal = cm->getKeyVal(_aeb);
             LOGDBG(TAG, "AEB Init Val --> [%d]", pSetItem[i]->iCurVal);
 
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_PHDEALY)) {         /* PHTODELAY */
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_PHDEALY)) {         
             pSetItem[i]->iCurVal = cm->getKeyVal(_ph_delay);
             LOGDBG(TAG, "PhotoDelay Init Val --> [%d]", pSetItem[i]->iCurVal);
  
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_SPEAKER)) {         /* Speaker */
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_SPEAKER)) {         
             pSetItem[i]->iCurVal = cm->getKeyVal(_speaker);
             LOGDBG(TAG, "Speaker Init Val --> [%d]", pSetItem[i]->iCurVal);
             
@@ -1133,31 +1131,31 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
             }
             LOGDBG(TAG, "LedLight Init Val --> [%d]", pSetItem[i]->iCurVal);
              
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_AUDIO)) {           /* Audio -> 需要通知对方 */     
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_AUDIO)) {              
             pSetItem[i]->iCurVal = cm->getKeyVal(_audio_on);
             LOGDBG(TAG, "Audio Init Val --> [%d]", pSetItem[i]->iCurVal);
              
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_SPAUDIO)) {         /* Spatital Audio -> 需要通知对方 */          
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_SPAUDIO)) {                  
             pSetItem[i]->iCurVal = cm->getKeyVal(_spatial);
             LOGDBG(TAG, "SpatitalAudio Init Val --> [%d]", pSetItem[i]->iCurVal);
            
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_FLOWSTATE)) {       /* FlowState -> 需要通知对方 */        
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_FLOWSTATE)) {              
             pSetItem[i]->iCurVal = cm->getKeyVal(_flow_state);
             LOGDBG(TAG, "FlowState Init Val --> [%d]", pSetItem[i]->iCurVal);
              
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_GYRO_ONOFF)) {      /* Gyro -> 需要通知对方  */         
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_GYRO_ONOFF)) {               
             pSetItem[i]->iCurVal = cm->getKeyVal(_gyro_on);
             LOGDBG(TAG, "Gyro OnOff Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);          
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_FAN)) {             /* Fan -> 需要通知对方  */          
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_FAN)) {                      
             pSetItem[i]->iCurVal = cm->getKeyVal(_fan_on);
             LOGDBG(TAG, "Fan Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_SET_FAN);           
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_BOOTMLOGO)) {       /* Bottom Logo -> 需要通知对方  */      
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_BOOTMLOGO)) {             
             pSetItem[i]->iCurVal = cm->getKeyVal(_set_logo);
             LOGDBG(TAG, "BottomLogo Init Val --> [%d]", pSetItem[i]->iCurVal);
             sendRpc(ACTION_SET_OPTION, OPTION_SET_LOGO);
-        } else if (!strcmp(pItemName, SET_ITEM_NAME_VIDSEG)) {          /* Video Segment -> 需要通知对方  */        
+        } else if (!strcmp(pItemName, SET_ITEM_NAME_VIDSEG)) {                  
             pSetItem[i]->iCurVal = cm->getKeyVal(_video_seg);
             LOGDBG(TAG, "VideoSeg Init Val --> [%d]", pSetItem[i]->iCurVal); 
             sendRpc(ACTION_SET_OPTION, OPTION_SET_VID_SEG);
@@ -1353,7 +1351,6 @@ void MenuUI::setMenuCfgInit()
     
     updateMenuCurPageAndSelect(MENU_SET_AEB, Singleton<CfgManager>::getInstance()->getKeyVal(_aeb));
 
-
     LOGDBG(TAG, "Set AEB Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                 mMenuInfos[MENU_SET_AEB].mSelectInfo.total,
                 mMenuInfos[MENU_SET_AEB].mSelectInfo.page_num,
@@ -1366,8 +1363,8 @@ void MenuUI::setMenuCfgInit()
     tmPos.iWidth	= 83;   /* 显示的宽： 实际应该小点 */
     tmPos.iHeight   = 16;   /* 显示的高 */
 
-
     setCommonMenuInit(&mMenuInfos[MENU_SET_AEB], mAebList, gSetAebItems, &tmPos);   /* 设置系统菜单初始化 */
+
 #endif
 
 
@@ -1809,7 +1806,10 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         
                         for (int i = 0; i < size; i++) {                            
                             pSetItems[i]->stPos = tmPos;
-                            pSetItems[i]->iCurVal = 0;
+                            if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
+                                pSetItems[i]->stPos.xPos = 1;       /* fixup 显示Origin挡位时左侧被遮挡 */
+                                // pSetItems[i]->stPos.iWidth = 90;
+                            }                            
 
                             if (!strcmp(pSetItems[i]->pItemName, TAKE_LIVE_MODE_CUSTOMER)) {
                                 if (loadJsonFromFile(TAKE_LIVE_TEMPLET_PATH, &mTakeLiveCustomer)) {
@@ -2318,7 +2318,7 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
             if (checkAllowStitchCalc(serverState)) {
                 addState(STATE_CALIBRATING);        /* 避免倒计时，客户端的其他操作，先将状态机设置为START_CALIBRATIONING */
                 setGyroCalcDelay(5);
-                oled_disp_type(START_CALIBRATIONING);
+                dispByType(START_CALIBRATIONING);
                 pm->sendStichCalcReq();
             } else {
                 /*
@@ -2332,9 +2332,9 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 #if 0
         case ACTION_QR: {
             if ((check_state_equal(STATE_IDLE) || check_state_preview())) {
-                oled_disp_type(START_QRING);
+                dispByType(START_QRING);
             } else if (check_state_in(STATE_START_QR) && !check_state_in(STATE_STOP_QRING)) {
-                oled_disp_type(STOP_QRING);
+                dispByType(STOP_QRING);
             } else {
                 bAllow = false;
             }
@@ -2357,14 +2357,15 @@ bool MenuUI::sendRpc(int option, int cmd, Json::Value* pNodeArg)
 
         case ACTION_GYRO: {
             if (checkServerInIdle(serverState)) {
-                oled_disp_type(START_GYRO);
+                dispByType(START_GYRO);
             }
             return true;
         }
 
         case ACTION_NOISE: {
             if (checkServerInIdle(serverState)) {
-                setCurMenu(MENU_NOSIE_SAMPLE);
+                // setCurMenu(MENU_NOSIE_SAMPLE);
+                dispByType(START_NOISE);
                 pm->sendStartNoiseSample();
             }
             return true;
@@ -3823,7 +3824,7 @@ void MenuUI::dispBottomLeftSpace()
                     if (vm->checkLocalVolumeExist() && vm->checkAllTfCardExist()) {   /* 正常的录像,必须要所有的卡存在方可 */
                         
                         /* 直播存片并且处于重连状态下更新屏幕中间的直播时间,只显示底部的剩余时间 */
-                        if (checkServerStateIn(serverState, STATE_LIVE) || checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) {
+                        if (checkServerStateIn(serverState, STATE_LIVE) /*|| checkServerStateIn(serverState, STATE_LIVE_CONNECTING) */) {
                             char disp[32];
                             vm->convSec2TimeStr(vm->getLiveRecSec(), disp, sizeof(disp));
                             dispStr((const u8 *)disp, 37, 24);
@@ -4926,6 +4927,14 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
         }
 #endif 
 
+
+
+#ifdef ENABLE_GPS_SIGNAL_TEST
+        case MENU_SET_GPS_SIG_TEST: {
+            handleGpsSignalTest();
+            break;
+        }
+#endif
         case MENU_SET_AEB: {
             clearArea(0, 16);	
 
@@ -4938,9 +4947,6 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             dispSettingPage(mAebList);
             break;
         }
-
-
-
 
         case MENU_SYS_SETTING: {     /* 显示"设置菜单"" */
             clearArea(0, 16);
@@ -5049,7 +5055,7 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
          */
         case MENU_SET_TEST_SPEED: {
         
-        #if 1
+        #ifdef ENABLE_SPEED_TEST_COND_CHECK
             if (isSatisfySpeedTestCond() == COND_ALL_CARD_EXIST) {
                 if (mSpeedTestUpdateFlag == false) {    /* 未发起测速的情况 */
                     /* 来自UI的：提示是否确认测速 */
@@ -5068,8 +5074,8 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             } else {
                 procBackKeyEvent();                 /* 测速完成，由于拔卡或插卡导致冲进进入MENU_SPEE_TEST的情况 */
             } 
+        #endif
 
-        #endif                       
             break;
         }
 
@@ -5358,6 +5364,13 @@ void MenuUI::procSetMenuKeyEvent()
             setCurMenu(MENU_SET_FAN_RATE);
         } 
 #endif 
+
+#ifdef ENABLE_GPS_SIGNAL_TEST
+        else if (!strcmp(pCurItem->pItemName, SET_ITEM_GPS_SIGNAL_TEST)) {  /* GPS Signal Test, for test */
+            clearArea(0, 16);             
+            setCurMenu(MENU_SET_GPS_SIG_TEST);
+        } 
+#endif
         else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_SPEAKER)) {
             iVal = ((~iVal) & 0x00000001);
             pCurItem->iCurVal = iVal;
@@ -5618,7 +5631,7 @@ void MenuUI::procPowerKeyEvent()
                         updateFile(DNSMASQ_CONF_PATH, dns_conf.c_str(), dns_conf.length());
 
                         property_set("ctl.start", "dnsmasq");
-                        oled_disp_type(ENTER_UDISK_MODE);
+                        dispByType(ENTER_UDISK_MODE);
                     } else {
                         LOGWARN(TAG, "Server Not Allow enter Udisk mode");
                     }
@@ -5659,7 +5672,7 @@ void MenuUI::procPowerKeyEvent()
                 /* 检查存储设备是否存在，是否有剩余空间来拍照 */
                 if (checkStorageSatisfy(ACTION_PIC)) {
                     if (checkServerAllowTakePic()) {        /* 检查当前状态是否允许拍照 */
-                        oled_disp_type(CAPTURE);
+                        dispByType(CAPTURE);
                     } 
                 } else {
                     LOGDBG(TAG, "Can't Satisfy Take Picture Condition");
@@ -5759,6 +5772,7 @@ void MenuUI::procPowerKeyEvent()
                 if (mSpeedTestUpdateFlag == false) {
                     LOGDBG(TAG, "Enter MENU_SPEED_TEST Speed Testing ");
 
+                #ifdef ENABLE_SPEED_TEST_COND_CHECK     /* 检查所有的卡是否存在,再进行测速 */
                     if ((isSatisfySpeedTestCond() == COND_ALL_CARD_EXIST) && vm->checkLocalVolumeExist()) {
                         clearArea();
                         dispWriteSpeedTest();      
@@ -5767,6 +5781,12 @@ void MenuUI::procPowerKeyEvent()
                         LOGDBG(TAG, "Card removed ??? ");
                         procBackKeyEvent();
                     }
+                #else 
+                    clearArea();
+                    dispWriteSpeedTest();      
+                    pm->sendSpeedTestReq(vm->getLocalVolMountPath());
+                #endif
+
                 } else {    /* 测速结果已经更新(Server将不在测速状态),此时按按确认键 */
                     LOGDBG(TAG, "Speed Test Result is updated !!!");
                     procBackKeyEvent();
@@ -5848,7 +5868,7 @@ void MenuUI::procPowerKeyEvent()
 
                     LOGDBG(TAG, "Enter Test Write Speed");
 
-                #if 1
+                #ifdef ENABLE_SPEED_TEST_COND_CHECK
                     int iCond = isSatisfySpeedTestCond();
                     if (iCond == COND_ALL_CARD_EXIST) {
                         if (!checkServerStateIn(serverState, STATE_SPEED_TEST)) {
@@ -6663,7 +6683,7 @@ int MenuUI::oled_disp_err(sp<struct _err_type_info_> &mErr)
 
 
     if (err_code == -1) {
-        oled_disp_type(type);
+        dispByType(type);
     } else { // new error_code
 
         int back_menu = MENU_TOP;
@@ -6722,19 +6742,19 @@ int MenuUI::oled_disp_err(sp<struct _err_type_info_> &mErr)
                 break;
 				
             case STOP_REC_FAIL: {    /* 停止录像失败 */
-                oled_disp_type(type);
+                dispByType(type);
                 back_menu = get_error_back_menu(MENU_VIDEO_INFO);   // MENU_VIDEO_INFO;
                 break;
             }
 				
             case STOP_LIVE_FAIL: {
-                oled_disp_type(type);
+                dispByType(type);
                 back_menu = get_error_back_menu(MENU_LIVE_INFO);    // MENU_LIVE_INFO;
                 break;
             }
 				
             case RESET_ALL:
-                oled_disp_type(RESET_ALL);
+                dispByType(RESET_ALL);
                 err_code = -1;
                 break;
 				
@@ -6760,16 +6780,6 @@ int MenuUI::oled_disp_err(sp<struct _err_type_info_> &mErr)
     return 0;
 }
 
-#if 0
-void MenuUI::set_led_power(unsigned int on)
-{
-    if (on == 1) {
-        setLight();
-    } else {
-        setLightDirect(LIGHT_OFF);
-    }
-}
-#endif
 
 /*
  * 同步查询 
@@ -6883,10 +6893,13 @@ int MenuUI::getTakepicCustomerDelay()
 }
 
 
-int MenuUI::oled_disp_type(int type)
+
+
+
+int MenuUI::dispByType(int type)
 {
     uint64_t serverState = getServerState();
-    LOGNULL(TAG, "oled_disp_type (%d %s 0x%x)", type, getMenuName(cur_menu), serverState);
+    LOGNULL(TAG, "dispByType (%d %s 0x%x)", type, getMenuName(cur_menu), serverState);
     
     std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
     switch (type) {
@@ -7194,7 +7207,6 @@ int MenuUI::oled_disp_type(int type)
             } else {
                 LOGERR(TAG, "Server in STATE_LIVE_CONNECTING state, but current menu[%s]", getMenuName(cur_menu));
             }
-
             #endif
 
             LOGDBG(TAG, "Server state[0x%x], disp type: START_LIVE_CONNECTING", serverState);
@@ -7511,20 +7523,23 @@ int MenuUI::oled_disp_type(int type)
             break;
         }
 
-        /* 1.客户端发起的陀螺仪校正,此时服务器已经处于STATE_START_GYRO状态
-         *
+        /* 
+         * 1.客户端发起的陀螺仪校正,此时服务器已经处于STATE_START_GYRO状态
          */
         case START_GYRO: {
+            mFanControlOwner = false;
             setCurMenu(MENU_GYRO_START);
             break;
         }
 
         case START_GYRO_SUC: {
+            mFanControlOwner = true;
             set_cur_menu_from_exit();
             break;
         }
 
         case START_GYRO_FAIL: {
+            mFanControlOwner = true;
             disp_sys_err(type, get_back_menu(cur_menu));
             break;
         }
@@ -7554,18 +7569,22 @@ int MenuUI::oled_disp_type(int type)
             break;
         }
 
+        /**************************************** 采集噪声样本 **********************************/
 
-        case START_NOISE: {
+        case START_NOISE: {            
+            mFanControlOwner = false;
             setCurMenu(MENU_NOSIE_SAMPLE);
             break;
         }
 
         case START_NOISE_SUC: {
+            mFanControlOwner = true;
             set_cur_menu_from_exit();
             break;
         }
 
         case START_NOISE_FAIL: {
+            mFanControlOwner = true;
             disp_sys_err(type, get_back_menu(MENU_NOSIE_SAMPLE));
             break;
         }
@@ -7738,7 +7757,7 @@ void MenuUI::setLightDirect(u8 val)
 
     if (mLastLightVal != val) {
         mLastLightVal = val;
-        mLedLight->set_light_val(val);
+        mLedLight->set_light_val(val, mFanControlOwner);
     }
 }
 
@@ -7779,7 +7798,6 @@ bool MenuUI::check_rec_tl()
     }
     return ret;
 }
-
 
 
 /*************************************************************************
@@ -7887,7 +7905,7 @@ void MenuUI::exitAll()
 void MenuUI::handleUpdateTlCnt(sp<DISP_TYPE>& disp_type)
 {
     tl_count = disp_type->tl_count;
-    oled_disp_type(TIMELPASE_COUNT);
+    dispByType(TIMELPASE_COUNT);
 }
 
 void MenuUI::handleSetCustomer(sp<DISP_TYPE>& disp_type)
@@ -7919,7 +7937,7 @@ void MenuUI::handleSetCustomer(sp<DISP_TYPE>& disp_type)
         }
 
         writeJson2File(iAction, tempPath.c_str(), tempArg);
-        oled_disp_type(disp_type->type);
+        dispByType(disp_type->type);
     } 
 }
 
@@ -7961,7 +7979,7 @@ void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
 
     LOGDBG(TAG, "--> handleDispTypeMsg, disp type(%s)", getDispType(disp_type->type));
 	
-    oled_disp_type(disp_type->type);
+    dispByType(disp_type->type);
 }
 
 
@@ -8011,13 +8029,10 @@ void MenuUI::handleKeyMsg(int iAppKey)
         return;
     }
 
-    /* 用户自定义的虚拟键 */
-    if (iAppKey == APP_KEY_USER_DEF1  || iAppKey == APP_KEY_USER_DEF2  || iAppKey == APP_KEY_USER_DEF3) {
-        
+    /* TODO: 用户自定义的虚拟键 */
+    if (iAppKey == APP_KEY_USER_DEF1  || iAppKey == APP_KEY_USER_DEF2  || iAppKey == APP_KEY_USER_DEF3) {        
         LOGDBG(TAG, "---> user virtual key event[0x%x]", iAppKey);
-
         /* 目前用于测试音频播放问题 */
-
     }
 
 	/* 判断当前菜单是否支持该键值 */
@@ -8065,7 +8080,6 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
         LOGDBG(TAG, "---> user long press virtual key event[0x%x]", iAppKey);
 
         /* 目前用于测试音频播放问题 */
-
     }
 
 
@@ -8100,14 +8114,15 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
             LOGDBG(TAG, ">>>>>>>>>>>>>>>>>>> Shutdown now <<<<<<<<<<<<<<<<<");
 
             mShutingDown = true;
+
             /* 关掉OLED显示，避免屏幕上显示东西 - 关闭风扇及LED的显示 */
-            powerOffAll();
+            // powerOffAll();
 
             mOLEDModule->display_onoff(0);
-            property_set("ctl.stop", "web_server");        /* 关闭camerad - 避免camerad卡死不能正常退出(2019年3月29日) */
-            property_set("ctl.stop", "camerad");        /* 关闭camerad - 避免camerad卡死不能正常退出(2019年3月29日) */
+            property_set("ctl.stop", "web_server");         
+            property_set("ctl.stop", "camerad");            /* 关闭camerad - 避免camerad卡死不能正常退出(2019年3月29日) */
             msg_util::sleep_ms(50);            
-            system("poweroff");  // shutdown -h now
+            system("poweroff");                             /* shutdown -h now */
         }
     }
 }
@@ -8232,30 +8247,30 @@ void MenuUI::handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo)
         setCurMenu(MENU_TOP);	/* 初始化显示为顶级菜单 */
     } else if ((state & STATE_RECORD) == STATE_RECORD) {    /* 录像状态 */
         if ((state & STATE_PREVIEW) == STATE_PREVIEW) {
-            oled_disp_type(SYNC_REC_AND_PREVIEW);
+            dispByType(SYNC_REC_AND_PREVIEW);
         } else {
-            oled_disp_type(START_REC_SUC);
+            dispByType(START_REC_SUC);
         }
     } else if ((state & STATE_LIVE) == STATE_LIVE) {        /* 直播状态 */
         if ((state & STATE_PREVIEW) == STATE_PREVIEW) {
-            oled_disp_type(SYNC_LIVE_AND_PREVIEW);
+            dispByType(SYNC_LIVE_AND_PREVIEW);
         } else {
-            oled_disp_type(START_LIVE_SUC);
+            dispByType(START_LIVE_SUC);
         }
     } else if ((state & STATE_LIVE_CONNECTING) == STATE_LIVE_CONNECTING) {  /* 直播连接状态 */
         if ((state & STATE_PREVIEW) == STATE_PREVIEW) {
-            oled_disp_type(SYNC_LIVE_CONNECT_AND_PREVIEW);
+            dispByType(SYNC_LIVE_CONNECT_AND_PREVIEW);
         } else {
-            oled_disp_type(START_LIVE_CONNECTING);
+            dispByType(START_LIVE_CONNECTING);
         }
     } else if ((state & STATE_CALIBRATING) == STATE_CALIBRATING) {          /* 拼接校正状态 */
-        oled_disp_type(START_CALIBRATIONING);
+        dispByType(START_CALIBRATIONING);
     } else if ((state & STATE_PIC_STITCHING) == STATE_PIC_STITCHING) {      /* 图像拼接状态 */
-        oled_disp_type(SYNC_PIC_STITCH_AND_PREVIEW);
+        dispByType(SYNC_PIC_STITCH_AND_PREVIEW);
     } else if ((state & STATE_TAKE_CAPTURE_IN_PROCESS) == STATE_CALIBRATING) {
-        oled_disp_type(SYNC_PIC_CAPTURE_AND_PREVIEW);
+        dispByType(SYNC_PIC_CAPTURE_AND_PREVIEW);
     } else if ((state & STATE_PREVIEW) == STATE_PREVIEW)  {                 /* 启动预览状态 */
-        oled_disp_type(START_PREVIEW_SUC);
+        dispByType(START_PREVIEW_SUC);
     }
 	
 }
@@ -8717,7 +8732,7 @@ void MenuUI::handleUpdateMid()
     } else if (checkServerStateIn(serverState, STATE_LIVE_CONNECTING)) { 
         /* 直播连接状态: 只闪灯 */
         
-        LOGDBG(TAG, "cancel send msg　in state STATE_LIVE_CONNECTING");
+        // LOGDBG(TAG, "cancel send msg　in state STATE_LIVE_CONNECTING");
         if (checkisLiveRecord()) {
             send_update_mid_msg(INTERVAL_1HZ);
             
@@ -8784,6 +8799,32 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     send_delay_msg(UI_READ_BAT, iNextPollTime);  /* 给UI线程发送读取电池电量的延时消息 */
     return true;
 }
+
+
+#ifdef ENABLE_GPS_SIGNAL_TEST
+void MenuUI::handleGpsSignalTest()
+{
+    /* 1.发送查询GPS状态的请求 */
+    int iQueryResult = Singleton<ProtoManager>::getInstance()->sendQueryGpsState();
+    if (iQueryResult >= 0) {
+        const char* pLoc = property_get("sys.gps_loc");
+        const char* pSvNum = property_get("sys.sv_num");
+        int iGpsLoc = 0;
+        int iSvNum  = 0;
+        if (pLoc) iGpsLoc = atoi(pLoc);
+        if (pSvNum) iSvNum = atoi(pSvNum);
+        tipGpsSingalTest(1, iQueryResult, iSvNum);
+    } else {
+        tipGpsSingalTest(0);
+    }
+
+    /* 3.根据当前菜单决定是否发送下一次请求 */
+    if (cur_menu == MENU_SET_GPS_SIG_TEST) {
+        send_delay_msg(UI_MSG_GPS_SIGNAL_TEST, 2000);  /* 给UI线程发送读取电池电量的延时消息 */
+    }
+}
+#endif
+
 
 
 /*************************************************************************
@@ -9088,6 +9129,12 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
                 break;
             }
 
+#ifdef ENABLE_GPS_SIGNAL_TEST
+            case UI_MSG_GPS_SIGNAL_TEST: {
+                handleGpsSignalTest();
+                break;
+            }
+#endif
             case UI_DISP_LIGHT: {   /* 显示灯状态消息 */
                 int menu = -1;
                 int interval = 0;
@@ -9520,6 +9567,8 @@ void MenuUI::dispInNeedCard()
 
 
 
+
+
 void MenuUI::dispNeedSD0()
 {
     dispStr((const u8*)"No SD card", 34, 16);  
@@ -9672,6 +9721,33 @@ void MenuUI::tipNomSDCard()
     dispStr((const u8*)"Error 310.", 37, 16, false, 128);
     dispStr((const u8*)"No SD card", 30, 32, false, 128);
 }
+
+#ifdef ENABLE_GPS_SIGNAL_TEST
+void MenuUI::tipGpsSingalTest(int type, int iGpsState, int iSvNum)
+{
+    if (cur_menu == MENU_SET_GPS_SIG_TEST) {
+        clearArea(0, 16);
+        switch (type) {
+            case 0: {
+                dispStr((const u8*)"GPS Signal Test...", 13, 32, false, 128);
+                break;
+            }
+
+            default: {
+                
+                std::stringstream gpsState;
+                std::stringstream slNumStr;
+
+                gpsState << "GPS State: " << iGpsState;
+                slNumStr << "Satellite num: " << iSvNum;
+                dispStr((const u8*)gpsState.str().c_str(), 28, 16, false, 128);
+                dispStr((const u8*)slNumStr.str().c_str(), 23, 32, false, 128);
+                break;
+            }
+        }
+    }
+}
+#endif
 
 
 /*

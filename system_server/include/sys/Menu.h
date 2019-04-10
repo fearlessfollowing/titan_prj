@@ -55,6 +55,10 @@ enum {
     MENU_SET_FAN_RATE,
 #endif 
 
+#ifdef ENABLE_GPS_SIGNAL_TEST
+    MENU_SET_GPS_SIG_TEST,
+#endif 
+
 #ifdef ENABLE_MENU_AEB
     MENU_SET_AEB,               // 27
 #endif

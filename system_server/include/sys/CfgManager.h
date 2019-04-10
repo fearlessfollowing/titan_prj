@@ -35,6 +35,7 @@ using CfgChangedCallback = std::function<void (int iEventType, std::string key, 
 #define _speaker                "speaker"
 #define _set_logo               "set_logo"
 #define _light_on               "light_on"
+#define _led_on                 "led_on"
 #define _dhcp                   "dhcp"
 #define _wifi_on                "wifi_on"
 #define _fan_on                 "fan_on"

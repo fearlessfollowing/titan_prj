@@ -415,7 +415,7 @@ bool TranManager::onDataAvailable(SocketClient* cli)
         Json::Value rootJson;
 
         Json::CharReader* reader = builder.newCharReader();
-        // LOGDBG(TAG, "--> Recv: %s", &mRecvBuf[RECV_HEAD_LEN]);
+        LOGDBG(TAG, "--> Recv: %s", &mRecvBuf[RECV_HEAD_LEN]);
 
         if (!reader->parse(&mRecvBuf[RECV_HEAD_LEN], &mRecvBuf[RECV_HEAD_LEN + iContentLen], &rootJson, &errs)) {
             LOGERR(TAG, ">>>>>> Parse json format failed");

@@ -232,6 +232,7 @@ enum {
     UI_MSG_SHUT_DOWN,
     UI_MSG_UPDATE_TL_CNT,
     UI_MSG_SET_SYS_SETTING,
+    UI_MSG_GPS_SIGNAL_TEST,    
     UI_MSG_SET_CUSTOMER,    
     UI_MSG_COMMON,
     UI_EXIT,                        /* 退出消息循环 */
@@ -565,7 +566,9 @@ private:
     int     get_error_back_menu(int force_menu = -1);
     void    set_oled_power(unsigned int on);
     void    set_led_power(unsigned int on);
-    int     oled_disp_type(int type);
+
+    int     dispByType(int type);
+
     void    disp_sys_err(int type,int back_menu = -1);
     void    disp_err_str(int type);
     void    disp_err_code(int code,int back_menu);
@@ -594,7 +597,12 @@ private:
     
     void    play_sound(u32 type);
     void    send_update_light(int menu, int interval,bool bLight = false,int sound_id = -1);
-    
+
+
+#ifdef ENABLE_GPS_SIGNAL_TEST
+    void    handleGpsSignalTest();
+    void    tipGpsSingalTest(int iType, int iQueryResult = 0, int iSvNum = 0);    
+#endif 
 
 /***************************************** 状态管理(10.08) ***************************************************/
     bool    checkStateEqual(uint64_t state);
@@ -1109,6 +1117,8 @@ private:
     Json::Value                 mTakeLiveCustomer;
 
     int                         mLiveState = LIVE_STATE_MAX;                                 /* 直播的状态: 正在直播状态; 直播重连状态 */
+
+    bool                        mFanControlOwner = true;
 
 	/*
 	 * 菜单管理相关 MENU_INFO stPicVideoCfg

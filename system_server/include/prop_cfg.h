@@ -367,6 +367,8 @@
 #define SET_ITEM_NAME_CALC_STITCH           "calc_stitch"
 
 #define SET_ITEM_NAME_FAN_RATE_CTL           "fan_rate_ctl"
+#define SET_ITEM_GPS_SIGNAL_TEST             "gps_sig_test"
+
 
 #define SET_ITEM_NAME_TF_FOMART_THIS_CARD   "format_this_card"
 #define SET_ITEM_NAME_TF_FOMART_ALL_CARD    "format_all_card"

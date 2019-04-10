@@ -1615,10 +1615,12 @@ class control_center:
         if StateMachine.checkAllowSetSysConfig():           
             if check_dic_key_exist(req, _param):
                 if check_dic_key_exist(param, 'reset_all'):         # 复位所有的参数
-                    self.notifyDispType(config.RESET_ALL_CFG)                     
+                    self.notifyDispType(config.RESET_ALL_CFG)                   
+                    time.sleep(2)                    
+                    return cmd_done(req[_name])
                 else:
-                    self.sendIndMsg2SystemServer(req)           
-                return cmd_done(req[_name])
+                    read_info = self.sendSyncMsg2SystemServer(req)
+                    return read_info
             else:
                 return cmd_error(req[_name], 'appReqSetSysSetting', 'param not exist')
         else:

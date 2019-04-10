@@ -2877,6 +2877,31 @@ SettingItem setFanRateControlItem = {
 
 
 
+/*
+ * GPS信号测试:
+ */
+#ifdef ENABLE_GPS_SIGNAL_TEST
+SettingItem setGpsSignalTestControlItem = {
+	pItemName:      SET_ITEM_GPS_SIGNAL_TEST,		
+	iItemMaxVal:    0,							    
+	iCurVal:        0,							    
+	bHaveSubMenu:   true,						    
+	pSetItemProc:   NULL,						    
+	stPos:          {0, 0, 0, 0}, 
+	stLightIcon:    { 	/* 选中时的图标列表 */
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+	},
+    stOrigArg:      {},    
+    pNote:          "GpsSignalTest",     
+    bMode:          false,					
+};
+
+#endif
+
+
+
+
 /*****************************************************************************************
  * 设置页一级设置项列表(该排列序列决定了显示在UI上的顺序)
  ******************************************************************************************/
@@ -2923,6 +2948,10 @@ SettingItem* gSettingItems[] = {
 #ifdef ENABLE_FAN_RATE_CONTROL
     &setFanRateControlItem,
 #endif 
+
+#ifdef ENABLE_GPS_SIGNAL_TEST
+    &setGpsSignalTestControlItem,
+#endif
 
 };
 
@@ -3262,6 +3291,8 @@ SettingItem setAeb9Item = {
     pNote:          "",     
     bMode:          true,	    		
 };
+
+
 
 
 #ifdef ENABLE_FAN_RATE_CONTROL

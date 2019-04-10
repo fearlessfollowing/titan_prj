@@ -85,7 +85,7 @@ struct stMapItem;
 
 #define DEFAULT_PALY_DEVICE     "speaker"
 
-#define ENABLE_CACHE_AUDIO_FILE
+// #define ENABLE_CACHE_AUDIO_FILE
 
 /*
  * 1.构造时打开Speaker设备

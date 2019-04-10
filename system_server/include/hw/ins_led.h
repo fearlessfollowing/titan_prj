@@ -16,6 +16,8 @@ public:
 
     void        setAllLight(int iOnOff);
 
+    void        set_light_val(u8 val, bool bOwner = true);
+
     void        close_all();
     
     void        power_off_all();

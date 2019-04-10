@@ -164,6 +164,7 @@ int AudioManager::checkWavFile(const char* pBuf, HWParams* hw_params)
     return iOffset;
 }
 
+#ifdef ENABLE_CACHE_AUDIO_FILE
 
 bool AudioManager::playWav(std::string fileName, std::string playDev)
 {
@@ -259,7 +260,7 @@ err_out:
 }
 
 
-#ifdef ENABLE_CACHE_AUDIO_FILE
+
 
 /* 加载所有的wav素材到Cache中 */
 int AudioManager::loadRes2Cache(const char* fileName)
@@ -432,11 +433,11 @@ void AudioManager::init()
     /* 选择播放设备 */
     defaultPlayDev = DEFAULT_PALY_DEVICE;
 
-    initSpeaker();
+    // initSpeaker();
 
-    msg_util::sleep_ms(500);
+    // msg_util::sleep_ms(500);
     
-    initRecorder();
+    // initRecorder();
 
     if (!pPropAudio || !strcmp(pPropAudio, "false")) {
         property_set(PROP_USE_AUDIO, "true");

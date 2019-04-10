@@ -35,6 +35,8 @@
 #include <util/SingleInstance.h>
 #include <sys/ProtoManager.h>
 #include <sys/CfgManager.h>
+#include <util/msg_util.h>
+
 #include <log/log_wrapper.h>
 
 
@@ -1188,11 +1190,11 @@ bool ProtoManager::parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonDa
                 handleIndSetCustomer(cli, jsonData[_param]);
             } else if (cmd == IND_DISP_TYPE_ERR) {
                 handleIndTypeError(cli, jsonData[_param]);
-            } else if (cmd == IND_SET_SYS_SETTING) {
-                handleIndSetSysSetting(cli, jsonData[_param]);
             } else if (cmd == IND_START_SHELL) {
                 handleIndShellCommand(cli, jsonData);
-            }
+            } else if (cmd == IND_SET_SYS_SETTING) {
+                handleIndSetSysSetting(cli, jsonData);
+            } 
         } else {
             if (cmd == IND_SHUTDOWN) {  /* shutdown不带参数 */
                 handleShutdownMachine(cli);
@@ -1356,6 +1358,15 @@ void ProtoManager::handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNo
         sysSetting->led_on = reqNode[_light_on].asInt();
     }
 
+    if (reqNode.isMember(_light_on) && reqNode[_light_on].isInt()) {
+        sysSetting->led_on = reqNode[_light_on].asInt();
+    }
+
+    if (reqNode.isMember(_led_on) && reqNode[_led_on].isInt()) {
+        sysSetting->led_on = reqNode[_led_on].asInt();
+    }
+
+
     if (reqNode.isMember(_fan_on) && reqNode[_fan_on].isInt()) {
         sysSetting->fan_on = reqNode[_fan_on].asInt();
     }
@@ -1393,16 +1404,34 @@ void ProtoManager::handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNo
 }
 
 
-void ProtoManager::handleIndSetSysSetting(SocketClient* cli, Json::Value& jsonData)
+void ProtoManager::handleIndSetSysSetting(SocketClient* cli, Json::Value& rootJson)
 {
+
+    LOGINFO(TAG, "handle sys set req!!!");
+
     sp<SYS_SETTING> sysSetting = std::make_shared<SYS_SETTING>();    
-    handleSetting(sysSetting, jsonData);
+    handleSetting(sysSetting, rootJson[_param]);
     if (mNotify) {
         sp<ARMessage> msg = mNotify->dup();
         msg->setWhat(UI_MSG_SET_SYS_SETTING);
         msg->set<sp<SYS_SETTING>>("sys_setting", sysSetting);
         msg->post();
+        msg_util::sleep_ms(500);
     }
+
+    Json::Value retRoot;
+    std::string sendStr;
+
+    retRoot[_name_] = rootJson[_name_];
+    retRoot[_state] = _done;
+  
+    convJsonObj2String(retRoot, sendStr);
+    std::shared_ptr<TransBuffer> buffer = std::make_shared<TransBuffer>();
+    buffer->fillData(sendStr.c_str());
+    int r = TEMP_FAILURE_RETRY(send(cli->getSocket(), buffer->data(), buffer->size(), 0));
+    if (r != buffer->size()) {
+        LOGERR(TAG, "handleIndSetSysSetting: send data failed, what's wront!!");
+    }    
 }
 
 

@@ -135,7 +135,7 @@ int main(int argc ,char *argv[])
 
     {
         /* 构造MenuUI对象 */
-        sp<MenuUI> ptrMenu = std::make_shared<MenuUI>();
+        std::shared_ptr<MenuUI> ptrMenu = std::make_shared<MenuUI>();
         ptrMenu->startUI();
 
         read(mCtrlPipe[0], &c, 1);

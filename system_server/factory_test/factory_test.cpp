@@ -69,13 +69,13 @@ void FactoryTest::oledTest()
 void FactoryTest::awbTest()
 {
 	int ret;
-	mOLEDLight->set_light_val(0x3f);
+	mOLEDLight->set_light_val(0x3f, true);
 	// ret = awbCorrectTest();
 
     if (ret != 0) {
-        mOLEDLight->set_light_val(0x09);
+        mOLEDLight->set_light_val(0x09, true);
     } else {
-        mOLEDLight->set_light_val(0x12);
+        mOLEDLight->set_light_val(0x12, true);
     }
 }
 

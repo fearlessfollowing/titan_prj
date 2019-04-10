@@ -23,8 +23,10 @@ public:
     bool            isNeedBatteryProtect();
 
 
-    static          void tunningFanSpeed(int iLevel);
-    static          int  getCurFanSpeedLevel();
+    static void     tunningFanSpeed(int iLevel);
+    static int      getCurFanSpeedLevel();
+    static int      switchFan(bool bOnOff);
+    static bool     sFanGpioExport;
 
 private:
 

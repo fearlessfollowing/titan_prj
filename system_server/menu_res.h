@@ -290,6 +290,20 @@ static MENU_INFO mMenuInfos[] = {
     },
 #endif    
 
+#ifdef ENABLE_GPS_SIGNAL_TEST
+    /*
+     * MENU_SET_PHTO_DELAY
+     */
+    {
+        MENU_SYS_SETTING,
+        {-1 ,0, 0, 8, 3, 3},
+        {0, 0, APP_KEY_BACK, 0, 0},
+        MENU_SET_GPS_SIG_TEST,
+        NULL,
+        NULL,
+    },
+#endif  
+
 
 #ifdef ENABLE_MENU_AEB
     /*
