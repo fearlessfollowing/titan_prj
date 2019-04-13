@@ -142,6 +142,7 @@ void HardwareService::getModuleTemp()
     bool bModuleTempInvalid = false;
     char cModProp[64] = {0};    
     int iModuleTemp = -200;
+    int iTemp = -200;
 
     for (int i = 1; i <= 8; i++) {
         memset(cModProp, 0, sizeof(cModProp));
@@ -149,8 +150,14 @@ void HardwareService::getModuleTemp()
         const char* pModTemp = property_get(cModProp);
         if (pModTemp) {
             bModuleTempInvalid = true;
-            if (atoi(pModTemp) > iModuleTemp) {
-                iModuleTemp = atoi(pModTemp);
+            int16_t temp = atoi(pModTemp);
+            int8_t h2_temp, sensor_temp;
+            h2_temp = temp & 0xff;
+            sensor_temp = (temp >> 8) & 0xff;
+            iTemp = (h2_temp > sensor_temp) ? h2_temp : sensor_temp;
+            LOGINFO(TAG, "module[%d], H2 temp[%d], Sensor temp[%d]", i, h2_temp, sensor_temp);
+            if (iTemp > iModuleTemp) {
+                iModuleTemp = iTemp;
             }
         }
     }
@@ -365,17 +372,19 @@ void HardwareService::stopService()
 
 void HardwareService::tunningFanSpeed(int iLevel)
 {
-    int iFanSpeed[] = {0, 120, 160, 200, 255};
+    int iFanSpeed[] = {0, 120, 140, 160, 180, 200, 210, 230, 255};
     int iCurSpeed;
     char cmd[128] = {0};
 
-    if (iLevel < 0 || iLevel > 4) {
-        iCurSpeed = iFanSpeed[4];
+    if (iLevel < 0 || iLevel > 8) {
+        iCurSpeed = iFanSpeed[8];
     } else {
         iCurSpeed = iFanSpeed[iLevel];        
     }
+
     LOGDBG(TAG, "---> tunning fan speed: %d", iCurSpeed);
 
+    system("echo 1 > /sys/kernel/debug/tegra_fan/temp_control");
     sprintf(cmd, "echo %d > /sys/kernel/debug/tegra_fan/target_pwm", iCurSpeed);
     system(cmd);
 }

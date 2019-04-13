@@ -400,6 +400,10 @@
 #define SET_ITEM_NAME_FR_LL2        "Level-2"
 #define SET_ITEM_NAME_FR_LL3        "Level-3"
 #define SET_ITEM_NAME_FR_LL4        "Level-4"
+#define SET_ITEM_NAME_FR_LL5        "Level-5"
+#define SET_ITEM_NAME_FR_LL6        "Level-6"
+#define SET_ITEM_NAME_FR_LL7        "Level-7"
+#define SET_ITEM_NAME_FR_LL8        "Level-8"
 
 
 /***************************************************************************

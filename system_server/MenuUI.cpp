@@ -1756,10 +1756,12 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         
                         for (int i = 0; i < size; i++) {                            
                             pSetItems[i]->stPos = tmPos;
+                            #if 0
                             if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
                                 pSetItems[i]->stPos.xPos = 1;
                                 // pSetItems[i]->stPos.iWidth = 90;
                             }
+                            #endif
 
                             pSetItems[i]->iCurVal = 0;
                             if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MOD_CUSTOMER)) {
@@ -4348,6 +4350,10 @@ void MenuUI::dispPicVidCfg(PicVideoCfg* pCfg, bool bLight)
             } else {
                 iconInfo.dat = pCfg->stNorIcon[pCfg->iCurVal];
             }
+
+            LOGNULL(TAG, "dispPicVidCfg Current val[%d], [xPos:%d, yPos:%d, Width: %d, height: %d]",
+                 pCfg->iCurVal, iconInfo.x, iconInfo.y, iconInfo.w, iconInfo.h);
+
             dispIconByLoc(&iconInfo);
         } else {                        /* 以文本的方式显示 */
             const char* pDisp = (pCfg->pNote).c_str();
@@ -5513,6 +5519,10 @@ void MenuUI::convFanSpeedLevel2Note(int iLevel)
         case 2: dispNote = "FanRateCtl: L2"; break;
         case 3: dispNote = "FanRateCtl: L3"; break;
         case 4: dispNote = "FanRateCtl: L4"; break;
+        case 5: dispNote = "FanRateCtl: L5"; break;
+        case 6: dispNote = "FanRateCtl: L6"; break;
+        case 7: dispNote = "FanRateCtl: L7"; break;
+        case 8: dispNote = "FanRateCtl: L8"; break;
         case 0:
         default:
                 dispNote = "FanRateCtl: Off"; break;
@@ -8119,7 +8129,7 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
             // powerOffAll();
 
             mOLEDModule->display_onoff(0);
-            property_set("ctl.stop", "web_server");         
+            // property_set("ctl.stop", "web_server");         
             property_set("ctl.stop", "camerad");            /* 关闭camerad - 避免camerad卡死不能正常退出(2019年3月29日) */
             msg_util::sleep_ms(50);            
             system("poweroff");                             /* shutdown -h now */

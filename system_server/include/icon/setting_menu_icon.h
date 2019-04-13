@@ -2935,7 +2935,10 @@ SettingItem* gSettingItems[] = {
 	&setGyroOnOffItem,
 	&setGyroCalItem,
 
+#if 0
 	&setFanItem,
+#endif
+
 	&setSampleNosieItem,
 	&setBottomLogoItem,
 
@@ -3387,12 +3390,90 @@ SettingItem setFanRateCtrl4Item = {
     bMode:          false,	    		
 };
 
+
+SettingItem setFanRateCtrl5Item = {
+	pItemName:      SET_ITEM_NAME_FR_LL5,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_LL5,     
+    bMode:          false,	    		
+};
+
+SettingItem setFanRateCtrl6Item = {
+	pItemName:      SET_ITEM_NAME_FR_LL6,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_LL6,     
+    bMode:          false,	    		
+};
+
+SettingItem setFanRateCtrl7Item = {
+	pItemName:      SET_ITEM_NAME_FR_LL7,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_LL7,     
+    bMode:          false,	    		
+};
+
+SettingItem setFanRateCtrl8Item = {
+	pItemName:      SET_ITEM_NAME_FR_LL8,	// pItemName
+	iItemMaxVal:    0,					// iItemMaxVal
+	iCurVal:        0,					// iCurVal
+	bHaveSubMenu:   false,				// bHaveSubMenu
+	pSetItemProc:   NULL,				// pSetItemProc
+	stPos:          {0,0,0,0},
+	stLightIcon:    { 	/* 选中时的图标列表 */
+		aeb9Light_88x16,
+	},					
+	stNorIcon:      {	/* 未选中时的图标列表 */
+		aeb9Nor_88x16,
+	},
+    stOrigArg:      {},	    
+    pNote:          SET_ITEM_NAME_FR_LL8,     
+    bMode:          false,	    		
+};
+
+
 SettingItem* gSetFanrateCtrlItems[] = {
 	&setFanRateCtrlOffItem,
 	&setFanRateCtrl1Item,
 	&setFanRateCtrl2Item,
 	&setFanRateCtrl3Item,
 	&setFanRateCtrl4Item,
+    &setFanRateCtrl5Item,
+    &setFanRateCtrl6Item,
+    &setFanRateCtrl7Item,    
+    &setFanRateCtrl8Item,    
 };
 
 #endif
