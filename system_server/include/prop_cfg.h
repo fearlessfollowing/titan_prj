@@ -19,7 +19,7 @@
 
 #define WLAN0_NAME      					"wlan0"
 #define WLAN0_DEFAULT_IP 					"192.168.43.1"
-#define DEFAULT_WIFI_AP_SSID				"Insta360-Pro2-Test"
+#define DEFAULT_WIFI_AP_SSID				"Insta360-Titan-Test"
 #define DEFAULT_WIFI_AP_MODE				"g"
 #define DEFAULT_WIFI_AP_CHANNEL				"6"
 #define DEFAULT_WIFI_AP_CHANNEL_NUM_BG		11
@@ -189,12 +189,20 @@
 /************************************************
  * For Debug
  ************************************************/
-#define PROP_TP_UL "sys.tp_ul"
+#define PROP_TP_UL                      "sys.tp_ul"
 
 /*
  * 升级时调过电池电量检查
  */
-#define PROP_SKIP_BAT_CHECK     "sys.skip_bat_check"
+#define PROP_SKIP_BAT_CHECK             "sys.skip_bat_check"
+
+
+/*
+ * 降噪模式
+ */
+#define SYS_DENOISE_MODE                "sys.denoise_mode"
+
+
 
 /******************************************************************************************************
  *                          ---- 路径配置 -----
@@ -369,6 +377,7 @@
 #define SET_ITEM_NAME_FAN_RATE_CTL           "fan_rate_ctl"
 #define SET_ITEM_GPS_SIGNAL_TEST             "gps_sig_test"
 
+#define SET_ITEM_DNOISE_MODE_SELECT          "denoise_mode_sel"
 
 #define SET_ITEM_NAME_TF_FOMART_THIS_CARD   "format_this_card"
 #define SET_ITEM_NAME_TF_FOMART_ALL_CARD    "format_all_card"
@@ -404,6 +413,11 @@
 #define SET_ITEM_NAME_FR_LL6        "Level-6"
 #define SET_ITEM_NAME_FR_LL7        "Level-7"
 #define SET_ITEM_NAME_FR_LL8        "Level-8"
+
+
+#define SET_ITEM_NAME_DENOISE_NONE      "None"
+#define SET_ITEM_NAME_DENOISE_NOR       "Normal"
+#define SET_ITEM_NAME_DENOISE_SAMPLE    "Sample"
 
 
 /***************************************************************************
@@ -453,7 +467,7 @@
 /*
  * 自动关机的电量阀值
  */
-#define BAT_LOW_SHUTDOWN        (1)
+#define BAT_LOW_SHUTDOWN            (1)
 
 
 #define PIC_VIDEO_LIVE_ITEM_MAX     10

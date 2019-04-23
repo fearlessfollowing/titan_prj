@@ -290,6 +290,22 @@ static MENU_INFO mMenuInfos[] = {
     },
 #endif    
 
+
+#ifdef MENU_SET_DENOISE_MODE
+    /*
+     * MENU_SET_PHTO_DELAY
+     */
+    {
+        MENU_SYS_SETTING,
+        {-1 ,0, 0, 8, 3, 3},
+        {APP_KEY_UP, APP_KEY_DOWN, APP_KEY_BACK, 0, APP_KEY_POWER},
+        MENU_SET_DENOISE_MODE,
+        NULL,
+        NULL,
+    },
+#endif
+
+
 #ifdef ENABLE_GPS_SIGNAL_TEST
     /*
      * MENU_SET_PHTO_DELAY
@@ -305,10 +321,7 @@ static MENU_INFO mMenuInfos[] = {
 #endif  
 
 
-#ifdef ENABLE_MENU_AEB
-    /*
-     * MENU_AEB
-     */
+    /** MENU_AEB */
     {
         MENU_SYS_SETTING,
         {-1 ,0, 0, 8, 3, 3},
@@ -317,7 +330,6 @@ static MENU_INFO mMenuInfos[] = {
         NULL,
         NULL,
     },
-#endif
 
     {	/* MENU_SHOW_SPACE */
     	MENU_STORAGE,

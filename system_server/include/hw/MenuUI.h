@@ -1135,6 +1135,12 @@ private:
     int                                 mFanLevel;          /* 0 - Off; 1 - Level1; 2 - Level2; 3 - Level3; 4 - Level4 */
 #endif 
 
+
+#ifdef ENABLE_DENOISE_MODE_SELECT
+    std::vector<struct stSetItem*>      mDenoiseModeList;
+#endif 
+
+
     std::vector<struct stPicVideoCfg*>  mPicAllItemsList;
     std::vector<struct stPicVideoCfg*>  mVidAllItemsList;   
     std::vector<struct stPicVideoCfg*>  mLiveAllItemsList;

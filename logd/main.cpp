@@ -205,7 +205,7 @@ int main()
     LogListener *swl = new LogListener(logBuf, reader);
     // Backlog and /proc/sys/net/unix/max_dgram_qlen set to large value
     if (swl->startListener(300)) {
-	printf("LogListener startListener failed. exit now.\n");
+	    printf("LogListener startListener failed. exit now.\n");
         exit(1);
     }
 

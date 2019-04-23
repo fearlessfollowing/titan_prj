@@ -136,7 +136,8 @@ UidStatistics::~UidStatistics() {
     }
 }
 
-void UidStatistics::add(unsigned short size, pid_t pid) {
+void UidStatistics::add(unsigned short size, pid_t pid) 
+{
     mSizes += size;
     ++mElements;
 
@@ -150,6 +151,7 @@ void UidStatistics::add(unsigned short size, pid_t pid) {
             return;
         }
     }
+
     // insert if the gone entry.
     bool insert_before_last = (last != it) && p && (p->getPid() == p->gone);
     p = new PidStatistics(pid, pidToName(pid));
@@ -161,7 +163,8 @@ void UidStatistics::add(unsigned short size, pid_t pid) {
     p->add(size);
 }
 
-void UidStatistics::subtract(unsigned short size, pid_t pid) {
+void UidStatistics::subtract(unsigned short size, pid_t pid) 
+{
     mSizes -= size;
     --mElements;
 
@@ -193,7 +196,8 @@ void UidStatistics::subtract(unsigned short size, pid_t pid) {
     }
 }
 
-void UidStatistics::sort() {
+void UidStatistics::sort() 
+{
     for (bool pass = true; pass;) {
         pass = false;
         PidStatisticsCollection::iterator it = begin();
@@ -216,7 +220,8 @@ void UidStatistics::sort() {
     }
 }
 
-size_t UidStatistics::sizes(pid_t pid) {
+size_t UidStatistics::sizes(pid_t pid) 
+{
     if (pid == pid_all) {
         return sizes();
     }
@@ -231,7 +236,8 @@ size_t UidStatistics::sizes(pid_t pid) {
     return 0;
 }
 
-size_t UidStatistics::elements(pid_t pid) {
+size_t UidStatistics::elements(pid_t pid) 
+{
     if (pid == pid_all) {
         return elements();
     }
@@ -246,7 +252,8 @@ size_t UidStatistics::elements(pid_t pid) {
     return 0;
 }
 
-size_t UidStatistics::sizesTotal(pid_t pid) {
+size_t UidStatistics::sizesTotal(pid_t pid) 
+{
     size_t sizes = 0;
     PidStatisticsCollection::iterator it;
     for (it = begin(); it != end(); ++it) {
@@ -258,7 +265,8 @@ size_t UidStatistics::sizesTotal(pid_t pid) {
     return sizes;
 }
 
-size_t UidStatistics::elementsTotal(pid_t pid) {
+size_t UidStatistics::elementsTotal(pid_t pid) 
+{
     size_t elements = 0;
     PidStatisticsCollection::iterator it;
     for (it = begin(); it != end(); ++it) {
@@ -270,7 +278,8 @@ size_t UidStatistics::elementsTotal(pid_t pid) {
     return elements;
 }
 
-LidStatistics::LidStatistics() {
+LidStatistics::LidStatistics() 
+{
     Uids.clear();
 }
 

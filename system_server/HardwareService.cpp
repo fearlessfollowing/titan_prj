@@ -155,7 +155,7 @@ void HardwareService::getModuleTemp()
             h2_temp = temp & 0xff;
             sensor_temp = (temp >> 8) & 0xff;
             iTemp = (h2_temp > sensor_temp) ? h2_temp : sensor_temp;
-            LOGINFO(TAG, "module[%d], H2 temp[%d], Sensor temp[%d]", i, h2_temp, sensor_temp);
+            // LOGINFO(TAG, "module[%d], H2 temp[%d], Sensor temp[%d]", i, h2_temp, sensor_temp);
             if (iTemp > iModuleTemp) {
                 iModuleTemp = iTemp;
             }

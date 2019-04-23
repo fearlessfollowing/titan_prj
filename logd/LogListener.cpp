@@ -109,8 +109,13 @@ bool LogListener::onDataAvailable(SocketClient *cli) {
     // NB: hdr.msg_flags & MSG_TRUNC is not tested, silently passing a
     // truncated message to the logs.
 
-    logbuf->log(log_id, realtime, cred->uid, cred->pid, tid, msg,
-        ((size_t) n <= USHRT_MAX) ? (unsigned short) n : USHRT_MAX);
+    logbuf->log(log_id, 
+                realtime, 
+                cred->uid, 
+                cred->pid, 
+                tid, 
+                msg, 
+                ((size_t) n <= USHRT_MAX) ? (unsigned short) n : USHRT_MAX);
     reader->notifyNewLog();
 
     return true;

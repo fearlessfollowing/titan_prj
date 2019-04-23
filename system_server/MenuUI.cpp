@@ -31,7 +31,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/statfs.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 #include <common/include_common.h>
+
+#include <prop_cfg.h>
 
 #include <sys/NetManager.h>
 #include <util/ARHandler.h>
@@ -39,39 +44,29 @@
 #include <util/msg_util.h>
 #include <util/bytes_int_convert.h>
 #include <system_properties.h>
-#include <prop_cfg.h>
-
 #include <hw/battery_interface.h>
-
+#include <hw/InputManager.h>
 #include <hw/lan.h>
-
 #include <hw/MenuUI.h>
 #include <sys/Menu.h>
-#include <hw/InputManager.h>
-#include <util/icon_ascii.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
+
+#include <log/log_wrapper.h>
 
 #include <sys/AudioManager.h>
-
 #include <sys/ProtoManager.h>
 #include <sys/CfgManager.h>
 #include <sys/TranManager.h>
 #include <sys/HardwareService.h>
-
 #include <sys/err_code.h>
-
 #include <sys/Mutex.h>
-#include <icon/setting_menu_icon.h>
-#include <icon/pic_video_select.h>
 
 #include <util/SingleInstance.h>
+#include <util/icon_ascii.h>
 
-#include <log/log_wrapper.h>
 
+#include <icon/setting_menu_cfg.h>
+#include <icon/pic_video_select.h>
 #include <icon/status_bar.h>
-
 #include "menu_res.h"
 
 
@@ -87,6 +82,7 @@ LOGERR(TAG,"err menu state (%d 0x%x)",  menu, state);
 
 #define INFO_MENU_STATE(menu,state) \
 LOGDBG(TAG, "menu state (%d 0x%x)", menu, state);
+
 
 
 
@@ -151,8 +147,6 @@ static const char *sound_str[] = {
     "/home/nvidia/insta360/wav/three_s_timer.wav",
     "/home/nvidia/insta360/wav/one_s_timer.wav"
 };
-
-
 
 static int main_icons[][MAINMENU_MAX] = {
 	{   /* WIFI关闭 */
@@ -260,11 +254,14 @@ const char *getMenuName(int cmd)
 #ifdef ENABLE_FAN_RATE_CONTROL       
         MENU_NAME(MENU_SET_FAN_RATE);
 #endif
+
+#ifdef ENABLE_DENOISE_MODE_SELECT
+        MENU_NAME(MENU_SET_DENOISE_MODE);
+#endif
+
     default: return "Unkown Menu";
     }
 }
-
-
 
 //str not used 0613
 static ERR_CODE_DETAIL mErrDetails[] = {
@@ -850,7 +847,7 @@ void MenuUI::play_sound(u32 type)
              * aplay 带 -D hw:1,0 参数时播出的音声会有两声
              * 去掉-D hw:1,0 参数，插上HDMI时没有声音播放
              */
-            ss << "aplay  -D hw:1,0 " << sound_str[type];            
+            ss << "aplay -D hw:1,0 " << sound_str[type];            
             // LOGINFO("cmd: %s", ss.str().c_str());
             system(ss.str().c_str());       
 		} else {
@@ -1055,14 +1052,14 @@ void MenuUI::updateMenuCurPageAndSelect(int menu, int iSelect)
 
 
 
-/*************************************************************************
+/*****************************************************************************************************
 ** 方法名称: setSysMenuInit
 ** 方法功能: 设置子菜单下的设置子项初始化
 ** 入口参数: pParentMenu - 父菜单对象指针
 ** 返回值: 无 
 ** 调 用: init_menu_select
 **
-*************************************************************************/
+*******************************************************************************************************/
 void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
 {
     LOGDBG(TAG, "Init System Setting subsyste Menu...");
@@ -1221,218 +1218,292 @@ void MenuUI::setStorageMenuInit(MENU_INFO* pParentMenu, std::vector<struct stSet
 }
 
 
-/*
- * 设置页配置初始化
- */
+
+/*****************************************************************************************************
+** 方法名称: setMenuCfgInit
+** 方法功能: 设置页的各级菜单初始化
+** 入口参数: 无
+** 返回值:   无 
+** 调 用: init_menu_select
+**
+*******************************************************************************************************/
 void MenuUI::setMenuCfgInit()
 {
     int iPageCnt = 0;
     ICON_POS tmPos;
 
-    /*
-     * 设置菜单
-     */
-    mMenuInfos[MENU_SYS_SETTING].priv = static_cast<void*>(&setPageNvIconInfo);
-    mMenuInfos[MENU_SYS_SETTING].privList = static_cast<void*>(&mSetItemsList);
+    /*********************************************************************************************
+     *      设置菜单
+     *********************************************************************************************/
+    {
+        mMenuInfos[MENU_SYS_SETTING].priv = static_cast<void*>(&setPageNvIconInfo);
+        mMenuInfos[MENU_SYS_SETTING].privList = static_cast<void*>(&mSetItemsList);
 
-    mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total = sizeof(gSettingItems) / sizeof(gSettingItems[0]);
-    mMenuInfos[MENU_SYS_SETTING].mSelectInfo.select = 0;
-    mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_max = 3;
+        mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total = sizeof(gSettingItems) / sizeof(gSettingItems[0]);
+        mMenuInfos[MENU_SYS_SETTING].mSelectInfo.select = 0;
+        mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_max = 3;
 
-    iPageCnt = mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total % mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_max;
-    if (iPageCnt == 0) {
-        iPageCnt = mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total / mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_max;
-    } else {
-        iPageCnt = mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total / mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_max + 1;
+        iPageCnt = mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total % mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_max;
+        if (iPageCnt == 0) {
+            iPageCnt = mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total / mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_max;
+        } else {
+            iPageCnt = mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total / mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_max + 1;
+        }
+
+        mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_num = iPageCnt;
+        LOGDBG(TAG, "Setting Menu Info: total items [%d], page count[%d]", 
+                    mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total,
+                    mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_num);
+
+        setSysMenuInit(&mMenuInfos[MENU_SYS_SETTING], gSettingItems);   /* 设置系统菜单初始化 */
     }
 
-    mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_num = iPageCnt;
-    LOGDBG(TAG, "Setting Menu Info: total items [%d], page count[%d]", 
-                mMenuInfos[MENU_SYS_SETTING].mSelectInfo.total,
-                mMenuInfos[MENU_SYS_SETTING].mSelectInfo.page_num);
+    /*********************************************************************************************
+     *      Photot delay菜单
+     *********************************************************************************************/
+    {
+        mMenuInfos[MENU_SET_PHOTO_DEALY].priv = static_cast<void*>(&setPhotoDelayNvIconInfo);
+        mMenuInfos[MENU_SET_PHOTO_DEALY].privList = static_cast<void*>(&mPhotoDelayList);
 
-    setSysMenuInit(&mMenuInfos[MENU_SYS_SETTING], gSettingItems);   /* 设置系统菜单初始化 */
+        mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total = sizeof(gSetPhotoDelayItems) / sizeof(gSetPhotoDelayItems[0]);
+        mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.select = 0;   
+        mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_max = 3;
 
+        iPageCnt = mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total % mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_max;
+        if (iPageCnt == 0) {
+            iPageCnt = mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total / mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_max;
+        } else {
+            iPageCnt = mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total / mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_max + 1;
+        }
 
-    /*
-     * Photot delay菜单
-     */
-    mMenuInfos[MENU_SET_PHOTO_DEALY].priv = static_cast<void*>(&setPhotoDelayNvIconInfo);
-    mMenuInfos[MENU_SET_PHOTO_DEALY].privList = static_cast<void*>(&mPhotoDelayList);
+        mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_num = iPageCnt;
 
-    mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total = sizeof(gSetPhotoDelayItems) / sizeof(gSetPhotoDelayItems[0]);
-    mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.select = 0;   
-    mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_max = 3;
+        /* 使用配置值来初始化首次显示的页面 */
+        updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, Singleton<CfgManager>::getInstance()->getKeyVal(_ph_delay));
 
-    iPageCnt = mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total % mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_max;
-    if (iPageCnt == 0) {
-        iPageCnt = mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total / mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_max;
-    } else {
-        iPageCnt = mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total / mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_max + 1;
+        LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total,
+                    mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_num,
+                    mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.select
+                    );
+
+        tmPos.yPos 		= 48;
+        tmPos.xPos 		= 34;   /* 水平方向的起始坐标 */
+        tmPos.iWidth	= 89;   /* 显示的宽 */
+        tmPos.iHeight   = 16;   /* 显示的高 */
+        setCommonMenuInit(&mMenuInfos[MENU_SET_PHOTO_DEALY], mPhotoDelayList, gSetPhotoDelayItems, &tmPos);   /* 设置系统菜单初始化 */
     }
 
-    mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_num = iPageCnt;
+    /*********************************************************************************************
+     *      AEB菜单
+     *********************************************************************************************/
+    {
+        mMenuInfos[MENU_SET_AEB].priv = static_cast<void*>(&setAebsNvIconInfo);
+        mMenuInfos[MENU_SET_AEB].privList = static_cast<void*>(&mAebList);
 
+        mMenuInfos[MENU_SET_AEB].mSelectInfo.total = sizeof(gSetAebItems) / sizeof(gSetAebItems[0]);
+        mMenuInfos[MENU_SET_AEB].mSelectInfo.select = 0;   
+        mMenuInfos[MENU_SET_AEB].mSelectInfo.page_max = 3;
 
-    /* 使用配置值来初始化首次显示的页面 */
-    updateMenuCurPageAndSelect(MENU_SET_PHOTO_DEALY, Singleton<CfgManager>::getInstance()->getKeyVal(_ph_delay));
+        iPageCnt = mMenuInfos[MENU_SET_AEB].mSelectInfo.total % mMenuInfos[MENU_SET_AEB].mSelectInfo.page_max;
+        if (iPageCnt == 0) {
+            iPageCnt = mMenuInfos[MENU_SET_AEB].mSelectInfo.total / mMenuInfos[MENU_SET_AEB].mSelectInfo.page_max;
+        } else {
+            iPageCnt = mMenuInfos[MENU_SET_AEB].mSelectInfo.total / mMenuInfos[MENU_SET_AEB].mSelectInfo.page_max + 1;
+        }
 
-    LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.total,
-                mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.page_num,
-                mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.cur_page,
-                mMenuInfos[MENU_SET_PHOTO_DEALY].mSelectInfo.select
-                );
+        mMenuInfos[MENU_SET_AEB].mSelectInfo.page_num = iPageCnt;
 
-    tmPos.yPos 		= 48;
-    tmPos.xPos 		= 34;   /* 水平方向的起始坐标 */
-    tmPos.iWidth	= 89;   /* 显示的宽 */
-    tmPos.iHeight   = 16;   /* 显示的高 */
-    setCommonMenuInit(&mMenuInfos[MENU_SET_PHOTO_DEALY], mPhotoDelayList, gSetPhotoDelayItems, &tmPos);   /* 设置系统菜单初始化 */
+        /* 使用配置值来初始化首次显示的页面 */        
+        updateMenuCurPageAndSelect(MENU_SET_AEB, Singleton<CfgManager>::getInstance()->getKeyVal(_aeb));
 
+        LOGDBG(TAG, "Set AEB Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_SET_AEB].mSelectInfo.total,
+                    mMenuInfos[MENU_SET_AEB].mSelectInfo.page_num,
+                    mMenuInfos[MENU_SET_AEB].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_SET_AEB].mSelectInfo.select
+                    );
 
-#ifdef ENABLE_FAN_RATE_CONTROL
+        tmPos.xPos 		= 43;   /* 水平方向的起始坐标 */
+        tmPos.yPos 		= 16;
+        tmPos.iWidth	= 83;   /* 显示的宽： 实际应该小点 */
+        tmPos.iHeight   = 16;   /* 显示的高 */
 
-    mMenuInfos[MENU_SET_FAN_RATE].priv = static_cast<void*>(&setPageNvIconInfo);
-    mMenuInfos[MENU_SET_FAN_RATE].privList = static_cast<void*>(&mFanRateCtrlList);
-
-    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total = sizeof(gSetFanrateCtrlItems) / sizeof(gSetFanrateCtrlItems[0]);
-    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.select = 0;   
-    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max = 3;
-
-    iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total % mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max;
-    if (iPageCnt == 0) {
-        iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total / mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max;
-    } else {
-        iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total / mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max + 1;
+        setCommonMenuInit(&mMenuInfos[MENU_SET_AEB], mAebList, gSetAebItems, &tmPos);   /* 设置系统菜单初始化 */
     }
 
-    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num = iPageCnt;
+    /*********************************************************************************************
+     *      Fan Control菜单
+     *********************************************************************************************/
+    {
 
-    /* 使用配置值来初始化首次显示的页面 */
-    mFanLevel = HardwareService::getCurFanSpeedLevel();
-    convFanSpeedLevel2Note(mFanLevel);
-    updateMenuCurPageAndSelect(MENU_SET_FAN_RATE, mFanLevel);
+    #ifdef ENABLE_FAN_RATE_CONTROL
 
-    LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total,
-                mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num,
-                mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.cur_page,
-                mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.select
-                );
+        mMenuInfos[MENU_SET_FAN_RATE].priv = static_cast<void*>(&setPageNvIconInfo);
+        mMenuInfos[MENU_SET_FAN_RATE].privList = static_cast<void*>(&mFanRateCtrlList);
 
-    tmPos.yPos 		= 16;
-    tmPos.xPos 		= 34;       /* 水平方向的起始坐标 */
-    tmPos.iWidth	= 89;       /* 显示的宽 */
-    tmPos.iHeight   = 16;       /* 显示的高 */
-    setCommonMenuInit(&mMenuInfos[MENU_SET_FAN_RATE], mFanRateCtrlList, gSetFanrateCtrlItems, &tmPos);   /* 设置系统菜单初始化 */
-#endif
+        mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total = sizeof(gSetFanrateCtrlItems) / sizeof(gSetFanrateCtrlItems[0]);
+        mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.select = 0;   
+        mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max = 3;
 
+        iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total % mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max;
+        if (iPageCnt == 0) {
+            iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total / mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max;
+        } else {
+            iPageCnt = mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total / mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_max + 1;
+        }
 
-#ifdef ENABLE_MENU_AEB	
+        mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num = iPageCnt;
 
-    mMenuInfos[MENU_SET_AEB].priv = static_cast<void*>(&setAebsNvIconInfo);
-    mMenuInfos[MENU_SET_AEB].privList = static_cast<void*>(&mAebList);
+        /* 使用配置值来初始化首次显示的页面 */
+        mFanLevel = HardwareService::getCurFanSpeedLevel();
+        convFanSpeedLevel2Note(mFanLevel);
+        updateMenuCurPageAndSelect(MENU_SET_FAN_RATE, mFanLevel);
 
-    mMenuInfos[MENU_SET_AEB].mSelectInfo.total = sizeof(gSetAebItems) / sizeof(gSetAebItems[0]);
-    mMenuInfos[MENU_SET_AEB].mSelectInfo.select = 0;   
-    mMenuInfos[MENU_SET_AEB].mSelectInfo.page_max = 3;
+        LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total,
+                    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num,
+                    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.select
+                    );
 
-    iPageCnt = mMenuInfos[MENU_SET_AEB].mSelectInfo.total % mMenuInfos[MENU_SET_AEB].mSelectInfo.page_max;
-    if (iPageCnt == 0) {
-        iPageCnt = mMenuInfos[MENU_SET_AEB].mSelectInfo.total / mMenuInfos[MENU_SET_AEB].mSelectInfo.page_max;
-    } else {
-        iPageCnt = mMenuInfos[MENU_SET_AEB].mSelectInfo.total / mMenuInfos[MENU_SET_AEB].mSelectInfo.page_max + 1;
+        tmPos.yPos 		= 16;
+        tmPos.xPos 		= 34;       /* 水平方向的起始坐标 */
+        tmPos.iWidth	= 89;       /* 显示的宽 */
+        tmPos.iHeight   = 16;       /* 显示的高 */
+        setCommonMenuInit(&mMenuInfos[MENU_SET_FAN_RATE], mFanRateCtrlList, gSetFanrateCtrlItems, &tmPos);   /* 设置系统菜单初始化 */
+    #endif
+
     }
 
-    mMenuInfos[MENU_SET_AEB].mSelectInfo.page_num = iPageCnt;
 
-    /* 使用配置值来初始化首次显示的页面 */
-    
-    updateMenuCurPageAndSelect(MENU_SET_AEB, Singleton<CfgManager>::getInstance()->getKeyVal(_aeb));
+    /*********************************************************************************************
+     *      Storage菜单
+     *********************************************************************************************/
+    {
+        mMenuInfos[MENU_STORAGE].priv = static_cast<void*>(&storageNvIconInfo);
+        mMenuInfos[MENU_STORAGE].privList = static_cast<void*>(&mStorageList);
 
-    LOGDBG(TAG, "Set AEB Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                mMenuInfos[MENU_SET_AEB].mSelectInfo.total,
-                mMenuInfos[MENU_SET_AEB].mSelectInfo.page_num,
-                mMenuInfos[MENU_SET_AEB].mSelectInfo.cur_page,
-                mMenuInfos[MENU_SET_AEB].mSelectInfo.select
-                );
+        mMenuInfos[MENU_STORAGE].mSelectInfo.total = sizeof(gStorageSetItems) / sizeof(gStorageSetItems[0]);
+        mMenuInfos[MENU_STORAGE].mSelectInfo.select = 0;   
+        mMenuInfos[MENU_STORAGE].mSelectInfo.page_max = 3;
 
-    tmPos.xPos 		= 43;   /* 水平方向的起始坐标 */
-    tmPos.yPos 		= 16;
-    tmPos.iWidth	= 83;   /* 显示的宽： 实际应该小点 */
-    tmPos.iHeight   = 16;   /* 显示的高 */
+        iPageCnt = mMenuInfos[MENU_STORAGE].mSelectInfo.total % mMenuInfos[MENU_STORAGE].mSelectInfo.page_max;
+        if (iPageCnt == 0) {
+            iPageCnt = mMenuInfos[MENU_STORAGE].mSelectInfo.total / mMenuInfos[MENU_STORAGE].mSelectInfo.page_max;
+        } else {
+            iPageCnt = mMenuInfos[MENU_STORAGE].mSelectInfo.total / mMenuInfos[MENU_STORAGE].mSelectInfo.page_max + 1;
+        }
 
-    setCommonMenuInit(&mMenuInfos[MENU_SET_AEB], mAebList, gSetAebItems, &tmPos);   /* 设置系统菜单初始化 */
-
-#endif
+        mMenuInfos[MENU_STORAGE].mSelectInfo.page_num = iPageCnt;
 
 
-    mMenuInfos[MENU_STORAGE].priv = static_cast<void*>(&storageNvIconInfo);
-    mMenuInfos[MENU_STORAGE].privList = static_cast<void*>(&mStorageList);
+        LOGDBG(TAG, "Set Storage Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_STORAGE].mSelectInfo.total,
+                    mMenuInfos[MENU_STORAGE].mSelectInfo.page_num,
+                    mMenuInfos[MENU_STORAGE].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_STORAGE].mSelectInfo.select
+                    );
 
-    mMenuInfos[MENU_STORAGE].mSelectInfo.total = sizeof(gStorageSetItems) / sizeof(gStorageSetItems[0]);
-    mMenuInfos[MENU_STORAGE].mSelectInfo.select = 0;   
-    mMenuInfos[MENU_STORAGE].mSelectInfo.page_max = 3;
 
-    iPageCnt = mMenuInfos[MENU_STORAGE].mSelectInfo.total % mMenuInfos[MENU_STORAGE].mSelectInfo.page_max;
-    if (iPageCnt == 0) {
-        iPageCnt = mMenuInfos[MENU_STORAGE].mSelectInfo.total / mMenuInfos[MENU_STORAGE].mSelectInfo.page_max;
-    } else {
-        iPageCnt = mMenuInfos[MENU_STORAGE].mSelectInfo.total / mMenuInfos[MENU_STORAGE].mSelectInfo.page_max + 1;
+        tmPos.xPos 		= 26;       /* 水平方向的起始坐标 */
+        tmPos.yPos 		= 16;
+        tmPos.iWidth	= 103;      /* 显示的宽 */
+        tmPos.iHeight   = 16;       /* 显示的高 */
+        setCommonMenuInit(&mMenuInfos[MENU_STORAGE], mStorageList, gStorageSetItems, &tmPos);   /* 设置系统菜单初始化 */
+
     }
 
-    mMenuInfos[MENU_STORAGE].mSelectInfo.page_num = iPageCnt;
+
+    /*********************************************************************************************
+     *      Show Storage菜单
+     *********************************************************************************************/
+    {
+        mMenuInfos[MENU_SHOW_SPACE].priv = static_cast<void*>(&spaceNvIconInfo);
+        mMenuInfos[MENU_SHOW_SPACE].mSelectInfo.select = 0;
+        mMenuInfos[MENU_SHOW_SPACE].mSelectInfo.page_max = 3;
 
 
-    LOGDBG(TAG, "Set Storage Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                mMenuInfos[MENU_STORAGE].mSelectInfo.total,
-                mMenuInfos[MENU_STORAGE].mSelectInfo.page_num,
-                mMenuInfos[MENU_STORAGE].mSelectInfo.cur_page,
-                mMenuInfos[MENU_STORAGE].mSelectInfo.select
-                );
+        mMenuInfos[MENU_TF_FORMAT_SELECT].priv = static_cast<void*>(&storageNvIconInfo);
+        mMenuInfos[MENU_TF_FORMAT_SELECT].privList = static_cast<void*>(&mStorageList);
 
+        mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total = sizeof(gStorageSetItems) / sizeof(gStorageSetItems[0]);
+        mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.select = 0;   
+        mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_max = 3;
 
-    tmPos.xPos 		= 26;       /* 水平方向的起始坐标 */
-    tmPos.yPos 		= 16;
-    tmPos.iWidth	= 103;      /* 显示的宽 */
-    tmPos.iHeight   = 16;       /* 显示的高 */
-    setCommonMenuInit(&mMenuInfos[MENU_STORAGE], mStorageList, gStorageSetItems, &tmPos);   /* 设置系统菜单初始化 */
+        iPageCnt = mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total % mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_max;
+        if (iPageCnt == 0) {
+            iPageCnt = mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total / mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_max;
+        } else {
+            iPageCnt = mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total / mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_max + 1;
+        }
 
+        mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_num = iPageCnt;
 
-    mMenuInfos[MENU_SHOW_SPACE].priv = static_cast<void*>(&spaceNvIconInfo);
-    mMenuInfos[MENU_SHOW_SPACE].mSelectInfo.select = 0;
-    mMenuInfos[MENU_SHOW_SPACE].mSelectInfo.page_max = 3;
+        LOGDBG(TAG, "Set TF Card format select Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total,
+                    mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_num,
+                    mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.select);
 
+        tmPos.xPos 		= 0;        /* 水平方向的起始坐标 */
+        tmPos.yPos 		= 16;
+        tmPos.iWidth	= 128;      /* 显示的宽： 实际应该小点 */
+        tmPos.iHeight   = 16;       /* 显示的高 */
 
-    mMenuInfos[MENU_TF_FORMAT_SELECT].priv = static_cast<void*>(&storageNvIconInfo);
-    mMenuInfos[MENU_TF_FORMAT_SELECT].privList = static_cast<void*>(&mStorageList);
-
-    mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total = sizeof(gStorageSetItems) / sizeof(gStorageSetItems[0]);
-    mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.select = 0;   
-    mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_max = 3;
-
-    iPageCnt = mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total % mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_max;
-    if (iPageCnt == 0) {
-        iPageCnt = mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total / mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_max;
-    } else {
-        iPageCnt = mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total / mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_max + 1;
+        setCommonMenuInit(&mMenuInfos[MENU_TF_FORMAT_SELECT], mTfFormatSelList, gTfFormatSelectItems, &tmPos); 
     }
 
-    mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_num = iPageCnt;
 
-    LOGDBG(TAG, "Set TF Card format select Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.total,
-                mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.page_num,
-                mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.cur_page,
-                mMenuInfos[MENU_TF_FORMAT_SELECT].mSelectInfo.select);
+    /*********************************************************************************************
+     *      降噪模式选择菜单
+     *********************************************************************************************/
+    {
+    #ifdef ENABLE_DENOISE_MODE_SELECT
 
-    tmPos.xPos 		= 0;        /* 水平方向的起始坐标 */
-    tmPos.yPos 		= 16;
-    tmPos.iWidth	= 128;      /* 显示的宽： 实际应该小点 */
-    tmPos.iHeight   = 16;       /* 显示的高 */
+        mMenuInfos[MENU_SET_DENOISE_MODE].priv = static_cast<void*>(&setPageNvIconInfo);
+        mMenuInfos[MENU_SET_DENOISE_MODE].privList = static_cast<void*>(&mDenoiseModeList);
 
-    setCommonMenuInit(&mMenuInfos[MENU_TF_FORMAT_SELECT], mTfFormatSelList, gTfFormatSelectItems, &tmPos); 
+        mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.total = sizeof(gDenoiseModeCtrlItems) / sizeof(gDenoiseModeCtrlItems[0]);
+        mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.select = 0;   
+        mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.page_max = 3;
+
+        iPageCnt = mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.total % mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.page_max;
+        if (iPageCnt == 0) {
+            iPageCnt = mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.total / mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.page_max;
+        } else {
+            iPageCnt = mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.total / mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.page_max + 1;
+        }
+
+        mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.page_num = iPageCnt;
+
+        /* 使用配置值来初始化首次显示的页面 */
+        const char* pDenoiseMode = NULL;
+        int iDenoiseMde = 0;
+        pDenoiseMode = property_get(SYS_DENOISE_MODE);
+        if (pDenoiseMode) {
+            iDenoiseMde = atoi(pDenoiseMode);
+        }
+
+        if (iDenoiseMde < 0 || iDenoiseMde > 3) iDenoiseMde = 0;
+
+        updateMenuCurPageAndSelect(MENU_SET_DENOISE_MODE, iDenoiseMde);
+
+        LOGDBG(TAG, "Denoise Mode Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.total,
+                    mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.page_num,
+                    mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_SET_DENOISE_MODE].mSelectInfo.select
+                    );
+
+        tmPos.yPos 		= 16;
+        tmPos.xPos 		= 34;       /* 水平方向的起始坐标 */
+        tmPos.iWidth	= 89;       /* 显示的宽 */
+        tmPos.iHeight   = 16;       /* 显示的高 */
+        setCommonMenuInit(&mMenuInfos[MENU_SET_DENOISE_MODE], mDenoiseModeList, gDenoiseModeCtrlItems, &tmPos);   /* 设置系统菜单初始化 */
+    #endif
+    }
 }
 
 
@@ -1473,6 +1544,7 @@ void MenuUI::setCurMenu(int menu, int back_menu)
     }
     enterMenu(bUpdateAllMenuUI);
 }
+
 
 
 /*************************************************************************
@@ -3447,14 +3519,18 @@ void MenuUI::updateMenu()
         }
 #endif
 
+#ifdef ENABLE_DENOISE_MODE_SELECT
+		case MENU_SET_DENOISE_MODE: {
+            updateInnerSetPage(mDenoiseModeList, true);
+			break;
+        }
+#endif
 
-#ifdef ENABLE_MENU_AEB
+
         case MENU_SET_AEB: {
             updateInnerSetPage(mAebList, true);
             break;    
         }
-#endif
-
 
         /* 更新: MENU_PIC_SET_DEF菜单的值(高亮显示) 
          * 拍照完成后（特别时数据量大时）,为了解决此时切换挡位不卡顿,使用缓存的剩余空间 - 日期
@@ -3979,6 +4055,8 @@ void MenuUI::dispSettingPage(std::vector<struct stSetItem*>& setItemsList)
         LOGERR(TAG, "Warnning Invalid Nv Position in Menu[%s]", getMenuName(cur_menu));
     }
 }
+
+
 
 void MenuUI::dispTipStorageDevSpeedTest() 
 {
@@ -4934,6 +5012,19 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
 #endif 
 
 
+#ifdef ENABLE_DENOISE_MODE_SELECT
+        case MENU_SET_DENOISE_MODE: {
+			clearArea(0, 16);                                   /* 清除真个区域 */
+            if (pNvIconInfo) {
+                dispIconByLoc(pNvIconInfo);
+            } else {
+                LOGERR(TAG, "Current Menu[%s] NV Icon not exist", getMenuName(cur_menu));
+            }
+            dispSettingPage(mDenoiseModeList);					/* 显示"右侧"的项 */                        
+            break;
+        }
+#endif 
+
 
 #ifdef ENABLE_GPS_SIGNAL_TEST
         case MENU_SET_GPS_SIG_TEST: {
@@ -5366,13 +5457,20 @@ void MenuUI::procSetMenuKeyEvent()
         } 
 
 #ifdef ENABLE_FAN_RATE_CONTROL
-        else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FAN_RATE_CTL)) {  /* Fan Rate Control, for test */
+        else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_FAN_RATE_CTL)) {  /* 风扇转速控制 */
             setCurMenu(MENU_SET_FAN_RATE);
         } 
 #endif 
 
+#ifdef ENABLE_DENOISE_MODE_SELECT
+        else if (!strcmp(pCurItem->pItemName, SET_ITEM_DNOISE_MODE_SELECT)) {  /* 降噪模式选择 */
+            setCurMenu(MENU_SET_DENOISE_MODE);
+        } 
+
+#endif
+
 #ifdef ENABLE_GPS_SIGNAL_TEST
-        else if (!strcmp(pCurItem->pItemName, SET_ITEM_GPS_SIGNAL_TEST)) {  /* GPS Signal Test, for test */
+        else if (!strcmp(pCurItem->pItemName, SET_ITEM_GPS_SIGNAL_TEST)) {      /* GPS信号测试 */
             clearArea(0, 16);             
             setCurMenu(MENU_SET_GPS_SIG_TEST);
         } 
@@ -5478,6 +5576,7 @@ void MenuUI::procSetMenuKeyEvent()
         }
     }
 }
+
 
 
 bool MenuUI::checkIsTakeTimelpaseInCustomer()
@@ -5691,12 +5790,12 @@ void MenuUI::procPowerKeyEvent()
             break;
         }
 		
-        case MENU_VIDEO_INFO: {	/* 录像子菜单 */
+        case MENU_VIDEO_INFO: {	    /* 录像子菜单 */
             sendRpc(ACTION_VIDEO, TAKE_VID_IN_NORMAL);  /* 录像/停止录像 */
             break;
         }
 		
-        case MENU_LIVE_INFO: {	/* 直播子菜单 */
+        case MENU_LIVE_INFO: {	    /* 直播子菜单 */
             sendRpc(ACTION_LIVE);
             break;
         }
@@ -5719,25 +5818,40 @@ void MenuUI::procPowerKeyEvent()
             iIndex = getMenuSelectIndex(MENU_SET_FAN_RATE);
             mFanLevel = iIndex;
             std::string dispNote;
-            LOGDBG(TAG, "set fan rate control index[%d]", iIndex);
 
+            LOGDBG(TAG, "set fan rate control index[%d]", iIndex);
             convFanSpeedLevel2Note(mFanLevel);
 
-            /*
-             * 根据索引值来设置风扇的速度
-             */
+            /** 根据索引值来设置风扇的速度 */
             HardwareService::tunningFanSpeed(iIndex);
             procBackKeyEvent();            
             break;
         }
 #endif
 
+
+#ifdef ENABLE_DENOISE_MODE_SELECT
+
+        case MENU_SET_DENOISE_MODE: {
+            iIndex = getMenuSelectIndex(MENU_SET_DENOISE_MODE);
+            std::string mode;
+            switch (iIndex) {
+                case 0: mode = "none"; break;
+                case 1: mode = "normal"; break;
+                case 2: mode = "sample"; break;
+            }
+            property_set(SYS_DENOISE_MODE, mode.c_str());
+            procBackKeyEvent();            
+            break;
+        }
+#endif
+
+
         case MENU_SET_AEB: {
             /* 获取MENU_SET_PHOTO_DELAY的Select_info.select的全局索引值,用该值来更新 */
             iIndex = getMenuSelectIndex(MENU_SET_AEB);
 
             LOGDBG(TAG, "set aeb index[%d]", iIndex);
-
             updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_AEB, iIndex);
             cm->setKeyVal(_aeb, iIndex);            
             procBackKeyEvent();

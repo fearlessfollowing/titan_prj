@@ -55,14 +55,15 @@ enum {
     MENU_SET_FAN_RATE,
 #endif 
 
+#ifdef ENABLE_DENOISE_MODE_SELECT
+    MENU_SET_DENOISE_MODE,
+#endif
+
 #ifdef ENABLE_GPS_SIGNAL_TEST
     MENU_SET_GPS_SIG_TEST,
 #endif 
 
-#ifdef ENABLE_MENU_AEB
     MENU_SET_AEB,               // 27
-#endif
-
     MENU_SHOW_SPACE,
     
     MENU_TF_FORMAT_SELECT,      /* TF卡的格式化选中菜单 */

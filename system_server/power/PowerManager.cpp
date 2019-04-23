@@ -38,9 +38,10 @@
 #undef  TAG 
 #define TAG "PowerManager"
 
-
 #define POWR_ON     "power_on"
 #define POWER_OFF   "power_off"
+
+
 
 enum {
 	CMD_POWER_ON,
@@ -50,6 +51,12 @@ enum {
 
 
 #define PROP_MODULE_PWR_WAIT	"sys.module_pwron_wait"
+
+/*
+ * 调用power off时是否复位HUB  - 2019年4月16日
+ */
+// #define ENABLE_RESET_HUB_WHEN_POWEROFF
+
 
 typedef struct stIoPathMap {
 	int				iCtrlGpio;		/* 控制模组上下电的GPIO */
@@ -263,11 +270,13 @@ static void powerModule(PwrCtl* pPwrCtl, int iOnOff)
 				} while (0);
 			}
 
+#ifdef ENABLE_RESET_HUB_WHEN_POWEROFF
 			/* 复位HUB */
 			if (pPwrCtl->iResetHubNum == 2) {
 				resetHub(pPwrCtl->iHub2ResetGpio, pPwrCtl->iHubResetLevel, pPwrCtl->iHubResetDuration);
 			} 
 			resetHub(pPwrCtl->iHub1ResetGpio, pPwrCtl->iHubResetLevel, pPwrCtl->iHubResetDuration);
+#endif            
 			break;
 		}
 

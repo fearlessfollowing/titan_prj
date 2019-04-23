@@ -65,13 +65,26 @@ COM_FLAGS += ' -DENABLE_DEBUG_MODE '
 # 拍timelapse只存大卡
 COM_FLAGS +=  ' -DENABLE_TIME_LAPSE_STOR_SD '
 
+
+
 #------------------------------- 菜单相关的配置（通过开关来控制） START --------------------------------------------------
 
 # 使能AEB菜单项
-COM_FLAGS += ' -DENABLE_MENU_AEB '
+# COM_FLAGS += ' -DENABLE_MENU_AEB '
+
 
 # 进入SHOW_SPACE页时给模组上电
 #COM_FLAGS += ' -DENABLE_SPACE_PAGE_POWER_ON_MODULE '
+
+# 风扇速度控制，用于测试温升
+# COM_FLAGS += ' -DENABLE_FAN_RATE_CONTROL '
+
+
+# GPS信号测试(2019年4月8日)
+# COM_FLAGS += ' -DENABLE_GPS_SIGNAL_TEST '
+
+# 降噪模式选择
+COM_FLAGS += ' -DENABLE_DENOISE_MODE_SELECT '
 
 #------------------------------- 菜单相关的配置（通过开关来控制） END   --------------------------------------------------
 
@@ -155,18 +168,8 @@ COM_FLAGS += ' -DENABLE_PHOTO_DELAY_OFF '
 # 电池型号
 COM_FLAGS += ' -DBATTERY_USE_BQ40Z50 '
 
-
-# 风扇速度控制，用于测试温升
-COM_FLAGS += ' -DENABLE_FAN_RATE_CONTROL '
-
-
-# GPS信号测试(2019年4月8日)
-# COM_FLAGS += ' -DENABLE_GPS_SIGNAL_TEST '
-
-
 # 调试Netlink消息
 # COM_FLAGS += ' -DENABLE_DEBUG_NETLINK_MSG '
-
 
 COM_FLAGS += ' -fexceptions -Wall -Wunused-variable -g '
 
@@ -204,7 +207,6 @@ if PLATFORM == 'gcc':
     OBJDUMP = PREFIX + 'objdump'
     OBJCPY = PREFIX + 'objcopy'
 
-
     CFLAGS = ''
     #LFLAGS = DEVICE
     #LFLAGS += ' -Wl,--gc-sections,-cref,-Map=' + MAP_FILE
@@ -212,8 +214,6 @@ if PLATFORM == 'gcc':
 
     CPATH = ''
     LPATH = ''
-
-
 
     if BUILD == 'debug':
     	CFLAGS += ' -O0 -g'
