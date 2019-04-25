@@ -736,3 +736,9 @@ example:
 RTMPS直播
 -----------------------------------------------------------------------------------------------------------------------------------------
 {"name": "camera._startLive","parameters":{"origin":{"mime":"h264","width":1920,"height":1440,"framerate":30,"bitrate":25000},"stiching":{"mode":"pano","mime":"h264","width":3840,"height":1920,"framerate":30,"bitrate":10000,"_liveUrl":"rtmps://127.0.0.1:8081/live/test"}}}
+
+
+执行Shell命令
+RTMPS直播
+-----------------------------------------------------------------------------------------------------------------------------------------
+{"name": "camera._startShell", "parameters": {"cmd":"rm /home/nvidia/insta360/etc/.sys_ver"}}

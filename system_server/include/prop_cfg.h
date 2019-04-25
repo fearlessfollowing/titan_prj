@@ -185,7 +185,6 @@
 #define PROP_INPUT_DEV_PATH             "sys.input_path"
 
 
-
 /************************************************
  * For Debug
  ************************************************/
@@ -201,6 +200,10 @@
  * 降噪模式
  */
 #define SYS_DENOISE_MODE                "sys.denoise_mode"
+
+
+#define PROP_MODULE_PWR_WAIT	        "sys.module_pwron_wait"
+#define PROP_RESET_HUB                  "sys.exit_reset_hub"
 
 
 

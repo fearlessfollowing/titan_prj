@@ -52,7 +52,6 @@ COM_FLAGS = ''
 COM_FLAGS += ' -DHAVE_SYS_UIO_H -DHAVE_PTHREADS -DHAVE_ANDROID_OS '
 
 
-#COM_FLAGS += $(EXTRA_INC_PATH)
 
 #------------------------------- 调试模式开关 --------------------------------------------------
 COM_FLAGS += ' -DHW_FLATFROM_TITAN '
@@ -64,7 +63,6 @@ COM_FLAGS += ' -DENABLE_DEBUG_MODE '
 
 # 拍timelapse只存大卡
 COM_FLAGS +=  ' -DENABLE_TIME_LAPSE_STOR_SD '
-
 
 
 #------------------------------- 菜单相关的配置（通过开关来控制） START --------------------------------------------------
@@ -84,7 +82,7 @@ COM_FLAGS +=  ' -DENABLE_TIME_LAPSE_STOR_SD '
 # COM_FLAGS += ' -DENABLE_GPS_SIGNAL_TEST '
 
 # 降噪模式选择
-COM_FLAGS += ' -DENABLE_DENOISE_MODE_SELECT '
+# COM_FLAGS += ' -DENABLE_DENOISE_MODE_SELECT '
 
 #------------------------------- 菜单相关的配置（通过开关来控制） END   --------------------------------------------------
 
@@ -221,7 +219,6 @@ if PLATFORM == 'gcc':
         CFLAGS += ' -O2'
 
 elif PLATFORM == 'aarch64':
-    # toolchains
     PREFIX = '' 
     CC = PREFIX + 'gcc'
     AS = PREFIX + 'gcc'

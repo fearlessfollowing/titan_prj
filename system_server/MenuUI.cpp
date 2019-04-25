@@ -338,64 +338,71 @@ void MenuUI::init_menu_select()
     /*
      * 拍照，录像，直播参数配置
      */
-    mMenuInfos[MENU_PIC_SET_DEF].priv = static_cast<void*>(gPicAllModeCfgList);
-    mMenuInfos[MENU_PIC_SET_DEF].privList = static_cast<void*>(&mPicAllItemsList);
+    {
+        mMenuInfos[MENU_PIC_SET_DEF].priv = static_cast<void*>(gPicAllModeCfgList);
+        mMenuInfos[MENU_PIC_SET_DEF].privList = static_cast<void*>(&mPicAllItemsList);
 
-    mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total = sizeof(gPicAllModeCfgList) / sizeof(gPicAllModeCfgList[0]);
-    mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.select = 0;
-    mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_max = mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total;
-    mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_num = 1;
+        mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total = sizeof(gPicAllModeCfgList) / sizeof(gPicAllModeCfgList[0]);
+        mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.select = 0;
+        mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_max = mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total;
+        mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_num = 1;
 
-    cfgPicVidLiveSelectMode(&mMenuInfos[MENU_PIC_SET_DEF], mPicAllItemsList);
-    
+        cfgPicVidLiveSelectMode(&mMenuInfos[MENU_PIC_SET_DEF], mPicAllItemsList);
+        
 
-    LOGDBG(TAG, "mPicAllItemsList size = %d", mPicAllItemsList.size());
+        LOGDBG(TAG, "mPicAllItemsList size = %d", mPicAllItemsList.size());
 
-    LOGDBG(TAG, "MENU_PIC_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total,
-                mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_num,
-                mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.cur_page,
-                mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.select
-                );
-    
-    mMenuInfos[MENU_VIDEO_SET_DEF].priv = static_cast<void*>(gVidAllModeCfgList);
-    mMenuInfos[MENU_VIDEO_SET_DEF].privList = static_cast<void*>(&mVidAllItemsList);
+        LOGDBG(TAG, "MENU_PIC_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.total,
+                    mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.page_num,
+                    mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_PIC_SET_DEF].mSelectInfo.select
+                    );
+    }
 
-    mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total = sizeof(gVidAllModeCfgList) / sizeof(gVidAllModeCfgList[0]);
-    mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.select = 0;
-    mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_max = mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total;
-    mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_num = 1;
+    {
+        mMenuInfos[MENU_VIDEO_SET_DEF].priv = static_cast<void*>(gVidAllModeCfgList);
+        mMenuInfos[MENU_VIDEO_SET_DEF].privList = static_cast<void*>(&mVidAllItemsList);
 
-    cfgPicVidLiveSelectMode(&mMenuInfos[MENU_VIDEO_SET_DEF], mVidAllItemsList);
-    
-    LOGDBG(TAG, "mVidAllItemsList size = %d", mVidAllItemsList.size());
+        mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total = sizeof(gVidAllModeCfgList) / sizeof(gVidAllModeCfgList[0]);
+        mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.select = 0;
+        mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_max = mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total;
+        mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_num = 1;
 
-    LOGDBG(TAG, "MENU_VIDEO_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total,
-                mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_num,
-                mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.cur_page,
-                mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.select
-                );
+        cfgPicVidLiveSelectMode(&mMenuInfos[MENU_VIDEO_SET_DEF], mVidAllItemsList);
+        
+        LOGDBG(TAG, "mVidAllItemsList size = %d", mVidAllItemsList.size());
+
+        LOGDBG(TAG, "MENU_VIDEO_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total,
+                    mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_num,
+                    mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.select
+                    );
+    }
 
 
-    mMenuInfos[MENU_LIVE_SET_DEF].priv = static_cast<void*>(gLiveAllModeCfgList);
-    mMenuInfos[MENU_LIVE_SET_DEF].privList = static_cast<void*>(&mLiveAllItemsList);
+    {
 
-    mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total = sizeof(gLiveAllModeCfgList) / sizeof(gLiveAllModeCfgList[0]);
-    mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.select = 0;
-    mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.page_max = mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total;
-    mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.page_num = 1;
+        mMenuInfos[MENU_LIVE_SET_DEF].priv = static_cast<void*>(gLiveAllModeCfgList);
+        mMenuInfos[MENU_LIVE_SET_DEF].privList = static_cast<void*>(&mLiveAllItemsList);
 
-    cfgPicVidLiveSelectMode(&mMenuInfos[MENU_LIVE_SET_DEF], mLiveAllItemsList);
-    
-    LOGDBG(TAG, "mLiveAllItemsList size = %d", mLiveAllItemsList.size());
+        mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total = sizeof(gLiveAllModeCfgList) / sizeof(gLiveAllModeCfgList[0]);
+        mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.select = 0;
+        mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.page_max = mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total;
+        mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.page_num = 1;
 
-    LOGDBG(TAG, "MENU_LIVE_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total,
-                mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.page_num,
-                mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.cur_page,
-                mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.select
-                );
+        cfgPicVidLiveSelectMode(&mMenuInfos[MENU_LIVE_SET_DEF], mLiveAllItemsList);
+        
+        LOGDBG(TAG, "mLiveAllItemsList size = %d", mLiveAllItemsList.size());
+
+        LOGDBG(TAG, "MENU_LIVE_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                    mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total,
+                    mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.page_num,
+                    mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.cur_page,
+                    mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.select
+                    );
+    }
 }
 
 
@@ -440,17 +447,10 @@ void MenuUI::init()
     mVerInfo = std::make_shared<VER_INFO>();
     CHECK_NE(mVerInfo, nullptr);
 
-#ifdef ENABLE_WIFI_STA
-    mWifiConfig = std::make_shared<WIFI_CONFIG>();
-    CHECK_NE(mWifiConfig, nullptr);	
-
-    memset(mWifiConfig.get(), 0, sizeof(WIFI_CONFIG));
-#endif
-
     LOGDBG(TAG, "Create System NetManager Object...");
 
-#ifdef ENABLE_PESUDO_SN
 
+#ifdef ENABLE_PESUDO_SN
 	char tmpName[32] = {0};
 	if (access(WIFI_RAND_NUM_CFG, F_OK)) {
 		srand(time(NULL));
@@ -523,14 +523,6 @@ void MenuUI::init()
     LOGDBG(TAG, ">>>>>>>> Init MenUI object ok ......");
 }
 
-
-/*
- * 1.通信子线程(FIFO)
- * 2.网络管理子系统
- * 3.输入管理子系统
- * 4.卷管理子系统（接受内核消息的监听器）
- * 5.UI消息处理子线程
- */
 
 /*************************************************************************
 ** 方法名称: MenuUI
@@ -842,14 +834,23 @@ void MenuUI::play_sound(u32 type)
 {
     if (Singleton<CfgManager>::getInstance()->getKeyVal(_speaker) == 1) {
         if (type >= 0 && type <= sizeof(sound_str) / sizeof(sound_str[0])) {
+
+        #if 0
             std::stringstream ss;
             /* Note:
              * aplay 带 -D hw:1,0 参数时播出的音声会有两声
              * 去掉-D hw:1,0 参数，插上HDMI时没有声音播放
              */
             ss << "aplay -D hw:1,0 " << sound_str[type];            
-            // LOGINFO("cmd: %s", ss.str().c_str());
+            LOGINFO("cmd: %s", ss.str().c_str());
             system(ss.str().c_str());       
+        #else        
+            char playCmd[128] = {0};
+            sprintf(playCmd, "aplay -D hw:1,0 %s", sound_str[type]);
+            LOGINFO("cmd: %s", playCmd);
+            system(playCmd);       
+
+        #endif            
 		} else {
             LOGERR(TAG, "sound type %d exceed", type);
 		}
@@ -1828,6 +1829,7 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         
                         for (int i = 0; i < size; i++) {                            
                             pSetItems[i]->stPos = tmPos;
+                            
                             #if 0
                             if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
                                 pSetItems[i]->stPos.xPos = 1;

@@ -1234,18 +1234,18 @@ void ProtoManager::handleIndShellCommand(SocketClient* cli, Json::Value& reqNode
             errNode[_code]  = -1;
             errNode[_desc] = "Exec Command Failed";                     
         } else {
-            #if 0
+            #if 1
             if (WIFEXITED(iStatus)) {
                 if (0 == WEXITSTATUS(iStatus)) {
                     retRoot[_state] = _done; 
                     bErrState = false;                                       
                 } else {
                     errNode[_code]  = WEXITSTATUS(iStatus);
-                    errNode[_desc] = "Inner error";
+                    errNode[_desc] = strerror(WEXITSTATUS(iStatus));
                 }
             } else {
                 errNode[_code]  = WEXITSTATUS(iStatus);
-                errNode[_desc] = "Inner error";  
+                errNode[_desc] = strerror(WEXITSTATUS(iStatus));  
             }
             #else 
             retRoot[_state] = _done; 
