@@ -1,0 +1,20 @@
+export
+
+adb connect 192.168.1.188
+adb shell tar zcvf /home/nvidia/insta360.tgz /home/nvidia/insta360
+adb pull /home/nvidia/insta360.tgz D:\
+
+import:
+adb connect 192.168.1.188
+adb push D:\insta360.tgz /home/nvidia/
+adb shell tar zxf /home/nvidia/insta360.tgz
+
+
+echo 398 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio398/direction
+echo 1 > /sys/class/gpio/gpio398/value
+echo 397 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio397/direction
+echo 1 > /sys/class/gpio/gpio397/value
+cat /sys/kernel/debug/gpio 
+

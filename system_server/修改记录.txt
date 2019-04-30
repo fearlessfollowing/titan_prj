@@ -681,3 +681,12 @@ GPIOs 320-511, platform/2200000.gpio, tegra-gpio:
 客户端停止直播并断开连接时,camerad卡死
 
 -----------------------------------------------------------------------------------------
+
+
+
+L4T MultiMedia-API Demon:
+
+https://docs.nvidia.com/jetson/l4t-multimedia/l4t_mm_00_video_decode.html
+
+Jetson下载:
+https://developer.nvidia.com/embedded/downloads
