@@ -676,7 +676,7 @@ GPIOs 320-511, platform/2200000.gpio, tegra-gpio:
  
 
 
-日期：2019年3月20日
+日期：2019年3月20日【
 -----------------------------------------------------------------------------------------
 客户端停止直播并断开连接时,camerad卡死
 
@@ -690,3 +690,20 @@ https://docs.nvidia.com/jetson/l4t-multimedia/l4t_mm_00_video_decode.html
 
 Jetson下载:
 https://developer.nvidia.com/embedded/downloads
+
+
+日期：2019年05月06日
+-------------------------------------------------------------------------------------------
+电池管理：https://github.com/tibms/kernel-4.4/tree/release/drivers/power
+https://github.com/tibms/kernel-4.4/tree/release/drivers/power/bq40z50
+-------------------------------------------------------------------------------------------
+
+
+
+日期: 2019年5月7日
+-------------------------------------------------------------------------------------------
+查看系统性能: tegrastats
+查看CPU的开启情况:
+root@tegra-ubuntu:/sys/devices/system/cpu# cat online
+0-5
+

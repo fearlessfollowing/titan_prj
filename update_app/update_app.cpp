@@ -941,9 +941,9 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 	
     disp_update_icon(ICON_UPGRADE_SCHEDULE00128_64);	/* 显示正在更新 */
 
-#if 0
+
     if (isBatteryEnough() || (pSkipBatCheck != NULL && !strcmp(pSkipBatCheck, "true")) ) {	/* 电量充足 */
-#endif
+    
 		if (bMode) {	/* 兼容0.2.18及以前的update_check */
 
 			if (pro2Updatecheck(pUpdatePackagePath)) {		/* 提取解压升级包成功 */
@@ -968,12 +968,10 @@ static int start_update_app(const char* pUpdatePackagePath, bool bMode)
 			installVm();
 		}
 
-#if 0
     } else  {	/* 电池电量低 */
         LOGERR(TAG, "battery low, can't update...");
         iRet = ERR_UPAPP_BATTERY_LOW;
     }
-#endif
 
 err_get_pro2_update:
     return iRet;

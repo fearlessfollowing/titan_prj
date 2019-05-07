@@ -215,7 +215,7 @@ void HardwareService::updateBatteryInfo()
                 property_set(PROP_BAT_EXIST, "true");
                 sprintf(cBatTemp, "%f", mBatInfo->dBatTemp);
                 property_set(PROP_BAT_TEMP, cBatTemp);
-                LOGINFO(TAG, "---> battery level: %d", mBatInfo->uBatLevelPer);
+                // LOGINFO(TAG, "---> battery level: %d", mBatInfo->uBatLevelPer);
                 break;
             }
             

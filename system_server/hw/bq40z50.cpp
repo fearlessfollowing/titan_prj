@@ -11,6 +11,7 @@
 ** 日     期: 2018年05月04日
 ** 修改记录:
 ** V1.0			Skymixos		2018-12-28		创建文件，添加注释
+** V1.1         Skymixos        2019-05-05      读取并显示电池电压
 ******************************************************************************************************/
 #include <common/include_common.h>
 #include <hw/ins_i2c.h>
@@ -18,6 +19,7 @@
 #include <system_properties.h>
 #include <log/log_wrapper.h>
 #include <hw/battery_interface.h>
+#include <math.h>
 
 
 #define PROP_BAT_I2C_BUS_NUM            "sys.bat_bus_num"
@@ -48,14 +50,51 @@ enum {
 
 #define INVALID_BATTERY_TEMP    1000
 
+int BatteryManager::sFirstRead = 0;
 
-/* @func
- *  convert_k_to_c - 卡尔文温度转换为摄氏度
- * @pram
- *  k - 开尔文温度
- * @return
- *  摄氏温度
- */
+
+struct stBatVolConv {
+    int     volt;
+    int     batPer;
+};
+
+
+static struct stBatVolConv converts[] = {
+    {14240, 30},
+    {14170, 28},
+    {14110, 27},
+    {14060, 25},
+    {14020, 24},
+    {13970, 23},
+    {13920, 22},
+    {13880, 21},
+    {13810, 20},
+    {13750, 18},
+    {13700, 16},
+    {13650, 14},
+    {13620, 12},
+    {13580, 10},
+    {13550, 8},
+    {13520, 6},
+    {13480, 5},
+    {13430, 2},
+};
+
+
+static int getBatteryPer(int uBatVol)
+{
+    u16 minInterval = 0xFF;
+    int item = 0;
+    for (int i = 0; i < ARRAY_SIZE(converts); i++) {
+        int deltaVal = (uBatVol > converts[i].volt) ? (uBatVol - converts[i].volt): ( converts[i].volt - uBatVol);
+        if (minInterval > deltaVal) {
+            item = i;
+            minInterval = deltaVal;
+        }
+    }
+    return converts[item].batPer;
+}
+
 static double convert_k_to_c(int16 k)
 {
     double tmp = (double)k;
@@ -80,6 +119,8 @@ BatteryManager::BatteryManager()
 
     mBusNumber = DEFAULT_BQ40Z50_I2C_BUS_NUM;
     mSlaveAddr = DEFAULT_BQ40Z50_I2C_ADDR;
+    mLastVol   = 13500; // mV
+    mLastPer   = 0;
     mBatMode = 0;
 
     const char * pBusNum = property_get(PROP_BAT_I2C_BUS_NUM);
@@ -119,10 +160,6 @@ bool BatteryManager::isBatteryExist()
     return bExist;
 }
 
-#if 0
-0x2 0x37 0x76 0x7 0xe1 0x11 0xf8 0x9a 0x26 0x43 0x81 0x76 0x23 0x9b 0xae 0x29 write md5_str is 02377607e111f89a26438176239bae29 strlen 32
-
-#endif
 
 bool BatteryManager::isUpgradeSatisfy()
 {
@@ -143,9 +180,7 @@ bool BatteryManager::isUpgradeSatisfy()
         if (iTotalPowerLevel >= 30*3) {
             bResult = true;
         }
-
         LOGINFO(TAG, "battery average level: %f", iTotalPowerLevel / 3.0f);
-
     } else {
         LOGWARN(TAG, "isUpgradeSatisfy: battery not exist!");
     }
@@ -174,14 +209,14 @@ bool BatteryManager::isBatteryCharging()
         } else {
             #ifdef DEBUG_BQ40Z50             
             LOGDBG(TAG, "bq40z50 in charging mode.");
-            #endif
-            
+            #endif            
             bCharge = true;
         }
     }
     return bCharge;
 }
 
+#define VOL_CRITICAL_VAL    14240       /* 14.24V */
 
 int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
 {
@@ -189,18 +224,15 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
     u16 batStaus;    
     u16 uRemainPer = 1000;
     u16 uBatMode = 0;
+    u16 uVol = 0;
+    u16 uCurrent = 0;
 
-    /* 
-     * 1.电池不存在
-     * 2.电池存在
-     */
     if (mI2c->i2c_read(BQ40Z50_CMD_BAT_MODE, (u8*)&uBatMode, 2)) {
-        // LOGERR(TAG, "--> Read bq40z50 work mode failed, Maybe battery not exist");
         pBatInfo->bIsExist = false;
         return GET_BATINFO_ERR_NO_EXIST;            /* 电池不存在 */
     } else {
-        mBatMode = uBatMode;
 
+        mBatMode = uBatMode;
         pBatInfo->bIsExist = true;
         
         /* Get temperature */
@@ -209,11 +241,8 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             pBatInfo->dBatTemp = INVALID_BATTERY_TEMP;
             return GET_BATINFO_ERR_TEMPERATURE;     /* 获取电池温度失败 */
         } else {
-            pBatInfo->dBatTemp = convert_k_to_c(kTemp);
-
-#ifdef DEBUG_BQ40Z50            
+            pBatInfo->dBatTemp = convert_k_to_c(kTemp);         
             LOGDBG(TAG, "---> Battery temperature: %d[K], %f[C]", kTemp, pBatInfo->dBatTemp);
-#endif 
         }
 
         /* is Charging */
@@ -231,7 +260,7 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
                 LOGDBG(TAG, "bq40z50 in discharge mode.");
                 pBatInfo->bIsCharge = false;
             } else {
-                LOGDBG(TAG, "bq40z50 in charging mode.");
+                // LOGDBG(TAG, "bq40z50 in charging mode.");
                 pBatInfo->bIsCharge = true;
             }
         }
@@ -245,8 +274,41 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             LOGDBG(TAG, "---> Battery Remain Capacity: %d%%", uRemainPer);
             pBatInfo->uBatLevelPer = uRemainPer;
         }
-    }
 
+        /* Voltage() */
+        if (mI2c->i2c_read(BQ40Z50_CMD_VOLTAGE, (u8*)&uVol, 2) == 0) {
+            LOGDBG(TAG, "---> Battery Voltage: %d [mV]", uVol);
+        }
+
+
+        
+        /*
+         * - 当电池电压小于14.24时(30)，电池剩余电量使用公式计算
+         * - 判断是否在充电状态(如果不在充电状态，即使电压值升高,电量百分比也不能上升)
+         */
+        if (uVol <= VOL_CRITICAL_VAL) {
+
+            if (BatteryManager::sFirstRead == 0) {
+                mLastPer = pBatInfo->uBatLevelPer;
+                BatteryManager::sFirstRead = 1;
+            }
+
+            u16 uBatPer = getBatteryPer(uVol);
+            LOGDBG(TAG, "------> Convert battery: %d", uBatPer);
+            if (uBatPer < 0) uBatPer = 0;
+
+            if (pBatInfo->bIsCharge == false) { /* 不充电的情况下电量只能越来越少 */
+                LOGINFO(TAG, "Last Per: %d", mLastPer);
+                if (mLastPer < uBatPer) uBatPer = mLastPer;     
+            } 
+
+            if (mLastPer != uBatPer) {
+                mLastPer = uBatPer;
+            }
+
+            pBatInfo->uBatLevelPer = uBatPer;
+        }
+    }
     return GET_BATINFO_OK;
 }
 

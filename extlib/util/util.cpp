@@ -22,6 +22,19 @@
 #define TAG "util_test"
 
 
+static void str_trim(char* pStr) 
+{ 
+	char *pTmp = pStr; 
+
+	while (*pStr != '\0') { 
+		if (*pStr != ' ' && *pStr != '\r' && *pStr != '\n') { 
+			*pTmp++ = *pStr; 
+		} 
+		++pStr; 
+	} 
+	*pTmp = '\0'; 
+} 
+
 void getRomVer(std::string path)
 {
     Json::Value romRoot;
@@ -453,4 +466,71 @@ void printJson(Json::Value& root)
     LOGINFO(TAG, "[%s]", resultStr.c_str());
 }
 
+
+bool loadBatCfgFile(std::string path, std::map<int, int>& maps)
+{
+    char line[512] = {0};
+	char* pret = NULL;
+	char* ps_end = NULL;
+    int  iLineCnt = 0;
+
+    LOGINFO(TAG, "battery cfg file: %s", path.c_str());
+
+    if (access(path.c_str(), F_OK) != 0) {
+        LOGERR(TAG, "file [%s] not exist, please check", path.c_str());
+        return false;
+    }
+
+	FILE *fp = fopen(path.c_str(), "rb");
+    if (NULL == fp) {
+        LOGERR(TAG, "open [%s] failed", path.c_str());
+        return false;
+    }  
+
+
+    while ((pret = fgets(line, sizeof(line), fp))) {
+        line[strlen(line) - 1] = '\0';	/* 将换行符替换成'\0' */
+        if (line[0] == '#') {
+            memset(line, 0, sizeof(line));
+            continue;
+        }        
+
+        str_trim(line);		/* 去掉字符串中的所有空格, '\r'和'\n' */
+        if (line[0] == '\0' || line[0] == '\n' || line[0] == ' ' || line[0] == '\r') {	/* 该行是空行 */
+            memset(line, 0, sizeof(line));
+            continue;
+        }
+
+        if (line[0] == '[' && line[strlen(line) - 1] == ']') {	
+
+        	char originVal[32] = {0};
+            char dstVal[32] = {0};
+
+            line[strlen(line) - 1] = '\0';
+                            
+            ps_end = strchr(line, '@');
+            if (ps_end == NULL) {
+                memset(line, 0, sizeof(line));
+                continue;
+            }
+
+            strncpy(originVal, pret + 1, ps_end - pret - 1);                
+            ps_end += 1;
+            strcpy(dstVal, ps_end);
+            
+            int iOrig, iDst;
+            iOrig = atoi(originVal);
+            iDst = atoi(dstVal);
+            LOGDBG(TAG, "origin val [%d], dst val: [%d]", iOrig, iDst);
+            iLineCnt++;
+            maps.insert(std::make_pair(iOrig, iDst));
+        }
+        memset(line, 0, sizeof(line));	
+    }
+
+    fclose(fp);
+    
+    LOGINFO(TAG, "suc parse line: %d", iLineCnt);
+    return true;
+}
 

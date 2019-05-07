@@ -21,6 +21,8 @@
 ** V3.5         skymixos        2018年11月8日           使用新的配置管理器
 ** V3.6         Skymixos        2018年12月29日          新增硬件管理服务
 ** V3.7         Skymixos        2019年1月10日           播放声音需要设置属性"sys.play_sound" = true
+** V3.8         Skymixos        2019年5月5日            关机时(kill camerad之后)不再闪烁红灯
+** V3.9         Skymixos        2019年05月06日          客户端发送设置底部LOGO时,通过system_server转给camerad
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -1963,8 +1965,7 @@ void MenuUI::sendExit()
 
 int MenuUI::oled_reset_disp(int type)
 {
-    mCamState = STATE_IDLE;
-    disp_sys_err(type,MENU_TOP);
+    disp_sys_err(type, MENU_TOP);
     return 0;
 }
 
@@ -3281,6 +3282,7 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_BOOTMLOGO)) {    /* Need Notify Camerad */
         cm->setKeyVal(_set_logo, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_BOOTMLOGO, iVal);
+        sendRpc(ACTION_SET_OPTION, OPTION_SET_LOGO);          
     } else if (!strcmp(pSetItemName, SET_ITEM_NAME_LED)) {    
         cm->setKeyVal(_light_on, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_LED, iVal);
@@ -5099,12 +5101,6 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
             break;
         }
 
-        #if 0
-        case MENU_SYS_DEV:
-            disp_sys_dev();
-            break;
-        #endif
-
         case MENU_SYS_DEV_INFO: {    /* 显示设备的信息 */
             dispSysInfo();
             break;
@@ -6603,15 +6599,11 @@ void MenuUI::disp_err_code(int code, int back_menu)
 	
     reset_last_info();
 
-    if (!mShutingDown) {
-
-        #ifdef LED_HIGH_LEVEL
-            setLightDirect(BACK_RED | FRONT_RED);
-        #else 
-            setLightDirect(BACK_RED & FRONT_RED);
-        #endif 
-    }
-
+    #ifdef LED_HIGH_LEVEL
+        setLightDirect(BACK_RED | FRONT_RED);
+    #else 
+        setLightDirect(BACK_RED & FRONT_RED);
+    #endif 
 
     cur_menu = MENU_SYS_ERR;
     bDispTop = false;
@@ -6647,7 +6639,7 @@ void MenuUI::disp_sys_err(int type, int back_menu)
     if (cur_menu != MENU_SYS_ERR) {
         setCurMenu(MENU_SYS_ERR, back_menu);
     }
-	
+
     disp_err_str(type);
 }
 
@@ -7737,14 +7729,12 @@ int MenuUI::dispByType(int type)
             break;
         }
 
-
         case STOP_BPC: {
             LOGDBG(TAG, "Exit BPC Calc now ...");
             setAllLightOnOffForce(1);
             procBackKeyEvent();
             break;
         }
-
 
         /* 此时已经设置好状态,不需要再做状态检查 */
         case ENTER_UDISK_MODE: {    
@@ -7881,7 +7871,7 @@ void MenuUI::setLightDirect(u8 val)
     LOGDBG(TAG, "mLastLightVal 0x%x val 0x%x", mLastLightVal, val);
 #endif
 
-    if (mLastLightVal != val) {
+    if (mLastLightVal != val && mShutingDown == false) {
         mLastLightVal = val;
         mLedLight->set_light_val(val, mFanControlOwner);
     }
@@ -8036,10 +8026,6 @@ void MenuUI::handleUpdateTlCnt(sp<DISP_TYPE>& disp_type)
 
 void MenuUI::handleSetCustomer(sp<DISP_TYPE>& disp_type)
 {
-    /*
-     * 1.将参数保存到对应的配置文件中
-     * 2.
-     */
     int iAction = ACTION_PIC;
     std::string tempPath = TAKE_PIC_TEMPLET_PATH;
 
@@ -8204,23 +8190,10 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
         || iAppKey == APP_KEY_USER_DEF3) {
         
         LOGDBG(TAG, "---> user long press virtual key event[0x%x]", iAppKey);
-
-        /* 目前用于测试音频播放问题 */
     }
-
 
     if (iAppKey == APP_KEY_POWER && (cur_menu != MENU_UDISK_MODE)) {
 
-        LOGDBG(TAG, "Are you want Power off Machine ...");
-        
-        /* 如果是在主菜单或设置菜单，卸载卡后关机（IDLE状态）
-            * 如果是在录像状态，停止录像
-            * 如果是在直播存片状态，停止直播
-            * 如果实在U盘状态，卸载所有的U盘并关机
-            * 其他状态下，卸载磁盘后关机
-            */
-        
-        /* 显示文案 */
         if (checkServerStateIn(serverState, STATE_RECORD)) {
             LOGDBG(TAG, "Current Menu[%s], state[0x%x]", getMenuName(cur_menu), serverState);
             sendRpc(ACTION_VIDEO);  /* 录像/停止录像 */
@@ -8245,7 +8218,6 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
             // powerOffAll();
 
             mOLEDModule->display_onoff(0);
-            // property_set("ctl.stop", "web_server");         
             property_set("ctl.stop", "camerad");            /* 关闭camerad - 避免camerad卡死不能正常退出(2019年3月29日) */
             msg_util::sleep_ms(50);            
             system("poweroff");                             /* shutdown -h now */
@@ -8415,11 +8387,8 @@ void MenuUI::handleDispInit()
     read_sn();						/* 获取系统序列号 */
     read_uuid();					/* 读取设备的UUID */
     read_ver_info();				/* 读取系统的版本信息 */ 
-	
     init_cfg_select();				/* 根据配置初始化选择项 */
-
     bDispTop = true;				/* 显示顶部标志设置为true */
-
 	handleCheckBatteryState(true);		/* 检查电池的状态 */
 }
 
@@ -8444,8 +8413,6 @@ void MenuUI::drawGpsState()
     clearArea(104, 16, 24, 16);    
     dispStr((const u8*)"GPS", 104, 16, false, 24);    
 }
-
-
 
 void MenuUI::drawGpsState(bool bShow)
 {
@@ -8488,7 +8455,6 @@ void MenuUI::handleGpsState()
 void MenuUI::handleUpdateDevInfo(int iAction, int iType, std::vector<Volume*>& mList)
 {
     std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
-
     uint64_t serverState = getServerState();
 
 #if 0
@@ -8771,10 +8737,7 @@ void MenuUI::handleSppedTest(std::shared_ptr<SpeedResult>& results)
                     break;
                 }
             }
-
         }
-
-
     }
 
     mSpeedTestUpdateFlag = true;            /* 测速结果已更新，只有在返回测速菜单后才失效 */
@@ -9020,7 +8983,6 @@ void MenuUI::handleDispLightMsg(int menu, int interval)
 				}
                 mGyroCalcDelay--;
 			} else {
-				// LOGERR(TAG, "update calibration light error state 0x%x", getServerState());
 				setLight();
 			}
 			break;
@@ -9547,9 +9509,6 @@ bool MenuUI::checkisLiveRecord()
     }
 }
 
-
-
-
 bool MenuUI::isCurMenuHasReadyArea()
 {
     if (cur_menu == MENU_PIC_INFO 
@@ -9564,11 +9523,7 @@ bool MenuUI::isCurMenuHasReadyArea()
     }
 }
 
-/* 大卡 + 8小卡 --> 显示 Ready
- * 只有大卡,无(缺)小卡 --> 显示: Need TF Card
- * 只有小卡无大卡 --> 显示 NO SD CARD
- * 没有任何卡 --> 显示 NO SD CARD
- */
+
 void MenuUI::dispReady(bool bDispReady)
 {
     if (isCurMenuHasReadyArea()) {
@@ -9662,8 +9617,6 @@ void MenuUI::dispInNeedCard()
             break;
         }
 
-
-
         default: {
             iLineOneStartPos = 47;
             cIndex[0] = '(';
@@ -9690,10 +9643,6 @@ void MenuUI::dispInNeedCard()
         }        
     }
 }
-
-
-
-
 
 void MenuUI::dispNeedSD0()
 {

@@ -98,4 +98,7 @@ bool loadJsonFromCString(const char* pCstr, Json::Value* root);
 
 void printJson(Json::Value& root);
 
+bool loadBatCfgFile(std::string path, std::map<int, int>& maps);
+
+
 #endif //PROJECT_UTIL_H

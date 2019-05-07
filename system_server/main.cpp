@@ -111,6 +111,7 @@ int main(int argc ,char *argv[])
     int iRet = 0;
     char c = -1;
 
+
     pipe(mCtrlPipe);
     registerSig(signalHandler);
 
@@ -132,6 +133,10 @@ int main(int argc ,char *argv[])
     LogWrapper::init(DEFAULT_LOG_FILE_PATH_BASE, "sys_log", true);
 
     LOGDBG(TAG, "\n\n>>> Start system_server now, Firm Version [%s], CompileInfo[%s - %s] <<<<<<<<<<<<\n", property_get(PROP_SYS_FIRM_VER), __DATE__, __TIME__);
+
+    std::map<int, int> map_;
+    loadBatCfgFile("/home/nvidia/batCfg.ini", map_);
+
 
     {
         /* 构造MenuUI对象 */

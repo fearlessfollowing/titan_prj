@@ -50,11 +50,16 @@ public:
     /* 获取电池信息 */
     int getCurBatteryInfo(BatterInfo* pBatInfo);
 
+    static int                  sFirstRead;
+
 private:
 
     int                         mSlaveAddr;     /* 总线地址 */
     int                         mBusNumber;     /* 总线号 */
     int                         mBatMode;
+
+    int                         mLastVol;       /* 上一次读取的电压值 */
+    int                         mLastPer;       /* 电池百分比 */
 
     std::shared_ptr<ins_i2c>    mI2c;
 };
