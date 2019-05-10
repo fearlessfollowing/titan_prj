@@ -300,6 +300,8 @@
 #define SWAP_FILE_PATH                  "/swap/sfile"
 
 
+#define BAT_CONV_TAB                    "/home/nvidia/insta360/etc/batCfg.ini"
+
 /*
  * 拍照模式名称
  */

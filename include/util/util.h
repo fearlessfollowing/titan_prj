@@ -2,6 +2,8 @@
 #ifndef PROJECT_UTIL_H
 #define PROJECT_UTIL_H
 
+#include <map>
+#include <string>
 #include <json/json.h>
 #include <json/value.h>
 

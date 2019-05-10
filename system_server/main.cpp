@@ -134,9 +134,8 @@ int main(int argc ,char *argv[])
 
     LOGDBG(TAG, "\n\n>>> Start system_server now, Firm Version [%s], CompileInfo[%s - %s] <<<<<<<<<<<<\n", property_get(PROP_SYS_FIRM_VER), __DATE__, __TIME__);
 
-    std::map<int, int> map_;
-    loadBatCfgFile("/home/nvidia/batCfg.ini", map_);
-
+    // std::map<int, int> map_;
+    // loadBatCfgFile("/home/nvidia/batCfg.ini", map_);
 
     {
         /* 构造MenuUI对象 */

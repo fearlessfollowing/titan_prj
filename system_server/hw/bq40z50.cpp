@@ -113,15 +113,21 @@ static double convert_k_to_c(int16 k)
 }
 
 
+
 BatteryManager::BatteryManager()
 {
     u16 uBatMode = 0;
-
     mBusNumber = DEFAULT_BQ40Z50_I2C_BUS_NUM;
     mSlaveAddr = DEFAULT_BQ40Z50_I2C_ADDR;
     mLastVol   = 13500; // mV
     mLastPer   = 0;
     mBatMode = 0;
+
+    if (loadBatCfgFile(BAT_CONV_TAB, mBatConvMap)) {
+        LOGINFO(TAG, "--> load battery convert table ok");
+    } else {
+        LOGINFO(TAG, "--> load battery convert table failed, table is exist???");        
+    }
 
     const char * pBusNum = property_get(PROP_BAT_I2C_BUS_NUM);
     if (pBusNum) {
@@ -216,7 +222,7 @@ bool BatteryManager::isBatteryCharging()
     return bCharge;
 }
 
-#define VOL_CRITICAL_VAL    14240       /* 14.24V */
+
 
 int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
 {
@@ -280,8 +286,8 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             LOGDBG(TAG, "---> Battery Voltage: %d [mV]", uVol);
         }
 
-
-        
+#if 0
+#define VOL_CRITICAL_VAL    14240       /* 14.24V */
         /*
          * - 当电池电压小于14.24时(30)，电池剩余电量使用公式计算
          * - 判断是否在充电状态(如果不在充电状态，即使电压值升高,电量百分比也不能上升)
@@ -308,6 +314,22 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
 
             pBatInfo->uBatLevelPer = uBatPer;
         }
+#else 
+#define VOL_CRITICAL_VAL    13400       /* 13.4V */
+#define BAT_CAP_CRITCAL_VAL 5
+
+	    auto it = mBatConvMap.find(pBatInfo->uBatLevelPer);
+	    if (it != mBatConvMap.end()) {
+            LOGINFO(TAG, "Convert battery level: %d", it->second);
+            pBatInfo->uBatLevelPer = it->second;
+        }
+
+        /* 电池的电压已经足够低,但是显示的电量还高于5%,并且非充电状态 */
+        if (uVol <= VOL_CRITICAL_VAL && (pBatInfo->uBatLevelPer > BAT_CAP_CRITCAL_VAL) && (pBatInfo->bIsCharge = false)) {
+            LOGINFO(TAG, "battery voltage is lower than 13.4V, but cap is higher than 5!!");
+            pBatInfo->uBatLevelPer = 4;
+        }
+#endif
     }
     return GET_BATINFO_OK;
 }

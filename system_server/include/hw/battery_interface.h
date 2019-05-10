@@ -1,7 +1,7 @@
-
 #ifndef _BATTERY_INTERFACE_H_
 #define _BATTERY_INTERFACE_H_
 
+#include <map>
 #include <common/sp.h>
 
 class ins_i2c;
@@ -62,6 +62,9 @@ private:
     int                         mLastPer;       /* 电池百分比 */
 
     std::shared_ptr<ins_i2c>    mI2c;
+
+    std::map<int,int>           mBatConvMap;
+
 };
 
 
