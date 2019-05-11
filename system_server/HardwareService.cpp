@@ -1,8 +1,8 @@
 /*****************************************************************************************************
-**					Copyrigith(C) 2018	Insta360 Pro2、Titan Camera Project
+**					Copyrigith(C) 2018	Insta360 Pro2/Titan Camera Project
 ** --------------------------------------------------------------------------------------------------
 ** 文件名称: HardwareService.cpp
-** 功能描述: 温度管理服务
+** 功能描述: 硬件服务管理
 **
 **
 **
@@ -372,15 +372,28 @@ void HardwareService::stopService()
 
 void HardwareService::tunningFanSpeed(int iLevel)
 {
+#ifdef ENABLE_FAN_GEAR_8
     int iFanSpeed[] = {0, 120, 140, 160, 180, 200, 210, 230, 255};
+#else 
+    int iFanSpeed[] = {0, 120, 160, 200, 255};
+#endif
+
     int iCurSpeed;
     char cmd[128] = {0};
 
+#ifdef ENABLE_FAN_GEAR_8
     if (iLevel < 0 || iLevel > 8) {
         iCurSpeed = iFanSpeed[8];
     } else {
         iCurSpeed = iFanSpeed[iLevel];        
     }
+#else 
+    if (iLevel < 0 || iLevel > 4) {
+        iCurSpeed = iFanSpeed[4];
+    } else {
+        iCurSpeed = iFanSpeed[iLevel];        
+    }
+#endif
 
     LOGDBG(TAG, "---> tunning fan speed: %d", iCurSpeed);
 

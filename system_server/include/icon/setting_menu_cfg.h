@@ -1272,6 +1272,8 @@ SettingItem setFanRateCtrl8Item = {
 
 
 SettingItem* gSetFanrateCtrlItems[] = {
+
+#ifdef ENABLE_FAN_GEAR_8
 	&setFanRateCtrlOffItem,
 	&setFanRateCtrl1Item,
 	&setFanRateCtrl2Item,
@@ -1281,6 +1283,13 @@ SettingItem* gSetFanrateCtrlItems[] = {
     &setFanRateCtrl6Item,
     &setFanRateCtrl7Item,    
     &setFanRateCtrl8Item,    
+#else 
+	&setFanRateCtrlOffItem,
+	&setFanRateCtrl1Item,
+	&setFanRateCtrl2Item,
+	&setFanRateCtrl3Item,
+	&setFanRateCtrl4Item,
+#endif
 };
 
 #endif

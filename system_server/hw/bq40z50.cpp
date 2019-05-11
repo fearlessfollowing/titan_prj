@@ -248,7 +248,7 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             return GET_BATINFO_ERR_TEMPERATURE;     /* 获取电池温度失败 */
         } else {
             pBatInfo->dBatTemp = convert_k_to_c(kTemp);         
-            LOGDBG(TAG, "---> Battery temperature: %d[K], %f[C]", kTemp, pBatInfo->dBatTemp);
+            // LOGDBG(TAG, "---> Battery temperature: %d[K], %f[C]", kTemp, pBatInfo->dBatTemp);
         }
 
         /* is Charging */
@@ -277,13 +277,13 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             pBatInfo->uBatLevelPer = INVALID_BATTERY_TEMP;
             return GET_BATINFO_ERR_REMAIN_CAP;
         } else {
-            LOGDBG(TAG, "---> Battery Remain Capacity: %d%%", uRemainPer);
+            // LOGDBG(TAG, "---> Battery Remain Capacity: %d%%", uRemainPer);
             pBatInfo->uBatLevelPer = uRemainPer;
         }
 
         /* Voltage() */
         if (mI2c->i2c_read(BQ40Z50_CMD_VOLTAGE, (u8*)&uVol, 2) == 0) {
-            LOGDBG(TAG, "---> Battery Voltage: %d [mV]", uVol);
+            // LOGDBG(TAG, "---> Battery Voltage: %d [mV]", uVol);
         }
 
 #if 0
@@ -320,14 +320,14 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
 
 	    auto it = mBatConvMap.find(pBatInfo->uBatLevelPer);
 	    if (it != mBatConvMap.end()) {
-            LOGINFO(TAG, "Convert battery level: %d", it->second);
+            // LOGINFO(TAG, "Convert battery level: %d", it->second);
             pBatInfo->uBatLevelPer = it->second;
         }
 
         /* 电池的电压已经足够低,但是显示的电量还高于5%,并且非充电状态 */
         if (uVol <= VOL_CRITICAL_VAL && (pBatInfo->uBatLevelPer > BAT_CAP_CRITCAL_VAL) && (pBatInfo->bIsCharge = false)) {
             LOGINFO(TAG, "battery voltage is lower than 13.4V, but cap is higher than 5!!");
-            pBatInfo->uBatLevelPer = 4;
+            pBatInfo->uBatLevelPer = 3;
         }
 #endif
     }
