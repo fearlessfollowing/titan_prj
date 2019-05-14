@@ -5,7 +5,32 @@
 #include <thread>
 #include <hw/battery_interface.h>
 
-class HardwareService {
+#include <sys/SocketClient.h>
+#include <sys/SocketListener.h>
+
+
+
+#define PROP_FAN_CUR_GEAR       "sys.fan_cur_gear"
+
+/*
+ * 当前风速可录时长
+ */
+#define PROP_FAN_GEAR_TIME      "sys.gear_rec_time"
+
+#define MAX_HARDWARE_REQ_BUF        256
+
+#define HARDWARE_CMD_TURN_ON_FAN    "turn_on_fan"
+#define HARDWARE_CMD_TURN_OFF_FAN   "turn_off_fan"
+#define HARDWARE_CMD_TUNNING_FAN    "tuning_fan"
+
+
+/*
+ * 硬件管理服务 - HardwareService
+ * 1. 支持电池管理
+ * 2. 支持风扇管理(风扇的档位调节)
+ * 3. 提供跨进程支持
+ */
+class HardwareService: public SocketListener {
 
 public:
                     HardwareService();
@@ -14,57 +39,51 @@ public:
     void            startService();
     void            stopService();
 
-    /*
-     * 电池管理相关
-     */
     BatterInfo      getSysBatteryInfo();
     bool            isSysLowBattery();
     
     bool            isNeedBatteryProtect();
 
 
+    static uint32_t getRecSecsInCurFanSpeed(int iFanLevel);
+
     static void     tunningFanSpeed(int iLevel);
     static int      getCurFanSpeedLevel();
     static int      switchFan(bool bOnOff);
+
+    static std::string getRecTtimeByLevel(int iLevel);
+    
     static bool     sFanGpioExport;
+
+protected:
+    virtual bool    onDataAvailable(SocketClient *cli);
 
 private:
 
-    float           mBatteryTmp;
-    int             mCtrlPipe[2]; // 0 -- read , 1 -- write
-
-    int             serviceLooper();
-    bool            reportSysTempAndBatInfo();
-    void            writePipe(int p, int val);
-    
-    void            getNvTemp();
-    void            getModuleTemp();
-
-    /*
-     * 电池信息
-     */
-    std::mutex      mBatteryLock;
-    std::shared_ptr<BatterInfo> mBatInfo;
-    void            updateBatteryInfo();
-
-
-    /*
-     * 系统温度信息
-     */
-    float           mCpuTmp;
-    float           mGpuTmp;
-    float           mModuleTmp;
-    void            updateSysTemp();
-
-    /*
-     * 灯光管理
-     */
-
+    float                                   mBatteryTmp;
+    int                                     mCtrlPipe[2]; // 0 -- read , 1 -- write
+    std::mutex                              mBatteryLock;
+    std::shared_ptr<BatterInfo>             mBatInfo;
+    float                                   mCpuTmp;
+    float                                   mGpuTmp;
+    float                                   mModuleTmp;
     std::thread                             mLooperThread;
     std::mutex                              mLock; 
     static std::mutex                       mInstanceLock;
     bool                                    mRunning;
     std::shared_ptr<BatteryManager>         mBatteryInterface;
+
+    void            updateSysTemp();
+    void            updateBatteryInfo();
+    int             serviceLooper();
+    bool            reportSysTempAndBatInfo();
+    void            getNvTemp();
+    void            getModuleTemp();
+
+    int             getListenerSocket();
+
+    bool            handleHardwareRequest(Json::Value& reqJson);
+
 };
 
 

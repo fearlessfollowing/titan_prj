@@ -602,6 +602,7 @@ private:
 #ifdef ENABLE_GPS_SIGNAL_TEST
     void    handleGpsSignalTest();
     void    tipGpsSingalTest(int iType, int iQueryResult = 0, int iSvNum = 0);    
+    uint32_t getRecSecsInCurFanSpeed(int iFanLevel);
 #endif 
 
 /***************************************** 状态管理(10.08) ***************************************************/
@@ -884,7 +885,9 @@ private:
 
 #ifdef ENABLE_FAN_RATE_CONTROL
     void    convFanSpeedLevel2Note(int iLevel);
+    void    tipMaxRecordTime(int iFanLevel);
 #endif
+
 
     struct stSetItem* getSetItemByName(std::vector<struct stSetItem*>& mList, const char* name);
 

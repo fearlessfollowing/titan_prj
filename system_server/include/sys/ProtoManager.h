@@ -194,6 +194,7 @@ public:
     bool            parseAndDispatchRecMsg(SocketClient* cli, Json::Value& jsonData);
 
     void            setNotifyRecv(sp<ARMessage> notify);
+    
 private:
 
     static int              mSyncReqErrno;

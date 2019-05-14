@@ -427,6 +427,4 @@ bool TranManager::onDataAvailable(SocketClient* cli)
     return bResult;
 }
 
-
-
 #endif

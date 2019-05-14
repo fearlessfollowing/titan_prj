@@ -101,6 +101,7 @@ void CfgManager::genDefaultCfg()
     sysSetCfg[_set_logo]                = 0;        // Logo: On
     sysSetCfg[_video_seg]               = 0;        // Video Fragment: On
     sysSetCfg[_wifi_on]                 = 0;
+    sysSetCfg[_fan_speed]               = 4;        /* 风扇速度默认为最大 */
 
     rootCfg[_mode_select]              = modeSelectCfg;
     rootCfg[_sys_setting]              = sysSetCfg;

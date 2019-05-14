@@ -655,7 +655,7 @@ SettingItem setFanRateControlItem = {
 	stLightIcon:    {},					
 	stNorIcon:      {},
     stOrigArg:      {},    
-    pNote:          "FanRateCtrl",     
+    pNote:          "FanLevel1",     
     bMode:          false,					
 };
 #endif
@@ -746,14 +746,14 @@ SettingItem* gSettingItems[] = {
 
 	&setVideSegItem,
 	&setStorageItem,
-	&setInfoItem,
-
-	&setResetItem,
 
 #ifdef ENABLE_FAN_RATE_CONTROL
     &setFanRateControlItem,
-#endif 
+#endif 	
 
+	&setInfoItem,
+	&setResetItem,
+	
 #ifdef ENABLE_GPS_SIGNAL_TEST
     &setGpsSignalTestControlItem,
 #endif

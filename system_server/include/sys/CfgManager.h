@@ -49,6 +49,7 @@ using CfgChangedCallback = std::function<void (int iEventType, std::string key, 
 #define _aeb                    "aeb"
 #define _ph_delay               "ph_delay"
 #define _flow_state             "flow_state"
+#define _fan_speed              "fan_speed"
 
 
 enum {
@@ -70,7 +71,6 @@ public:
     void                    setCallback(CfgChangedCallback callback);
 
     Json::Value&            getSysSetting();
-
 
     /** 复位所有的配置项 */
     bool                    resetAllCfg();

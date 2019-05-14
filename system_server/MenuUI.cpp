@@ -86,7 +86,7 @@ LOGERR(TAG,"err menu state (%d 0x%x)",  menu, state);
 LOGDBG(TAG, "menu state (%d 0x%x)", menu, state);
 
 
-
+#define ENABLE_DEBUG_LIGHT
 
 /*
  * 消息框的消息类型
@@ -104,6 +104,7 @@ enum {
     DISP_VID_SEGMENT,
     DISP_NEED_SDCARD,
     DISP_NEED_QUERY_TFCARD,
+    DISP_MAX_RECORD_TIME,
 };
 
 
@@ -906,7 +907,7 @@ void MenuUI::disp_msg_box(int type)
     uint64_t serverState = getServerState();
 
     if (cur_menu == -1) {
-        LOGERR(TAG,"disp msg box before pro_service finish\n");
+        LOGERR(TAG,"disp msg box before system_server finish\n");
         return;
     }
 
@@ -924,6 +925,7 @@ void MenuUI::disp_msg_box(int type)
             case DISP_LIVE_REC_USB:
             case DISP_ALERT_FAN_OFF:
             case DISP_VID_SEGMENT:
+            case DISP_MAX_RECORD_TIME:
                 send_clear_msg_box(2500);
                 break;
 			
@@ -1017,7 +1019,14 @@ void MenuUI::disp_msg_box(int type)
             #endif
             break;
         }
-        
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+        case DISP_MAX_RECORD_TIME: {     /* 高温可录时长 */
+            tipMaxRecordTime(Singleton<CfgManager>::getInstance()->getKeyVal(_fan_speed));
+            break;
+        }
+#endif
+
         SWITCH_DEF_ERROR(type);
     }
 }
@@ -1360,7 +1369,22 @@ void MenuUI::setMenuCfgInit()
         mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num = iPageCnt;
 
         /* 使用配置值来初始化首次显示的页面 */
+    #if 0
         mFanLevel = HardwareService::getCurFanSpeedLevel();
+    #else 
+        char cIndex[16] = {0};
+
+        /* 根据用户保存的配置值来初始化菜单 */
+        mFanLevel = Singleton<CfgManager>::getInstance()->getKeyVal(_fan_speed);
+        std::string timeout = HardwareService::getRecTtimeByLevel(mFanLevel);
+        LOGINFO(TAG, "---> init current fan spped, record max time: %s", timeout.c_str())
+        property_set(PROP_FAN_GEAR_TIME, timeout.c_str());   
+
+        sprintf(cIndex, "%d", mFanLevel);
+        property_set(PROP_FAN_CUR_GEAR, cIndex);        
+
+    #endif
+
         convFanSpeedLevel2Note(mFanLevel);
         updateMenuCurPageAndSelect(MENU_SET_FAN_RATE, mFanLevel);
 
@@ -5612,17 +5636,17 @@ void MenuUI::convFanSpeedLevel2Note(int iLevel)
 {
     std::string dispNote;
     switch (iLevel) {
-        case 1: dispNote = "FanRateCtl: L1"; break;
-        case 2: dispNote = "FanRateCtl: L2"; break;
-        case 3: dispNote = "FanRateCtl: L3"; break;
-        case 4: dispNote = "FanRateCtl: L4"; break;
-        case 5: dispNote = "FanRateCtl: L5"; break;
-        case 6: dispNote = "FanRateCtl: L6"; break;
-        case 7: dispNote = "FanRateCtl: L7"; break;
-        case 8: dispNote = "FanRateCtl: L8"; break;
+        case 1: dispNote = "FanLevel: L1"; break;
+        case 2: dispNote = "FanLevel: L2"; break;
+        case 3: dispNote = "FanLevel: L3"; break;
+        case 4: dispNote = "FanLevel: L4"; break;
+        case 5: dispNote = "FanLevel: L5"; break;
+        case 6: dispNote = "FanLevel: L6"; break;
+        case 7: dispNote = "FanLevel: L7"; break;
+        case 8: dispNote = "FanLevel: L8"; break;
         case 0:
         default:
-                dispNote = "FanRateCtl: Off"; break;
+                dispNote = "FanLevel: Off"; break;
     }
 
     updateSetItemCurNote(mSetItemsList, SET_ITEM_NAME_FAN_RATE_CTL, dispNote);
@@ -5813,6 +5837,7 @@ void MenuUI::procPowerKeyEvent()
 #ifdef ENABLE_FAN_RATE_CONTROL
 
         case MENU_SET_FAN_RATE: {
+            char cIndex[16] = {0};
             iIndex = getMenuSelectIndex(MENU_SET_FAN_RATE);
             mFanLevel = iIndex;
             std::string dispNote;
@@ -5820,12 +5845,34 @@ void MenuUI::procPowerKeyEvent()
             LOGDBG(TAG, "set fan rate control index[%d]", iIndex);
             convFanSpeedLevel2Note(mFanLevel);
 
+#if 0
             /** 根据索引值来设置风扇的速度 */
             HardwareService::tunningFanSpeed(iIndex);
-            procBackKeyEvent();            
+#endif
+
+            /* 将当前风速保存到配置中 */
+            Singleton<CfgManager>::getInstance()->setKeyVal(_fan_speed, iIndex);
+            sprintf(cIndex, "%d", iIndex);
+
+            property_set(PROP_FAN_CUR_GEAR, cIndex);
+
+            /*
+             * 显示提示消息: 0 - 3档显示消息框,4档不需要
+             */
+            if (iIndex != 4) {
+                std::string timeout = HardwareService::getRecTtimeByLevel(mFanLevel);
+                LOGINFO(TAG, "---> record max time: %s", timeout.c_str())
+                property_set(PROP_FAN_GEAR_TIME, timeout.c_str());  
+
+                /* 显示消息框 */
+                disp_msg_box(DISP_MAX_RECORD_TIME);                
+            } else {
+                procBackKeyEvent();            
+            }
             break;
         }
 #endif
+
 
 
 #ifdef ENABLE_DENOISE_MODE_SELECT
@@ -7833,7 +7880,6 @@ void MenuUI::disp_dev_msg_box(int bAdd, int type, bool bChange)
 }
 
 
-
 void MenuUI::flick_light()
 {	
     if ((mLastLightVal & 0xf8) != fli_light) {
@@ -7843,19 +7889,6 @@ void MenuUI::flick_light()
     }
 }
 
-
-#if 0
-bool MenuUI::is_bat_low()
-{
-    bool ret = false;
-    if (mBatInterface->isBatteryExist() &&  !mBatInfo->bIsCharge &&  
-                        mBatInfo->uBatLevelPer <= BAT_LOW_VAL) {
-        ret = true;
-    }
-
-    return ret;
-}
-#endif
 
 
 void MenuUI::func_low_bat()
@@ -8384,11 +8417,11 @@ void MenuUI::handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo)
 *************************************************************************/
 void MenuUI::handleDispInit()
 {
-    read_sn();						/* 获取系统序列号 */
-    read_uuid();					/* 读取设备的UUID */
-    read_ver_info();				/* 读取系统的版本信息 */ 
-    init_cfg_select();				/* 根据配置初始化选择项 */
-    bDispTop = true;				/* 显示顶部标志设置为true */
+    read_sn();						    /* 获取系统序列号 */
+    read_uuid();					    /* 读取设备的UUID */
+    read_ver_info();				    /* 读取系统的版本信息 */ 
+    init_cfg_select();				    /* 根据配置初始化选择项 */
+    bDispTop = true;				    /* 显示顶部标志设置为true */
 	handleCheckBatteryState(true);		/* 检查电池的状态 */
 }
 
@@ -8773,6 +8806,7 @@ void MenuUI::handleUpdateMid()
                       
             if (false == mTakeVideInTimelapseMode) {    /* 非timelpase拍摄 */
                 vm->incOrClearRecSec();
+                
                 if (vm->decRecLeftSec()) {
                     if (cur_menu == MENU_VIDEO_INFO) {  /* 如果是在录像界面,更新录像时间和剩余时间到UI */
                         dispBottomLeftSpace();      /* 显示剩余时长 */
@@ -8880,10 +8914,15 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
         }
     }
 
+    /*
+     * 日期: 2019年05月14日 - 通过ENABLE_LOW_BATTERY_PROTECT来控制是否使能低电自动关机
+     */
+#ifdef ENABLE_LOW_BATTERY_PROTECT
     if (hs->isNeedBatteryProtect()) {
         LOGINFO(TAG, "Battery is too low, need shutdown machine as soon as possible");
         handleShutdown();
     }
+#endif    
 
     send_delay_msg(UI_READ_BAT, iNextPollTime);  /* 给UI线程发送读取电池电量的延时消息 */
     return true;
@@ -9425,6 +9464,32 @@ void MenuUI::dispLeftNum(const char* pBuf)
     clearArea(92, 48);  /* 先清除一下该区域 */
     dispStrFill((const u8 *) pBuf, iStartPos, 48);
 }
+
+#ifdef ENABLE_FAN_RATE_CONTROL
+
+void MenuUI::tipMaxRecordTime(int iFanLevel)
+{
+    char cLine[128] = {0};
+    int iRecMin = 10;
+
+    /* 清屏 */
+    clearArea();
+
+    switch (iFanLevel) {
+        case 0: iRecMin = 7; break;
+        case 1: iRecMin = 15; break;
+        case 2: iRecMin = 30; break;
+        case 3: iRecMin = 45; break;        
+    }
+    sprintf(cLine, "%dmin at this fan-speed", iRecMin);
+
+    dispStr((const u8*)"Tips: Do not use at", 9, 0, false, 128);
+    dispStr((const u8*)"high temperature. The", 5, 16, false, 128);
+    dispStr((const u8*)"max recording time is", 8, 32, false, 128);
+    dispStr((const u8*)cLine, 1, 48, false, 128);
+}
+
+#endif
 
 
 void MenuUI::tipUnmountBeforeShutdown()

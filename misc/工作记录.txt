@@ -24,4 +24,13 @@ https://shimo.im/sheets/C3WblMC4xG49eK82/MODOC
 
 
 
+日期: 2019年05月13日
+------------------------------------------------------------------------------
+风扇参数跑配置的设备树文件:
+hardware/nvidia/platform/t18x/common/kernel-dts/t18x-common-platforms/tegra186-quill-pwm-fan.dtsi
+
+------------------------------------------------------------------------------
+
+
+
 

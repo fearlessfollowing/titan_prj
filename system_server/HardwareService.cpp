@@ -21,6 +21,7 @@
 ** sys.gpu_temp                 GPU温度
 ** V3.1         Skymixos        2019-01-21      将更新电池信息和温度信息合并
 ** V3.2         Skymixos        2019-03-19      启动硬件服务时,立即读取电池状态
+** V3.3         Skymixos        2019-05-14      添加服务响应支持
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -49,6 +50,7 @@
 
 #include <sys/HardwareService.h>
 #include <sys/ProtoManager.h>
+#include <sys/CfgManager.h>
 
 #undef      TAG
 #define     TAG "HwService"
@@ -56,37 +58,51 @@
 
 bool HardwareService::sFanGpioExport = false;
 
-void HardwareService::writePipe(int p, int val)
-{
-    char c = (char)val;
-    int  rc;
 
-    rc = write(p, &c, 1);
-    if (rc != 1) {
-        LOGDBG(TAG, "Error writing to control pipe (%s) val %d", strerror(errno), val);
-        return;
+
+int HardwareService::getListenerSocket()
+{
+    const char socketName[] = "hardware_server";
+    int sock = create_socket(socketName, SOCK_STREAM, 0600);
+    if (sock < 0) {
+        LOGERR(TAG, "--> create socket for Hardware Service Failed");
     }
+    return sock;
 }
 
-HardwareService::HardwareService()
+
+
+HardwareService::HardwareService(): SocketListener(getListenerSocket(), true)
 {
+
     mRunning = false;
     pipe(mCtrlPipe);
+
+    LOGDBG(TAG, "---> constructor HardwareService now ...");
+
     mBatteryInterface = std::make_shared<BatteryManager>();
     mBatInfo = std::make_shared<BatterInfo>();    
-    LOGDBG(TAG, "---> constructor HardwareService now ...");
+
 }
+
+std::string HardwareService::getRecTtimeByLevel(int iLevel)
+{
+    std::string recTimeStr;
+    switch (iLevel) {
+        case 0: recTimeStr = "7"; break;
+        case 1: recTimeStr = "15"; break;
+        case 2: recTimeStr = "30"; break;
+        case 3: recTimeStr = "45"; break;
+    }
+    return recTimeStr;
+}
+
 
 
 HardwareService::~HardwareService()
 {
     LOGDBG(TAG, "---> deConstructor HardwareService now ...");
     if (mCtrlPipe[0] != -1) {
-        writePipe(mCtrlPipe[1], CtrlPipe_Shutdown);
-         if (mLooperThread.joinable()) {
-            mLooperThread .join();
-        }
-
         close(mCtrlPipe[0]);
         close(mCtrlPipe[1]);
         
@@ -172,9 +188,7 @@ void HardwareService::getModuleTemp()
 #endif
 }
 
-#if 0
-"_battery": {"battery_charge": 0, "battery_level": 1000, "int_tmp": 0.0, "tmp": 0.0}
-#endif 
+
 bool HardwareService::reportSysTempAndBatInfo()
 {   
     Json::Value root;
@@ -206,6 +220,7 @@ void HardwareService::updateBatteryInfo()
     char cBatTemp[128] = {0};
 
     property_set(PROP_BAT_EXIST, "false");
+
     {
         std::unique_lock<std::mutex> _lock(mBatteryLock);
         
@@ -272,6 +287,7 @@ bool HardwareService::isSysLowBattery()
 bool HardwareService::isNeedBatteryProtect()
 {
     bool ret = false;
+
     {
         std::unique_lock<std::mutex> _lock(mBatteryLock);
         if (mBatteryInterface->isBatteryExist() &&  
@@ -353,6 +369,7 @@ void HardwareService::startService()
         if (!mRunning) {
             mLooperThread = std::thread([this]{ serviceLooper(); });
         }
+        this->startListener();  /* 启动监听器 */
     }
 }
 
@@ -367,11 +384,13 @@ void HardwareService::stopService()
             mRunning = false;
         }
     } 
+    this->stopListener();   /* 停止监听器 */
 }
 
 
 void HardwareService::tunningFanSpeed(int iLevel)
 {
+
 #ifdef ENABLE_FAN_GEAR_8
     int iFanSpeed[] = {0, 120, 140, 160, 180, 200, 210, 230, 255};
 #else 
@@ -403,9 +422,9 @@ void HardwareService::tunningFanSpeed(int iLevel)
 }
 
 
-
 int HardwareService::switchFan(bool bOnOff)
 {
+    #if 0
     int iRet = -1;
     int i = 0;
     if (HardwareService::sFanGpioExport == false) {
@@ -424,8 +443,10 @@ int HardwareService::switchFan(bool bOnOff)
     LOGINFO(TAG, "switch fan result: %d", iRet);
     
     return iRet;
+    #else 
+    return 0;
+    #endif
 }
-
 
 
 int HardwareService::getCurFanSpeedLevel()
@@ -454,4 +475,75 @@ int HardwareService::getCurFanSpeedLevel()
         }
     } 
     return iSpeedLevel;   
+}
+
+
+/*
+ * 处理来自请求的端的请求(调节风扇的转速,档位,开关风扇)
+ * {
+ *      "name":"turn_on_fan"/"turn_off_fan"/"tuning_fan",
+ *      "parameters": {
+ *          "gear":0/1/2/3/4
+ *      }
+ * }
+ */
+
+
+
+bool HardwareService::handleHardwareRequest(Json::Value& reqJson)
+{
+    bool bResult = false;
+    if (reqJson.isMember(_name_)) {
+        std::string cmd = reqJson[_name_].asCString();
+        if (cmd == HARDWARE_CMD_TURN_ON_FAN) {              /* 打开风扇: 默认以最大的风速 */
+            tunningFanSpeed(4);
+            switchFan(true);
+        } else if (cmd == HARDWARE_CMD_TURN_OFF_FAN) {      /* 关闭风扇 */
+            switchFan(false);
+            tunningFanSpeed(4);
+        } else if (cmd == HARDWARE_CMD_TUNNING_FAN) {       /* 调节风扇的转速 */
+            int iFanLevel = Singleton<CfgManager>::getInstance()->getKeyVal(_fan_speed);
+            if (iFanLevel == 0) {   /* Off 直接断电,更快将风扇停下来 */
+                switchFan(false);
+            } else {
+                tunningFanSpeed(iFanLevel);
+                switchFan(true);
+            }
+        }
+    } else {
+        LOGERR(TAG, "Node have not name or parameter loss");  
+        printJson(reqJson);         
+    }
+    return bResult;
+}
+
+
+bool HardwareService::onDataAvailable(SocketClient* cli)
+{
+    bool bResult = true;
+    int iSockFd = cli->getSocket();
+    char cRecvBuf[MAX_HARDWARE_REQ_BUF] = {0};
+
+    LOGINFO(TAG, "------------------> HardwareService::onDataAvailable");
+    int iLen = read(iSockFd, cRecvBuf, MAX_HARDWARE_REQ_BUF - 1);
+    if (iLen < 0) {
+        return false;
+    } else {
+        cRecvBuf[iLen] = '\0';
+        
+        LOGINFO(TAG, "read request len: %s", cRecvBuf);
+
+        Json::CharReaderBuilder builder;
+        builder["collectComments"] = false;
+        JSONCPP_STRING errs;
+        Json::Value rootJson;
+
+        Json::CharReader* reader = builder.newCharReader();
+        if (!reader->parse(&cRecvBuf[0], &cRecvBuf[iLen], &rootJson, &errs)) {
+            LOGERR(TAG, "---> Parse json format failed");
+            return false;
+        }        
+
+        return handleHardwareRequest(rootJson);
+    }
 }
