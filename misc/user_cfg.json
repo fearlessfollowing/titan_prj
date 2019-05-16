@@ -1,0 +1,39 @@
+{
+	"mode_select" : 
+	{
+		"mode_select_live" : 0,
+		"mode_select_pic" : 0,
+		"mode_select_video" : 0
+	},
+	"sys_setting" : 
+	{
+		"aeb" : 2,
+		"aud_on" : 1,
+		"aud_spatial" : 1,
+		"dhcp" : 1,
+		"fan_on" : 1,
+		"flicker" : 0,
+		"flow_state" : 1,
+		"gyro_on" : 1,
+		"hdr" : 0,
+		"light_on" : 1,
+		"ph_delay" : 1,
+		"raw" : 0,
+		"set_logo" : 0,
+		"speaker" : 1,
+		"video_fragment" : 0,
+		"wifi_on" : 0,
+		"fan_speed" :4,
+		"fl_map": {
+			"0" : 7,
+			"1" : 15,
+			"2" : 30,
+			"3" : 45 
+		}
+	},
+	"wifi_cfg" : 
+	{
+		"wifi_cfg_passwd" : "Insta360",
+		"wifi_cfg_ssid" : "88888888"
+	}
+}

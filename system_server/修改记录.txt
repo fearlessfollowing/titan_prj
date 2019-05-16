@@ -707,3 +707,54 @@ https://github.com/tibms/kernel-4.4/tree/release/drivers/power/bq40z50
 root@tegra-ubuntu:/sys/devices/system/cpu# cat online
 0-5
 
+日期:2019年5月16日
+-------------------------------------------------------------------------------------------
+1.心跳包中添加风扇当前级别信息:
+"fan_level":0 - 4
+
+
+2.设置风扇档位
+-------------------------------------------------------------------------------------------
+{
+    "name":"camera._setSysSetting",
+    "parameters": {
+        "fan_level": int
+    }
+}
+
+
+3.获取系统设置来获取当前当前的风扇级别及每档风速对应的可录时长
+-------------------------------------------------------------------------------------------
+{
+    "name": "camera._getSysSetting",
+    "results": {
+        "aeb": 3,
+        "aud_on": 1,
+        "aud_spatial": 1,
+        "dhcp": 1,
+        "fan_level": 0,
+        "fan_on": 1,
+        "fl_map": {
+            "0": 7,
+            "1": 15,
+            "2": 30,
+            "3": 45
+        },
+        "flicker": 0,
+        "flow_state": 1,
+        "gyro_on": 1,
+        "hdr": 0,
+        "light_on": 1,
+        "ph_delay": 1,
+        "raw": 0,
+        "set_logo": 0,
+        "speaker": 1,
+        "video_fragment": 0,
+        "wifi_on": 0
+    },
+    "state": "done"
+}
+
+# "fan_level": 当前的风速级别(0: Off, 1: Level-1, 2: Level-2, 3: Level-3; 4: Level-4)
+# "fl_map": 每档风速的可录时长(单位为min)
+-------------------------------------------------------------------------------------------

@@ -32,6 +32,7 @@ CAM_STATE       = '_cam_state'
 GPS_STATE       = '_gps_state'
 SND_STATE       = '_snd_state'
 SYS_TEMP        = '_sys_temp'
+FAN_LEVEL       = 'fan_level'
 
 
 sem_vfs = Semaphore()
@@ -64,6 +65,7 @@ class osc_state(threading.Thread):
         self._rec_sec = 0
         self._live_rec_sec = 0
         self._time_lapse_left = 0
+        self._fan_level = 4     # 初始化值为4
 
         self.poll_info = OrderedDict({BATTERY: {},
                                  ID_RES: [],
@@ -97,6 +99,7 @@ class osc_state(threading.Thread):
             osc_state_handle.UPDATE_REC_LEFT_SEC:       self.set_rec_left_sec,
             osc_state_handle.UPDATE_TIME_LAPSE_LEFT:    self.update_timelapse_left,
             osc_state_handle.UPDATE_SYS_TEMP:           self.updateSysTemp,
+            osc_state_handle.UPDATE_FAN_LEVEL:          self.updateFanLevel,
         })
 
         # 创建检测磁盘信息的线程
@@ -229,6 +232,10 @@ class osc_state(threading.Thread):
 
     def updateSysTemp(self, param):
         self._sys_temp = param
+
+
+    def updateFanLevel(self, param):
+        self._fan_level = param
 
 
     def set_tf_info(self, dev_infos):
@@ -380,6 +387,7 @@ class osc_state(threading.Thread):
 
             # 去掉模组的温度
             self.poll_info[SYS_TEMP] = self._sys_temp
+            self.poll_info[FAN_LEVEL] = self._fan_level
             self.poll_info[LEFT_INFO][REC_LEFT_INFO] = self._rec_left
             self.poll_info[LEFT_INFO][LIVE_REC_LEFT_INFO] = self._live_rec_left
             self.poll_info[LEFT_INFO][REC_INFO] = self._rec_sec
@@ -530,6 +538,7 @@ class osc_state_handle:
     UPDATE_REC_LEFT_SEC = 12
     UPDATE_TIME_LAPSE_LEFT = 13
     UPDATE_SYS_TEMP = 14
+    UPDATE_FAN_LEVEL = 15
 
     @classmethod
     def start(cls):

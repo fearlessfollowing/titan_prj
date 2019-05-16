@@ -31,6 +31,7 @@
 **                                              修改底部USB接口对应的USB地址(2.0, 3.0)
 ** V3.8         Skymixos        2019年3月16日   底部USB接口的挂载路径为/mnt/udisk1，顶部USB接口的挂载路径为
 **                                              /mnt/udisk2 
+** V3.9         Skymixos        2019年05月15日  格式化卷时默认为512K,可通过属性来调节(128K / 512K)
 ******************************************************************************************************/
 
 #include <stdio.h>
@@ -2883,6 +2884,7 @@ err_umount_volume:
 }
 
 
+
 bool VolumeManager::formatVolume2Exfat(Volume* pVol)
 {
     /* 1.检查设备文件是否存在 */
@@ -2892,11 +2894,13 @@ bool VolumeManager::formatVolume2Exfat(Volume* pVol)
         return false;
     } else {
         int status;
-        const char *args[2];
+        const char *args[4];
         args[0] = MKFS_EXFAT;
-        args[1] = pVol->cDevNode;
+        args[1] = "-s";
+        args[2] = (property_get(PROP_CPS_128) != NULL) ? "512": "1024";  /* 簇大小 */
+        args[3] = pVol->cDevNode;
     
-        LOGDBG(TAG, " formatVolume2Exfat cmd [%s %s]", args[0], args[1]);
+        LOGDBG(TAG, " formatVolume2Exfat cmd [%s %s %s %s]", args[0], args[1], args[2], args[3]);
 
         int rc = forkExecvpExt(ARRAY_SIZE(args), (char **)args, &status, false);
         if (rc != 0) {

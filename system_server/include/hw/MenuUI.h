@@ -602,7 +602,6 @@ private:
 #ifdef ENABLE_GPS_SIGNAL_TEST
     void    handleGpsSignalTest();
     void    tipGpsSingalTest(int iType, int iQueryResult = 0, int iSvNum = 0);    
-    uint32_t getRecSecsInCurFanSpeed(int iFanLevel);
 #endif 
 
 /***************************************** 状态管理(10.08) ***************************************************/
@@ -814,7 +813,6 @@ private:
     void    setLight(u8 val);
     void    setLight();
     void    setAllLightOnOffForce(int iOnOff);
-    void    powerOffAll();
 
     /************************************** 灯光管理 END *************************************************/
 
@@ -1024,7 +1022,7 @@ private:
     /*
      * 录像/直播的可存储的剩余时长
      */
-    std::shared_ptr<ins_led>    mLedLight;
+    // std::shared_ptr<ins_led>    mLedLight;
 
     u8                          fli_light = 0;
     u8                          front_light;

@@ -149,6 +149,7 @@ typedef struct _sys_setting_ {
     int     set_logo;
     int     gyro_on;
     int     video_fragment;
+    int     fan_level;          /* 风速级别 */
 } SYS_SETTING;
 
 

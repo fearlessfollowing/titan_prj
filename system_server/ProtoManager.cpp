@@ -14,6 +14,7 @@
 ** V2.0         Skymixos        2019-01-16      预览参数支持模板化配置
 ** V2.1         Skymixos        2019-01-26      优化代码结构
 ** V2.2         Skymixos        2019-03-07      传输层新增Unix套接字传输请求(to web_server)
+** V2.3         Skymixos        2019-05-16      提供控制风扇转速接口
 ******************************************************************************************************/
 #include <thread>
 #include <sys/ins_types.h>
@@ -56,6 +57,8 @@
 #define REQ_QUERY_GPS_STATE         "camera._queryGpsStatus"
 #define REQ_FORMAT_TFCARD           "camera._formatCameraMoudle"
 #define REQ_UPDATE_REC_LIVE_INFO    "camera._update_rec_live_info"
+
+#define REQ_UPDATE_FAN_LEVEL        "camera._updateFanLevel"
 
 #define REQ_START_PREVIEW           "camera._startPreview"
 #define REQ_STOP_PREVIEW            "camera._stopPreview"
@@ -108,6 +111,12 @@
 #define IND_SET_SYS_SETTING         "camera._setSysSetting"
 
 #define IND_START_SHELL             "camera._startShell"
+
+
+#define _local "local"
+#define _module "module"
+#define _result "result"
+
 
 /** 使用Unix套接字传输给web_server发请求 */
 #define USE_UNIX_TRAN
@@ -885,6 +894,26 @@ bool ProtoManager::sendUpdateRecordLeftSec(u32 uRecSec, u32 uLeftRecSecs, u32 uL
 
 
 /*************************************************************************
+** 方法名称: sendUpdateFanLevel
+** 方法功能: 发送更新风扇的级别
+** 入口参数: 
+**      iLevel - 风扇级别
+** 返回值:   成功返回true;否则返回False
+** 调 用: 
+*************************************************************************/
+bool ProtoManager::sendUpdateFanLevel(int iLevel)
+{
+    Json::Value root;
+    Json::Value param;
+
+    param[_fan_level] = iLevel;
+    root[_name_] = REQ_UPDATE_FAN_LEVEL;
+    root[_param] = param;  
+    return innerSendSyncReqWithoutCallback(root); 
+}
+
+
+/*************************************************************************
 ** 方法名称: sendUpdateTakeTimelapseLeft
 ** 方法功能: 发送更新可拍timelapse张数请求
 ** 入口参数: 
@@ -1341,34 +1370,40 @@ void ProtoManager::handleIndSetCustomer(SocketClient* cli, Json::Value& jsonData
 }
 
 
-void ProtoManager::handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNode)
+bool ProtoManager::handleSetting(std::shared_ptr<SYS_SETTING>& sysSetting, Json::Value& reqNode)
 {
+    bool bResult = true;
 
     memset(sysSetting.get(), -1, sizeof(SYS_SETTING));
 
     if (reqNode.isMember(_flick) && reqNode[_flick].isInt()) {
         sysSetting->flicker = reqNode[_flick].asInt();
+        if (sysSetting->flicker != 0 && sysSetting->flicker != 1)    
+            bResult = false;
     }
 
     if (reqNode.isMember(_speaker) && reqNode[_speaker].isInt()) {
         sysSetting->speaker = reqNode[_speaker].asInt();
+        if (sysSetting->speaker != 0 && sysSetting->speaker != 1)    
+            bResult = false;
     }
 
     if (reqNode.isMember(_light_on) && reqNode[_light_on].isInt()) {
         sysSetting->led_on = reqNode[_light_on].asInt();
-    }
-
-    if (reqNode.isMember(_light_on) && reqNode[_light_on].isInt()) {
-        sysSetting->led_on = reqNode[_light_on].asInt();
+        if (sysSetting->led_on != 0 && sysSetting->led_on != 1)    
+            bResult = false;
     }
 
     if (reqNode.isMember(_led_on) && reqNode[_led_on].isInt()) {
         sysSetting->led_on = reqNode[_led_on].asInt();
+        if (sysSetting->led_on != 0 && sysSetting->led_on != 1)    
+            bResult = false;
     }
-
 
     if (reqNode.isMember(_fan_on) && reqNode[_fan_on].isInt()) {
         sysSetting->fan_on = reqNode[_fan_on].asInt();
+        if (sysSetting->fan_on != 0 && sysSetting->fan_on != 1)    
+            bResult = false;
     }
 
     if (reqNode.isMember(_audio_on) && reqNode[_audio_on].isInt()) {
@@ -1381,50 +1416,62 @@ void ProtoManager::handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNo
 
     if (reqNode.isMember(_set_logo) && reqNode[_set_logo].isInt()) {
         sysSetting->set_logo = reqNode[_set_logo].asInt();
+        if (sysSetting->set_logo != 0 && sysSetting->set_logo != 1)    
+            bResult = false;
     }
 
     if (reqNode.isMember(_gyro_on) && reqNode[_gyro_on].isInt()) {
         sysSetting->gyro_on = reqNode[_gyro_on].asInt();
+        if (sysSetting->gyro_on != 0 && sysSetting->gyro_on != 1)    
+            bResult = false;        
     }
 
     if (reqNode.isMember(_video_seg) && reqNode[_video_seg].isInt()) {
         sysSetting->video_fragment = reqNode[_video_seg].asInt();
+        if (sysSetting->video_fragment != 0 && sysSetting->video_fragment != 1)    
+            bResult = false;        
     }
 
-    LOGDBG(TAG, "%d %d %d %d %d %d %d %d %d",
-                sysSetting->flicker,
-                sysSetting->speaker,
-                sysSetting->led_on,
-                sysSetting->fan_on,
-                sysSetting->aud_on,
-                sysSetting->aud_spatial,
-                sysSetting->set_logo,
-                sysSetting->gyro_on,
-                sysSetting->video_fragment);    
+    if (reqNode.isMember(_fan_level) && reqNode[_fan_level].isInt()) {
+        sysSetting->fan_level = reqNode[_fan_level].asInt();
+        if (sysSetting->fan_level != 0 && sysSetting->fan_level != 1
+            && sysSetting->fan_level != 2 && sysSetting->fan_level != 3
+            && sysSetting->fan_level != 4)    
+            bResult = false;        
+    }
+    return bResult;
 }
 
 
 void ProtoManager::handleIndSetSysSetting(SocketClient* cli, Json::Value& rootJson)
 {
-
     LOGINFO(TAG, "handle sys set req!!!");
-
-    sp<SYS_SETTING> sysSetting = std::make_shared<SYS_SETTING>();    
-    handleSetting(sysSetting, rootJson[_param]);
-    if (mNotify) {
-        sp<ARMessage> msg = mNotify->dup();
-        msg->setWhat(UI_MSG_SET_SYS_SETTING);
-        msg->set<sp<SYS_SETTING>>("sys_setting", sysSetting);
-        msg->post();
-        msg_util::sleep_ms(500);
-    }
-
+    bool bResult = true;
+    std::shared_ptr<SYS_SETTING> sysSetting = std::make_shared<SYS_SETTING>();    
     Json::Value retRoot;
+    Json::Value errNode;
+
     std::string sendStr;
 
     retRoot[_name_] = rootJson[_name_];
-    retRoot[_state] = _done;
-  
+
+    bResult = handleSetting(sysSetting, rootJson[_param]);
+    if (bResult) {
+        if (mNotify) {
+            sp<ARMessage> msg = mNotify->dup();
+            msg->setWhat(UI_MSG_SET_SYS_SETTING);
+            msg->set<sp<SYS_SETTING>>("sys_setting", sysSetting);
+            msg->post();
+            msg_util::sleep_ms(500);
+        }
+        retRoot[_state] = _done;
+    } else {
+        retRoot[_state] = _error;
+        errNode[_code]  = -1;
+        errNode[_desc]  = "Invalid Value checked";
+        retRoot[_error] = errNode;
+    }
+
     convJsonObj2String(retRoot, sendStr);
     std::shared_ptr<TransBuffer> buffer = std::make_shared<TransBuffer>();
     buffer->fillData(sendStr.c_str());
@@ -1560,9 +1607,7 @@ void ProtoManager::handleTfcardFormatResult(SocketClient* cli, Json::Value& json
     }
 }
 
-#define _local "local"
-#define _module "module"
-#define _result "result"
+
 
 void ProtoManager::handleSpeedTestResult(SocketClient* cli, Json::Value& paramData) 
 {

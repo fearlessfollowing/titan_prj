@@ -238,7 +238,7 @@ _REQ_POWER_OFF              = 'camera._powerOff'            # 低电请求
 _REQ_SET_OPTIONS            = 'camera._setOptions'          # 设置Options   
 _REQ_AWB_CALC               = 'camera._calibrationAwb'      # AWB校正
 _REQ_UPDATE_SYS_TMP         = 'camera._updateSysTemp'       # 更新系统温度
-
+_REQ_UPDATE_FAN_LEVEL       = 'camera._updateFanLevel'      # 更新风速档位
 
 """camera_state"""
 STATE_IDLE                      = 0x00

@@ -3,6 +3,8 @@
 
 #include <mutex>
 #include <thread>
+
+#include <hw/ins_i2c.h>
 #include <hw/battery_interface.h>
 
 #include <sys/SocketClient.h>
@@ -10,12 +12,7 @@
 
 
 
-#define PROP_FAN_CUR_GEAR       "sys.fan_cur_gear"
 
-/*
- * 当前风速可录时长
- */
-#define PROP_FAN_GEAR_TIME      "sys.gear_rec_time"
 
 #define MAX_HARDWARE_REQ_BUF        256
 
@@ -43,6 +40,10 @@ public:
     bool            isSysLowBattery();
     
     bool            isNeedBatteryProtect();
+
+    void            setLightVal(uint8_t val);
+
+    void            setAllLight(bool bOnOff);
 
 
     static uint32_t getRecSecsInCurFanSpeed(int iFanLevel);
@@ -72,6 +73,9 @@ private:
     static std::mutex                       mInstanceLock;
     bool                                    mRunning;
     std::shared_ptr<BatteryManager>         mBatteryInterface;
+    std::shared_ptr<ins_i2c>                mMiscController;    /* 用于配置灯光及风扇等 */
+
+    int                                     mUseSetFanSpeed;    /* 用户设置风扇转速 */
 
     void            updateSysTemp();
     void            updateBatteryInfo();
@@ -82,7 +86,12 @@ private:
 
     int             getListenerSocket();
 
+    bool            pwrCtlFan(bool bOnOff);     /* 开关风扇 */
+
     bool            handleHardwareRequest(Json::Value& reqJson);
+    
+    int             getCurFanSpeed();
+    bool            setTargetFanSpeed(uint16_t speed);
 
 };
 

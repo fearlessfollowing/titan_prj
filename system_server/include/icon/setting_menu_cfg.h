@@ -655,7 +655,7 @@ SettingItem setFanRateControlItem = {
 	stLightIcon:    {},					
 	stNorIcon:      {},
     stOrigArg:      {},    
-    pNote:          "FanLevel1",     
+    pNote:          "FanLeve: L1",     
     bMode:          false,					
 };
 #endif

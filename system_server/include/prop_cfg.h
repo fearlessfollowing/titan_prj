@@ -205,7 +205,25 @@
 #define PROP_MODULE_PWR_WAIT	        "sys.module_pwron_wait"
 #define PROP_RESET_HUB                  "sys.exit_reset_hub"
 
+/*
+ * 每簇含有512个扇区(128K)
+ */
+#define PROP_CPS_128                    "sys.cps_128"
 
+
+/*
+ * 每簇含有1024个扇区(512K)
+ */
+#define PROP_CPS_512                    "sys.cps_512"
+
+
+
+#define PROP_FAN_CUR_GEAR               "sys.fan_cur_gear"
+
+/*
+ * 当前风速可录时长
+ */
+#define PROP_FAN_GEAR_TIME              "sys.gear_rec_time"
 
 /******************************************************************************************************
  *                          ---- 路径配置 -----
@@ -287,6 +305,10 @@
  */
 #define FAN_SPEED_LEVEL_PATH            "/sys/kernel/debug/tegra_fan/cur_pwm"
 
+/*
+ * 风扇转速设置路径
+ */
+#define FAN_SPEED_SET_PATH              "/sys/kernel/debug/tegra_fan/target_pwm"
 
 /*
  * 内核日志的存储路径
@@ -504,6 +526,7 @@
 #define _path               "path"
 #define _dev_list           "dev_list"
 #define _delay              "delay"
+#define _fan_level          "fan_level"
 
 #define _customer           "customize"
 #define _jpeg               "jpeg"

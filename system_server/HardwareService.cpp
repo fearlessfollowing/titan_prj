@@ -21,7 +21,7 @@
 ** sys.gpu_temp                 GPU温度
 ** V3.1         Skymixos        2019-01-21      将更新电池信息和温度信息合并
 ** V3.2         Skymixos        2019-03-19      启动硬件服务时,立即读取电池状态
-** V3.3         Skymixos        2019-05-14      添加服务响应支持
+** V3.3         Skymixos        2019-05-14      添加服务响应支持,增加灯光及风扇管理
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -42,6 +42,10 @@
 #include <util/util.h>
 #include <util/SingleInstance.h>
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
 #include <prop_cfg.h>
 #include <system_properties.h>
 #include <hw/ins_gpio.h>
@@ -58,6 +62,8 @@
 
 bool HardwareService::sFanGpioExport = false;
 
+#define MAX_FAN_SPEED       255
+#define MIN_FAN_SPEED       120
 
 
 int HardwareService::getListenerSocket()
@@ -71,43 +77,113 @@ int HardwareService::getListenerSocket()
 }
 
 
-
 HardwareService::HardwareService(): SocketListener(getListenerSocket(), true)
 {
-
     mRunning = false;
     pipe(mCtrlPipe);
 
     LOGDBG(TAG, "---> constructor HardwareService now ...");
 
+    mUseSetFanSpeed = MAX_FAN_SPEED;
+
     mBatteryInterface = std::make_shared<BatteryManager>();
-    mBatInfo = std::make_shared<BatterInfo>();    
+    mBatInfo = std::make_shared<BatterInfo>();  
+    mMiscController = std::make_shared<ins_i2c>(0, 0x77, true);  
+    if (mMiscController) {
+        mMiscController->i2c_write_byte(0x06, 0x00);
+        mMiscController->i2c_write_byte(0x07, 0x00);        
+    }
 
 }
+
 
 std::string HardwareService::getRecTtimeByLevel(int iLevel)
 {
-    std::string recTimeStr;
-    switch (iLevel) {
-        case 0: recTimeStr = "7"; break;
-        case 1: recTimeStr = "15"; break;
-        case 2: recTimeStr = "30"; break;
-        case 3: recTimeStr = "45"; break;
-    }
-    return recTimeStr;
+    int iCnt = Singleton<CfgManager>::getInstance()->getMaxRecTimeByFanLevel(iLevel);
+    std::stringstream ss;
+    ss << iCnt;
+    return ss.str();
 }
 
+
+
+void HardwareService::setLightVal(uint8_t val)
+{
+    uint8_t uBackupVal = 0;
+ 
+    /* bit[7:6] 为风扇开关和tegra_hdmi开关, bit[5:0]为LED灯控制开关  */
+    val &= 0x3f;   
+
+    if (mMiscController->i2c_read(0x3, &uBackupVal) == 0) {
+        uBackupVal &= 0xc0;	            /* led just low 6bit */
+        uBackupVal |= val;
+
+        if (mMiscController->i2c_write_byte(0x3, uBackupVal) != 0) {
+            LOGERR(TAG, "write val 0x%x fail", uBackupVal);
+        } 
+    } else {
+        LOGERR(TAG, "set_light_val [0x%x] failed ...", val);
+    }
+}
+
+
+void HardwareService::setAllLight(bool bOnOff)
+{
+    uint8_t uBackupVal = 0;
+
+    if (mMiscController->i2c_read(0x3, &uBackupVal) == 0) {
+
+        if (bOnOff) {  /* On */
+            uBackupVal |= 0x3f;
+        } else {    /* Off */
+            uBackupVal &= 0xc0;
+        }
+        mMiscController->i2c_write_byte(0x3, uBackupVal);
+    } else {
+        LOGERR(TAG, ">>>> read i2c 0x2 failed...");
+    }    
+}
+
+
+bool HardwareService::pwrCtlFan(bool bOnOff)
+{
+    uint8_t uBackupVal = 0;
+    bool bResult = false;
+
+    if (mMiscController->i2c_read(0x3, &uBackupVal) == 0) {
+        
+        if (bOnOff) {
+            uBackupVal |= (1 << 7);
+        } else {
+            uBackupVal &= ~(1 << 7);
+        }
+
+        if (mMiscController->i2c_write_byte(0x3, uBackupVal) != 0) {
+            LOGERR(TAG, "led write val 0x%x fail", uBackupVal);
+        } else { 
+            // LOGDBG(TAG, "set_light_val, new val [0x%x]", uBackupVal);
+            bResult = true;
+        }
+    } else {
+        LOGERR(TAG, "set_light_val [0x%x] failed ...", uBackupVal);
+    }    
+    return bResult;
+}
 
 
 HardwareService::~HardwareService()
 {
     LOGDBG(TAG, "---> deConstructor HardwareService now ...");
+
     if (mCtrlPipe[0] != -1) {
         close(mCtrlPipe[0]);
-        close(mCtrlPipe[1]);
-        
+        close(mCtrlPipe[1]);        
         mRunning = false;
     }
+
+    mBatteryInterface = nullptr;
+    mBatInfo = nullptr;
+    mMiscController = nullptr;    
 }
 
 
@@ -335,6 +411,15 @@ int HardwareService::serviceLooper()
             LOGDBG(TAG, "----> select error occured here ...");
             continue;
         } else if (!rc) {   
+            
+            /*
+             * 确保风扇的风速为用户设置的值(避免被内核的监控线程擅自修改)
+             */
+            if (mUseSetFanSpeed != getCurFanSpeed()) {
+                setTargetFanSpeed(mUseSetFanSpeed);
+                LOGINFO(TAG, "-------- who tunning fan speed auto ----------");
+            }
+
 
             /* 获取并更新电池信息: 并同步给UI */
             updateBatteryInfo();
@@ -416,37 +501,45 @@ void HardwareService::tunningFanSpeed(int iLevel)
 
     LOGDBG(TAG, "---> tunning fan speed: %d", iCurSpeed);
 
+#if 0
     system("echo 1 > /sys/kernel/debug/tegra_fan/temp_control");
     sprintf(cmd, "echo %d > /sys/kernel/debug/tegra_fan/target_pwm", iCurSpeed);
     system(cmd);
+#else 
+    Singleton<HardwareService>::getInstance()->mUseSetFanSpeed = iCurSpeed;
+    Singleton<HardwareService>::getInstance()->setTargetFanSpeed(iCurSpeed);
+#endif
 }
 
 
 int HardwareService::switchFan(bool bOnOff)
 {
-    #if 0
-    int iRet = -1;
-    int i = 0;
-    if (HardwareService::sFanGpioExport == false) {
-        if (gpio_request(255)) {
-            LOGERR(TAG, "request gpio [%d] failed", 255);
-            return iRet;
-        } else {
-            HardwareService::sFanGpioExport = true;
-        }
-    }
-
-    do {
-        iRet = gpio_direction_output(255, (bOnOff == true) ? 1 : 0);
-    } while (i++ < 3 && iRet);
-
-    LOGINFO(TAG, "switch fan result: %d", iRet);
-    
-    return iRet;
-    #else 
+    Singleton<HardwareService>::getInstance()->pwrCtlFan(bOnOff);
     return 0;
-    #endif
 }
+
+
+int HardwareService::getCurFanSpeed()
+{
+    char cSpeed[512] = {0};  
+    int iCurSpeed = 0;
+
+    if (access(FAN_SPEED_LEVEL_PATH, F_OK) == 0) {
+        FILE* fp = fopen(FAN_SPEED_LEVEL_PATH, "r");
+        if (fp) {
+            fgets(cSpeed, sizeof(cSpeed), fp);
+            cSpeed[strlen(cSpeed) -1] = '\0';
+            iCurSpeed = atoi(cSpeed);
+            fclose(fp);
+            return iCurSpeed;
+        }
+    } else {
+        LOGERR(TAG, "Current fan speed file [%s] not exist!", FAN_SPEED_LEVEL_PATH);
+        return -1;
+    }    
+}
+
+
 
 
 int HardwareService::getCurFanSpeedLevel()
@@ -478,15 +571,19 @@ int HardwareService::getCurFanSpeedLevel()
 }
 
 
-/*
- * 处理来自请求的端的请求(调节风扇的转速,档位,开关风扇)
- * {
- *      "name":"turn_on_fan"/"turn_off_fan"/"tuning_fan",
- *      "parameters": {
- *          "gear":0/1/2/3/4
- *      }
- * }
- */
+bool HardwareService::setTargetFanSpeed(uint16_t speed)
+{    
+    std::stringstream ss;
+    
+    ss << speed;
+
+    std::ofstream ofs; 
+    ofs.open(FAN_SPEED_SET_PATH);
+    ofs << ss.str();
+    ofs.close();
+
+    return true;    
+}
 
 
 
@@ -502,7 +599,7 @@ bool HardwareService::handleHardwareRequest(Json::Value& reqJson)
             switchFan(false);
             tunningFanSpeed(4);
         } else if (cmd == HARDWARE_CMD_TUNNING_FAN) {       /* 调节风扇的转速 */
-            int iFanLevel = Singleton<CfgManager>::getInstance()->getKeyVal(_fan_speed);
+            int iFanLevel = Singleton<CfgManager>::getInstance()->getKeyVal(_fan_level);
             if (iFanLevel == 0) {   /* Off 直接断电,更快将风扇停下来 */
                 switchFan(false);
             } else {
@@ -520,7 +617,6 @@ bool HardwareService::handleHardwareRequest(Json::Value& reqJson)
 
 bool HardwareService::onDataAvailable(SocketClient* cli)
 {
-    bool bResult = true;
     int iSockFd = cli->getSocket();
     char cRecvBuf[MAX_HARDWARE_REQ_BUF] = {0};
 

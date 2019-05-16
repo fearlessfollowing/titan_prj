@@ -35,10 +35,11 @@
 #include <mutex>
 
 #include <sys/CfgManager.h>
+#include <sys/ProtoManager.h>
 #include <system_properties.h>
 #include <fstream>
 #include <sys/stat.h>
-
+#include <util/SingleInstance.h>
 #include <log/log_wrapper.h>
 
 #undef  TAG
@@ -101,7 +102,12 @@ void CfgManager::genDefaultCfg()
     sysSetCfg[_set_logo]                = 0;        // Logo: On
     sysSetCfg[_video_seg]               = 0;        // Video Fragment: On
     sysSetCfg[_wifi_on]                 = 0;
-    sysSetCfg[_fan_speed]               = 4;        /* 风扇速度默认为最大 */
+    sysSetCfg[_fan_level]               = 4;        /* 风扇速度默认为最大 */
+
+    sysSetCfg[_fl_map]["0"]             = 7;        /* 各档位风速的可录时长 */
+    sysSetCfg[_fl_map]["1"]             = 15; 
+    sysSetCfg[_fl_map]["2"]             = 30; 
+    sysSetCfg[_fl_map]["3"]             = 45; 
 
     rootCfg[_mode_select]              = modeSelectCfg;
     rootCfg[_sys_setting]              = sysSetCfg;
@@ -271,7 +277,7 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
     LOGDBG(TAG, ">>>>>> setKeyVal, key[%s] -> new val[%d]", key.c_str(), iNewVal);
 
     idx = key.find(_mode_select);
-    if (idx != std::string::npos) {  /* 设置的是mode_select_x配置值 */
+    if (idx != std::string::npos) {     /* 设置的是mode_select_x配置值 */
         LOGDBG(TAG, "in mode_select, idx not nopos");
         if (mRootCfg.isMember(_mode_select)) {
             if (mRootCfg[_mode_select].isMember(key)) {
@@ -287,7 +293,12 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
         } else {    /* 普通的设置项 */
             if (mRootCfg.isMember(_sys_setting)) {
                 if (mRootCfg[_sys_setting].isMember(key)) {
-                    mRootCfg[_sys_setting][key] = iNewVal;
+                    if (key != _fl_map) {
+                        mRootCfg[_sys_setting][key] = iNewVal;
+                        if (key == _fan_level) {
+                            Singleton<ProtoManager>::getInstance()->sendUpdateFanLevel(iNewVal);
+                        }
+                    }
                     bResult = true;
                 }
             }
@@ -335,8 +346,41 @@ int CfgManager::getKeyVal(std::string key)
         } else {    /* 普通的设置项 */
             if (mRootCfg.isMember(_sys_setting)) {
                 if (mRootCfg[_sys_setting].isMember(key)) {
-                    iRet = mRootCfg[_sys_setting][key].asInt();
+                    if (key != _fl_map) {
+                        iRet = mRootCfg[_sys_setting][key].asInt();
+                        if (key == _fan_level) {
+                            Singleton<ProtoManager>::getInstance()->sendUpdateFanLevel(iRet);
+                        }
+                    } 
                 }
+            }
+        }
+    }
+    return iRet;
+}
+
+
+Json::Value& CfgManager::getFanMap()
+{
+    return mRootCfg[_sys_setting][_fl_map];     
+}
+
+
+int CfgManager::getMaxRecTimeByFanLevel(int iLevel)
+{
+    int iRet = -1;
+    if (iLevel < 0 || iLevel > 3) {
+        LOGERR(TAG, "Invalid fan level was given! [%d]", iLevel);
+    } else {
+        const char* pLvelVal;
+        switch (iLevel) {
+            case 0: pLvelVal = "0"; break;
+            case 1: pLvelVal = "1"; break;
+            case 2: pLvelVal = "2"; break;
+            case 3: pLvelVal = "3"; break;
+
+            if (mRootCfg[_sys_setting][_fl_map].isMember(pLvelVal)) {
+                iRet = mRootCfg[_sys_setting][_fl_map][pLvelVal].asInt();
             }
         }
     }

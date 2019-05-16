@@ -49,8 +49,8 @@ using CfgChangedCallback = std::function<void (int iEventType, std::string key, 
 #define _aeb                    "aeb"
 #define _ph_delay               "ph_delay"
 #define _flow_state             "flow_state"
-#define _fan_speed              "fan_speed"
-
+#define _fan_level              "fan_level"
+#define _fl_map                 "fl_map"
 
 enum {
     CFG_EVENT_ITEM_CHANGED,
@@ -70,7 +70,11 @@ public:
     int                     getKeyVal(std::string key);
     void                    setCallback(CfgChangedCallback callback);
 
+
+    Json::Value&            getFanMap();
     Json::Value&            getSysSetting();
+
+    int                     getMaxRecTimeByFanLevel(int iLevel);    
 
     /** 复位所有的配置项 */
     bool                    resetAllCfg();

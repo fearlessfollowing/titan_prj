@@ -86,7 +86,7 @@ LOGERR(TAG,"err menu state (%d 0x%x)",  menu, state);
 LOGDBG(TAG, "menu state (%d 0x%x)", menu, state);
 
 
-#define ENABLE_DEBUG_LIGHT
+// #define ENABLE_DEBUG_LIGHT
 
 /*
  * 消息框的消息类型
@@ -332,15 +332,10 @@ void MenuUI::uiSubsysDeinit()
 
 void MenuUI::init_menu_select()
 {
-
-    /*
-     * 设置系统的参数配置(优先于菜单初始化)
-     */
+    /** 设置系统的参数配置(优先于菜单初始化) */
     setMenuCfgInit();
 
-    /*
-     * 拍照，录像，直播参数配置
-     */
+    /** 拍照，录像，直播参数配置 */
     {
         mMenuInfos[MENU_PIC_SET_DEF].priv = static_cast<void*>(gPicAllModeCfgList);
         mMenuInfos[MENU_PIC_SET_DEF].privList = static_cast<void*>(&mPicAllItemsList);
@@ -352,7 +347,6 @@ void MenuUI::init_menu_select()
 
         cfgPicVidLiveSelectMode(&mMenuInfos[MENU_PIC_SET_DEF], mPicAllItemsList);
         
-
         LOGDBG(TAG, "mPicAllItemsList size = %d", mPicAllItemsList.size());
 
         LOGDBG(TAG, "MENU_PIC_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
@@ -375,7 +369,6 @@ void MenuUI::init_menu_select()
         cfgPicVidLiveSelectMode(&mMenuInfos[MENU_VIDEO_SET_DEF], mVidAllItemsList);
         
         LOGDBG(TAG, "mVidAllItemsList size = %d", mVidAllItemsList.size());
-
         LOGDBG(TAG, "MENU_VIDEO_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                     mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.total,
                     mMenuInfos[MENU_VIDEO_SET_DEF].mSelectInfo.page_num,
@@ -398,7 +391,6 @@ void MenuUI::init_menu_select()
         cfgPicVidLiveSelectMode(&mMenuInfos[MENU_LIVE_SET_DEF], mLiveAllItemsList);
         
         LOGDBG(TAG, "mLiveAllItemsList size = %d", mLiveAllItemsList.size());
-
         LOGDBG(TAG, "MENU_LIVE_SET_DEF Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
                     mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.total,
                     mMenuInfos[MENU_LIVE_SET_DEF].mSelectInfo.page_num,
@@ -432,15 +424,10 @@ void MenuUI::init()
     mOLEDModule = sp<oled_module>(new oled_module());
     CHECK_NE(mOLEDModule, nullptr);
 
-
     LOGDBG(TAG, "Create System Configure Object...");
     Singleton<CfgManager>::getInstance();   /* 配置管理器初始化 */
 
     LOGDBG(TAG, "Create System Light Manager Object...");
-
-    mLedLight = std::make_shared<ins_led>();
-    CHECK_NE(mLedLight, nullptr);
-
 
     LOGDBG(TAG, "Create System Info Object...");
     mReadSys = std::make_shared<SYS_INFO>();
@@ -520,7 +507,6 @@ void MenuUI::init()
 
     mAgingMode = false;
 
-    /* AudioManager init */
     AudioManager::Instance();
 
     LOGDBG(TAG, ">>>>>>>> Init MenUI object ok ......");
@@ -781,7 +767,6 @@ void MenuUI::init_cfg_select()
     mFanRateCtrlList.clear();
 #endif 
 
-
     mPicAllItemsList.clear();
     mVidAllItemsList.clear();
     mLiveAllItemsList.clear();
@@ -1022,7 +1007,7 @@ void MenuUI::disp_msg_box(int type)
 
 #ifdef ENABLE_FAN_RATE_CONTROL
         case DISP_MAX_RECORD_TIME: {     /* 高温可录时长 */
-            tipMaxRecordTime(Singleton<CfgManager>::getInstance()->getKeyVal(_fan_speed));
+            tipMaxRecordTime(Singleton<CfgManager>::getInstance()->getKeyVal(_fan_level));
             break;
         }
 #endif
@@ -1368,22 +1353,16 @@ void MenuUI::setMenuCfgInit()
 
         mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num = iPageCnt;
 
-        /* 使用配置值来初始化首次显示的页面 */
-    #if 0
-        mFanLevel = HardwareService::getCurFanSpeedLevel();
-    #else 
         char cIndex[16] = {0};
 
         /* 根据用户保存的配置值来初始化菜单 */
-        mFanLevel = Singleton<CfgManager>::getInstance()->getKeyVal(_fan_speed);
+        mFanLevel = Singleton<CfgManager>::getInstance()->getKeyVal(_fan_level);
         std::string timeout = HardwareService::getRecTtimeByLevel(mFanLevel);
         LOGINFO(TAG, "---> init current fan spped, record max time: %s", timeout.c_str())
         property_set(PROP_FAN_GEAR_TIME, timeout.c_str());   
 
         sprintf(cIndex, "%d", mFanLevel);
         property_set(PROP_FAN_CUR_GEAR, cIndex);        
-
-    #endif
 
         convFanSpeedLevel2Note(mFanLevel);
         updateMenuCurPageAndSelect(MENU_SET_FAN_RATE, mFanLevel);
@@ -3280,7 +3259,6 @@ void MenuUI::updateSetItemCurNote(std::vector<struct stSetItem*>& setItemList, c
             break;
         }
     }
-
     if (bFound) {
         pTmpItem->pNote = newNote;    
     } else {
@@ -3291,9 +3269,9 @@ void MenuUI::updateSetItemCurNote(std::vector<struct stSetItem*>& setItemList, c
 
 void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
 {
-    iVal = iVal & 0x00000001;
+    iVal = iVal & 0x0000000f;
 
-    LOGDBG(TAG, "updateSetItemVal Item Name[%s], iVal [%d]", pSetItemName, iVal);
+    LOGDBG(TAG, "updateSetItemVal Item Name[%s: %d]", pSetItemName, iVal);
     std::shared_ptr<CfgManager> cm = Singleton<CfgManager>::getInstance();
 
     if (!strcmp(pSetItemName, SET_ITEM_NAME_FREQ)) {
@@ -3339,7 +3317,16 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
         cm->setKeyVal(_gyro_on, iVal);
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_GYRO_ONOFF, iVal);
         sendRpc(ACTION_SET_OPTION, OPTION_GYRO_ON);            
-    } else {
+    } 
+#ifdef ENABLE_FAN_RATE_CONTROL    
+    else if (!strcmp(pSetItemName, SET_ITEM_NAME_FAN_RATE_CTL)) {        
+        updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_FAN_RATE_CTL, iVal);
+        cm->setKeyVal(_fan_level, iVal);
+        convFanSpeedLevel2Note(iVal);       /* 设置也显示的Label更新 */
+        updateMenuCurPageAndSelect(MENU_SET_FAN_RATE, iVal);
+    } 
+#endif
+    else {
         LOGDBG(TAG, "Not Support item[%s] Yet!!!", pSetItemName);
     }
 }
@@ -3349,7 +3336,8 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
 {
     CHECK_NE(mSysSetting, nullptr);
 
-    LOGDBG(TAG, "%s %d %d %d %d %d %d %d %d %d", __FUNCTION__,
+    LOGDBG(TAG, "[%s filcker:%d, speaker:%d, led_on:%d, fan_on:%d, aud_on:%d, aud_spatial:%d, set_log:%d, gryo_on:%d, video_fragment:%d, fan_level:%d]", 
+                                                    __FUNCTION__,
                                                     mSysSetting->flicker,
                                                     mSysSetting->speaker,
                                                     mSysSetting->led_on,
@@ -3358,7 +3346,8 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
                                                     mSysSetting->aud_spatial,
                                                     mSysSetting->set_logo,
                                                     mSysSetting->gyro_on,
-                                                    mSysSetting->video_fragment);
+                                                    mSysSetting->video_fragment,
+                                                    mSysSetting->fan_level);
 
     {
 
@@ -3396,6 +3385,10 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
 
         if (mSysSetting->video_fragment != -1)  {
             updateSetItemVal(SET_ITEM_NAME_VIDSEG, mSysSetting->video_fragment);
+        }
+
+        if (mSysSetting->fan_level != -1)  {
+            updateSetItemVal(SET_ITEM_NAME_FAN_RATE_CTL, mSysSetting->fan_level);
         }
 
         if (cur_menu == MENU_SYS_SETTING) { /* 如果当前的菜单为设置菜单,重新进入设置菜单(以便更新各项) */
@@ -3553,8 +3546,6 @@ void MenuUI::updateMenu()
 			break;
         }
 #endif
-
-
         case MENU_SET_AEB: {
             updateInnerSetPage(mAebList, true);
             break;    
@@ -3571,7 +3562,6 @@ void MenuUI::updateMenu()
             break;
         }
 			
-
         case MENU_VIDEO_SET_DEF: {  
             LOGDBG(TAG, "Update SET_PIC_DEF val[%d]", item);
             cm->setKeyVal(_vid_mode_select, item);
@@ -3579,7 +3569,6 @@ void MenuUI::updateMenu()
             break;
         }
 			
-
         case MENU_LIVE_SET_DEF: {
             cm->setKeyVal(_live_mode_select, item);
             dispReady();
@@ -3600,7 +3589,6 @@ void MenuUI::updateMenu()
             updateInnerStoragePage(gStorageInfoItems, true);
             break;
         }
-
 
         case MENU_TF_FORMAT_SELECT: {
             updateInnerSetPage(mTfFormatSelList, true);
@@ -3670,8 +3658,6 @@ void MenuUI::getShowStorageInfo()
     mMenuInfos[MENU_SHOW_SPACE].mSelectInfo.page_num = iPageCnt;
     volumeItemInit(&mMenuInfos[MENU_SHOW_SPACE], showList);
 }
-
-
 
 /*
  * 为了统一客户端和UI拍照时计算剩余量，将拍照参数在calcRemainSpace中进行更新(Raw, AEB)
@@ -5845,16 +5831,11 @@ void MenuUI::procPowerKeyEvent()
             LOGDBG(TAG, "set fan rate control index[%d]", iIndex);
             convFanSpeedLevel2Note(mFanLevel);
 
-#if 0
-            /** 根据索引值来设置风扇的速度 */
-            HardwareService::tunningFanSpeed(iIndex);
-#endif
-
             /* 将当前风速保存到配置中 */
-            Singleton<CfgManager>::getInstance()->setKeyVal(_fan_speed, iIndex);
+            Singleton<CfgManager>::getInstance()->setKeyVal(_fan_level, iIndex);
             sprintf(cIndex, "%d", iIndex);
-
             property_set(PROP_FAN_CUR_GEAR, cIndex);
+
 
             /*
              * 显示提示消息: 0 - 3档显示消息框,4档不需要
@@ -6770,7 +6751,7 @@ void MenuUI::setLight()
 
 void MenuUI::setAllLightOnOffForce(int iOnOff)
 {
-    mLedLight->setAllLight(iOnOff);
+    Singleton<HardwareService>::getInstance()->setAllLight((iOnOff) ? true: false);
 }
 
 
@@ -7906,16 +7887,9 @@ void MenuUI::setLightDirect(u8 val)
 
     if (mLastLightVal != val && mShutingDown == false) {
         mLastLightVal = val;
-        mLedLight->set_light_val(val, mFanControlOwner);
+        Singleton<HardwareService>::getInstance()->setLightVal(val);
     }
 }
-
-
-void MenuUI::powerOffAll()
-{
-    mLedLight->power_off_all();
-}
-
 
 
 void MenuUI::setLight(u8 val)
@@ -8248,7 +8222,6 @@ void MenuUI::handleLongKeyMsg(int iAppKey)
             mShutingDown = true;
 
             /* 关掉OLED显示，避免屏幕上显示东西 - 关闭风扇及LED的显示 */
-            // powerOffAll();
 
             mOLEDModule->display_onoff(0);
             property_set("ctl.stop", "camerad");            /* 关闭camerad - 避免camerad卡死不能正常退出(2019年3月29日) */
@@ -9483,7 +9456,7 @@ void MenuUI::tipMaxRecordTime(int iFanLevel)
     }
     sprintf(cLine, "%dmin at this fan-speed", iRecMin);
 
-    dispStr((const u8*)"Tips: Do not use at", 9, 0, false, 128);
+    dispStr((const u8*)"Do not use this level", 8, 0, false, 128);
     dispStr((const u8*)"high temperature. The", 5, 16, false, 128);
     dispStr((const u8*)"max recording time is", 8, 32, false, 128);
     dispStr((const u8*)cLine, 1, 48, false, 128);

@@ -176,6 +176,7 @@ public:
     bool            sendLowPowerReq();                              /* 低电请求 */
     bool            sendWbCalcReq();                                /* 白平衡校正 */
 
+    bool            sendUpdateFanLevel(int iLevel);                 /* 更新风扇的Level */
 
     /*------------------------------------- 设置页 -----------------------------------
      * 1.设置视频分段
@@ -233,7 +234,7 @@ private:
     bool            innerSendSyncReqWithoutCallback(Json::Value& root, syncReqResultCallback callBack = nullptr);
     
 
-    void            handleSetting(sp<SYS_SETTING>& sysSetting, Json::Value& reqNode);
+    bool            handleSetting(std::shared_ptr<SYS_SETTING>& sysSetting, Json::Value& reqNode);
     void            handleSyncInfo(SocketClient* cli, Json::Value& jsonData);
     void            handleSwitchMountMode(SocketClient* cli, Json::Value& paramJson);
     void            handleShutdownMachine(SocketClient* cli);

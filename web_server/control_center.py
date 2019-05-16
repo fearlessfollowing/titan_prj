@@ -307,6 +307,8 @@ class control_center:
             config._REQ_SET_OPTIONS:            self.cameraUiSetOptions,                    # 设置Options              - OK
             config._REQ_AWB_CALC:               self.cameraUiCalcAwb,                       # AWB校正                  - OK
             config._REQ_UPDATE_SYS_TMP:         self.cameraUiUpdateSysTemp,                 # 更新系统温度              - OK
+            config._REQ_UPDATE_FAN_LEVEL:       self.cameraUiUpdateFanLevel,                 # 更新系统温度              - OK
+
         })
 
 
@@ -1536,6 +1538,7 @@ class control_center:
         Info('[------- APP Req: appReqQueryState ------] req: {}'.format(req))
         return self.sendReq2Camerad(req)
 
+
     def queryStateDone(self, res = None):
         if res is not None:
             self.set_last_info(res)
@@ -2519,6 +2522,16 @@ class control_center:
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.HANDLE_BAT, req[_param]["bat"]))
         # 将温度信息更新到心跳包中
         osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.UPDATE_SYS_TEMP, req[_param]["temp"]))
+        return json.dumps(res) 
+
+
+    def cameraUiUpdateFanLevel(self, req):
+        Info('[------- UI Req: cameraUiUpdateFanLevel ------] req: {}'.format(req))  
+        res = OrderedDict()
+        res[_name] = req[_name]
+        res[_state] = config.DONE   
+        # 将风扇档位更新到心跳包中
+        osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.UPDATE_FAN_LEVEL, req[_param]["fan_level"]))
         return json.dumps(res) 
 
 
