@@ -23,6 +23,7 @@
 ** V3.7         Skymixos        2019年1月10日           播放声音需要设置属性"sys.play_sound" = true
 ** V3.8         Skymixos        2019年5月5日            关机时(kill camerad之后)不再闪烁红灯
 ** V3.9         Skymixos        2019年05月06日          客户端发送设置底部LOGO时,通过system_server转给camerad
+** V3.9         Skymixos        2019年05月17日          增加风扇风速调节UI
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -1067,14 +1068,18 @@ void MenuUI::setSysMenuInit(MENU_INFO* pParentMenu, SettingItem** pSetItem)
     
     for (int i = 0; i < size; i++) {
 
-		int pos = i % pParentMenu->mSelectInfo.page_max;		// 3
+		int pos = i % pParentMenu->mSelectInfo.page_max;		
 		switch (pos) {
 			case 0: tmPos.yPos = 16; break;
 			case 1: tmPos.yPos = 32; break;
 			case 2: tmPos.yPos = 48; break;
 		}
 
-        tmPos.xPos 		= 32;
+        if (pSetItem[i]->bMode)     /* 图标显示的模式 */
+            tmPos.xPos 		= 32;
+        else                        /* 文本显示的模式,往后推一点与图标显示左对其 */
+            tmPos.xPos 		= 34;
+
         tmPos.iWidth	= 96;
         tmPos.iHeight   = 16;
 
@@ -1167,7 +1172,7 @@ void MenuUI::setCommonMenuInit(MENU_INFO* pParentMenu, std::vector<struct stSetI
     if (pParentMenu) {
         int size = pParentMenu->mSelectInfo.total;
         for (int i = 0; i < size; i++) {
-            int pos = i % pParentMenu->mSelectInfo.page_max;		// 3
+            int pos = i % pParentMenu->mSelectInfo.page_max;		
             switch (pos) {
                 case 0: pIconPos->yPos = 16; break;
                 case 1: pIconPos->yPos = 32; break;
@@ -1191,20 +1196,16 @@ void MenuUI::setStorageMenuInit(MENU_INFO* pParentMenu, std::vector<struct stSet
         SettingItem** pSetItem = static_cast<SettingItem**>(pParentMenu->priv);
 
         for (int i = 0; i < size; i++) {
-
-            /*
-            * 坐标的设置
-            */
-            int pos = i % pParentMenu->mSelectInfo.page_max;		// 3
+            int pos = i % pParentMenu->mSelectInfo.page_max;		
             switch (pos) {
                 case 0:  tmPos.yPos = 16; break;
                 case 1:  tmPos.yPos = 32; break;
                 case 2:  tmPos.yPos = 48; break;
             }
 
-            tmPos.xPos 		= 25;   /* 水平方向的起始坐标 */
-            tmPos.iWidth	= 103;   /* 显示的宽 */
-            tmPos.iHeight   = 16;   /* 显示的高 */
+            tmPos.xPos 		= 25;       /* 水平方向的起始坐标 */
+            tmPos.iWidth	= 103;      /* 显示的宽 */
+            tmPos.iHeight   = 16;       /* 显示的高 */
         
             pSetItem[i]->stPos = tmPos;
             pItemLists.push_back(pSetItem[i]);  
@@ -1330,12 +1331,13 @@ void MenuUI::setMenuCfgInit()
         setCommonMenuInit(&mMenuInfos[MENU_SET_AEB], mAebList, gSetAebItems, &tmPos);   /* 设置系统菜单初始化 */
     }
 
+
     /*********************************************************************************************
      *      Fan Control菜单
      *********************************************************************************************/
     {
 
-    #ifdef ENABLE_FAN_RATE_CONTROL
+#ifdef ENABLE_FAN_RATE_CONTROL
 
         mMenuInfos[MENU_SET_FAN_RATE].priv = static_cast<void*>(&setPageNvIconInfo);
         mMenuInfos[MENU_SET_FAN_RATE].privList = static_cast<void*>(&mFanRateCtrlList);
@@ -1358,28 +1360,29 @@ void MenuUI::setMenuCfgInit()
         /* 根据用户保存的配置值来初始化菜单 */
         mFanLevel = Singleton<CfgManager>::getInstance()->getKeyVal(_fan_level);
         std::string timeout = HardwareService::getRecTtimeByLevel(mFanLevel);
-        LOGINFO(TAG, "---> init current fan spped, record max time: %s", timeout.c_str())
-        property_set(PROP_FAN_GEAR_TIME, timeout.c_str());   
-
+        
         sprintf(cIndex, "%d", mFanLevel);
         property_set(PROP_FAN_CUR_GEAR, cIndex);        
 
+        LOGINFO(TAG, "---> init current fan level[%d], record max time: %s", mFanLevel, timeout.c_str())
+        property_set(PROP_FAN_GEAR_TIME, timeout.c_str());   
+
         convFanSpeedLevel2Note(mFanLevel);
+
         updateMenuCurPageAndSelect(MENU_SET_FAN_RATE, mFanLevel);
 
-        LOGDBG(TAG, "Set PhotoDealy Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
-                    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total,
-                    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num,
-                    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.cur_page,
-                    mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.select
-                    );
+        LOGDBG(TAG, "Set FanRateCtl Menu Info: total items [%d], page count[%d], cur page[%d], select [%d]", 
+                            mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.total,
+                            mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.page_num,
+                            mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.cur_page,
+                            mMenuInfos[MENU_SET_FAN_RATE].mSelectInfo.select);
 
         tmPos.yPos 		= 16;
         tmPos.xPos 		= 34;       /* 水平方向的起始坐标 */
         tmPos.iWidth	= 89;       /* 显示的宽 */
-        tmPos.iHeight   = 16;       /* 显示的高 */
+        tmPos.iHeight   = 16;       /* 显示的高 */        
         setCommonMenuInit(&mMenuInfos[MENU_SET_FAN_RATE], mFanRateCtrlList, gSetFanrateCtrlItems, &tmPos);   /* 设置系统菜单初始化 */
-    #endif
+#endif
 
     }
 
@@ -1786,11 +1789,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                                 pSetItems[i]->stPos.iWidth = 90;
                             }
 
-                            /*
-                             * pic_customer另外存文件pic_customer.json避免升级是被覆盖
-                             * - 如果有pic_customer.json文件,加载文件的内容
-                             * - 如果没有使用程序里固化的参数
-                             */
                             if (!strcmp(pSetItems[i]->pItemName, TAKE_PIC_MODE_CUSTOMER)) {
                                 if (loadJsonFromFile(TAKE_PIC_TEMPLET_PATH, &mTakepictureCustomer)) {
                                     pSetItems[i]->pJsonCmd = &mTakepictureCustomer;                                              
@@ -1834,14 +1832,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                         
                         for (int i = 0; i < size; i++) {                            
                             pSetItems[i]->stPos = tmPos;
-                            
-                            #if 0
-                            if (pSetItems[i]->bDispType == false) { /* 以文本的形式显示 */
-                                pSetItems[i]->stPos.xPos = 1;
-                                // pSetItems[i]->stPos.iWidth = 90;
-                            }
-                            #endif
-
                             pSetItems[i]->iCurVal = 0;
                             if (!strcmp(pSetItems[i]->pItemName, TAKE_VID_MOD_CUSTOMER)) {
                                 if (loadJsonFromFile(TAKE_VID_TEMPLET_PATH, &mTakeVideoCustomer)) {
@@ -1922,7 +1912,6 @@ void MenuUI::cfgPicVidLiveSelectMode(MENU_INFO* pParentMenu, std::vector<struct 
                 }              
                 break;
             }
-
             default:
                 LOGWARN(TAG, "Unkown mode Please check");
                 break;
@@ -2619,8 +2608,6 @@ void MenuUI::read_ver_info()
 
     LOGDBG(TAG, "r:%s p:%s k:%s\n", mVerInfo->r_ver, mVerInfo->p_ver, mVerInfo->k_ver);
 }
-
-
 
 
 /*************************************************************************
@@ -3321,9 +3308,13 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
 #ifdef ENABLE_FAN_RATE_CONTROL    
     else if (!strcmp(pSetItemName, SET_ITEM_NAME_FAN_RATE_CTL)) {        
         updateSetItemCurVal(mSetItemsList, SET_ITEM_NAME_FAN_RATE_CTL, iVal);
-        cm->setKeyVal(_fan_level, iVal);
+        cm->setKeyVal(_fan_level, iVal);        
         convFanSpeedLevel2Note(iVal);       /* 设置也显示的Label更新 */
         updateMenuCurPageAndSelect(MENU_SET_FAN_RATE, iVal);
+
+        std::string timeout = HardwareService::getRecTtimeByLevel(iVal);
+        LOGINFO(TAG, "---> updateSetItemVal: record max time: %s", timeout.c_str())
+        property_set(PROP_FAN_GEAR_TIME, timeout.c_str());  
     } 
 #endif
     else {
@@ -3391,8 +3382,12 @@ void MenuUI::updateSysSetting(sp<struct _sys_setting_> & mSysSetting)
             updateSetItemVal(SET_ITEM_NAME_FAN_RATE_CTL, mSysSetting->fan_level);
         }
 
-        if (cur_menu == MENU_SYS_SETTING) { /* 如果当前的菜单为设置菜单,重新进入设置菜单(以便更新各项) */
-            setCurMenu(MENU_SYS_SETTING);
+        if (cur_menu == MENU_SYS_SETTING 
+    #ifdef ENABLE_FAN_RATE_CONTROL
+        || cur_menu == MENU_SET_FAN_RATE    /* 如果当前的菜单为设置菜单,重新进入设置菜单(以便更新各项) */
+    #endif 
+        ) { 
+            setCurMenu(cur_menu);
         }
     }
 }

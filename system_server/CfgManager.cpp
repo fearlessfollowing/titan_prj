@@ -372,18 +372,21 @@ int CfgManager::getMaxRecTimeByFanLevel(int iLevel)
     if (iLevel < 0 || iLevel > 3) {
         LOGERR(TAG, "Invalid fan level was given! [%d]", iLevel);
     } else {
-        const char* pLvelVal;
+        const char* pLvelVal = "0";
         switch (iLevel) {
             case 0: pLvelVal = "0"; break;
             case 1: pLvelVal = "1"; break;
             case 2: pLvelVal = "2"; break;
             case 3: pLvelVal = "3"; break;
-
-            if (mRootCfg[_sys_setting][_fl_map].isMember(pLvelVal)) {
-                iRet = mRootCfg[_sys_setting][_fl_map][pLvelVal].asInt();
-            }
         }
+        if (mRootCfg[_sys_setting][_fl_map].isMember(pLvelVal)) {
+            printJson(mRootCfg[_sys_setting][_fl_map]);
+            iRet = mRootCfg[_sys_setting][_fl_map][pLvelVal].asInt();
+        } else {
+            LOGERR(TAG, "---> iLevel = %d, no value int fl_map", iLevel);
+        }        
     }
+    LOGINFO(TAG, "getMaxRecTimeByFanLevel iLevel = %d, ret = %d", iLevel, iRet);
     return iRet;
 }
 
