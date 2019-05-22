@@ -23,7 +23,7 @@
 ** V3.7         Skymixos        2019年1月10日           播放声音需要设置属性"sys.play_sound" = true
 ** V3.8         Skymixos        2019年5月5日            关机时(kill camerad之后)不再闪烁红灯
 ** V3.9         Skymixos        2019年05月06日          客户端发送设置底部LOGO时,通过system_server转给camerad
-** V3.9         Skymixos        2019年05月17日          增加风扇风速调节UI
+** V3.10        Skymixos        2019年05月17日         增加风扇风速调节UI,修改提示文案
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -3314,7 +3314,7 @@ void MenuUI::updateSetItemVal(const char* pSetItemName, int iVal)
 
         std::string timeout = HardwareService::getRecTtimeByLevel(iVal);
         LOGINFO(TAG, "---> updateSetItemVal: record max time: %s", timeout.c_str())
-        property_set(PROP_FAN_GEAR_TIME, timeout.c_str());  
+        property_set(PROP_FAN_GEAR_TIME, timeout.c_str());         
     } 
 #endif
     else {
@@ -5828,8 +5828,8 @@ void MenuUI::procPowerKeyEvent()
 
             /* 将当前风速保存到配置中 */
             Singleton<CfgManager>::getInstance()->setKeyVal(_fan_level, iIndex);
-            sprintf(cIndex, "%d", iIndex);
-            property_set(PROP_FAN_CUR_GEAR, cIndex);
+            // sprintf(cIndex, "%d", iIndex);
+            // property_set(PROP_FAN_CUR_GEAR, cIndex);
 
 
             /*
@@ -9449,12 +9449,12 @@ void MenuUI::tipMaxRecordTime(int iFanLevel)
         case 2: iRecMin = 30; break;
         case 3: iRecMin = 45; break;        
     }
-    sprintf(cLine, "%dmin at this fan-speed", iRecMin);
+    sprintf(cLine, "fan can only last %d", iRecMin);
 
     dispStr((const u8*)"Do not use this level", 8, 0, false, 128);
-    dispStr((const u8*)"high temperature. The", 5, 16, false, 128);
-    dispStr((const u8*)"max recording time is", 8, 32, false, 128);
-    dispStr((const u8*)cLine, 1, 48, false, 128);
+    dispStr((const u8*)"at high temperature.the", 2, 16, false, 128);
+    dispStr((const u8*)cLine, 10, 32, false, 128);
+    dispStr((const u8*)"mins under this level.", 8, 48, false, 128);
 }
 
 #endif

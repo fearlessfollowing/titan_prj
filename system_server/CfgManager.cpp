@@ -13,6 +13,7 @@
 ** V1.0			Skymixos		2018年11月02日		创建文件，添加注释
 ** V1.1         Skymixos        2018年11月14日      fixup加载配置文件的BUG
 ** V2.0         Skymixos        2019年01月18日      增加系统配置,解决系统中存在大量TIME_WAIT的连接
+** V2.1         Skymixos        2019年5月20日       增加风速风速挡位控制
 ******************************************************************************************************/
 #include <dirent.h>
 #include <fcntl.h>
@@ -296,6 +297,9 @@ bool CfgManager::setKeyVal(std::string key, int iNewVal)
                     if (key != _fl_map) {
                         mRootCfg[_sys_setting][key] = iNewVal;
                         if (key == _fan_level) {
+                            std::stringstream ss;
+                            ss << iNewVal;
+                            property_set(PROP_FAN_CUR_GEAR, ss.str().c_str()); 
                             Singleton<ProtoManager>::getInstance()->sendUpdateFanLevel(iNewVal);
                         }
                     }

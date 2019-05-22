@@ -718,7 +718,7 @@ root@tegra-ubuntu:/sys/devices/system/cpu# cat online
 {
     "name":"camera._setSysSetting",
     "parameters": {
-        "fan_level": int
+        "fan_level": 0/1/2/3/4
     }
 }
 

@@ -58,7 +58,7 @@ MOUNT_ROOT = '/mnt'
 
 
 # 连接超时的值 - 10s
-POLL_TO = 10000
+POLL_TO = 15000
 
 FIFO_TO = 70
 
@@ -859,10 +859,14 @@ class control_center:
     # 
     def getOscState(self):
         self.stopPollTimer()            # 停止轮询定时器
+        t1 = time.time()
         ret_state = osc_state_handle.get_osc_state(False)   # 获取状态osc_state
-        
+        t2 = time.time()
+
+        Info('---> getOscState: deal delta: {} <---'.format(t2 - t1))
+
         if self._connectMode != 'test': # 非测试模式, 重新启动定时器
-            self.startPollTimer()         
+            self.startPollTimer()      
         return ret_state
 
     def send_reset_camerad(self):

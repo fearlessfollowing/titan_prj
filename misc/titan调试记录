@@ -1280,13 +1280,18 @@ adb shell setprop ctl.stop camerad
 
 
 --------------------------------------------------------------------------------------
-阿里云账号: luopinjing@163.com Code: Lpj461976553
+gitlab
+https://code.aliyun.com/
+
+阿里云账号: luopinjing@163.com (skymixo) Code: Lpj461976553
 拼接库:
 git@code.aliyun.com:insta360_research/AutoStitcherLib2.git
 
 HDR:
 git@code.aliyun.com:insta360_research/InsImgProcLib.git
 
+拼接库:
+git@code.aliyun.com:insta360_research/GyrostabLib.git
 
 
 
