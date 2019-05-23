@@ -270,5 +270,10 @@ oled_disp_type(START_PREVIEW_FAIL)
 1.现在USB设备只是2.0设备非3.0设备？
 
 
+SD卡被复位问题：
+
+G14	CAN_GPIO2	vddio_ao_hv	wake46	CZ	20K	z	GPIO3_PAA.02	Input	Int PU	Yes
 
 
+crtmpserver
+https://www.cnblogs.com/wangqiguo/p/6014519.html

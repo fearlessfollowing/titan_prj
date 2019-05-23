@@ -14,6 +14,7 @@
 ** V2.0         Skymixos        2018-10-18      增加模组上电是否成功检测
 ** V3.0			Skymixos		2018-10-30		实现参数配置化(HUB的复位引脚，)
 ** V3.1			Skymixos		2019-02-25		修改模组的上下电逻辑
+** V3.2         Skymixos        2019-05-23      下电不复位模组(通过属性sys.exit_reset_hub属性来设置)
 ******************************************************************************************************/
 #include <common/include_common.h>
 #include <common/sp.h>
@@ -265,7 +266,8 @@ static void powerModule(PwrCtl* pPwrCtl, int iOnOff)
 			}
 
             const char* pExitRestHub = property_get(PROP_RESET_HUB);
-            if (pExitRestHub) {
+            if (pExitRestHub && !strcmp(pExitRestHub, "true")) {
+                fprintf(stdout, "need reset hub when power off module!\n");
                 /* 复位HUB */
                 if (pPwrCtl->iResetHubNum == 2) {
                     resetHub(pPwrCtl->iHub2ResetGpio, pPwrCtl->iHubResetLevel, pPwrCtl->iHubResetDuration);
