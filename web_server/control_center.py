@@ -863,10 +863,11 @@ class control_center:
         ret_state = osc_state_handle.get_osc_state(False)   # 获取状态osc_state
         t2 = time.time()
 
-        Info('---> getOscState: deal delta: {} <---'.format(t2 - t1))
-
         if self._connectMode != 'test': # 非测试模式, 重新启动定时器
             self.startPollTimer()      
+
+        Info('---> getOscState: deal delta: {}, data {} <---'.format(t2 - t1, ret_state))
+
         return ret_state
 
     def send_reset_camerad(self):
@@ -917,7 +918,7 @@ class control_center:
     # 添加异步结束的结果
     # 对于新版的测速, camerad不再返回'results'相关信息，需要手动填写
     def add_async_finish(self, content):
-        Info('add async content {}'.format(content))
+        # Info('add async content {}'.format(content))
         if check_dic_key_exist(content, 'sequence'):
             id = content['sequence']
             for async_info in self.async_id_list:
@@ -927,7 +928,7 @@ class control_center:
                     else:
                         async_info[config.RESULTS] = {}
                         
-                    Info('add async_info {}'.format(async_info))
+                    # Info('add async_info {}'.format(async_info))
                     async_info[config._ID_GOT] = 1
                     osc_state_handle.send_osc_req(osc_state_handle.make_req(osc_state_handle.ADD_RES_ID, id))
                     return
@@ -1871,14 +1872,14 @@ class control_center:
     def appReqGetResults(self, req):
         try:
             req_ids = req[_param]['list_ids']
-            Info('appReqGetResults req_ids {} async_id_list {}'.format(req_ids, self.async_id_list))
+            # Info('appReqGetResults req_ids {} async_id_list {}'.format(req_ids, self.async_id_list))
             res_array = []
 
             # 依次处理需要查询的各个id
             for id in req_ids:
                 for async_info in self.async_id_list:
                     if async_info[KEY_ID] == id and async_info[config._ID_GOT] == 1:
-                        Info('found id {}  async_info {}'.format(id,async_info))
+                        # Info('found id {}  async_info {}'.format(id,async_info))
                         res = OrderedDict()
                         res[KEY_ID] = id
                         res[_name] = async_info[_name]
@@ -1890,7 +1891,7 @@ class control_center:
                         break
 
             if len(res_array) > 0:
-                Info('res_array is {}'.format(res_array))
+                # Info('res_array is {}'.format(res_zarray))
                 read_info = OrderedDict()
                 read_info[_name] = req[_name]
                 read_info[_state] = config.DONE

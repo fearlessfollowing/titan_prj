@@ -7866,13 +7866,6 @@ void MenuUI::flick_light()
 }
 
 
-
-void MenuUI::func_low_bat()
-{
-    Singleton<ProtoManager>::getInstance()->sendLowPowerReq();    
-}
-
-
 void MenuUI::setLightDirect(u8 val)
 {
 
@@ -8873,13 +8866,14 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     uiShowBatteryInfo(&batInfo);
 
     if (hs->isSysLowBattery()) {
-        if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
+        // if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
             if (checkServerStateIn(serverState, STATE_RECORD)) {
-                setCurMenu(MENU_LOW_BAT, MENU_TOP);
+                // setCurMenu(MENU_LOW_BAT, MENU_TOP);
+                LOGINFO(TAG, "In recording state, but battery is low!");
                 addState(STATE_LOW_BAT);
-                func_low_bat();
+                Singleton<ProtoManager>::getInstance()->sendLowPowerReq();               
             }
-        }
+        // }
     }
 
     /*

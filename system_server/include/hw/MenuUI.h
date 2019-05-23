@@ -662,8 +662,6 @@ private:
     void    reset_last_info();
     bool    is_bat_low();
 
-    void    func_low_bat();
-
     int     get_battery_charging(bool *bCharge);
     int     read_tmp(double *int_tmp,double *tmp);
     void    set_flick_light();

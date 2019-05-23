@@ -25,23 +25,6 @@
 ** V3.2			skymixos	2018年10月31日			使用新的日志系统
 ** V3.3			Skymixos	2019年02月22日			读取当前系统的时区信息并写入属性系统
 ******************************************************************************************************/
-
-
-
-/* 检查镜像是否存在
- * update_check - 在系统上电后运行(只运行一次),检查SD卡或者U-Disk的顶层目录中是否存在Insta360_Pro_Update.bin
- * - 如果不存在,直接启动系统(通过设置属性: "sys.uc_start_app" = true)
- * - 如果存在
- *		|-- 初始化OLED模块,校验Insta360_Pro_Update.bin是否合法
- *				|--- 检验失败,提示校验失败, 启动App
- *				|--- 校验成功,版本检查
- *						|--- 版本检查未通过,提示版本原因,启动App
- *						|--- 版本检查通过
- *								|--- 提取镜像包
- *										|--- 失败,提示提取失败,重启或启动App
- *										|--- 成功,提取update_app,并运行该App
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -514,6 +497,14 @@ static int getUpdateAppAndPro2update(const char* pUpdateFilePathName)
 }
 
 
+/*************************************************************************
+** 方法名称: extraAndExportTz
+** 方法功能: 提取出系统当前的时区并设置到属性系统中
+** 入口参数: 无
+** 返 回 值: 无 
+** 调 用: 
+**
+*************************************************************************/
 static void extraAndExportTz()
 {
 	FILE* fp = popen("timedatectl", "r");
@@ -570,7 +561,7 @@ int main(int argc, char **argv)
 
 	property_set(PROP_SYS_UC_VER, UPDAE_CHECK_VER);		/* 将程序的版本更新到属性系统中 */
 
-	extraAndExportTz();
+	extraAndExportTz();		/* 导出系统的当前时区并设置到属性系统中 */
 
 	/* 通知卷挂载器，以只读的方式挂载升级设备 */
 	property_set(PROP_RO_MOUNT_TF, "true");
@@ -582,6 +573,9 @@ int main(int argc, char **argv)
 	LOGDBG(TAG, "get prop: [sys.tf_mount_ro] = %s", property_get(PROP_RO_MOUNT_TF));
 
 
+	/**
+	 * 复位USB2SD卡芯片,确保能够检测到卡 
+	 */
 	int iDefaultSdResetGpio = USB_TO_SD_RESET_GPIO;
 	const char* pSdResetProp = NULL;
 	
@@ -596,6 +590,7 @@ int main(int argc, char **argv)
     resetHub(SD_USB_HUB_RESET_GPIO, RESET_HIGH_LEVEL, 500);
     setGpioOutputState(iDefaultSdResetGpio, GPIO_OUTPUT_LOW);
 
+
 	/** 启动卷管理器,用于挂载升级设备 */
     std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
     if (vm) {
@@ -604,7 +599,6 @@ int main(int argc, char **argv)
     }
 
 	setLastFirmVer2Prop(VER_FULL_PATH);		/** 读取系统的固件版本并写入到属性系统中 */
-
 
 
 	/*
@@ -622,7 +616,7 @@ int main(int argc, char **argv)
 	}
  
 	while (iDelay-- > 0) {
-		if (strcmp(vm->getLocalVolMountPath(), "none")) {
+		if (strcmp(vm->getLocalVolMountPath(), "none")) {	/* 如果提前挂载成功,退出循环 */
 			break;
 		}
 		sleep(1);
