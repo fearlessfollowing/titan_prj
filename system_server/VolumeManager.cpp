@@ -135,7 +135,7 @@ static Mutex gRemoteVolLock;
 static Volume gSysVols[] = {
     {   /* SD卡 - 3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb2-1.1,usb1-2.1",      /* USB3.0设备,或者USB2.0设备 */
+        .pBusAddr       = "usb2-1.1,usb2-1.4,usb1-2.1",      /* USB3.0设备,或者USB2.0设备 */
         .pMountPath     = "/mnt/SD0",
         .pVolName       = "SD0",
         .iPwrCtlGpio    = 0,

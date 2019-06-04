@@ -309,3 +309,28 @@ PRO2 V1.1.4 Stitcher 陀螺仪延时值
 
 Offset: 
 ------------------------------------------------------------------------------------
+
+
+停止录像时的311错误:
+
+2019-05-27 12:16:41:993207 INFO  [core/video_composer.cpp:482] fps: 29.996950
+2019-05-27 12:16:44:080956 INFO  [module/usb_camera.cpp:2169] pid:8 fps: 30.093052
+2019-05-27 12:16:44:482923 ERROR [module/usb_camera.cpp:1315] pid:5 read data err code:-311
+2019-05-27 12:16:44:483025 INFO  [module/usb_camera.cpp:1250] pid 5 read data task over
+2019-05-27 12:16:44:487584 INFO  [access/access_msg_center.cpp:238] [----MESSAGE----] seq:0 { "name": "internal.sink_finish", "code": -311 }
+2019-05-27 12:16:44:487676 INFO  [util/hw_util.cpp:109] --------> tunning fan here.......
+2019-05-27 12:16:44:487894 INFO  [access/access_msg_center.cpp:996] do stop record
+2019-05-27 12:16:44:548829 ERROR [module/usb_device.cpp:289] pid:1 ep:0x82 bulk transfer size:3189 != actual size:32
+2019-05-27 12:16:44:562010 INFO  [module/usb_camera.cpp:1190] pid:1 send cmd:USB_CMD_STOP_VIDEO_RECORD {"cmd":1426063377}
+2019-05-27 12:16:44:562685 INFO  [module/usb_camera.cpp:1190] pid:2 send cmd:USB_CMD_STOP_VIDEO_RECORD {"cmd":1426063377}
+2019-05-27 12:16:44:563235 INFO  [module/usb_camera.cpp:1190] pid:3 send cmd:USB_CMD_STOP_VIDEO_RECORD {"cmd":1426063377}
+2019-05-27 12:16:44:563522 INFO  [module/usb_camera.cpp:1190] pid:4 send cmd:USB_CMD_STOP_VIDEO_RECORD {"cmd":1426063377}
+2019-05-27 12:16:44:563808 INFO  [module/usb_camera.cpp:1190] pid:5 send cmd:USB_CMD_STOP_VIDEO_RECORD {"cmd":1426063377}
+2019-05-27 12:16:44:564134 INFO  [module/usb_camera.cpp:1190] pid:6 send cmd:USB_CMD_STOP_VIDEO_RECORD {"cmd":1426063377}
+2019-05-27 12:16:44:564417 INFO  [module/usb_camera.cpp:1190] pid:7 send cmd:USB_CMD_STOP_VIDEO_RECORD {"cmd":1426063377}
+2019-05-27 12:16:44:564697 INFO  [module/usb_camera.cpp:1190] pid:8 send cmd:USB_CMD_STOP_VIDEO_RECORD {"cmd":1426063377}
+2019-05-27 12:16:44:604966 INFO  [module/usb_camera.cpp:1250] pid 2 read data task over
+2019-05-27 12:16:44:605245 INFO  [module/usb_camera.cpp:1250] pid 3 read data task over
+2019-05-27 12:16:44:605291 INFO  [module/usb_camera.cpp:1250] pid 7 read data task over
+2019-05-27 12:16:44:605376 INFO  [module/usb_camera.cpp:1250] pid 6 read data task over
+2019-05-27 12:16:44:605646 INFO  [module/usb_camera.cpp:1250] pid 4 read data task over

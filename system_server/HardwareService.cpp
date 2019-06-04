@@ -60,6 +60,9 @@
 #define     TAG "HwService"
 
 
+#define ENABLE_DEBUG_TMPSERVICE
+
+
 bool HardwareService::sFanGpioExport = false;
 
 #define MAX_FAN_SPEED       255
@@ -233,8 +236,13 @@ void HardwareService::getModuleTemp()
 
     bool bModuleTempInvalid = false;
     char cModProp[64] = {0};    
+    
     int iModuleTemp = -200;
-    int iTemp = -200;
+    int iH2Temp = -200;
+    int iSensorTemp = -200;
+    
+    int iH2Pid = 0;
+    int iSensorPid = 0;
 
     for (int i = 1; i <= 8; i++) {
         memset(cModProp, 0, sizeof(cModProp));
@@ -246,22 +254,39 @@ void HardwareService::getModuleTemp()
             int8_t h2_temp, sensor_temp;
             h2_temp = temp & 0xff;
             sensor_temp = (temp >> 8) & 0xff;
-            iTemp = (h2_temp > sensor_temp) ? h2_temp : sensor_temp;
-            // LOGINFO(TAG, "module[%d], H2 temp[%d], Sensor temp[%d]", i, h2_temp, sensor_temp);
-            if (iTemp > iModuleTemp) {
-                iModuleTemp = iTemp;
+
+            if (h2_temp > iH2Temp) {
+                iH2Temp = h2_temp;
+                iH2Pid = i;
             }
+
+            if (sensor_temp > iSensorTemp) {
+                iSensorTemp = sensor_temp;
+                iSensorPid = i;
+            }
+
+            int16_t iHightemp = (h2_temp > sensor_temp) ? h2_temp: sensor_temp;
+            if (iHightemp > iModuleTemp) {
+                iModuleTemp = iHightemp;
+            }
+
+            LOGDBG(TAG, "pid[%d], H2 temp: [%f]C", i, h2_temp*1.0f);
+            LOGDBG(TAG, "pid[%d], Sensor temp: [%f]C", i, sensor_temp*1.0f);
+            LOGDBG(TAG, "--------------------------------------------------");
+
         }
     }
 
     const char* pModState = property_get("module.power");  
     if (bModuleTempInvalid && pModState && !strcmp(pModState, "on")) {
         mModuleTmp = iModuleTemp * 1.0f;
-    }
 
 #ifdef ENABLE_DEBUG_TMPSERVICE
-    LOGDBG(TAG, "Current Module temp: [%f]C", mModuleTmp);
+        // LOGDBG(TAG, "Highest H2 Temp. info: pid[%d], temp: [%f]C", iH2Pid, iH2Temp*1.0f);
+        // LOGDBG(TAG, "Highest Sensor Temp. info: pid[%d], temp: [%f]C", iSensorPid, iSensorTemp*1.0f);
 #endif
+    }
+
 }
 
 
@@ -419,7 +444,6 @@ int HardwareService::serviceLooper()
                 setTargetFanSpeed(mUseSetFanSpeed);
                 LOGINFO(TAG, "-------- who tunning fan speed auto ----------");
             }
-
 
             /* 获取并更新电池信息: 并同步给UI */
             updateBatteryInfo();

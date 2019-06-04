@@ -8052,8 +8052,8 @@ void MenuUI::handleSetCustomer(sp<DISP_TYPE>& disp_type)
 void MenuUI::handleDispTypeMsg(sp<DISP_TYPE>& disp_type)
 {
     uint64_t serverState = getServerState();
-	switch (cur_menu) {
-
+	
+    switch (cur_menu) {
 		case MENU_DISP_MSG_BOX:
 		case MENU_SPEED_TEST: {
 			procBackKeyEvent();

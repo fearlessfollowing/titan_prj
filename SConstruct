@@ -114,7 +114,7 @@ fm_fm1388_obj = SConscript('./fm1388/fm_fm1388/SConscript')
 com_env.Program('./out/fm_fm1388', fm_fm1388_obj)
 
 
-############################## fm1388_adb_tool ###################################
-fm1388_adb_tool_obj = SConscript('./fm1388/fm1388_adb_tool/SConscript')
-com_env.Program('./out/fm1388_adb_tool', fm1388_adb_tool_obj)
+############################## bat_test ###################################
+bat_test_obj = SConscript('./test/bat_test/SConscript')
+com_env.Program('./out/bat_test', bat_test_obj)
 

@@ -32,5 +32,34 @@ hardware/nvidia/platform/t18x/common/kernel-dts/t18x-common-platforms/tegra186-q
 ------------------------------------------------------------------------------
 
 
+日期: 2019年5月24日
+------------------------------------------------------------------------------
+查看编解码器的动态频率范围:
+# cat /sys/kernel/debug/bpmp/debug/clk/nafll_nvenc/min_rate
+115200000 (115.2MHz)
+# cat /sys/kernel/debug/bpmp/debug/clk/nafll_nvenc/max_rate
+1113600000 (1113.6MHz)
+
+(115.2MHz - 1113.6MHz)
+
+# cat /sys/kernel/debug/bpmp/debug/clk/nafll_nvdec/min_rate
+115200000 (115.2MHz)
+# cat /sys/kernel/debug/bpmp/debug/clk/nafll_nvdec/max_rate
+1164800000 (1164.8MHz)
+
+(115.2MHz - 1164.8MHz)
+------------------------------------------------------------------------------
+
+电池进入休眠：
+
+
+
+禁止USB系统进入LPM模式:
+------------------------------------------------------------------------------
+# cat /sys/bus/platform/devices/3530000.xhci/usb2/2-1/power/control
+# echo on > /sys/bus/platform/devices/3530000.xhci/usb2/2-1/power/control
+------------------------------------------------------------------------------
+
+
 
 
