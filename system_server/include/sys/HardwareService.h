@@ -21,6 +21,9 @@
 #define HARDWARE_CMD_TUNNING_FAN    "tuning_fan"
 
 
+using moduleTempExceptionCallback = std::function<void ()>;
+
+
 /*
  * 硬件管理服务 - HardwareService
  * 1. 支持电池管理
@@ -53,7 +56,11 @@ public:
     static int      switchFan(bool bOnOff);
 
     static std::string getRecTtimeByLevel(int iLevel);
-    
+
+#ifdef ENABLE_MODULE_TEMP_CHECK
+    void            setModuleTempCheckCb(moduleTempExceptionCallback cb) { mTempExceptCb =  cb;}
+#endif
+
     static bool     sFanGpioExport;
 
 protected:
@@ -74,6 +81,10 @@ private:
     bool                                    mRunning;
     std::shared_ptr<BatteryManager>         mBatteryInterface;
     std::shared_ptr<ins_i2c>                mMiscController;    /* 用于配置灯光及风扇等 */
+
+#ifdef ENABLE_MODULE_TEMP_CHECK
+    moduleTempExceptionCallback             mTempExceptCb;
+#endif
 
     int                                     mUseSetFanSpeed;    /* 用户设置风扇转速 */
 

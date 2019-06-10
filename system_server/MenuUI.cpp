@@ -13,8 +13,7 @@
 ** V1.0			Wans			2016年12月01日		    创建文件
 ** V2.0			Skymixos		2018年06月05日          添加注释
 ** V3.0         skymixos        2018年08月05日          修改存储逻辑及各种模式下的处理方式
-** V3.1         skymixos        2018年08月31日          将存储相关的成员放入卷管理子系统中统一管理，删除
-**                                                      dev_manager.cpp
+** V3.1         skymixos        2018年08月31日          将存储相关的成员放入卷管理子系统中统一管理，删除dev_manager.cpp
 ** V3.2         skymixos        2018年09月20日          UI进入需要长时间操作时，禁止InputManager的上报功能
 ** V3.3         skymixos        2018年10月16日          修改WIFI的SSID符合OSC标准
 ** V3.4         skymixos        2018年11月6日           Photo Delay支持Off
@@ -23,7 +22,8 @@
 ** V3.7         Skymixos        2019年1月10日           播放声音需要设置属性"sys.play_sound" = true
 ** V3.8         Skymixos        2019年5月5日            关机时(kill camerad之后)不再闪烁红灯
 ** V3.9         Skymixos        2019年05月06日          客户端发送设置底部LOGO时,通过system_server转给camerad
-** V3.10        Skymixos        2019年05月17日         增加风扇风速调节UI,修改提示文案
+** V3.10        Skymixos        2019年05月17日          增加风扇风速调节UI,修改提示文案
+** V3.11        Skymixos        2019年06月10日          增加模组间温度差异错误显示
 ******************************************************************************************************/
 #include <future>
 #include <vector>
@@ -106,6 +106,7 @@ enum {
     DISP_NEED_SDCARD,
     DISP_NEED_QUERY_TFCARD,
     DISP_MAX_RECORD_TIME,
+    DISP_MODULE_TEMP_EXCEPTION,
 };
 
 
@@ -666,10 +667,20 @@ void MenuUI::subSysInit()
      *******************************************************************************/
     Singleton<TranManager>::getInstance()->start();
 
+
     /********************************************************************************
      * 硬件管理服务子系统初始化 - 2018年12月29日
      ********************************************************************************/
-    Singleton<HardwareService>::getInstance()->startService();
+    std::shared_ptr<HardwareService> hs = Singleton<HardwareService>::getInstance();
+    if (hs) {
+    
+    #ifdef ENABLE_MODULE_TEMP_CHECK
+        hs->setModuleTempCheckCb(MenuUI::moduleTempCheckCb);
+    #endif
+
+        hs->startService();
+    }
+
 }
 
 
@@ -917,6 +928,7 @@ void MenuUI::disp_msg_box(int type)
 			
             case DISP_NEED_SDCARD:
             case DISP_NEED_QUERY_TFCARD:
+            case DISP_MODULE_TEMP_EXCEPTION:
                 send_clear_msg_box(2000);
                 break;
 
@@ -1012,6 +1024,15 @@ void MenuUI::disp_msg_box(int type)
             break;
         }
 #endif
+
+        case DISP_MODULE_TEMP_EXCEPTION: {
+            clearArea();
+            std::stringstream ss;
+            ss << "module " << property_get("sys.exp_module") << " temp.";
+            dispStr((const u8*)ss.str().c_str(), 23, 16, false, 128);
+            dispStr((const u8*)"exception, please check", 1, 32, false, 128);
+            break;
+        }
 
         SWITCH_DEF_ERROR(type);
     }
@@ -2839,11 +2860,7 @@ void MenuUI::set_back_menu(int item, int menu)
             menu = MENU_TOP;
         } else {
             LOGERR(TAG, "back menu is -1 cur_menu %d", cur_menu);
-
-            #ifdef ENABLE_ABORT
-			#else
             menu = cur_menu;
-			#endif
         }
     }
 
@@ -2855,11 +2872,11 @@ void MenuUI::set_back_menu(int item, int menu)
         }
 
         if (item == menu) {
-            LOGERR(TAG, "same (%d %d)", item, menu);
+            LOGERR(TAG, "same (%d %s)", item, getMenuName(menu));
             menu = get_back_menu(menu);
         }
 
-        if (item != menu)  {
+        if (item != menu) {
             LOGNULL(TAG, "set back (%d %d)", item, menu);
             mMenuInfos[item].back_menu = menu;
         }
@@ -4668,13 +4685,6 @@ bool MenuUI::menuHasStatusbar(int menu)
 }
 
 
-
-void MenuUI::func_low_protect()
-{
-}
-
-
-
 /*
  * showSpaceQueryTfCallback - 显示存储空间页的查询TF卡的回调函数
  */
@@ -4691,6 +4701,15 @@ void MenuUI::showSpaceQueryTfCallback()
 }
 
 
+void MenuUI::moduleTempCheckCb()
+{
+    /** 往消息循环线程中投递一个消息 */
+    LOGNULL(TAG, "---> moduleTempCheckCb");
+    Singleton<MenuUI>::getInstance()->send_delay_msg(UI_MSG_MODULE_TEMP_EXCEPTION, 100);
+}
+
+
+
 void MenuUI::savePathChangeCb(const char* pSavePath)
 {
     LOGNULL(TAG, "---> savePathChangeCb");
@@ -4702,6 +4721,7 @@ void MenuUI::savePathChangeCb(const char* pSavePath)
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
     Singleton<ProtoManager>::getInstance()->sendSavePathChangeReq(pSavePath);
 }
+
 
 void MenuUI::saveListNotifyCb()
 {
@@ -5154,28 +5174,16 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
          *   2.服务器在测速状态
          */
         case MENU_SET_TEST_SPEED: {
-        
-        #ifdef ENABLE_SPEED_TEST_COND_CHECK
-            if (isSatisfySpeedTestCond() == COND_ALL_CARD_EXIST) {
-                if (mSpeedTestUpdateFlag == false) {    /* 未发起测速的情况 */
-                    /* 来自UI的：提示是否确认测速 */
-                    dispTipStorageDevSpeedTest();
-                } else {
-                    procBackKeyEvent();                 /* 测速完成，由于拔卡或插卡导致冲进进入MENU_SPEE_TEST的情况 */
-                } 
-            } else {
-                LOGDBG(TAG, "Lost some card, return now.");
-                procBackKeyEvent();
-            }
-        #else 
             if (mSpeedTestUpdateFlag == false) {    /* 未发起测速的情况 */
                 /* 来自UI的：提示是否确认测速 */
-                dispTipStorageDevSpeedTest();
+                if (checkServerAlloSpeedTest(serverState)) {
+                    dispTipStorageDevSpeedTest();
+                } else {
+                    dispWriteSpeedTest();
+                }
             } else {
                 procBackKeyEvent();                 /* 测速完成，由于拔卡或插卡导致冲进进入MENU_SPEE_TEST的情况 */
-            } 
-        #endif
-
+            }
             break;
         }
 
@@ -5828,9 +5836,6 @@ void MenuUI::procPowerKeyEvent()
 
             /* 将当前风速保存到配置中 */
             Singleton<CfgManager>::getInstance()->setKeyVal(_fan_level, iIndex);
-            // sprintf(cIndex, "%d", iIndex);
-            // property_set(PROP_FAN_CUR_GEAR, cIndex);
-
 
             /*
              * 显示提示消息: 0 - 3档显示消息框,4档不需要
@@ -5911,27 +5916,13 @@ void MenuUI::procPowerKeyEvent()
          */	
         case MENU_SPEED_TEST: 
         case MENU_SET_TEST_SPEED: {
-
-            if (checkServerAlloSpeedTest(serverState)) {
+            if (checkServerAlloSpeedTest(serverState)) {    /* 检查服务器状态是否允许 */
                 std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
                 if (mSpeedTestUpdateFlag == false) {
                     LOGDBG(TAG, "Enter MENU_SPEED_TEST Speed Testing ");
-
-                #ifdef ENABLE_SPEED_TEST_COND_CHECK     /* 检查所有的卡是否存在,再进行测速 */
-                    if ((isSatisfySpeedTestCond() == COND_ALL_CARD_EXIST) && vm->checkLocalVolumeExist()) {
-                        clearArea();
-                        dispWriteSpeedTest();      
-                        pm->sendSpeedTestReq(vm->getLocalVolMountPath());
-                    } else {
-                        LOGDBG(TAG, "Card removed ??? ");
-                        procBackKeyEvent();
-                    }
-                #else 
                     clearArea();
                     dispWriteSpeedTest();      
                     pm->sendSpeedTestReq(vm->getLocalVolMountPath());
-                #endif
-
                 } else {    /* 测速结果已经更新(Server将不在测速状态),此时按按确认键 */
                     LOGDBG(TAG, "Speed Test Result is updated !!!");
                     procBackKeyEvent();
@@ -8504,10 +8495,7 @@ void MenuUI::handleTfStateChanged(std::vector<std::shared_ptr<Volume>>& mTfChang
         /* 
          * 在测试过程中拔掉大卡,不会在屏幕上显示卡拔出的消息框
          */
-        if ( (cur_menu != MENU_SET_TEST_SPEED) && (cur_menu != MENU_SPEED_TEST) &&  (cur_menu != MENU_FORMAT_INDICATION)) {
-            /* 显示消息框:  STATE_IDLE
-             * 消息框被清除后会显示进入消息框的菜单(重新进入菜单时，如果时MENU_PIC_INFO, MENU_VIDEO_INFO, MENU_LIVE_INFO 需要重新更新底部空间)
-             */
+        if ((cur_menu != MENU_SET_TEST_SPEED) && (cur_menu != MENU_SPEED_TEST) &&  (cur_menu != MENU_FORMAT_INDICATION)) {
             disp_dev_msg_box(iAction , VOLUME_SUBSYS_SD, false);
         }
     }
@@ -8844,6 +8832,13 @@ void MenuUI::handleUpdateMid()
         setLight();
     }
 }
+
+
+void MenuUI::handleModuleTempCheck(void)
+{
+    disp_msg_box(DISP_MODULE_TEMP_EXCEPTION);
+}
+
 
 
 /*************************************************************************
@@ -9215,6 +9210,11 @@ void MenuUI::handleMessage(const sp<ARMessage> &msg)
             case UI_READ_BAT: {     /* 读取电池电量消息 */
                 std::unique_lock<std::mutex> lock(mutexState);
                 handleCheckBatteryState();
+                break;
+            }
+
+            case UI_MSG_MODULE_TEMP_EXCEPTION: {
+                handleModuleTempCheck();
                 break;
             }
 

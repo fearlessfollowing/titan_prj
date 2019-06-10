@@ -83,6 +83,11 @@ int HardwareService::getListenerSocket()
 HardwareService::HardwareService(): SocketListener(getListenerSocket(), true)
 {
     mRunning = false;
+
+#ifdef ENABLE_MODULE_TEMP_CHECK
+    mTempExceptCb = nullptr;
+#endif
+
     pipe(mCtrlPipe);
 
     LOGDBG(TAG, "---> constructor HardwareService now ...");
@@ -244,11 +249,18 @@ void HardwareService::getModuleTemp()
     int iH2Pid = 0;
     int iSensorPid = 0;
 
+    int iHighestTemp = -200;
+    int iLowestTemp  = 200;
+    int iExpPid = 0;
+
+
     for (int i = 1; i <= 8; i++) {
+
         memset(cModProp, 0, sizeof(cModProp));
         sprintf(cModProp, "module.temp%d", i);
         const char* pModTemp = property_get(cModProp);
         if (pModTemp) {
+
             bModuleTempInvalid = true;
             int16_t temp = atoi(pModTemp);
             int8_t h2_temp, sensor_temp;
@@ -270,10 +282,18 @@ void HardwareService::getModuleTemp()
                 iModuleTemp = iHightemp;
             }
 
+            if (iHightemp >= iHighestTemp) {
+                iHighestTemp = iHightemp;
+                iExpPid = i;
+            }
+            
+            if (iHightemp <= iLowestTemp) {
+                iLowestTemp = iHightemp;
+            }
+
             LOGDBG(TAG, "pid[%d], H2 temp: [%f]C", i, h2_temp*1.0f);
             LOGDBG(TAG, "pid[%d], Sensor temp: [%f]C", i, sensor_temp*1.0f);
             LOGDBG(TAG, "--------------------------------------------------");
-
         }
     }
 
@@ -281,9 +301,17 @@ void HardwareService::getModuleTemp()
     if (bModuleTempInvalid && pModState && !strcmp(pModState, "on")) {
         mModuleTmp = iModuleTemp * 1.0f;
 
-#ifdef ENABLE_DEBUG_TMPSERVICE
-        // LOGDBG(TAG, "Highest H2 Temp. info: pid[%d], temp: [%f]C", iH2Pid, iH2Temp*1.0f);
-        // LOGDBG(TAG, "Highest Sensor Temp. info: pid[%d], temp: [%f]C", iSensorPid, iSensorTemp*1.0f);
+        /* 模组间温差检查 */
+#ifdef ENABLE_MODULE_TEMP_CHECK 
+        if (abs(iHighestTemp) - abs(iLowestTemp) > 10) {    /* 温度差相差过大,给UI传递一个模组异常消息 */
+            LOGERR(TAG, "Maybe module exist exception, please check!");
+            if (mTempExceptCb) {
+                std::stringstream ss;
+                ss << iExpPid;
+                property_set("sys.exp_module", ss.str().c_str());
+                mTempExceptCb();
+            }
+        }
 #endif
     }
 

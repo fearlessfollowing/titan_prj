@@ -235,6 +235,7 @@ enum {
     UI_MSG_GPS_SIGNAL_TEST,    
     UI_MSG_SET_CUSTOMER,    
     UI_MSG_COMMON,
+    UI_MSG_MODULE_TEMP_EXCEPTION,   /* 模组温度异常消息 */
     UI_EXIT,                        /* 退出消息循环 */
 };
 
@@ -540,7 +541,6 @@ private:
 
     void    disp_low_protect(bool bStart = false);
     void    disp_low_bat();
-    void    func_low_protect();
 
     bool    menuHasStatusbar(int menu);
 
@@ -941,6 +941,8 @@ private:
     void    handleShutdown();
     void    handleUpdateTlCnt(sp<DISP_TYPE>& disp_type);
 
+    void    handleModuleTempCheck(void);
+
     /********************************************* 拍照部分 ****************************************************/
     void    setTakePicDelay(int iDelay);
     int     convCapDelay2Index(int iDelay);
@@ -980,6 +982,8 @@ private:
     static void    savePathChangeCb(const char* pSavePath);
     static void    saveListNotifyCb();
     static void    storageHotplugCb(sp<ARMessage>& msg, int iAction, int iType, std::vector<Volume*>& devList);
+
+    static void    moduleTempCheckCb();
 
 private:
 

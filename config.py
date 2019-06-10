@@ -169,6 +169,10 @@ COM_FLAGS += ' -DBATTERY_USE_BQ40Z50 '
 # 调试Netlink消息
 # COM_FLAGS += ' -DENABLE_DEBUG_NETLINK_MSG '
 
+
+# 模组温差检查
+COM_FLAGS += ' -DENABLE_MODULE_TEMP_CHECK '
+
 COM_FLAGS += ' -fexceptions -Wall -Wunused-variable -g '
 
 

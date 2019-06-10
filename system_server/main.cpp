@@ -14,8 +14,8 @@
 ** V2.0         Skymixos        2018年11月14日   增加主线程主动退出流程
 ** V3.0         Skymixos        2019年1月18日    增加ulimited
 ** V3.1         Skymixos        2019年2月19日    增加getSignalStr函数,用于调试
+** V3.2         Skymixos        2019年06月10日   使用单例模式创建MenuUI对象
 ******************************************************************************************************/
-
 #include <util/msg_util.h>
 #include <system_properties.h>
 #include <common/include_common.h>
@@ -38,8 +38,8 @@
 #include <log/log_wrapper.h>
 
 #include <util/util.h>
-
 #include <common/check.h>
+#include <util/SingleInstance.h>
 
 
 #undef  TAG
@@ -134,19 +134,16 @@ int main(int argc ,char *argv[])
 
     LOGDBG(TAG, "\n\n>>> Start system_server now, Firm Version [%s], CompileInfo[%s - %s] <<<<<<<<<<<<\n", property_get(PROP_SYS_FIRM_VER), __DATE__, __TIME__);
 
-    // std::map<int, int> map_;
-    // loadBatCfgFile("/home/nvidia/batCfg.ini", map_);
-
     {
         /* 构造MenuUI对象 */
-        std::shared_ptr<MenuUI> ptrMenu = std::make_shared<MenuUI>();
-        ptrMenu->startUI();
+        std::shared_ptr<MenuUI> ms = Singleton<MenuUI>::getInstance();
+        ms->startUI();
 
         read(mCtrlPipe[0], &c, 1);
         if (c == CtrlPipe_Shutdown) {
             LOGDBG(TAG, "Main thread recv Quit Signal, Normal exit now...");
         }
-        ptrMenu->stopUI();
+        ms->stopUI();
     }
 
     LOGDBG(TAG, "------- system_server Exit now -------");
