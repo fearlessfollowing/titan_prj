@@ -266,7 +266,6 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
                 LOGDBG(TAG, "bq40z50 in discharge mode.");
                 pBatInfo->bIsCharge = false;
             } else {
-                // LOGDBG(TAG, "bq40z50 in charging mode.");
                 pBatInfo->bIsCharge = true;
             }
         }
@@ -314,7 +313,8 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
 
             pBatInfo->uBatLevelPer = uBatPer;
         }
-#else 
+#else
+
 #define VOL_CRITICAL_VAL    13400       /* 13.4V */
 #define BAT_CAP_CRITCAL_VAL 5
 

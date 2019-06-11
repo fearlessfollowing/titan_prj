@@ -388,6 +388,13 @@ void HardwareService::updateSysTemp()
 }
 
 
+void HardwareService::batteryShutdown()
+{
+    system("i2cset -f -y -r 0x7 0xb 0x44 0x10 0x00 s");
+    sleep(0.1);
+    system("i2cset -f -y -r 0x7 0xb 0x44 0x10 0x00 s");
+}
+
 
 BatterInfo HardwareService::getSysBatteryInfo()
 {   

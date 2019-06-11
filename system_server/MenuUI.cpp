@@ -106,6 +106,8 @@ enum {
     DISP_NEED_SDCARD,
     DISP_NEED_QUERY_TFCARD,
     DISP_MAX_RECORD_TIME,
+    DISP_BATTERY_ENTER_SHUTDOWN_FAIL,
+    DISP_BATTERY_ENTER_SHUTDOWN_SUC,
     DISP_MODULE_TEMP_EXCEPTION,
 };
 
@@ -929,6 +931,8 @@ void MenuUI::disp_msg_box(int type)
             case DISP_NEED_SDCARD:
             case DISP_NEED_QUERY_TFCARD:
             case DISP_MODULE_TEMP_EXCEPTION:
+            case DISP_BATTERY_ENTER_SHUTDOWN_FAIL:
+            case DISP_BATTERY_ENTER_SHUTDOWN_SUC:
                 send_clear_msg_box(2000);
                 break;
 
@@ -981,40 +985,17 @@ void MenuUI::disp_msg_box(int type)
 
         case DISP_NEED_SDCARD: {
             clearArea();
-
-            #if 1
             dispStr((const u8*)"Please", 48, 8, false, 128);
             dispStr((const u8*)"ensure SD card or", 16, 24, false, 128);
             dispStr((const u8*)"USB disk are inserted", 8, 40, false, 128);
-            #else 
-
-            // dispStr((const u8*)"Shutting down ejecting", 4, 16, false, 128);
-            // dispStr((const u8*)" storage devices...", 8, 32, false, 128);
-            // dispStr((const u8*)"Stop pressing button", 8, 48, false, 128);
-
-            // dispStr((const u8*)"(1,2,3,4,5,6,7,8)", 23, 32, false, 128);
-
-
-            #endif
             break;
         }
 
         case DISP_NEED_QUERY_TFCARD: {
-
-            #if 1
             clearArea();
             dispStr((const u8*)"Please ensure SD", 16, 8, false, 128);
             dispStr((const u8*)"cards exist and query", 8, 24, false, 128);
             dispStr((const u8*)"storage space first...", 6, 40, false, 128);
-            #else
-            clearArea();
-
-            // dispStr((const u8*)"udisk1", 48, 0, false, 128);
-            dispStr((const u8*)"udisk1, SD1 write", 20, 16, false, 128);
-            dispStr((const u8*)"speed are insufficient.", 6, 32, false, 128);
-            // dispStr((const u8*)"insufficient...", 28, 48, false, 128);
-
-            #endif
             break;
         }
 
@@ -1031,6 +1012,21 @@ void MenuUI::disp_msg_box(int type)
             ss << "module " << property_get("sys.exp_module") << " temp.";
             dispStr((const u8*)ss.str().c_str(), 23, 16, false, 128);
             dispStr((const u8*)"exception, please check", 1, 32, false, 128);
+            break;
+        }
+
+        case DISP_BATTERY_ENTER_SHUTDOWN_FAIL: {
+            clearArea();
+            dispStr((const u8*)"Battery enter shutdown", 3, 16, false, 128);
+            dispStr((const u8*)"failed, please check", 12, 32, false, 128);
+            dispStr((const u8*)"adapter was ejected.", 8, 48, false, 128);
+            break;
+        }
+
+        case DISP_BATTERY_ENTER_SHUTDOWN_SUC: {
+            clearArea();
+            dispStr((const u8*)"Battery will shutdown", 8, 16, false, 128);
+            dispStr((const u8*)"after few seconds", 16, 32, false, 128);
             break;
         }
 
@@ -5175,7 +5171,6 @@ void MenuUI::enterMenu(bool bUpdateAllMenuUI)
          */
         case MENU_SET_TEST_SPEED: {
             if (mSpeedTestUpdateFlag == false) {    /* 未发起测速的情况 */
-                /* 来自UI的：提示是否确认测速 */
                 if (checkServerAlloSpeedTest(serverState)) {
                     dispTipStorageDevSpeedTest();
                 } else {
@@ -5584,6 +5579,30 @@ void MenuUI::procSetMenuKeyEvent()
         #endif           
         } else if (!strcmp(pCurItem->pItemName, SET_ITEM_NAME_CALC_STITCH)) {
             sendRpc(ACTION_CALIBRATION);
+        } else if (!strcmp(pCurItem->pItemName, SET_TEIM_NAME_BATTERY_SHUTDOWN)) {
+            /*
+             * 1.检查电池是否为充电状态
+             * - 充电状态
+             * - 非充电状态
+             */
+            LOGINFO(TAG, "--> pressed battery shutdown item");
+            std::shared_ptr<HardwareService> hs = Singleton<HardwareService>::getInstance();
+            hs->updateBatteryInfo();
+            BatterInfo batInfo = hs->getSysBatteryInfo();
+            if (batInfo.bIsExist) {         /* 电池存在 */
+                int iType;                                
+                if (batInfo.bIsCharge) {    /* 充电状态 */
+                    iType = DISP_BATTERY_ENTER_SHUTDOWN_FAIL;
+                } else {
+                    /* 卸载卡并进入shutdown模式 */
+                    std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance();
+                    vm->unmountAll();       /* 卸载所有的挂载卷 */
+                    msg_util::sleep_ms(200);            
+                    hs->batteryShutdown();
+                    iType = DISP_BATTERY_ENTER_SHUTDOWN_SUC;                    
+                }
+                disp_msg_box(iType);
+            }
         }
     }
 }
@@ -9930,7 +9949,6 @@ void MenuUI::tipSDcardSpeedInsufficient()
     dispStr((const u8*)"speed insufficient.Please", 0, 16, false, 128);
     dispStr((const u8*)"do a full overwrite", 16, 32, false, 128);
     dispStr((const u8*)"format before use.", 14, 48, false, 128); 
-
 }
 
 

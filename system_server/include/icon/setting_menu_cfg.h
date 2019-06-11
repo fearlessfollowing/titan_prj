@@ -685,9 +685,6 @@ SettingItem setGpsSignalTestControlItem = {
 
 
 
-/*
- * GPS信号测试:
- */
 #ifdef ENABLE_DENOISE_MODE_SELECT
 SettingItem setDnoiseModeSelectControlItem = {
 	pItemName:      SET_ITEM_DNOISE_MODE_SELECT,		
@@ -704,6 +701,22 @@ SettingItem setDnoiseModeSelectControlItem = {
 };
 
 #endif
+
+
+
+SettingItem setBatShutdownItem = {
+	pItemName:      SET_TEIM_NAME_BATTERY_SHUTDOWN,		
+	iItemMaxVal:    0,							    
+	iCurVal:        0,							    
+	bHaveSubMenu:   true,						    
+	pSetItemProc:   NULL,						    
+	stPos:          {0, 0, 0, 0}, 
+	stLightIcon:    {},					
+	stNorIcon:      {},
+    stOrigArg:      {},    
+    pNote:          "Battery Shutdown",     
+    bMode:          false,			 			
+};
 
 
 /*****************************************************************************************
@@ -752,6 +765,11 @@ SettingItem* gSettingItems[] = {
 #endif 	
 
 	&setInfoItem,
+
+#ifdef ENABLE_BATTERY_SHUT_DOWN
+    &setBatShutdownItem,
+#endif
+
 	&setResetItem,
 	
 #ifdef ENABLE_GPS_SIGNAL_TEST

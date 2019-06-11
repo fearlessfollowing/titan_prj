@@ -48,6 +48,9 @@ public:
 
     void            setAllLight(bool bOnOff);
 
+    void            updateBatteryInfo();
+
+    void            batteryShutdown();
 
     static uint32_t getRecSecsInCurFanSpeed(int iFanLevel);
 
@@ -89,7 +92,6 @@ private:
     int                                     mUseSetFanSpeed;    /* 用户设置风扇转速 */
 
     void            updateSysTemp();
-    void            updateBatteryInfo();
     int             serviceLooper();
     bool            reportSysTempAndBatInfo();
     void            getNvTemp();

@@ -173,6 +173,9 @@ COM_FLAGS += ' -DBATTERY_USE_BQ40Z50 '
 # 模组温差检查
 COM_FLAGS += ' -DENABLE_MODULE_TEMP_CHECK '
 
+# 是否开启电池进入Shutdown模式
+# COM_FLAGS += ' -DENABLE_BATTERY_SHUT_DOWN '
+
 COM_FLAGS += ' -fexceptions -Wall -Wunused-variable -g '
 
 

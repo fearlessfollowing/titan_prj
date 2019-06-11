@@ -409,7 +409,7 @@
 #define SET_ITEM_NAME_TF_FOMART_THIS_CARD   "format_this_card"
 #define SET_ITEM_NAME_TF_FOMART_ALL_CARD    "format_all_card"
 
-
+#define SET_TEIM_NAME_BATTERY_SHUTDOWN      "bat_shutdown"
 #define SET_ITEM_NAME_STORAGESPACE          "storage_space"
 #define SET_ITEM_NAME_TESTSPEED             "test_speed"
 
