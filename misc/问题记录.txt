@@ -277,3 +277,47 @@ G14	CAN_GPIO2	vddio_ao_hv	wake46	CZ	20K	z	GPIO3_PAA.02	Input	Int PU	Yes
 
 crtmpserver
 https://www.cnblogs.com/wangqiguo/p/6014519.html
+
+
+
+日期: 2019年06月14日
+--------------------------------------------------------------------------------------------
+问题描述： 内核直接挂掉
+
+2019-06-14 15:40:53:442867 INFO  KernLog [kern_log/getKernLog.cpp:46]<1>[83852.780271] pgd = ffffffc1b8c45000
+2019-06-14 15:40:53:635809 INFO  KernLog [kern_log/getKernLog.cpp:46]<0>[83852.794944] Internal error: Oops: 9600000b [#1] PREEMPT SMP
+<7>[83852.806728] CPU: 5 PID: 6167 Comm: camerad Not tainted 4.4.38 #32
+<7>[83852.816464] task: ffffffc150481900 ti: ffffffc17e300000 task.ti: ffffffc17e300000
+<7>[83852.829413] LR is at nvmap_do_cache_maint_list+0x7c/0x388
+<7>[83852.842180] sp : ffffffc17e303cd0
+<7>[83852.850807] x27: ffffffc0012d7000 x26: 0000000000200000 
+<7>[83852.861444] x23: 0000007e6d4d6970 x22: 0000000000000002 
+<7>[83852.872079] x19: ffffffc03f020200 x18: 0000000000000014 
+<7>[83852.882716] x15: 001dcd6500000000 x14: 0000007f4dc60634 
+<7>[83852.893353] x11: 0000000000000000 x10: 0000007e6d4d5870 
+<7>[83852.903992] x7 : 0000000000000018 x6 : 0000000000000001 
+<7>[83852.914629] x3 : 0000000000000001 x2 : ffffffc17e303d30 
+<7>[83852.925267] 
+<0>[83852.933529] Call trace:
+<7>[83852.942489] [<ffffffc0003f0a74>] nvmap_ioctl_cache_maint_list+0x2e8/0x2fc
+<7>[83852.954566] [<ffffffc0001e6350>] do_vfs_ioctl+0x324/0x5e4
+2019-06-14 15:41:34:171456 INFO  KernLog [kern_log/getKernLog.cpp:46]<0>[83852.794944] Internal error: Oops: 9600000b [#1] PREEMPT SMP
+<7>[83852.806728] CPU: 5 PID: 6167 Comm: camerad Not tainted 4.4.38 #32
+<7>[83852.816464] task: ffffffc150481900 ti: ffffffc17e300000 task.ti: ffffffc17e300000
+<7>[83852.829413] LR is at nvmap_do_cache_maint_list+0x7c/0x388
+<7>[83852.842180] sp : ffffffc17e303cd0
+<7>[83852.850807] x27: ffffffc0012d7000 x26: 0000000000200000 
+<7>[83852.861444] x23: 0000007e6d4d6970 x22: 0000000000000002 
+<7>[83852.872079] x19: ffffffc03f020200 x18: 0000000000000014 
+<7>[83852.882716] x15: 001dcd6500000000 x14: 0000007f4dc60634 
+<7>[83852.893353] x11: 0000000000000000 x10: 0000007e6d4d5870 
+<7>[83852.903992] x7 : 0000000000000018 x6 : 0000000000000001 
+<7>[83852.914629] x3 : 0000000000000001 x2 : ffffffc17e303d30 
+<7>[83852.925267] 
+<0>[83852.933529] Call trace:
+<7>[83852.942489] [<ffffffc0003f0a74>] nvmap_ioctl_cache_maint_list+0x2e8/0x2fc
+<7>[83852.954566] [<ffffffc0001e6350>] do_vfs_ioctl+0x324/0x5e4
+2019-06-14 15:41:34:675293 INFO  KernLog [kern_log/getKernLog.cpp:46]<3>[83894.009084] serial-tegra 3110000.serial: RxData DMA copy to tty layer failed
+
+
+--------------------------------------------------------------------------------------------

@@ -1,0 +1,41 @@
+{
+    "name": "network_cfg",
+    "res":[
+        {
+            "interface": "eth0",
+            "getIpMode": "both",     
+            "static_ip": "192.168.1.188",
+            "prio": 0               
+        },
+        {
+            "interface": "eth1",
+            "getIpMode": "both",     
+            "static_ip": "192.168.2.188",
+            "prio": 1               
+        },
+        {
+            "interface": "usb1",
+            "getIpMode": "dhcp",     
+            "static_ip": "192.168.2.188",
+            "prio": 2               
+        },
+        {
+            "interface": "wlan0",
+            "getIpMode": "static",     
+            "static_ip": "192.168.43.1",
+            "prio": 3               
+        },
+        {
+            "interface": "wlan1",
+            "getIpMode": "static",     
+            "static_ip": "192.168.44.1",
+            "prio": 4               
+        },
+        {
+            "interface": "usb0",
+            "getIpMode": "static",     
+            "static_ip": "192.168.55.1",
+            "prio": 5
+        }
+    ]
+}

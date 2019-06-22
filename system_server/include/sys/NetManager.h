@@ -28,6 +28,13 @@ enum {
 };
 
 
+#if 0
+{
+    "name": "network_cfg",
+    "res":[]
+}
+#endif
+
 /**
  * 网络设备的链路状态
  */

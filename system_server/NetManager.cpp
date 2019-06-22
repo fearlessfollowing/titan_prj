@@ -38,12 +38,13 @@
 #include <prop_cfg.h>
 #include <log/log_wrapper.h>
 #include <system_properties.h>
-
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
 #undef  TAG
 #define TAG "NetManager"
 
-//#define ENABLE_IP_DEBUG
 
 #define NETM_DISPATCH_PRIO	0x10		/* 按优先级的顺序显示IP */
 #define NETM_DISPATCH_POLL	0x11		/* 若有多个IP依次显示 */
@@ -292,16 +293,23 @@ std::string& NetDev::getDevName()
 
 void NetDev::getIpByDhcp()
 {
-    char cmd[512] = {0};
+    std::stringstream ss;
 
 #ifdef DHCP_USE_DHCLIENT	
     system("killall dhclient");
-    sprintf(cmd, "dhclient %s &", mDevName.c_str());
+    ss << "dhclient " << mDevName << " &";
 #else 
     system("killall udhcpc");
-    sprintf(cmd, "udhcpc %s &", mDevName.c_str());
+    system("killall dhclient");
+    if (mDevName == USB1_ETH_NAME) {
+        ss << "dhclient " << mDevName << " &";
+    } else {
+        ss << "udhcpc " << mDevName << " &";
+    }
+    // sprintf(cmd, "udhcpc %s &", mDevName.c_str());
 #endif
-    system(cmd);	
+    LOGINFO(TAG, "dhcp cmd: %s", ss.str().c_str());
+    system(ss.str().c_str());	
 }
 
 
@@ -404,6 +412,8 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
         LOGDBG(TAG, "NetManger: netdev[%s] link state changed", etherDev->getDevName().c_str());
 
         if (iCurLinkState == NET_LINK_CONNECT) {	/* Disconnect -> Connect */
+            LOGINFO(TAG, "netdev[%s] ++++>>> link disconnect", etherDev->getDevName().c_str());
+
             LOGDBG(TAG, "current ip [%s], saved ip [%s]", etherDev->getCurIpAddr(), etherDev->getSaveIpAddr());
 
             /* 只有构造设备时会将mCurIpAddr与mSavedIpAdrr设置为"0" */
@@ -419,7 +429,7 @@ int EtherNetDev::processPollEvent(sp<NetDev>& etherDev)
             }
 
         } else {	/* Connect -> Disconnect */
-            LOGINFO(TAG, "++++>>> link disconnect");
+            LOGINFO(TAG, "netdev[%s] ++++>>> link disconnect", etherDev->getDevName().c_str());
             etherDev->setCurIpAddr("0.0.0.0", true);
         }
 
@@ -692,9 +702,12 @@ void NetManager::handleMessage(const sp<ARMessage> &msg)
 			std::vector<sp<NetDev>>::iterator itor;
 			std::vector<sp<NetDev>> tmpList;
             sp<NetDev> tmpDev;
-
 			tmpList.clear();
 			
+            /*
+             * 监听是否有usb1网卡加入/拔出
+             */
+
 			for (itor = mDevList.begin(); itor != mDevList.end(); itor++) {
 				if ((*itor)->getNetDevActiveState()) {
 					tmpList.push_back(*itor);
@@ -920,6 +933,12 @@ void NetManager::setNotifyRecv(sp<ARMessage> notify)
 }
 
 
+/*
+ * 启动网络管理器时:
+ * 1.读取配置文件来决定监听哪些网络设备(network_cfg.json)
+ * 2.启动网络设备动态监听线程
+ * 3.启动消息处理线程
+ */
 void NetManager::start()
 {
 	mThread = std::thread([this] {
@@ -1018,6 +1037,7 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 {
     sp<NetDev> tmpEthDev;
     sp<NetDev> tmpWlanDev;
+    sp<NetDev> tmpUsbEthDev;
 
 	bool bUpdate = false;
 
@@ -1027,6 +1047,7 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 
 			tmpEthDev = getNetDevByname(ETH0_NAME);
 			tmpWlanDev = getNetDevByname(WLAN0_NAME);
+            tmpUsbEthDev = getNetDevByname(USB1_ETH_NAME);
 
 			if (tmpEthDev && strcmp(tmpEthDev->getCurIpAddr(), "0.0.0.0")) {
 				if (strcmp(tmpEthDev->getCurIpAddr(), mLastDispIp)) {
@@ -1034,7 +1055,13 @@ void NetManager::dispatchIpPolicy(int iPolicy)
 					strcpy(mLastDispIp, tmpEthDev->getCurIpAddr());
 					bUpdate = true;
 				}
-			} else if (tmpWlanDev && strcmp(tmpWlanDev->getCurIpAddr(), "0.0.0.0")) {
+			} else if (tmpUsbEthDev && strcmp(tmpUsbEthDev->getCurIpAddr(), "0.0.0.0")) {
+				if (strcmp(tmpUsbEthDev->getCurIpAddr(), mLastDispIp)) {
+					memset(mLastDispIp, 0, sizeof(mLastDispIp));
+					strcpy(mLastDispIp, tmpUsbEthDev->getCurIpAddr());
+					bUpdate = true;
+				}
+            } else if (tmpWlanDev && strcmp(tmpWlanDev->getCurIpAddr(), "0.0.0.0")) {
 				if (strcmp(tmpWlanDev->getCurIpAddr(), mLastDispIp)) {
 					memset(mLastDispIp, 0, sizeof(mLastDispIp));
 					strcpy(mLastDispIp, tmpWlanDev->getCurIpAddr());
@@ -1095,6 +1122,8 @@ NetManager::NetManager()
 	memset(mLastDispIp, 0, sizeof(mLastDispIp));
 	strcpy(mLastDispIp, OFF_IP);
 	mDevList.clear();
+
+
 }
 
 

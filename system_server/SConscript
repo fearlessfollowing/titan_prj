@@ -39,7 +39,6 @@ src += [config.UTIL + '/tinyxml2.cpp']
 
 
 src += [config.SYSTEM_SERVER + '/hw/oled_module.cpp']
-#src += [config.SYSTEM_SERVER + '/hw/ins_led.cpp']
 src += [config.SYSTEM_SERVER + '/hw/bq40z50.cpp']
 
 src += [config.SYSTEM_SERVER + '/hw/ins_i2c.cpp']

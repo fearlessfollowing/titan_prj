@@ -82,12 +82,8 @@
 #define ERR_MENU_STATE(menu,state) \
 LOGERR(TAG,"err menu state (%d 0x%x)",  menu, state);
 
-
 #define INFO_MENU_STATE(menu,state) \
 LOGDBG(TAG, "menu state (%d 0x%x)", menu, state);
-
-
-// #define ENABLE_DEBUG_LIGHT
 
 /*
  * 消息框的消息类型
@@ -568,6 +564,18 @@ void MenuUI::subSysInit()
         registerEth0msg->set<sp<NetDev>>("netdev", eth0);
         registerEth0msg->post();
     }
+
+#if 0
+    /* 注册USB网卡1 */
+	LOGDBG(TAG, "register usb1 netdev");
+    sp<EtherNetDev> usb1 = std::make_shared<EtherNetDev>("usb1", 1);
+
+    sp<ARMessage> registerUsb1msg = nm->obtainMessage(NETM_REGISTER_NETDEV);
+    if (registerUsb1msg) {
+        registerUsb1msg->set<sp<NetDev>>("netdev", usb1);
+        registerUsb1msg->post();
+    }
+#endif
 
     /* Register Wlan0 */
     sp<WiFiNetDev> wlan0 = std::make_shared<WiFiNetDev>(WIFI_WORK_MODE_AP, "wlan0", 0);
@@ -5735,7 +5743,10 @@ void MenuUI::procPowerKeyEvent()
 
                         /* 主动切网卡为直接模式 */
                         if (NULL == property_get("sys.unswitch_ip"))
+
+                        #ifdef ENABLE_NET_MANAGER
                             switchEtherIpMode(0);
+                        #endif
 
                         /** 重启dnsmasq服务
                          * 使用新的dnsmasq.conf配置

@@ -109,11 +109,6 @@ web_server_obj = SConscript('./webServer/SConscript')
 com_env.Program('./out/webServer', web_server_obj)
 
 
-############################## fm_fm1388 ###################################
-fm_fm1388_obj = SConscript('./fm1388/fm_fm1388/SConscript')
-com_env.Program('./out/fm_fm1388', fm_fm1388_obj)
-
-
 ############################## bat_test ###################################
 bat_test_obj = SConscript('./test/bat_test/SConscript')
 com_env.Program('./out/bat_test', bat_test_obj)

@@ -433,15 +433,20 @@ void AudioManager::init()
     /* 选择播放设备 */
     defaultPlayDev = DEFAULT_PALY_DEVICE;
 
-    // initSpeaker();
+    initSpeaker();
 
-    // msg_util::sleep_ms(500);
+    msg_util::sleep_ms(500);
     
-    // initRecorder();
+    initRecorder();
 
+#if 1
     if (!pPropAudio || !strcmp(pPropAudio, "false")) {
         property_set(PROP_USE_AUDIO, "true");
     }
+#else
+    property_set(PROP_USE_AUDIO, "false");
+#endif
+
 
     /* 预加载wav文件(mmap) */
 #ifdef ENABLE_CACHE_AUDIO_FILE
