@@ -108,6 +108,8 @@
 
 #define MKFS_EXFAT                          "/usr/local/bin/mkexfatfs"
 
+#define VOLUME_NUM                          11               
+
 
 /*********************************************************************************************
  *  外部函数
@@ -135,7 +137,7 @@ static Mutex gRemoteVolLock;
 static Volume gSysVols[] = {
     {   /* SD卡 - 3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_SD,
-        .pBusAddr       = "usb2-1.1,usb2-1.4,usb1-2.1",      /* USB3.0设备,或者USB2.0设备 */
+        .pBusAddr       = "usb4-1,usb3-1,usb2-1.1,usb2-1.4,usb1-2.1",      /* USB3.0设备,或者USB2.0设备 */
         .pMountPath     = "/mnt/SD0",
         .pVolName       = "SD0",
         .iPwrCtlGpio    = 0,
@@ -155,7 +157,7 @@ static Volume gSysVols[] = {
     /* 底部USB接口: 2.0, 3.0 */
     {   /* Udisk1 - 2.0/3.0 */
         .iVolSubsys     = VOLUME_SUBSYS_USB,
-        .pBusAddr       = "usb2-1.3,usb1-2.3",           /* 接3.0设备时的总线地址 */
+        .pBusAddr       = "usb4-2,usb3-2,usb2-1.3,usb1-2.3",           /* 接3.0设备时的总线地址 */
         .pMountPath     = "/mnt/udisk1",
         .pVolName       = "udisk1",
         .iPwrCtlGpio    = 0,
@@ -356,6 +358,10 @@ static Volume gSysVols[] = {
  *  类方法
  *********************************************************************************************/
 
+void VolumeManager::init()
+{
+    /* 加载卷的配置信息表 */
+}
 
 
 
@@ -1322,9 +1328,11 @@ bool VolumeManager::start()
             if (nm->start()) {
                 LOGERR(TAG, "Unable to start NetlinkManager (%s)", strerror(errno));
             } else {
-                coldboot("/sys/block");
                 bResult = true;
                 startWorkThread();  /* 启动工作线程 */
+                
+                msg_util::sleep_ms(50);
+                coldboot("/sys/block");
             }
         }          
     } else {

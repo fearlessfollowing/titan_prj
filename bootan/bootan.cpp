@@ -29,6 +29,7 @@
 #include <hw/ins_led.h>
 #endif
 
+#include <hw/ins_gpio.h>
 
 #include <prop_cfg.h>
 #include <system_properties.h>
@@ -117,6 +118,8 @@ public:
 
 	void startBootAnimation();
 
+    const char* getHwVersion();
+
 private:
 
 #ifdef BOOTA_USE_LIGHT
@@ -173,6 +176,43 @@ void BootAnimation::startBootAnimation()
 	
 }
 
+/*
+ * GPIO240, GPIO241
+ * H        L           -> V1.1
+ */
+const char* BootAnimation::getHwVersion()
+{
+    int ret = -1;
+    ret = gpio_request(240);
+    ret |= gpio_request(241);
+
+    if (ret) {
+        LOGERR(TAG, "request hw version gpio failed!");
+        return "1.0";
+    }
+
+    gpio_direction_input(240);
+    gpio_direction_input(241);
+
+    usleep(100000);
+
+    int hw1 = gpio_get_value(240);
+    int hw2 = gpio_get_value(241);
+
+    LOGINFO(TAG, "hw[1:2] = %d:%d", hw1, hw2);
+
+    if (hw1 == 1 && hw2 == 0)
+        return "1.1";
+    else if (hw1 == 1 && hw2 == 1) 
+        return "1.2";
+    else 
+        return "1.0";
+
+
+    gpio_free(240);
+    gpio_free(241);
+}
+
 
 
 /*************************************************************************
@@ -197,18 +237,23 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "bootan service exit: __system_properties_init() faile\n");
 		return -1;
 	}
-	
+
 	/* 不需要保存日志 */
 	LogWrapper::init("/home/nvidia/insta360/log", "bootan", false);
-
-
 	LOGDBG(TAG, "bootan service start .....");
 
-
+    /*
+     * 获取硬件版本号, 将其写入到属性系统中 - 2019年07月20日
+     */
+    
 	sp<BootAnimation> gBootAnimation = (sp<BootAnimation>)(new BootAnimation());
-	gBootAnimation->startBootAnimation();
 	
+    const char* hwVersion = gBootAnimation->getHwVersion();
+    LOGINFO(TAG, "Hardware version: %s", hwVersion);
+    property_set("sys.hw_version", hwVersion);
 
+    gBootAnimation->startBootAnimation();
+	
 #if 1
     /* check /etc/resolv.conf */
     if (access(ETC_RESOLV_PATH, F_OK) != 0) {

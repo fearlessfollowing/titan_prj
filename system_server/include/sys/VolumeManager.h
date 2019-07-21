@@ -145,6 +145,32 @@ typedef struct stVol {
     u64             uAvail;			                    /* 剩余容量:(单位为MB) */
 	int 	        iSpeedTest;		                    /* 1: 已经测速通过; 0: 没有进行测速或测速未通过 */
     std::mutex      mVolLock;                           /* 访问卷的锁 */
+
+#if 0
+    
+    stVol(int sys, const char* addr, 
+          const char* path, const char* vol, 
+          int gpio, int type, int index, int prio, int state, int enable) 
+    {
+        iVolSubsys = sys;
+        pBusAddr = addr;
+        pMountPath = path;
+        pVolName = vol;
+        iPwrCtlGpio = gpio;
+        memset(cVolName, 0, sizeof(iVolSubsys));
+        memset(cDevNode, 0, sizeof(cDevNode));
+        memset(cVolFsType, 0, sizeof(cVolFsType));
+        iType = type;
+        iIndex = index;
+        iPrio = prio;
+        iVolState = state;
+        iVolSlotSwitch = enable;
+        uTotal = 0;
+        uAvail = 0;
+        iSpeedTest = VOLUME_SPEED_TEST_FAIL;
+    }
+#endif
+
 } Volume;
 
 
@@ -447,7 +473,7 @@ private:
     bool                                        getWorkerState();
     void                                        setWorkerState(bool bState);
 
-
+    void                    init();
 
     int                     mountVolume(Volume* pVol);
 

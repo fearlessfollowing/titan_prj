@@ -46,7 +46,9 @@ public:
     /* 电池是否满足升级条件 */
     bool isUpgradeSatisfy();
 
-    
+    /* 电源适配器是否存在 */
+    bool isPwrAdapterExist();
+
     /* 获取电池信息 */
     int getCurBatteryInfo(BatterInfo* pBatInfo);
 

@@ -7064,6 +7064,12 @@ int MenuUI::dispByType(int type)
     LOGNULL(TAG, "dispByType (%d %s 0x%x)", type, getMenuName(cur_menu), serverState);
     
     std::shared_ptr<VolumeManager> vm = Singleton<VolumeManager>::getInstance(); 
+    std::shared_ptr<InputManager>  im = Singleton<InputManager>::getInstance();
+
+    if (im->isInputReport() == false) {
+        im->setEnableReport(true);
+    }
+
     switch (type) {
 
 		/*
@@ -8389,6 +8395,30 @@ void MenuUI::handleSetSyncInfo(sp<SYNC_INIT_INFO> &mSyncInfo)
 }
 
 
+#define SN_FIRM_VER_PATH "/home/nvidia/insta360/etc/sn_firm.json"
+
+
+void MenuUI::updateSnFirmVer()
+{
+    Json::Value root;
+    root["serialNumber"]    = mReadSys->sn;
+    root["firmwareVersion"] = mVerInfo->r_ver;
+
+    if (access(SN_FIRM_VER_PATH, F_OK) == 0) {
+        unlink(SN_FIRM_VER_PATH);
+    }
+
+    Json::StreamWriterBuilder builder; 
+    // builder.settings_["indentation"] = ""; 
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter()); 
+    std::ofstream ofs;
+	ofs.open(SN_FIRM_VER_PATH);
+    writer->write(root, &ofs);
+    ofs.close();
+}
+
+
+
 /*************************************************************************
 ** 方法名称: handleDispInit
 ** 方法功能: 初始化显示
@@ -8401,7 +8431,10 @@ void MenuUI::handleDispInit()
 {
     read_sn();						    /* 获取系统序列号 */
     read_uuid();					    /* 读取设备的UUID */
-    read_ver_info();				    /* 读取系统的版本信息 */ 
+    read_ver_info();				    /* 读取系统的版本信息 */
+    
+    updateSnFirmVer();
+    
     init_cfg_select();				    /* 根据配置初始化选择项 */
     bDispTop = true;				    /* 显示顶部标志设置为true */
 	handleCheckBatteryState(true);		/* 检查电池的状态 */
@@ -8891,14 +8924,20 @@ bool MenuUI::handleCheckBatteryState(bool bUpload)
     uiShowBatteryInfo(&batInfo);
 
     if (hs->isSysLowBattery()) {
-        // if (cur_menu != MENU_LOW_BAT) { /* 当前处于非电量低菜单 */
-            if (checkServerStateIn(serverState, STATE_RECORD)) {
-                // setCurMenu(MENU_LOW_BAT, MENU_TOP);
-                LOGINFO(TAG, "In recording state, but battery is low!");
-                addState(STATE_LOW_BAT);
-                Singleton<ProtoManager>::getInstance()->sendLowPowerReq();               
+            if (checkServerStateIn(serverState, STATE_RECORD) 
+                || checkServerStateIn(serverState, STATE_STOP_RECORDING)
+                || checkServerStateIn(serverState, STATE_LOW_BAT)) {
+
+                /* 禁止此时的按键事件 - 2019年06月26日 */
+                Singleton<InputManager>::getInstance()->setEnableReport(false);
+
+                if (checkServerStateIn(serverState, STATE_RECORD)) {
+                    // setCurMenu(MENU_LOW_BAT, MENU_TOP);
+                    LOGINFO(TAG, "In recording state, but battery is low!");
+                    addState(STATE_LOW_BAT);
+                    Singleton<ProtoManager>::getInstance()->sendLowPowerReq();
+                }                
             }
-        // }
     }
 
     /*

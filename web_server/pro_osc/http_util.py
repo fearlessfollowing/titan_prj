@@ -76,7 +76,7 @@ class connector():
         self.contentTypeHeader  = {'Content-Type': 'application/json'}
         self.genericHeader      = {'Content-Type': 'application/json', 'Fingerprint': 'test'}
         self.oscStateDict       = {'fingerprint': 'test', 'state': {'batteryLevel': 0.0, 'storageUri':None}}
-        self.storagePath        = '/mnt/sdcard'
+        self.storagePath        = '/mnt/SD0'
 
         self.tickLock           = Semaphore()
         self.connectLock        = Semaphore()
@@ -90,9 +90,9 @@ class connector():
         # 该线程一直以1S周期执行hotBit() 
         # 如果
         def hotBit():
-            Info('---------------hotBit ---------------------')
+            # Info('---------------hotBit ---------------------')
             if self.isConnected == True and self.isOscCmdProcess == True:
-                self.http_req(config.PATH_STATE)
+                self.httpRequest(config.PATH_STATE)
                 self.tickLock.acquire()
                 self.localTick = 0
                 self.tickLock.release()
@@ -101,7 +101,7 @@ class connector():
                     self.tickLock.acquire()
                     self.localTick += 1
                     self.tickLock.release()
-                    self.http_req(config.PATH_STATE)
+                    self.httpRequest(config.PATH_STATE)
 
                     Info("----> locltick: {}".format(self.localTick))
                     if self.localTick == 40:    # 主动与WebServer断开连接
@@ -168,6 +168,7 @@ class connector():
 
         return dict_to_jsonstr(self.oscStateDict)
 
+
     def setIsCmdProcess(self, result):
         self.cmdLock.acquire()
         self.isOscCmdProcess = result
@@ -179,7 +180,8 @@ class connector():
         self.localTick = 0
         self.tickLock.release()
 
-    def http_req(self, url, param=None, method='GET'):
+
+    def httpRequest(self, url, param=None, method='GET'):
         try:
             if param is None:
                 heads = OrderedDict({'Content-Type': 'application/json', config.FINGERPRINT: self.get_fingerprint()})
@@ -204,9 +206,9 @@ class connector():
                             print('res ', r)
                 else:
                     Err('r status {}'.format(r.status_code))
-                    resp = cmd_exception(error_dic(join_str_list['http_req', url], r.status_code))
+                    resp = cmd_exception(error_dic(join_str_list['httpRequest', url], r.status_code))
         except Exception as err:
-            resp = cmd_exception(error_dic(join_str_list['http_req', url], str(err)))
+            resp = cmd_exception(error_dic(join_str_list['httpRequest', url], str(err)))
 
         return resp
 
@@ -221,10 +223,10 @@ class connector():
         return fingerprint
 
     def test_osc_info(self):
-        self.http_req(config.PATH_INFO)
+        self.httpRequest(config.PATH_INFO)
 
     def test_osc_state(self):
-        st = self.http_req(config.PATH_STATE)
+        st = self.httpRequest(config.PATH_STATE)
         return st
 
     def get_storage_uri(self, dic):
@@ -263,7 +265,7 @@ class connector():
 
 
     def test_osc_execute(self, name, param=None):
-        return self.http_req(config.PATH_CMD_EXECUTE, self.get_param(name, param))
+        return self.httpRequest(config.PATH_CMD_EXECUTE, self.get_param(name, param))
 
     def get_param(self, name, param=None):
         dict = OrderedDict()
@@ -275,7 +277,11 @@ class connector():
     def test_reset(self):
         return test_osc_execute(config.CAMERA_RESET)
 
-    def get_origin(self, mime = 'jpeg',w = 4000,h = 3000,save_org = bSave, framerate=None, bitrate = None):
+
+    #
+    # get_origin - 构造'origin'字段的参数
+    #
+    def get_origin(self, mime='jpeg', w=5280, h=3956, save_org=bSave, framerate=None, bitrate = None):
         org = OrderedDict({config.MIME: mime, config.WIDTH: w, config.HEIGHT: h, config.SAVE_ORG: True})
         if save_org is not None:
             org[config.SAVE_ORG] = save_org
@@ -285,12 +291,16 @@ class connector():
             org[config.BIT_RATE] = bitrate
         return org
 
+
     def get_stich(self, mime='jpeg', w=3840, h=1920, mode='pano', framerate=None, bitrate=None):
         sti = OrderedDict({config.MIME: mime, config.MODE: mode, config.WIDTH: w, config.HEIGHT: h})
         if framerate is not None:
             sti[config.FRAME_RATE] = framerate
         if bitrate is not None:
             sti[config.BIT_RATE] = bitrate
+
+        sti[config.STITCH_ALGORITHM] = osc_option.get_option('_curPicStitchMode')
+
         return sti
 
 
@@ -301,58 +311,86 @@ class connector():
                        config.BIT_RATE:bitrate})
         return aud
 
-    def get_take_pic_param(self):
-        param = OrderedDict()
-        param[config.ORG] = self.get_origin(w = 4000,h = 3000)
-        param[config.STICH] = self.get_stich()
-        return param
 
-    def get_hdr_param(self):
+    #
+    # getHdrTakepictureParam - 获取HDR拍照的参数
+    # mode - PANO/3D
+    # 
+    def getHdrTakepictureParam(self, mode=config.MODE_3D):
         param = OrderedDict()
         param[config.ORG] = self.get_origin()
-        param['bracket'] = OrderedDict({"enable": True, "count": 3, "min_ev": -32, "max_ev": 32})
+
+        if mode == config.MODE_3D:
+            param[config.STICH] = self.get_stich(w=10560, h=10560, mode=config.MODE_3D)
+        else:
+            param[config.STICH] = self.get_stich(w=10560, h=5280, mode='pano')
+
+        Info('osc_option.get_exposure_bracket() is {}'.format(osc_option.get_exposure_bracket())) 
+        exposureBracket = osc_option.get_exposure_bracket()
+
+        if check_dic_key_exist(exposureBracket, 'autoMode'):
+            if exposureBracket['autoMode'] == True:
+                 Info('---> autoMode is true, use default arguments')
+            param['bracket'] = OrderedDict({"enable": True, "count": 3, "min_ev": -32, "max_ev": 32})
+        else:
+            if check_dic_key_exist(exposureBracket, 'shots') and check_dic_key_exist(exposureBracket, 'increment'):
+                if exposureBracket['shots'] != 3 and exposureBracket['shots'] != 5 and exposureBracket['shots'] != 7 and exposureBracket['shots'] != 9 :
+                    param['bracket'] = OrderedDict({"enable": True, "count": 3, "min_ev": -32, "max_ev": 32})
+                else:
+                    ev = int(32 * exposureBracket['increment'])
+                    param['bracket'] = OrderedDict({"enable": True, "count": exposureBracket['shots'], "min_ev": -ev, "max_ev": ev})
+            else:
+                param['bracket'] = OrderedDict({"enable": True, "count": 3, "min_ev": -32, "max_ev": 32})
+
         return param
 
 
-    def get_pic_param(self, mode=config.MODE_3D):
+    #
+    # getTakepictureParam - 获取拍照参数
+    # mode - PANO/3D
+    # 
+    def getTakepictureParam(self, mode=config.MODE_3D):
         param = OrderedDict()
         param[config.ORG] = self.get_origin()
         if mode == config.MODE_3D:
-            param[config.STICH] = self.get_stich(w=7680, h=7680, mode=config.MODE_3D)
+            param[config.STICH] = self.get_stich(w=10560, h=10560, mode=config.MODE_3D)
         else:
-            param[config.STICH] = self.get_stich(w=7680, h=3840, mode='pano')
-
+            param[config.STICH] = self.get_stich(w=10560, h=5280, mode='pano')
         return param
 
 
-    def test_take_pic(self, req):
+    # 
+    # handleTakepicture - 处理拍照请求
+    # 
+    def handleTakepicture(self, req):
         Info('osc_option.get_hdr() is {}'.format(osc_option.get_hdr()))
+        
         global last_take_pic_res
 
         self.curAction = ACTION_TAKEPIC
 
+        ## 拍照分为'普通'拍照和'hdr'拍照(AEB) #
         hdr = osc_option.get_hdr()
-        if hdr is not None and hdr == 'hdr':
-            param = self.get_hdr_param()
+        if hdr == True:
+            param = self.getHdrTakepictureParam('pano')
         else:
-            param = self.get_pic_param('pano')
+            param = self.getTakepictureParam('pano')
         
         res = self.test_osc_execute(config._TAKE_PICTURE, param)
 
         if res[_st] == _done:
             res = cmd_in_progress(res[_name], 0, str(res['sequence']))
             last_take_pic_res = res
-            Info('1test_take_pic {} last_take_pic_res {}'.format(res, last_take_pic_res))
+            Info('handleTakepicture {} last_take_pic_res {}'.format(res, last_take_pic_res))
         else:
             res = dict_to_jsonstr(res)
-            Info('2test_take_pic {}'.format(res))
+            Info('handleTakepicture {}'.format(res))
         return res
-
 
     def get_rec_param(self):
         param = OrderedDict()
-        param[config.ORG] = self.get_origin(mime='h264', w=3840, h=2160, framerate=25, bitrate=20000)
-        param[config.STICH] = self.get_stich(mime = 'h264',w=3840, h=3840,framerate=25,bitrate=20000)
+        param[config.ORG] = self.get_origin(mime='h264', w=3840, h=2880, framerate=30, bitrate=61440)
+        param[config.STICH] = self.get_stich(mime = 'h264',w=3840, h=1920,framerate=30,bitrate=40960)
         param[config.AUD] = self.get_audio()
         param[config.DURATION] = 20
         return param
@@ -462,11 +500,16 @@ class connector():
         else:
             return cmd_error(req[_name], config.OSC_INVALID_PN, 'Parameter options contains unsupported option captureInterval.')
 
-    def start_take_pic(self, req):
-        if osc_option.get_capture_mode() == 'image':
-            return self.test_take_pic(req)
-        else:
+
+    #
+    # oscHandleTakepicture - 处理拍照请求
+    # 
+    def oscHandleTakepicture(self, req):
+        if osc_option.get_capture_mode() == 'image':    # 拍照时的采集模式必须为'image'
+            return self.handleTakepicture(req)
+        else:   # 非'image'模式时返回错误
             return cmd_error(req[_name], config.OSC_INVALID_PN, "not image mode")
+
 
     def start_list_file(self, req):
         Info('list file req {}'.format(req))
@@ -609,9 +652,9 @@ class connector():
             dict_func = OrderedDict({
                 config.OSC_GET_OPTIONS: self.start_get_options,
                 config.OSC_SET_OPTIONS: self.start_set_options,
-                config.TAKE_PICTURE:    self.start_take_pic,
+                config.TAKE_PICTURE:    self.oscHandleTakepicture,
                 config.DELETE:          self.delete,
-                #  self.start_delete,
+
                 config.OSC_CAM_RESET:   self.start_reset,
                 config.LIST_FILES:      self.start_list_file,
                 config.START_CAPTURE:   self.start_osc_capture,
@@ -638,7 +681,7 @@ class connector():
         return param
 
     def test_get_cmd_status(self, name, param=None):
-        return self.http_req(config.PATH_CMD_EXECUTE, self.get_param(name, param))
+        return self.httpRequest(config.PATH_CMD_EXECUTE, self.get_param(name, param))
 
     def start_get_cmd_status(self, req):
         req_id = int(req['id'])

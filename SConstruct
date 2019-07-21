@@ -62,8 +62,8 @@ com_env.Program('out/update_app', update_app_obj)
 	
 
 ############################ bootanimation ##################################
-#bootan_obj = SConscript('./bootan/SConscript')
-#com_env.Program('out/bootanimation', bootan_obj)
+bootan_obj = SConscript('./bootan/SConscript')
+com_env.Program('out/bootanimation', bootan_obj)
 
 
 ############################ power_manager ##################################

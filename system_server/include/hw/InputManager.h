@@ -77,8 +77,13 @@ public:
     void					setNotifyRecv(sp<ARMessage> notify);
 	
 	bool 					getReportState();
-	void					setEnableReport(bool bEnable);
+	void					setEnableReport(bool bEnable);	/* 设置输入子系统上报使能/禁止 */
     void                    setBtnReportCallback(BtnReportCallback callback);
+
+	bool isInputReport()				/* 输入子系统上报是否使能 */
+	{
+		return mEnableReport;
+	}
 
 private:
 

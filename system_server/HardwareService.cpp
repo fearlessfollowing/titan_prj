@@ -60,7 +60,7 @@
 #define     TAG "HwService"
 
 
-#define ENABLE_DEBUG_TMPSERVICE
+// #define ENABLE_DEBUG_TMPSERVICE
 
 
 bool HardwareService::sFanGpioExport = false;
@@ -291,9 +291,12 @@ void HardwareService::getModuleTemp()
                 iLowestTemp = iHightemp;
             }
 
+        #ifdef ENABLE_DEBUG_TMPSERVICE
             LOGDBG(TAG, "pid[%d], H2 temp: [%f]C", i, h2_temp*1.0f);
             LOGDBG(TAG, "pid[%d], Sensor temp: [%f]C", i, sensor_temp*1.0f);
             LOGDBG(TAG, "--------------------------------------------------");
+        #endif
+        
         }
     }
 
@@ -410,11 +413,20 @@ BatterInfo HardwareService::getSysBatteryInfo()
 bool HardwareService::isSysLowBattery()
 {
     bool ret = false;
+    const char* hw_version = property_get("sys.hw_version");
     {
         std::unique_lock<std::mutex> _lock(mBatteryLock);
-        if (mBatteryInterface->isBatteryExist() &&  
+
+        if (hw_version && !strcmp(hw_version, "1.1")) { /* 1.1可以检测电源适配器是否插入 */
+            if (mBatteryInterface->isBatteryExist() &&  
+                !mBatInfo->bIsCharge &&  !mBatteryInterface->isPwrAdapterExist() && mBatInfo->uBatLevelPer <= BAT_LOW_STOP_VIDEO) {
+                ret = true;
+            }
+        } else {
+            if (mBatteryInterface->isBatteryExist() &&  
                 !mBatInfo->bIsCharge &&  mBatInfo->uBatLevelPer <= BAT_LOW_STOP_VIDEO) {
-            ret = true;
+                ret = true;
+            }
         }
     }
     return ret;

@@ -510,6 +510,9 @@ public:
 
 private:
 
+    void    updateSnFirmVer();
+
+
     void    subSysInit();
 
     void    subSysDeInit();

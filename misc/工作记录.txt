@@ -63,3 +63,8 @@ hardware/nvidia/platform/t18x/common/kernel-dts/t18x-common-platforms/tegra186-q
 
 
 
+Titan V1.1
+1.OLED硬件上电 H13 -> GPIO3_PI.04 -> 320 + 8*8 + 4 = 388
+
+
+

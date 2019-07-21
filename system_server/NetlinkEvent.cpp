@@ -59,7 +59,8 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
      * add@/devices/3530000.xhci/usb1/1-2/1-2.1/1-2.1:1.0/host40/target40:0:0/40:0:0:0/block/sdg/sdg1   
      * 
      * remove@/devices/3530000.xhci/usb2/2-1/2-1:1.0/host8/target8:0:0/8:0:0:0/block/sda/sda1
-     * remove@/devices/3530000.xhci/usb2/2-1/2-1:1.0/host8/target8:0:0/8:0:0:0/block/sda     
+     * remove@/devices/3530000.xhci/usb2/2-1/2-1:1.0/host8/target8:0:0/8:0:0:0/block/sda    
+     * add@/devices/10003000.pcie-controller/pci0000:00/0000:00:01.0/0000:01:00.0/usb4/4-1/4-1:1.0/host2/target2:0:0/2:0:0:0/block/sda/sda1 
      */
     mEventSrc = NETLINK_EVENT_SRC_KERNEL;
 
@@ -98,6 +99,11 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
 
         if (mSubsys == VOLUME_SUBSYS_USB) {
             const char* pColon = NULL;
+            
+            if (strstr(s, "pci") && strstr(s, "usb")) {
+                s = strstr(s, "usb");
+            }
+
             pColon = strchr(s, ':');
             if (pColon) {
                 
@@ -106,7 +112,7 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
                 pSlash = strrchr(cBusAddr, '/');
                 if (pSlash) {
                     strncpy(mBusAddr, pSlash + 1, (pColon - (pSlash + 1)));
-                    LOGNULL(TAG, "New Version usb bus addr: %s", mBusAddr);
+                    LOGINFO(TAG, "New Version usb bus addr: %s", mBusAddr);
                 } else {
                     return false;
                 }
@@ -114,7 +120,7 @@ bool NetlinkEvent::parseAsciiNetlinkMessage(char *buffer, int size)
                 pDevNode = strrchr(s, '/');
                 if (pDevNode) {
                     strcpy(mDevNodeName, pDevNode + 1);
-                    LOGNULL(TAG, "New Version dev node name: %s", mDevNodeName);
+                    LOGINFO(TAG, "New Version dev node name: %s", mDevNodeName);
                 } else {
                     return false;
                 }

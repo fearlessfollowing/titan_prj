@@ -1,0 +1,41 @@
+1.OLED屏幕使能脚需需要拉低(GPIO388)
+在启动脚本/usr/local/bin/hardware_init.sh中填入如下语句:
+echo 388 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio388/direction
+echo 1 > /sys/class/gpio/gpio388/value
+
+
+2.USB部分
+- 底部USB3.0及SD卡接口均使用PCIe接口 (0.0.4系统已支持)
+已经OK
+USB转SD卡 -> usb4-1
+底部USB Type-A -> usb4-2
+
+- 3路USB3.0: 两路接模组(做为Host); 一路接至Type-C(用作Device)
+已经OK
+
+
+3.DC检测
+是否有接外部电源适配器通过DC检测脚来直接检测
+硬件引脚: H3 -> GPIO3_PJ.05 -> 320 + 9*8 + 5 = 397
+
+
+4.电池电量
+直接使用电池读出的电量
+
+
+
+5.音频输入
+- 支持Line-In
+
+
+
+6.硬件版本检测(在logo服务中加入硬件版本检测)
+echo 240 > /sys/class/gpio/export
+echo 241 > /sys/class/gpio/export
+echo in > /sys/class/gpio/gpio240/direction
+echo in > /sys/class/gpio/gpio241/direction
+cat /sys/class/gpio/gpio240/value
+cat /sys/class/gpio/gpio241/value
+
+

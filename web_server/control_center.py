@@ -866,7 +866,7 @@ class control_center:
         if self._connectMode != 'test': # 非测试模式, 重新启动定时器
             self.startPollTimer()      
 
-        Info('---> getOscState: deal delta: {}, data {} <---'.format(t2 - t1, ret_state))
+        # Info('---> getOscState: deal delta: {}, data {} <---'.format(t2 - t1, ret_state))
 
         return ret_state
 

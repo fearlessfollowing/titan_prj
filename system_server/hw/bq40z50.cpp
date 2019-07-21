@@ -15,6 +15,7 @@
 ******************************************************************************************************/
 #include <common/include_common.h>
 #include <hw/ins_i2c.h>
+#include <hw/ins_gpio.h>
 #include <prop_cfg.h>
 #include <system_properties.h>
 #include <log/log_wrapper.h>
@@ -122,11 +123,18 @@ BatteryManager::BatteryManager()
     mLastVol   = 13500; // mV
     mLastPer   = 0;
     mBatMode = 0;
+    const char* hw_version = property_get("sys.hw_version");
 
-    if (loadBatCfgFile(BAT_CONV_TAB, mBatConvMap)) {
-        LOGINFO(TAG, "--> load battery convert table ok");
+    if (hw_version && !strcmp(hw_version, "1.1")) {
+        LOGINFO(TAG, "hw_version 1.1, need not load battry convert table");
+        gpio_request(397);
+        gpio_direction_input(397);
     } else {
-        LOGINFO(TAG, "--> load battery convert table failed, table is exist???");        
+        if (loadBatCfgFile(BAT_CONV_TAB, mBatConvMap)) {
+            LOGINFO(TAG, "--> load battery convert table ok");
+        } else {
+            LOGINFO(TAG, "--> load battery convert table failed, table is exist???");        
+        }
     }
 
     const char * pBusNum = property_get(PROP_BAT_I2C_BUS_NUM);
@@ -164,6 +172,14 @@ bool BatteryManager::isBatteryExist()
     }
 
     return bExist;
+}
+
+/*
+ * 1.1 - gpio397
+ */
+bool BatteryManager::isPwrAdapterExist()
+{
+    return (gpio_get_value(397) == 1) ? true : false;
 }
 
 
@@ -232,6 +248,7 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
     u16 uBatMode = 0;
     u16 uVol = 0;
     u16 uCurrent = 0;
+    const char* hw_version = property_get("sys.hw_version");
 
     if (mI2c->i2c_read(BQ40Z50_CMD_BAT_MODE, (u8*)&uBatMode, 2)) {
         pBatInfo->bIsExist = false;
@@ -263,7 +280,7 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             * 0 = Battery is in CHARGE mode.
             */
             if (batStaus & (1 << 6)) {
-                LOGDBG(TAG, "bq40z50 in discharge mode.");
+                // LOGDBG(TAG, "bq40z50 in discharge mode.");
                 pBatInfo->bIsCharge = false;
             } else {
                 pBatInfo->bIsCharge = true;
@@ -285,51 +302,24 @@ int BatteryManager::getCurBatteryInfo(BatterInfo* pBatInfo)
             // LOGDBG(TAG, "---> Battery Voltage: %d [mV]", uVol);
         }
 
-#if 0
-#define VOL_CRITICAL_VAL    14240       /* 14.24V */
-        /*
-         * - 当电池电压小于14.24时(30)，电池剩余电量使用公式计算
-         * - 判断是否在充电状态(如果不在充电状态，即使电压值升高,电量百分比也不能上升)
-         */
-        if (uVol <= VOL_CRITICAL_VAL) {
+        if (hw_version && !strcmp(hw_version, "1.1")) {
+            // do nothing
+        } else {
+            #define VOL_CRITICAL_VAL    13400       /* 13.4V */
+            #define BAT_CAP_CRITCAL_VAL 5
 
-            if (BatteryManager::sFirstRead == 0) {
-                mLastPer = pBatInfo->uBatLevelPer;
-                BatteryManager::sFirstRead = 1;
+            auto it = mBatConvMap.find(pBatInfo->uBatLevelPer);
+            if (it != mBatConvMap.end()) {
+                // LOGINFO(TAG, "Convert battery level: %d", it->second);
+                pBatInfo->uBatLevelPer = it->second;
             }
 
-            u16 uBatPer = getBatteryPer(uVol);
-            LOGDBG(TAG, "------> Convert battery: %d", uBatPer);
-            if (uBatPer < 0) uBatPer = 0;
-
-            if (pBatInfo->bIsCharge == false) { /* 不充电的情况下电量只能越来越少 */
-                LOGINFO(TAG, "Last Per: %d", mLastPer);
-                if (mLastPer < uBatPer) uBatPer = mLastPer;     
-            } 
-
-            if (mLastPer != uBatPer) {
-                mLastPer = uBatPer;
+            /* 电池的电压已经足够低,但是显示的电量还高于5%,并且非充电状态 */
+            if (uVol <= VOL_CRITICAL_VAL && (pBatInfo->uBatLevelPer > BAT_CAP_CRITCAL_VAL) && (pBatInfo->bIsCharge = false)) {
+                LOGINFO(TAG, "battery voltage is lower than 13.4V, but cap is higher than 5!!");
+                pBatInfo->uBatLevelPer = 3;
             }
-
-            pBatInfo->uBatLevelPer = uBatPer;
         }
-#else
-
-#define VOL_CRITICAL_VAL    13400       /* 13.4V */
-#define BAT_CAP_CRITCAL_VAL 5
-
-	    auto it = mBatConvMap.find(pBatInfo->uBatLevelPer);
-	    if (it != mBatConvMap.end()) {
-            // LOGINFO(TAG, "Convert battery level: %d", it->second);
-            pBatInfo->uBatLevelPer = it->second;
-        }
-
-        /* 电池的电压已经足够低,但是显示的电量还高于5%,并且非充电状态 */
-        if (uVol <= VOL_CRITICAL_VAL && (pBatInfo->uBatLevelPer > BAT_CAP_CRITCAL_VAL) && (pBatInfo->bIsCharge = false)) {
-            LOGINFO(TAG, "battery voltage is lower than 13.4V, but cap is higher than 5!!");
-            pBatInfo->uBatLevelPer = 3;
-        }
-#endif
     }
     return GET_BATINFO_OK;
 }

@@ -316,6 +316,9 @@ FRAME_RATE  = 'framerate'
 #BIT_RATE   = 'bitrate'
 
 
+STITCH_ALGORITHM = 'algorithm'
+
+
 # Machine
 MACHINE_TYPE = 'machine'
 MACHINE = 'titan'

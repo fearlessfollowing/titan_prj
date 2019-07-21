@@ -400,3 +400,100 @@
 测试风险点:
 
 遗留问题：
+
+
+{
+    "name": "camera._startRecording", 
+    "parameters": {
+        "audio": {
+            "bitrate": 128, 
+            "channelLayout": "stereo", 
+            "mime": "aac", 
+            "sampleFormat": "s16", 
+            "samplerate": 48000
+        }, 
+        "origin": {
+            "bitrate": 184320, 
+            "framerate": 30, 
+            "height": 2400, 
+            "mime": "h264", 
+            "saveOrigin": true, 
+            "storage_loc": 1, 
+            "width": 3200
+        },
+        "factory_calc_offset": true
+    }
+}
+
+
+版本号：V1.0.32
+固件地址：禅道 
+开发自测通过：是 
+ 
+修改点： 
+ 
+ 
+（罗品京） 
+1.客户端录像时，副码流的分辨率为1920x1440， 客户端发的参数:
+{
+    "name": "camera._startRecording", 
+    "parameters": {
+        "audio": {
+            "bitrate": 128, 
+            "channelLayout": "stereo", 
+            "mime": "aac", 
+            "sampleFormat": "s16", 
+            "samplerate": 48000
+        }, 
+        "origin": {
+            "bitrate": 184320, 
+            "framerate": 30, 
+            "height": 2400, 
+            "mime": "h264",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+            "saveOrigin": true, 
+            "storage_loc": 1, 
+            "width": 3200
+        },
+        "factory_calc_offset": true
+    }
+}
+
+
+（建聪） 
+
+测试风险点:
+
+遗留问题：
+
+
+
+版本号：V1.0.33
+固件地址：禅道 
+开发自测通过：是 
+ 
+修改点： 
+ 
+ 
+（罗品京） 
+1.添加osc功能
+
+
+（建聪） 
+1.更改 主码流封装格式为fmp4，规避467导致的文件损坏问题
+2.增加 对240fps的支持
+3.解决 长时间3D直播时， 音视频不同步的问题
+4.解决 从手动模式切换到半自动模式拍照，曝光设置异常的问题
+5.更新 insta 3a
+
+测试风险点:
+
+遗留问题：
+
+
+
+工作记录:
+1.对接123看房的osc功能
+2.titan产线生产版本，录像副码流的分辨率改为1920x1440
+3.titan 1.0.33版本添加osc功能
+4.Hi3559A平台移植monitor, logd, logcat, adbd, ffmpeg库等基础服务
+5.分析解决第一批titan机器的音频414问题

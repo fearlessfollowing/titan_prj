@@ -59,7 +59,7 @@ with open(SN_FIRM_JSON) as snFirmFile:
 def getOscInfo():
     curOscInfo = OrderedDict()
     curOscInfo['manufacturer'] = 'Shenzhen Arashi Vision'
-    curOscInfo['model'] = 'Insta360 Pro2'
+    curOscInfo['model'] = 'Insta360 Titan'
     curOscInfo['serialNumber'] = gSnFirmInfo["serialNumber"]
     curOscInfo['firmwareVersion'] = gSnFirmInfo["firmwareVersion"]
     curOscInfo['supportUrl'] = 'https://support.insta360.com'

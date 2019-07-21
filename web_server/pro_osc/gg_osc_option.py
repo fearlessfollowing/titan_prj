@@ -1,4 +1,11 @@
-
+######################################################################################################
+# -*- coding: UTF-8 -*-
+# 文件名：  http_util.py 
+# 版本：    V0.0.1
+# 修改记录：
+# 日期                  修改人                  版本            备注
+# 2018年12月06日        skymixos                V1.0.18
+######################################################################################################
 import config
 from util.ins_util import *
 from util.ins_log_util import *
@@ -7,9 +14,21 @@ from collections import OrderedDict
 
 class osc_option:
 
+    # 
+    # capture_mode - 采集模式支持
+    #
     capture_mode = ['image', 'interval','video','walkaround']
+    
+    # 
+    # exposure_prog  - 曝光程序支持
+    #
     exposure_prog = ['Not defined','Manual','Normal program','Aperture priority','Shutter priority','ISO priority']
+    
+    #
+    # iso - iso支持列表
+    #
     iso = [0, 100, 200, 400, 800, 1600]
+
     shutter = [0, 0.067, 0.033, 0.017, 0.008]
     aperture = [0, unify_float(1.4), 2, unify_float(2.8), 4, unify_float(5.6), 8, 11]
 
@@ -34,6 +53,7 @@ class osc_option:
             "height": 100
         }
     ]
+
     sleep_delay = [30, 60, 120, 300, 600, 1800, 65535]
     exposure_delay = [0, 1, 2, 5, 10, 30, 60]
     off_delay = [1800, 3600, 7200, 65535]
@@ -46,22 +66,27 @@ class osc_option:
         "lat": 0.00,
         "lng": 0.00}
 
-    date_time_zone = '2014:05:18 01:04:29+08:00'
+    date_time_zone = '2019:07:01 01:04:29+08:00'
     hdr_sup = ['off', 'hdr']
     
-    _vr_mode = [config.MODE_3D,'pano']
-    
+    _vr_mode = [config.MODE_3D, 'pano']
+
+
+    #
+    # _picStitchAlgo - 支持的拼接算法
+    #
+    _picStitchAlgo = ['opticalFlow', 'normal']
+
+
     exposure_bracket_def = {'autoMode':True}
     
-    exposure_bracket = {
+    exposure_bracket_support = {
         "autoMode": True,
         "shotsSupport": [1, 3, 5, 7],
         "incrementSupport": [unify_float(0.33), unify_float(0.67), 1, unify_float(1.33), unify_float(1.67), 2]
     }
 
-    # shots_index = 0
-    # increment_index = 0
-    
+
     gyro = False
     gyro_sup = False
     gps_sup = False
@@ -87,18 +112,6 @@ class osc_option:
             "height": 960,
             "framerate": framerate,
             "_bitrate": _bitrate
-        },
-        {
-            "width": 1440,
-            "height": 720,
-            "_bitrate": _bitrate,
-            "framerate": framerate
-        },
-        {
-            "width": 960,
-            "height": 480,
-            "_bitrate": _bitrate,
-            "framerate": framerate
         }
     ]
 
@@ -119,7 +132,7 @@ class osc_option:
     _vr_mode = [config.MODE_3D, 'pano']
     vr_mode_def = 'pano'
 
-    _vendor_specific = {'_vr_mode':_vr_mode[0],'_vr_mode_sup':_vr_mode}
+    _vendor_specific = {'_vr_mode':_vr_mode[0], '_vr_mode_sup':_vr_mode}
 
     cur_format_def = \
     {
@@ -178,20 +191,9 @@ class osc_option:
                 "height": 960,
                 "framerate": framerate,
                 "_bitrate": _bitrate
-            },
-            {
-                "width": 1440,
-                "height": 720,
-                "framerate": framerate,
-                "_bitrate": _bitrate
-            },
-            {
-                "width": 1280,
-                "height": 720,
-                "framerate": framerate,
-                "_bitrate": _bitrate
-
-            }],
+            }
+            ],
+            
             'live':
             [
             {
@@ -257,12 +259,6 @@ class osc_option:
                 {
                     "width": 960,
                     "height": 960,
-                    "framerate": [15],
-                    "_bitrate": [2048]
-                },
-                {
-                    "width": 640,
-                    "height": 640,
                     "framerate": [15],
                     "_bitrate": [2048]
                 }
@@ -331,86 +327,115 @@ class osc_option:
 
     def_k_v = \
     {
-        'captureMode':capture_mode[0],
-        'captureModeSupport':capture_mode,
-        'exposureProgram':exposure_prog[0],
+        'captureMode': capture_mode[0],
+        'captureModeSupport': capture_mode,
+
+        'exposureProgram': exposure_prog[0],
         'exposureProgramSupport': exposure_prog,
+
         'iso':iso[0],
         'isoSupport': iso,
+
         'shutterSpeed':shutter[0],
         'shutterSpeedSupport':shutter,
+
         'aperture':aperture[0],
         'apertureSupport': aperture,
+
         'whiteBalance':white_balance[0],
         'whiteBalanceSupport':white_balance,
+
         'exposureCompensation':exposure_compensation[0],
         'exposureCompensationSupport':exposure_compensation,
+
         'fileFormat':file_format[0],
         'fileFormatSupport': file_format,
+
         'exposureDelay':exposure_delay[0],
         'exposureDelaySupport': exposure_delay,
+
         'sleepDelay':sleep_delay[0],
         'sleepDelaySupport': sleep_delay,
+
         'offDelay':off_delay[0],
         'offDelaySupport': off_delay,
+
         'totalSpace':total_space,
         'remainingSpace':remaining_space,
         'remainingPictures':remaining_pic,
+
         'gpsInfo':gps_info,
         'dateTimeZone':date_time_zone,
+
         'hdr':hdr_sup[0],
         'hdrSupport':hdr_sup,
-        # 'shots_index':shots_index,
-        # 'increment_index':increment_index,
-        #start
+
         'gyro': gyro,
         'gyroSupport': gyro_sup,
+
         'gps': gps,
         'gpsSupport':gps_sup,
+
         'imageStabilization': image_stabilization,
         'imageStabilizationSupport': image_stabilization,
+
         'wifiPassword': wifi_pwd,
         config.PREVIEW_FORMAT: preview_format_def,
+
         'previewFormatSupport': preview_format,
         'captureInterval': 0,
         'captureIntervalSupport':captureInterval,
 
         'captureNumber': capture_num_def,
         'captureNumberSupport': capture_num,
+
         'remainingVideoSeconds':remain_video_sec,
 
         'pollingDelay':pollingDelay,
+
         'delayOrocessing':delay_processing,
         'delayProcessingSupport':delay_processing_sup,
+
         'clientVersion':client_version,
 
-        #sepcial while setOption
+
         'exposureBracket': exposure_bracket_def,
+        'exposureBracketSupport': exposure_bracket_support,
+
+
         '_vendorSpecific':_vendor_specific,
         '_cur_format':cur_format_def,
         '_all_format':all_format,
         '_wifi_state':0,
-        #0 - 10
+
         '_shutter_vol': 0,
         '_shutter_vo_support':_shutter_vo_support,
-        config.PIC_FORMAT:pic_format_def,
+
+        #
+        # 拼接算法
+        #
+        '_picStitchMode': _picStitchAlgo,
+        '_curPicStitchMode': _picStitchAlgo[0],
+
+        config.PIC_FORMAT: pic_format_def,
         config.LIVE_FORMAT: live_format_def,
         config.REC_FORMAT: rec_format_def,
-        config.VR_MODE:vr_mode_def
+        config.VR_MODE: vr_mode_def
     }
 
+
     @classmethod
-    def get_option(cls,name,val = None):
-        if check_dic_key_exist(cls.def_k_v,name):
+    def get_option(cls, name, val = None):
+        if check_dic_key_exist(cls.def_k_v, name):
             return cls.def_k_v[name]
         else:
             return val
 
     @classmethod
-    def set_option(cls,name,val):
+    def set_option(cls, name, val):
         res = -1
-        if check_dic_key_exist(cls.def_k_v,name):
-            Info('set option {}:{}'.format(name,val))
+        if check_dic_key_exist(cls.def_k_v, name):
+            Info('set option {}:{}'.format(name, val))
             cls.def_k_v[name] = val
             if name == 'sleepDelay':
                 if val != -1:
@@ -420,8 +445,9 @@ class osc_option:
             Info('set option name {} not exist'.format(name))
         return res
 
+
     @classmethod
-    def get_options(cls,key_array):
+    def get_options(cls, key_array):
         Info('1get options key_array {}'.format(key_array))
         options = OrderedDict()
         options_val = OrderedDict()
@@ -433,7 +459,7 @@ class osc_option:
         return options
 
     @classmethod
-    def set_options(cls,key_array):
+    def set_options(cls, key_array):
         res = 0
 
         for k in key_array:
@@ -441,6 +467,7 @@ class osc_option:
                res = -1
         Info('set_options {} res {} type {}'.format(key_array, res, type(key_array)))
         return res
+
 
     @classmethod
     def get_all_options(cls):
@@ -456,6 +483,7 @@ class osc_option:
     @classmethod
     def set_capture_mode(cls,val):
         return cls.set_option('captureMode', val)
+
 
     # 0 = Not defined
     # 1 = Manual
@@ -553,7 +581,6 @@ class osc_option:
     def get_exposure_delay(cls):
         return cls.get_option('exposureDelay', cls.exposure_delay[0])
 
-
     @classmethod
     def set_exposure_delay(cls, val):
         return cls.set_option('exposureDelay', val)
@@ -637,7 +664,7 @@ class osc_option:
             return True
 
     @classmethod
-    def set_hdr(cls,val):
+    def set_hdr(cls, val):
         return cls.set_option('hdr', val)
 
     @classmethod
@@ -645,25 +672,14 @@ class osc_option:
         return cls.hdr_sup
 
     @classmethod
-    def get_shots_index(cls):
-        return cls.get_option('shots_index', cls.exposure_bracket["shotsSupport"][0])
-
-    @classmethod
-    def set_shots_index(cls,val):
-        cls.shots_index = val
-        return cls.set_option('shots_index', val)
-
-    @classmethod
-    def get_incre_index(cls):
-        return cls.get_option('increment_index', cls.exposure_bracket["incrementSupport"][0])
-
-    @classmethod
-    def set_incre_index(cls, val):
-        return cls.set_option('increment_index', val)
-
-    @classmethod
     def get_exposure_bracket_sup(cls, val):
         return cls.exposure_bracket
+
+
+    @classmethod
+    def get_exposure_bracket(cls):
+        return cls.get_option('exposureBracket')
+
 
     @classmethod
     def get_gyro(cls):
@@ -784,9 +800,6 @@ class osc_option:
     def get_client_version(cls):
         return cls.get_option('client_version', cls.client_version)
 
-    # @classmethod
-    # def set_vendor_specific(cls,val):
-    #     return cls.set_option('_vendor_specific', val)
 
     @classmethod
     def get_vendor_specific(cls):
